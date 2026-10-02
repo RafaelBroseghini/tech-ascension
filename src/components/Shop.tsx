@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { eraSections, tiersInEra } from "../data/eras.ts"
-import { ERA_ACCENT, spriteForTier } from "../data/sprites.ts"
+import { ERA_ACCENT, thumbForTier } from "../data/sprites.ts"
 import type { Era } from "../data/tiers.ts"
 import { canAfford, highestOwnedTier, isRevealed, nextCost, ownedCount } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
@@ -124,7 +124,7 @@ export function Shop() {
                 .join(" ")}
               style={{ ["--offer-glow" as string]: ERA_ACCENT[tier.era].glow, ["--i" as string]: index }}
             >
-              <img src={spriteForTier(tier.id)} alt="" width={48} height={48} />
+              <img src={thumbForTier(tier.id)} alt="" width={64} height={64} />
               <div className="offer-copy">
                 <h3>
                   {tier.name}

@@ -26,9 +26,9 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 
 ## How it plays
 
-- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it bumps up, tips slightly away from the click point and settles with a tiny jitter (about 260ms, a little bigger the faster you click), with a flat ring, square sparks, a floating payout, and two or three mini copies of the current stage art that drop from the cursor down the screen and vanish in half a second. Click power starts at $1 and grows when a generator has a click bonus.
+- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it bumps up, tips slightly away from the click point and settles with a tiny jitter (about 260ms, a little bigger the faster you click), with a flat ring, square sparks, a floating payout, and a pixel thumb of a random owned tier that drops from the cursor (a boost adds one or two more). Click power starts at $1 and grows when a generator has a click bonus.
 - Generators add idle $/s. Cost of the next copy is `floor(baseCost × 1.15 ^ owned)`.
-- The stage shows the highest tier you own. Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top tier plays a reveal burst.
+- The stage shows the highest tier you own, in pixel art, in front of a backdrop shared by its era (see Art). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top tier plays a reveal burst.
 - Upgrades are hidden until they are within reach. A row (and its era tab) appears the first time your balance has reached its base price, with a `New` tag. The highest balance you have ever held is saved as `peakMoney`, so a row never hides again. Tab order follows the eras present in `TIERS`. Affordable rows highlight.
 - `$/s` and the click-boost readout stay out of the metrics bar until they apply (first generator, first boost).
 - Click boosts (`×2` / `×5` / `×10`) multiply **click power only**. Idle $/s is unchanged. One boost at a time; the next roll replaces the slot after the current one ends. A toast, a chip over the sprite, a rim light circling the art and the metrics strip show the multiplier while it runs.
@@ -39,8 +39,10 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 | What | File |
 | --- | --- |
 | Generator table | `src/data/tiers.ts` |
-| Sprite subjects and `SPRITE_BY_TIER` | `src/data/sprites.ts` |
-| Art | `public/sprites/{id}.webp` (512×512; `0.webp` is the opening scene) |
+| Sprite URLs (`spriteForTier`, `thumbForTier`) and era accents | `src/data/sprites.ts` |
+| Which backdrop each stage uses | `src/data/backdrops.ts` |
+| Pixel art: palette, drawing helpers, one drawing per tier, backdrops | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`, `backgrounds.ts`) |
+| Click waterfall rules (cap, count, owned ids) | `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
 | Keyframes and the `prefers-reduced-motion` kill switch | `src/styles/motion.css` |
 | Before/after screenshots through `__GAME__` | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
@@ -49,7 +51,7 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 | Save, migration, offline credit | `src/game/save.ts` |
 | Loop and purchases | `src/game/store.ts` |
 
-Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `name`, `baseCost`, `cps`, and `clickBonus`. Add a matching subject in `src/data/sprites.ts` and a file at `public/sprites/{id}.webp` when you want new art. Owned counts are stored by tier id, so new ids do not need a save migration.
+Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `name`, `baseCost`, `cps`, and `clickBonus`. Add a drawing for the new id in `src/pixel/art.ts` (it falls back to tier 1 art until you do) and extend the ranges in `src/data/backdrops.ts` if it starts a new scene. Owned counts are stored by tier id, so new ids do not need a save migration.
 
 ## Save
 
@@ -93,14 +95,14 @@ That starts the dev server if needed and leaves Chrome open on port 9222 so anot
 
 ## Motion
 
-Clicks register on pointer-down. The sprite bumps up, tips slightly away from the click point and settles with a tiny jitter (~260ms, restarted instantly on every click), flashes brighter, and sends out a flat ring, square sparks, a drifting `$` / XP payout, and mini copies of the current stage art (2, or 3 during a boost) that fall from the cursor and are gone after 500ms. Fast clicking builds "heat", which makes the bump a little bigger and strengthens the glow around the sprite. Idle, the sprite floats, an aura breathes, motes rise, and a sheen sweeps the art. An active click boost adds a chip over the sprite, a rotating rim light, bigger payouts, and a lit metrics cell. Buying sweeps the row and ticks the money and owned figures. A new highest tier remounts the art with a reveal burst. New shop rows slide in with a `New` tag. Moving to a new era cross-fades the accent and wipes it across the stage. `prefers-reduced-motion` kills CSS animation globally, hides the particles and falling mini sprites and skips the bump, keeping a short click flash.
+Clicks register on pointer-down. The sprite bumps up, tips slightly away from the click point and settles with a tiny jitter (~260ms, restarted instantly on every click), flashes brighter, and sends out a flat ring, square sparks, a drifting `$` / XP payout, and the click waterfall: the 32×32 pixel thumb of a random owned tier spawns at the cursor and falls for 300ms under gravity (x drifts, y follows t²) while fading out. One thumb per click, one or two more during a boost, never more than 14 alive at once (the oldest is dropped). Fast clicking builds "heat", which makes the bump a little bigger and strengthens the glow around the sprite. Idle, the sprite floats, an aura breathes and motes rise; a few backdrops blink their cursor or rack LEDs. An active click boost adds a chip over the sprite, a rotating rim light, bigger payouts, and a lit metrics cell. Buying sweeps the row and ticks the money and owned figures. A new highest tier remounts the art with a reveal burst. New shop rows slide in with a `New` tag. Moving to a new era cross-fades the accent and wipes it across the stage, and a new backdrop fades in over the old one. `prefers-reduced-motion` kills CSS animation globally, hides the particles and the waterfall and skips the bump, keeping a short click flash.
 
 ## Art
 
-All 67 sprites are painterly fantasy illustrations (one per tier plus the opening scene; 66 tiers), generated as 1024px images and stored as 512px WebP. To swap one, drop a square image in as `public/sprites/{id}.webp`, for example:
+Everything is pixel art, drawn in code from one shared 16-colour sheet (`src/pixel/palette.ts`: ink `#1a1c2c` outlines, era accents early `#41a6f6`, mid `#38b764`, upper `#b13e53`, q3 `#ffcd75`, end `#ef7d57`, boost glow `#73eff7`). No image files ship.
 
-```bash
-ffmpeg -i new.png -vf scale=512:512 -c:v libwebp -quality 82 public/sprites/12.webp
-```
+- **Sprites.** `src/pixel/art.ts` has one 64×64 drawing per tier plus art 0 (the opening attic), built from shared props in `motifs.ts`, lit from the top-left. The 32×32 thumb is the same drawing reduced 2:1. Both get a 1px ink outline, no anti-aliasing and at most 16 colours, and are encoded as small PNG data URLs once and cached. CSS uses `image-rendering: crisp-edges` then `pixelated`, and the stage sprite is always a whole multiple (3×) of its 64px grid.
+- **Backdrops.** Ten 160×160 era-shared scenes in `src/pixel/backgrounds.ts`: `bg-editor` (tier 1 to 8, and before the first purchase), `bg-desk` (9 to 18), `bg-office` (19 to 25), `bg-lab` (26 to 36, hotter at first LLM), `bg-saas` (37 to 41, including Found your AI company), `bg-board` (42 to 44), `bg-fab` (q3), `bg-dc` (54 to 58), `bg-orbit` (59 to 62) and `bg-mars` (63 to 66, including Mars pilot and up). The ranges live in `src/data/backdrops.ts`. A flat scrim keeps the money and owned strip readable.
+- **Captions.** There is no flavor line under the stage art. The stage name and era tag remain.
 
-Update the matching caption in `src/data/sprites.ts` as well.
+To change a sprite, edit its entry in `DRAW` in `src/pixel/art.ts`; `npm test` checks the size, colour count and outline of every sprite.

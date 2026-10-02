@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
-import { ERA_ACCENT, spriteForTier, START_SUBJECT, subjectForTier } from "../data/sprites.ts"
+import { ERA_ACCENT, spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { highestOwnedTier, tierById } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
+import { capDrops, FALL_MS, ownedTierIds, waterfallCount } from "../game/waterfall.ts"
+import type { Drop } from "../game/waterfall.ts"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
+import { StageBackdrop } from "./StageBackdrop.tsx"
 
 type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
-type Drop = { id: number; x: number; y: number; dx: number; dy: number; rot: number; size: number; src: string }
 type Ring = { id: number; x: number; y: number; big: boolean }
 
 let seq = 1
@@ -52,19 +54,24 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
   })
 }
 
-const DROP_MS = 500
+const THUMB_PX = 48
 
-function stageDrops(x: number, y: number, src: string, count: number): Drop[] {
-  return Array.from({ length: count }, () => ({
-    id: seq++,
-    x: x + (Math.random() - 0.5) * 18,
-    y: y + (Math.random() - 0.5) * 12,
-    dx: (Math.random() - 0.5) * 90,
-    dy: 220 + Math.random() * 140,
-    rot: (Math.random() - 0.5) * 80,
-    size: 26 + Math.random() * 18,
-    src,
-  }))
+/** Pixel thumbs of random owned tiers, dropped from the cursor. */
+function waterfall(x: number, y: number, tierIds: readonly number[], count: number): Drop[] {
+  if (tierIds.length === 0) return []
+  return Array.from({ length: count }, () => {
+    const tierId = tierIds[Math.floor(Math.random() * tierIds.length)] ?? 1
+    return {
+      id: seq++,
+      x: x + (Math.random() - 0.5) * 14,
+      y: y + (Math.random() - 0.5) * 10,
+      dx: (Math.random() - 0.5) * 80,
+      dy: 150 + Math.random() * 100,
+      rot: (Math.random() - 0.5) * 70,
+      size: THUMB_PX,
+      src: thumbForTier(tierId),
+    }
+  })
 }
 
 export function Stage() {
@@ -88,7 +95,6 @@ export function Stage() {
   const ownedTier = highestOwnedTier(owned)
   const artId = ownedTier?.id ?? 0
   const artTier = tierById(ownedTier?.id ?? 1)
-  const subject = artId === 0 ? START_SUBJECT : subjectForTier(artId)?.subject
   const accent = ERA_ACCENT[artTier?.era ?? "early"]
   const boosted = Boolean(activeBoost && activeBoost.endsAt > now)
   const stageName = ownedTier?.name ?? "High school"
@@ -188,11 +194,13 @@ export function Stage() {
     setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
     const dropX = hasPoint ? clientX : rect.left + rect.width / 2
     const dropY = hasPoint ? clientY : rect.top + rect.height * 0.45
-    const born = stageDrops(dropX, dropY, spriteForTier(artId), boosted ? 3 : 2)
-    setDrops((current) => [...current, ...born].slice(-36))
-    window.setTimeout(() => {
-      setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
-    }, DROP_MS + 120)
+    const born = waterfall(dropX, dropY, ownedTierIds(owned), waterfallCount(boosted))
+    if (born.length > 0) {
+      setDrops((current) => capDrops(current, born))
+      window.setTimeout(() => {
+        setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
+      }, FALL_MS + 60)
+    }
     setSparks((current) =>
       [...current, ...clickSparks(x, y, accent.glow, boosted ? 14 : 9)].slice(-90),
     )
@@ -215,6 +223,7 @@ export function Stage() {
 
   return (
     <section className={boosted ? "stage-panel is-boosted" : "stage-panel"} aria-label="Click stage">
+      <StageBackdrop tierId={artId} />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
         {boosted ? (
@@ -237,7 +246,7 @@ export function Stage() {
         onPointerDown={onPointerDown}
         onClick={onClick}
         onKeyDown={onKeyDown}
-        aria-label={`Click to earn. Current stage ${stageName}. ${subject ?? ""}`}
+        aria-label={`Click to earn. Current stage ${stageName}.`}
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
         <span className="aura" aria-hidden="true" />
@@ -259,7 +268,6 @@ export function Stage() {
                 height={256}
                 draggable={false}
               />
-              <i className="sheen" aria-hidden="true" />
             </span>
           </span>
         </span>
@@ -339,7 +347,6 @@ export function Stage() {
       <div className="plate">
         <p className="era-tag">{ownedTier ? accent.kicker : "Before the offer"}</p>
         <h2>{stageName}</h2>
-        <p className="subject">{subject}</p>
       </div>
       <OwnedStrip />
     </section>

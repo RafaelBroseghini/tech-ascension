@@ -1,4 +1,4 @@
-import { spriteForTier } from "../data/sprites.ts"
+import { thumbForTier } from "../data/sprites.ts"
 import { ownedSources } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
@@ -15,10 +15,10 @@ export function OwnedStrip() {
         <li key={tier.id} className="owned-row" data-tier={tier.id}>
           <img
             className="owned-thumb"
-            src={spriteForTier(tier.id)}
+            src={thumbForTier(tier.id)}
             alt=""
-            width={36}
-            height={36}
+            width={32}
+            height={32}
             loading="lazy"
             draggable={false}
           />

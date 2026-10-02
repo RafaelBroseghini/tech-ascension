@@ -58,13 +58,33 @@ await game(() => {
 await settle()
 await shot("01-early-owned-strip")
 
-const stage = page.getByTestId("stage")
-for (let i = 0; i < 9; i++) {
-  await stage.click({ position: { x: 60 + ((i * 37) % 150), y: 70 + ((i * 53) % 130) }, delay: 0 })
-  await page.waitForTimeout(40)
-}
-await page.waitForTimeout(120)
-await shot("02-spam-click-pops")
+// Real pointer-downs from inside the page, every 22ms, so the waterfall is mid-fall when the shot lands.
+const spam = (ms) =>
+  page.evaluate((span) => {
+    const hit = document.querySelector('[data-testid="stage"]')
+    const box = hit.getBoundingClientRect()
+    let i = 0
+    const id = setInterval(() => {
+      i++
+      hit.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          pointerType: "mouse",
+          button: 0,
+          clientX: box.left + 30 + ((i * 37) % 130),
+          clientY: box.top + 40 + ((i * 53) % 100),
+        }),
+      )
+    }, 22)
+    setTimeout(() => clearInterval(id), span)
+  }, ms)
+const liveDrops = () => page.evaluate(() => document.querySelectorAll(".drop").length)
+
+await spam(600)
+await page.waitForTimeout(420)
+console.log("waterfall thumbs alive mid-spam:", await liveDrops())
+await shot("02-spam-click-waterfall")
+await settle(500)
 
 await game(() => {
   const g = window.__GAME__
@@ -73,29 +93,32 @@ await game(() => {
   g.forceBoost(5, 60_000)
 })
 await tab("Mid")
-for (let i = 0; i < 5; i++) {
-  await stage.click({ position: { x: 80 + i * 30, y: 90 + ((i * 41) % 100) } })
-  await page.waitForTimeout(40)
-}
-await page.waitForTimeout(120)
-await shot("03-mid-boost-pops")
+await spam(600)
+await page.waitForTimeout(420)
+console.log("waterfall thumbs alive mid-boost:", await liveDrops())
+await shot("03-mid-boost-waterfall")
 
-await game(() => {
-  const g = window.__GAME__
-  g.reset()
-  g.setMoney(1e28)
-  for (let id = 1; id <= 66; id++) g.buy(id)
-  for (let id = 1; id <= 66; id += 3) g.buy(id)
-})
-await settle()
-await shot("04-end-many-owned-scroll")
+const lateEra = async (name, topTier) => {
+  await game((top) => {
+    const g = window.__GAME__
+    g.reset()
+    g.setMoney(1e28)
+    for (let id = 1; id <= top; id++) g.buy(id)
+    for (let id = 1; id <= top; id += 3) g.buy(id)
+  }, topTier)
+  await settle(900)
+  await shot(name)
+}
+await lateEra("04-bg-lab", 34)
+await lateEra("05-bg-dc", 55)
+await lateEra("06-bg-mars", 66)
 await page.getByTestId("owned-strip").evaluate((el) => (el.scrollTop = el.scrollHeight))
 await settle(200)
-await shot("05-owned-scrolled")
+await shot("07-owned-strip-scrolled")
 
 await page.setViewportSize({ width: 390, height: 800 })
 await settle()
-await shot("06-mobile")
+await shot("08-mobile")
 
 await browser.close()
 if (vite?.pid) process.kill(-vite.pid)

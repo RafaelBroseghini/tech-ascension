@@ -1,8 +1,8 @@
 /// <reference types="node" />
-import fs from "node:fs"
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { SPRITE_BY_TIER, SPRITE_SUBJECTS, spriteForTier } from "../data/sprites.ts"
+import { backdropForTier } from "../data/backdrops.ts"
+import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { TIERS } from "../data/tiers.ts"
 import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } from "./boosts.ts"
 import {
@@ -19,6 +19,10 @@ import {
 } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { freshSave, hydrate, migrate, OFFLINE_CAP_MS, offlineCredit } from "./save.ts"
+import { BG_KEYS, bgLayers, bgUrls } from "../pixel/backgrounds.ts"
+import { C } from "../pixel/palette.ts"
+import { MAIN_SIZE, spriteGrid, THUMB_SIZE } from "../pixel/sprites.ts"
+import { capDrops, ownedTierIds, WATERFALL_CAP, waterfallCount } from "./waterfall.ts"
 
 describe("economy", () => {
   it("grows cost by 1.15 and floors", () => {
@@ -208,22 +212,111 @@ describe("tier table", () => {
   })
 })
 
-describe("sprites", () => {
-  it("maps every tier, plus the opening scene, to a webp on disk", () => {
+describe("pixel sprites", () => {
+  const ids = [0, ...TIERS.map((tier) => tier.id)]
+
+  it("draws the opening scene and every tier at 64×64 and 32×32 in at most 16 colours", () => {
     expect(new Set(TIERS.map((tier) => tier.id)).size).toBe(TIERS.length)
-    for (const tier of TIERS) {
-      const subject = SPRITE_SUBJECTS.find((row) => row.id === tier.id)
-      expect(subject?.name).toBe(tier.name)
-      expect(subject?.subject.length).toBeGreaterThan(10)
-      expect(SPRITE_BY_TIER[tier.id]).toBe(`/sprites/${tier.id}.webp`)
+    for (const id of ids) {
+      const main = spriteGrid(id, MAIN_SIZE)
+      const thumb = spriteGrid(id, THUMB_SIZE)
+      expect([main.w, main.h]).toEqual([64, 64])
+      expect([thumb.w, thumb.h]).toEqual([32, 32])
+      expect(main.colors().length).toBeLessThanOrEqual(16)
+      expect(thumb.colors().length).toBeLessThanOrEqual(16)
+      expect(main.data.filter(Boolean).length).toBeGreaterThan(500)
+      expect(thumb.data.filter(Boolean).length).toBeGreaterThan(120)
     }
+  })
+
+  it("wraps every sprite in a 1px ink outline with no soft edges", () => {
+    for (const id of ids) {
+      for (const size of [MAIN_SIZE, THUMB_SIZE] as const) {
+        const grid = spriteGrid(id, size)
+        for (let y = 1; y < grid.h - 1; y++) {
+          for (let x = 1; x < grid.w - 1; x++) {
+            if (grid.get(x, y) !== 0) continue
+            for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]] as const) {
+              const near = grid.get(nx, ny)
+              if (near !== 0) expect(near).toBe(C.ink)
+            }
+          }
+        }
+      }
+    }
+  })
+
+  it("serves distinct PNG data URLs for the stage art and the thumbs", () => {
+    const seen = new Set<string>()
+    for (const id of ids) {
+      const url = spriteForTier(id)
+      expect(url.startsWith("data:image/png;base64,")).toBe(true)
+      expect(thumbForTier(id)).not.toBe(url)
+      seen.add(url)
+    }
+    expect(seen.size).toBe(ids.length)
+    const bytes = Buffer.from(spriteForTier(1).split(",")[1] ?? "", "base64")
+    expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG")
+    expect(bytes.readUInt32BE(16)).toBe(64)
+    expect(bytes.readUInt32BE(20)).toBe(64)
+  })
+})
+
+describe("stage backdrops", () => {
+  it("maps every stage to one of the ten era-shared scenes, in order", () => {
+    const used = new Set<string>()
+    let last = -1
     for (const id of [0, ...TIERS.map((tier) => tier.id)]) {
-      const bytes = fs.readFileSync(`public/sprites/${id}.webp`)
-      expect(bytes.subarray(0, 4).toString("ascii")).toBe("RIFF")
-      expect(bytes.subarray(8, 12).toString("ascii")).toBe("WEBP")
-      expect(bytes.length).toBeGreaterThan(8_000)
+      const { key } = backdropForTier(id)
+      expect(BG_KEYS).toContain(key)
+      const index = BG_KEYS.indexOf(key)
+      expect(index).toBeGreaterThanOrEqual(last)
+      last = index
+      used.add(key)
     }
-    expect(spriteForTier(0)).toBe("/sprites/0.webp")
+    expect(used.size).toBe(BG_KEYS.length)
+    expect(backdropForTier(0).key).toBe("bg-editor")
+    expect(backdropForTier(1).key).toBe("bg-editor")
+    expect(backdropForTier(66).key).toBe("bg-mars")
+  })
+
+  it("applies the landmark overrides", () => {
+    expect(backdropForTier(26)).toEqual({ key: "bg-lab", hot: true })
+    expect(backdropForTier(25).hot).toBe(false)
+    expect(backdropForTier(40).key).toBe("bg-saas")
+    expect(backdropForTier(65).key).toBe("bg-mars")
+  })
+
+  it("renders a full-frame scene for every key", () => {
+    for (const key of BG_KEYS) {
+      const { base } = bgLayers(key)
+      expect(base.data.every((v) => v !== 0)).toBe(true)
+      expect(bgUrls(key).base.startsWith("data:image/png;base64,")).toBe(true)
+    }
+    expect(bgUrls("bg-editor").blink).not.toBeNull()
+    expect(bgUrls("bg-lab", true).base).not.toBe(bgUrls("bg-lab").base)
+  })
+})
+
+describe("click waterfall", () => {
+  it("spawns one thumb per click and one or two more during a boost", () => {
+    expect(waterfallCount(false)).toBe(1)
+    expect(waterfallCount(true, () => 0)).toBe(2)
+    expect(waterfallCount(true, () => 0.99)).toBe(3)
+  })
+
+  it("keeps at most 12-16 concurrent thumbs and evicts the oldest", () => {
+    expect(WATERFALL_CAP).toBeGreaterThanOrEqual(12)
+    expect(WATERFALL_CAP).toBeLessThanOrEqual(16)
+    let live: number[] = []
+    for (let i = 0; i < 200; i++) live = capDrops(live, [i, i + 1000])
+    expect(live).toHaveLength(WATERFALL_CAP)
+    expect(live[live.length - 1]).toBe(1199)
+  })
+
+  it("only draws from owned tiers", () => {
+    expect(ownedTierIds({})).toEqual([])
+    expect(ownedTierIds({ "1": 2, "3": 0, "26": 1 }).sort((a, b) => a - b)).toEqual([1, 26])
   })
 })
 
