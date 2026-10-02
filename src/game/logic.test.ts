@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { backdropForTier } from "../data/backdrops.ts"
+import { OVERLAYS, overlayForTier, tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { TIERS } from "../data/tiers.ts"
 import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } from "./boosts.ts"
@@ -19,7 +19,6 @@ import {
 } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { freshSave, hydrate, migrate, OFFLINE_CAP_MS, offlineCredit } from "./save.ts"
-import { BG_KEYS, bgLayers, bgUrls } from "../pixel/backgrounds.ts"
 import { C } from "../pixel/palette.ts"
 import { MAIN_SIZE, spriteGrid, THUMB_SIZE } from "../pixel/sprites.ts"
 import { capDrops, ownedTierIds, WATERFALL_CAP, waterfallCount } from "./waterfall.ts"
@@ -262,39 +261,64 @@ describe("pixel sprites", () => {
   })
 })
 
-describe("stage backdrops", () => {
-  it("maps every stage to one of the ten era-shared scenes, in order", () => {
-    const used = new Set<string>()
-    let last = -1
-    for (const id of [0, ...TIERS.map((tier) => tier.id)]) {
-      const { key } = backdropForTier(id)
-      expect(BG_KEYS).toContain(key)
-      const index = BG_KEYS.indexOf(key)
-      expect(index).toBeGreaterThanOrEqual(last)
-      last = index
-      used.add(key)
+describe("IDE code overlays", () => {
+  it("ships the fifteen brief snippets, in order, each at most 18 lines", () => {
+    expect(OVERLAYS.map((o) => o.file)).toEqual([
+      "fizzbuzz.py",
+      "two_sum.py",
+      "reverse_list.go",
+      "debounce.ts",
+      "BinarySearch.java",
+      "worker_pool.go",
+      "finetune_loop.py",
+      "rate_limit.ts",
+      "lru.rs",
+      "attention.py",
+      "gemm.cu",
+      "consensus.go",
+      "edge_route.ts",
+      "orbital_sync.py",
+      "habitat_ctl.rs",
+    ])
+    for (const overlay of OVERLAYS) {
+      expect(overlay.code.split("\n").length).toBeLessThanOrEqual(18)
+      expect(overlay.code).not.toMatch(/^\s*$/m)
     }
-    expect(used.size).toBe(BG_KEYS.length)
-    expect(backdropForTier(0).key).toBe("bg-editor")
-    expect(backdropForTier(1).key).toBe("bg-editor")
-    expect(backdropForTier(66).key).toBe("bg-mars")
   })
 
-  it("applies the landmark overrides", () => {
-    expect(backdropForTier(26)).toEqual({ key: "bg-lab", hot: true })
-    expect(backdropForTier(25).hot).toBe(false)
-    expect(backdropForTier(40).key).toBe("bg-saas")
-    expect(backdropForTier(65).key).toBe("bg-mars")
+  it("keys every tier to one band that stays inside the tier's era, never going backwards", () => {
+    let last = 0
+    for (const tier of TIERS) {
+      const overlay = overlayForTier(tier.id)
+      expect(overlay.era).toBe(tier.era)
+      expect(overlay.id).toBeGreaterThanOrEqual(last)
+      last = overlay.id
+    }
+    expect(new Set(TIERS.map((tier) => overlayForTier(tier.id).id)).size).toBe(15)
   })
 
-  it("renders a full-frame scene for every key", () => {
-    for (const key of BG_KEYS) {
-      const { base } = bgLayers(key)
-      expect(base.data.every((v) => v !== 0)).toBe(true)
-      expect(bgUrls(key).base.startsWith("data:image/png;base64,")).toBe(true)
+  it("starts on fizzbuzz before the first purchase and ends on the habitat controller", () => {
+    expect(overlayForTier(0).file).toBe("fizzbuzz.py")
+    expect(overlayForTier(1).file).toBe("fizzbuzz.py")
+    expect(overlayForTier(33).file).toBe("finetune_loop.py")
+    expect(overlayForTier(44).file).toBe("attention.py")
+    expect(overlayForTier(50).file).toBe("consensus.go")
+    expect(overlayForTier(66).file).toBe("habitat_ctl.rs")
+  })
+
+  it("tokenizes without losing or adding a character", () => {
+    for (const overlay of OVERLAYS) {
+      expect(
+        tokenize(overlay.code, overlay.lang)
+          .map((token) => token.text)
+          .join(""),
+      ).toBe(overlay.code)
     }
-    expect(bgUrls("bg-editor").blink).not.toBeNull()
-    expect(bgUrls("bg-lab", true).base).not.toBe(bgUrls("bg-lab").base)
+    const kinds = tokenize('for i in range(1, 101): print("Fizz")', "python")
+    expect(kinds.find((t) => t.text === "for")?.kind).toBe("kw")
+    expect(kinds.find((t) => t.text === "101")?.kind).toBe("num")
+    expect(kinds.find((t) => t.text === '"Fizz"')?.kind).toBe("str")
+    expect(kinds.find((t) => t.text === "range")?.kind).toBe("fn")
   })
 })
 

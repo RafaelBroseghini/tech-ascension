@@ -9,8 +9,8 @@ import { capDrops, FALL_MS, ownedTierIds, waterfallCount } from "../game/waterfa
 import type { Drop } from "../game/waterfall.ts"
 import { FightOverlay } from "./FightOverlay.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
+import { IdeChrome } from "./IdeChrome.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
-import { StageBackdrop } from "./StageBackdrop.tsx"
 
 type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
@@ -224,7 +224,7 @@ export function Stage() {
 
   return (
     <section className={boosted ? "stage-panel is-boosted" : "stage-panel"} aria-label="Click stage">
-      <StageBackdrop tierId={artId} />
+      <IdeChrome tierId={ownedTier?.id ?? 0} />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
         {boosted ? (

@@ -19,15 +19,14 @@
   100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
 }
 
-@keyframes bg-in {
+/* Editor buffer swap: old snippet fades out as the new one fades in. */
+@keyframes code-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
-/* Cursor and LED overlay on the backdrop: hard on/off, no fade. */
-@keyframes bg-blink {
-  0%, 55% { opacity: 1; }
-  56%, 100% { opacity: 0; }
+@keyframes code-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* Idle sway: left to right and back over 3.6s, 6px each way. */
