@@ -7,7 +7,7 @@ import type { Capital } from "../data/capital.ts"
 import { canAfford, isGearRevealed, jobById, nextCost, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
-import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
 
 export type NextUnlock = {
@@ -112,6 +112,8 @@ function gigTarget(p: Progression, gig: Gig): NextUnlock {
   const needs: string[] = []
   if (p.xpTotal < gig.xpReq) needs.push(xpLeft(p.xpTotal, gig.xpReq))
   if (p.gigs.length < gig.priorGigs) needs.push(gigsLeft(p.gigs.length, gig.priorGigs))
+  const skills = gigSkillGap(p, gig)
+  if (skills) needs.push(skills)
   if (needs.length === 0) needs.push("to clear it")
   return { key: `gig:${gig.id}`, name: gig.name, tab: "B", needs, either: false }
 }

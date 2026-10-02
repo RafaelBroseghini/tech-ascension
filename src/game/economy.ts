@@ -232,6 +232,26 @@ export function isGearRevealed(row: Equip, equipment: OwnedMap, peakMoney: numbe
   return canAfford(peakMoney, row.unlockMoney) && (row.unlockJobId === 0 || jobs.includes(row.unlockJobId))
 }
 
+/**
+ * Rows to put in the shop. Owned rows stay so they can be bought again.
+ * The first unowned row is always shown, even while its own gate is still shut,
+ * so the next purchase is never a blank. Later unowned rows stay hidden.
+ */
+export function visibleShopRows<T>(rows: readonly T[], owned: (row: T) => boolean): T[] {
+  const visible: T[] = []
+  let heldNext = false
+  for (const row of rows) {
+    if (owned(row)) {
+      visible.push(row)
+      continue
+    }
+    if (heldNext) continue
+    heldNext = true
+    visible.push(row)
+  }
+  return visible
+}
+
 export function boostMultiplier(boost: ActiveBoost | null | undefined, now: number): number {
   if (!boost) return 1
   if (!(boost.endsAt > now)) return 1

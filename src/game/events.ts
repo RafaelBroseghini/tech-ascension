@@ -25,9 +25,8 @@ function touchesMoney(event: EventDef): boolean {
 }
 
 /**
- * Roll pool: `any` or the player's era, minus events that move money before money exists.
- * In Phase A the balance is $0 and the first dollar must come from a gig, so a cash windfall
- * would skip the whole B phase and a cash loss would be a no-op that still reads as a penalty.
+ * Roll pool: `any` or the player's era, minus events that move money before any money exists.
+ * Clicks pay dollars from the first one, so cash events can roll once that balance is above zero.
  */
 export function eligibleEvents(era: Era, paying: boolean): EventDef[] {
   const pool = eventsForEra(era)

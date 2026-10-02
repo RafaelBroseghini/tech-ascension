@@ -60,9 +60,17 @@ export function phaseRank(phase: Phase): number {
   return PHASES.indexOf(phase)
 }
 
-/** Clicks pay money once the first gig is cleared (or money otherwise exists). Before that they pay XP only. */
+/** Fights and cash events start once a gig is cleared, a job is held, or money already exists. Clicks themselves always pay both. */
 export function moneyMode(p: Pick<Progress, "peakMoney" | "gigs" | "jobs">): boolean {
   return p.gigs.length > 0 || p.jobs.length > 0 || p.peakMoney > 0
+}
+
+/** Skills still missing for a gig. One or two are named; a longer set is a count. */
+export function gigSkillGap(p: Pick<Gates, "skills">, gig: Gig): string | null {
+  const missing = gig.skillIds.filter((id) => ownedCount(p.skills, id) === 0)
+  if (missing.length === 0) return null
+  if (missing.length <= 2) return missing.map((id) => skillById(id)?.name ?? `skill ${id}`).join(" + ")
+  return `${missing.length} skills`
 }
 
 export type GigState = "done" | "board-locked" | "locked" | "ready"
@@ -70,7 +78,7 @@ export type GigState = "done" | "board-locked" | "locked" | "ready"
 export function gigState(p: Gates, gig: Gig): GigState {
   if (p.gigs.includes(gig.id)) return "done"
   if (!gigBoardUnlocked(p)) return "board-locked"
-  if (p.xpTotal < gig.xpReq || p.gigs.length < gig.priorGigs) return "locked"
+  if (p.xpTotal < gig.xpReq || p.gigs.length < gig.priorGigs || gigSkillGap(p, gig) !== null) return "locked"
   return "ready"
 }
 

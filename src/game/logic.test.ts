@@ -17,6 +17,7 @@ import {
   isRevealed,
   isSkillRevealed,
   nextCost,
+  visibleShopRows,
   ownedSources,
   production,
   quotePurchase,
@@ -62,7 +63,7 @@ describe("economy", () => {
     expect(xpPerSec({})).toBe(0)
     const skills = { "1": 2, "2": 5, "11": 1 }
     expect(xpPerClick(skills)).toBe(1 + 2 * 1 + 1 * 3)
-    expect(xpPerSec(skills)).toBeCloseTo(5 * 0.1 + 1 * 2.0)
+    expect(xpPerSec(skills)).toBeCloseTo(5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[10]?.xpPerSec ?? 0))
   })
 
   it("sums idle $/s from retainers, salaries, equipment and capital", () => {
@@ -155,11 +156,12 @@ describe("save", () => {
   it("credits idle study XP offline and says so", () => {
     const save = freshSave(0)
     save.skills = { "2": 10 }
+    const studied = 10 * (SKILL_TIERS[1]?.xpPerSec ?? 0) * 3600
     const hydrated = hydrate(JSON.stringify(save), 3_600_000)
     expect(hydrated.save.money).toBe(0)
-    expect(hydrated.save.xp).toBeCloseTo(3600)
-    expect(hydrated.save.xpTotal).toBeCloseTo(3600)
-    expect(hydrated.toast).toBe(`welcome back, studied +${formatNumber(3600)} XP`)
+    expect(hydrated.save.xp).toBeCloseTo(studied)
+    expect(hydrated.save.xpTotal).toBeCloseTo(studied)
+    expect(hydrated.toast).toBe(`welcome back, studied +${formatNumber(studied)} XP`)
   })
 
   it("drops an expired click boost and keeps a live one", () => {
@@ -274,7 +276,7 @@ describe("catalog tables", () => {
 
   it("doubles purchase prices and leaves payouts, gig lumps and gates alone", () => {
     expect(PURCHASE_COST_SCALE).toBe(2)
-    expect(SKILL_TIERS[0]?.baseXpCost).toBe(20)
+    expect(SKILL_TIERS[0]?.baseXpCost).toBe(240)
     expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
     expect(JOB_TIERS[0]?.baseCost).toBe(0)
     expect(JOB_TIERS[1]?.baseCost).toBe(1_000)
@@ -414,6 +416,25 @@ describe("hidden upgrades", () => {
     expect(isRevealed(second, {}, first.baseCost)).toBe(false)
     expect(isRevealed(first, { [String(third.id)]: 1 }, 0)).toBe(false)
     expect(isRevealed(third, { [String(third.id)]: 1 }, 0)).toBe(true)
+  })
+
+  it("shows owned rows and always the next unowned row, even while that row is still locked", () => {
+    const [first, , third] = SKILL_TIERS
+    if (!first || !third) throw new Error("need three skills")
+    const owned = { [String(third.id)]: 1 }
+    const visible = visibleShopRows(SKILL_TIERS, (row) => (owned[String(row.id)] ?? 0) > 0)
+    expect(visible.map((row) => row.id)).toEqual([first.id, third.id])
+
+    const waiting = visibleShopRows(
+      [
+        { id: 1, owned: true },
+        { id: 2, owned: false },
+        { id: 3, owned: false },
+        { id: 4, owned: true },
+      ],
+      (row) => row.owned,
+    )
+    expect(waiting.map((row) => row.id)).toEqual([1, 2, 4])
   })
 
   it("reveals a skill by lifetime XP, or when owned", () => {

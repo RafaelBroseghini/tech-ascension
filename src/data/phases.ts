@@ -71,64 +71,105 @@ const SKILL_ROWS: readonly SkillTier[] = [
   { id: 50, name: "Teaching a workshop", baseXpCost: 350000, xpPerClick: 15, xpPerSec: 10.0, unlockAtXp: 180000 },
 ] as const;
 
-export const SKILL_TIERS: readonly SkillTier[] = SKILL_ROWS.map((row) => ({
-  ...row,
-  baseXpCost: scalePurchaseCost(row.baseXpCost),
-}))
+/**
+ * Opening skills cost many more clicks than the raw table, and the next one stays
+ * locked until lifetime XP has climbed past this purchase. The tax eases to 1 by skill 12.
+ */
+function earlyGrind(id: number): number {
+  if (id >= 12) return 1
+  const t = (id - 1) / 11
+  return 12 * (1 / 12) ** t
+}
 
-export type Gig = { id: number; name: string; xpReq: number; priorGigs: number; lump: number; retainerCps: number };
-export const GIGS: readonly Gig[] = [
-  { id: 1, name: "Fix broken login / blog-engine bug", xpReq: 12000, priorGigs: 0, lump: 40, retainerCps: 0 },
-  { id: 2, name: "Local biz landing page", xpReq: 13500, priorGigs: 1, lump: 120, retainerCps: 0 },
-  { id: 3, name: "Design-mock-to-HTML slice", xpReq: 14500, priorGigs: 1, lump: 90, retainerCps: 0 },
-  { id: 4, name: "Upwerk CRUD admin panel", xpReq: 16000, priorGigs: 2, lump: 350, retainerCps: 0 },
-  { id: 5, name: "Bugfix API endpoint", xpReq: 17500, priorGigs: 2, lump: 200, retainerCps: 0 },
-  { id: 6, name: "Blog-engine plugin tweak", xpReq: 18500, priorGigs: 2, lump: 150, retainerCps: 0 },
-  { id: 7, name: "Email template coding", xpReq: 19500, priorGigs: 3, lump: 110, retainerCps: 0 },
-  { id: 8, name: "Site maintenance retainer", xpReq: 21000, priorGigs: 3, lump: 100, retainerCps: 2.0 },
-  { id: 9, name: "Storefront theme tweak", xpReq: 22000, priorGigs: 3, lump: 280, retainerCps: 0 },
-  { id: 10, name: "Tech blog / content gig", xpReq: 23500, priorGigs: 4, lump: 180, retainerCps: 0.5 },
-  { id: 11, name: "Browser extension fix", xpReq: 25000, priorGigs: 4, lump: 320, retainerCps: 0 },
-  { id: 12, name: "Second client (testimonial)", xpReq: 26500, priorGigs: 5, lump: 500, retainerCps: 1.0 },
-  { id: 13, name: "Internal tool for SMB", xpReq: 28000, priorGigs: 5, lump: 700, retainerCps: 0 },
-  { id: 14, name: "API integration (payments-ish)", xpReq: 30000, priorGigs: 6, lump: 900, retainerCps: 0 },
-  { id: 15, name: "Performance audit", xpReq: 32000, priorGigs: 6, lump: 600, retainerCps: 0 },
-  { id: 16, name: "Accessibility pass", xpReq: 34000, priorGigs: 7, lump: 450, retainerCps: 0 },
-  { id: 17, name: "Small SaaS feature contract", xpReq: 36000, priorGigs: 7, lump: 1200, retainerCps: 3.0 },
-  { id: 18, name: "Data cleanup script", xpReq: 38000, priorGigs: 8, lump: 400, retainerCps: 0 },
-  { id: 19, name: "CI setup for client", xpReq: 40000, priorGigs: 8, lump: 550, retainerCps: 0 },
-  { id: 20, name: "Mobile-responsive rescue", xpReq: 42000, priorGigs: 9, lump: 380, retainerCps: 0 },
-  { id: 21, name: "Hosted-auth integration", xpReq: 45000, priorGigs: 9, lump: 1100, retainerCps: 0 },
-  { id: 22, name: "Retainer: 2nd site", xpReq: 48000, priorGigs: 10, lump: 200, retainerCps: 3.5 },
-  { id: 23, name: "Dashboard MVP", xpReq: 52000, priorGigs: 10, lump: 2000, retainerCps: 0 },
-  { id: 24, name: "Webhook reliability fix", xpReq: 55000, priorGigs: 11, lump: 800, retainerCps: 0 },
-  { id: 25, name: "Migration script (CSV→DB)", xpReq: 58000, priorGigs: 11, lump: 950, retainerCps: 0 },
-  { id: 26, name: "Chatbot FAQ wrapper", xpReq: 62000, priorGigs: 12, lump: 1500, retainerCps: 0 },
-  { id: 27, name: "SEO landing pack", xpReq: 65000, priorGigs: 12, lump: 700, retainerCps: 1.0 },
-  { id: 28, name: "API-spec docs cleanup", xpReq: 68000, priorGigs: 13, lump: 500, retainerCps: 0 },
-  { id: 29, name: "Load test + report", xpReq: 72000, priorGigs: 13, lump: 1200, retainerCps: 0 },
-  { id: 30, name: "Multi-tenant bug hunt", xpReq: 76000, priorGigs: 14, lump: 1800, retainerCps: 0 },
-  { id: 31, name: "Retainer: product squad", xpReq: 80000, priorGigs: 15, lump: 400, retainerCps: 8.0 },
-  { id: 32, name: "Mobile-app hotfix", xpReq: 85000, priorGigs: 15, lump: 1400, retainerCps: 0 },
-  { id: 33, name: "Typed-API schema rescue", xpReq: 90000, priorGigs: 16, lump: 1600, retainerCps: 0 },
-  { id: 34, name: "Billing edge-case fix", xpReq: 95000, priorGigs: 16, lump: 2200, retainerCps: 0 },
-  { id: 35, name: "Compliance evidence scripts", xpReq: 100000, priorGigs: 17, lump: 3000, retainerCps: 0 },
-  { id: 36, name: "Customer onboarding wizard", xpReq: 110000, priorGigs: 18, lump: 2500, retainerCps: 2.0 },
-  { id: 37, name: "Feature flag rollout", xpReq: 120000, priorGigs: 18, lump: 2100, retainerCps: 0 },
-  { id: 38, name: "Observability dashboards", xpReq: 130000, priorGigs: 19, lump: 2800, retainerCps: 0 },
-  { id: 39, name: "ML inference wrapper API", xpReq: 140000, priorGigs: 20, lump: 4000, retainerCps: 0 },
-  { id: 40, name: "Contract: 3-month build", xpReq: 150000, priorGigs: 20, lump: 8000, retainerCps: 15.0 },
-  { id: 41, name: "Agency white-label sprint", xpReq: 165000, priorGigs: 22, lump: 6000, retainerCps: 5.0 },
-  { id: 42, name: "Enterprise RFP prototype", xpReq: 180000, priorGigs: 24, lump: 10000, retainerCps: 0 },
-  { id: 43, name: "Data pipeline gig", xpReq: 200000, priorGigs: 25, lump: 7000, retainerCps: 0 },
-  { id: 44, name: "Security pentest remediation", xpReq: 220000, priorGigs: 26, lump: 9000, retainerCps: 0 },
-  { id: 45, name: "Design system extract", xpReq: 240000, priorGigs: 28, lump: 5500, retainerCps: 0 },
-  { id: 46, name: "LLM eval harness contract", xpReq: 260000, priorGigs: 30, lump: 12000, retainerCps: 0 },
-  { id: 47, name: "Platform migration lead", xpReq: 300000, priorGigs: 32, lump: 20000, retainerCps: 25.0 },
-  { id: 48, name: "Staff-aug 6-week embed", xpReq: 350000, priorGigs: 35, lump: 35000, retainerCps: 40.0 },
-  { id: 49, name: "Fractional CTO weekend", xpReq: 400000, priorGigs: 38, lump: 15000, retainerCps: 10.0 },
-  { id: 50, name: "Exit gig: handoff docs", xpReq: 450000, priorGigs: 40, lump: 5000, retainerCps: 0 },
-] as const;
+let nextSkillUnlockAt = 0
+export const SKILL_TIERS: readonly SkillTier[] = SKILL_ROWS.map((row) => {
+  const baseXpCost = Math.ceil(scalePurchaseCost(row.baseXpCost) * earlyGrind(row.id))
+  const unlockAtXp = row.id === 1 ? 0 : Math.ceil(nextSkillUnlockAt)
+  nextSkillUnlockAt = unlockAtXp + baseXpCost * 1.65
+  return {
+    ...row,
+    baseXpCost,
+    unlockAtXp,
+    xpPerSec: row.id <= 8 ? row.xpPerSec * 0.25 : row.xpPerSec,
+  }
+})
+
+export type Gig = {
+  id: number
+  name: string
+  xpReq: number
+  priorGigs: number
+  /** Every skill this gig demands. Each gig's list contains the previous gig's list plus one more. */
+  skillIds: readonly number[]
+  lump: number
+  retainerCps: number
+}
+
+/** Gig 1 needs the first six skills. Each later gig adds the next skill and keeps all of the earlier ones. */
+function skillsForGig(id: number): readonly number[] {
+  const count = Math.min(50, 5 + id)
+  return Array.from({ length: count }, (_, index) => index + 1)
+}
+
+const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
+  { id: 1, name: "Fix broken login / blog-engine bug", xpReq: 12000, lump: 40, retainerCps: 0 },
+  { id: 2, name: "Local biz landing page", xpReq: 13500, lump: 120, retainerCps: 0 },
+  { id: 3, name: "Design-mock-to-HTML slice", xpReq: 14500, lump: 90, retainerCps: 0 },
+  { id: 4, name: "Upwerk CRUD admin panel", xpReq: 16000, lump: 350, retainerCps: 0 },
+  { id: 5, name: "Bugfix API endpoint", xpReq: 17500, lump: 200, retainerCps: 0 },
+  { id: 6, name: "Blog-engine plugin tweak", xpReq: 18500, lump: 150, retainerCps: 0 },
+  { id: 7, name: "Email template coding", xpReq: 19500, lump: 110, retainerCps: 0 },
+  { id: 8, name: "Site maintenance retainer", xpReq: 21000, lump: 100, retainerCps: 2.0 },
+  { id: 9, name: "Storefront theme tweak", xpReq: 22000, lump: 280, retainerCps: 0 },
+  { id: 10, name: "Tech blog / content gig", xpReq: 23500, lump: 180, retainerCps: 0.5 },
+  { id: 11, name: "Browser extension fix", xpReq: 25000, lump: 320, retainerCps: 0 },
+  { id: 12, name: "Second client (testimonial)", xpReq: 26500, lump: 500, retainerCps: 1.0 },
+  { id: 13, name: "Internal tool for SMB", xpReq: 28000, lump: 700, retainerCps: 0 },
+  { id: 14, name: "API integration (payments-ish)", xpReq: 30000, lump: 900, retainerCps: 0 },
+  { id: 15, name: "Performance audit", xpReq: 32000, lump: 600, retainerCps: 0 },
+  { id: 16, name: "Accessibility pass", xpReq: 34000, lump: 450, retainerCps: 0 },
+  { id: 17, name: "Small SaaS feature contract", xpReq: 36000, lump: 1200, retainerCps: 3.0 },
+  { id: 18, name: "Data cleanup script", xpReq: 38000, lump: 400, retainerCps: 0 },
+  { id: 19, name: "CI setup for client", xpReq: 40000, lump: 550, retainerCps: 0 },
+  { id: 20, name: "Mobile-responsive rescue", xpReq: 42000, lump: 380, retainerCps: 0 },
+  { id: 21, name: "Hosted-auth integration", xpReq: 45000, lump: 1100, retainerCps: 0 },
+  { id: 22, name: "Retainer: 2nd site", xpReq: 48000, lump: 200, retainerCps: 3.5 },
+  { id: 23, name: "Dashboard MVP", xpReq: 52000, lump: 2000, retainerCps: 0 },
+  { id: 24, name: "Webhook reliability fix", xpReq: 55000, lump: 800, retainerCps: 0 },
+  { id: 25, name: "Migration script (CSV→DB)", xpReq: 58000, lump: 950, retainerCps: 0 },
+  { id: 26, name: "Chatbot FAQ wrapper", xpReq: 62000, lump: 1500, retainerCps: 0 },
+  { id: 27, name: "SEO landing pack", xpReq: 65000, lump: 700, retainerCps: 1.0 },
+  { id: 28, name: "API-spec docs cleanup", xpReq: 68000, lump: 500, retainerCps: 0 },
+  { id: 29, name: "Load test + report", xpReq: 72000, lump: 1200, retainerCps: 0 },
+  { id: 30, name: "Multi-tenant bug hunt", xpReq: 76000, lump: 1800, retainerCps: 0 },
+  { id: 31, name: "Retainer: product squad", xpReq: 80000, lump: 400, retainerCps: 8.0 },
+  { id: 32, name: "Mobile-app hotfix", xpReq: 85000, lump: 1400, retainerCps: 0 },
+  { id: 33, name: "Typed-API schema rescue", xpReq: 90000, lump: 1600, retainerCps: 0 },
+  { id: 34, name: "Billing edge-case fix", xpReq: 95000, lump: 2200, retainerCps: 0 },
+  { id: 35, name: "Compliance evidence scripts", xpReq: 100000, lump: 3000, retainerCps: 0 },
+  { id: 36, name: "Customer onboarding wizard", xpReq: 110000, lump: 2500, retainerCps: 2.0 },
+  { id: 37, name: "Feature flag rollout", xpReq: 120000, lump: 2100, retainerCps: 0 },
+  { id: 38, name: "Observability dashboards", xpReq: 130000, lump: 2800, retainerCps: 0 },
+  { id: 39, name: "ML inference wrapper API", xpReq: 140000, lump: 4000, retainerCps: 0 },
+  { id: 40, name: "Contract: 3-month build", xpReq: 150000, lump: 8000, retainerCps: 15.0 },
+  { id: 41, name: "Agency white-label sprint", xpReq: 165000, lump: 6000, retainerCps: 5.0 },
+  { id: 42, name: "Enterprise RFP prototype", xpReq: 180000, lump: 10000, retainerCps: 0 },
+  { id: 43, name: "Data pipeline gig", xpReq: 200000, lump: 7000, retainerCps: 0 },
+  { id: 44, name: "Security pentest remediation", xpReq: 220000, lump: 9000, retainerCps: 0 },
+  { id: 45, name: "Design system extract", xpReq: 240000, lump: 5500, retainerCps: 0 },
+  { id: 46, name: "LLM eval harness contract", xpReq: 260000, lump: 12000, retainerCps: 0 },
+  { id: 47, name: "Platform migration lead", xpReq: 300000, lump: 20000, retainerCps: 25.0 },
+  { id: 48, name: "Staff-aug 6-week embed", xpReq: 350000, lump: 35000, retainerCps: 40.0 },
+  { id: 49, name: "Fractional CTO weekend", xpReq: 400000, lump: 15000, retainerCps: 10.0 },
+  { id: 50, name: "Exit gig: handoff docs", xpReq: 450000, lump: 5000, retainerCps: 0 },
+]
+
+/** Each gig requires every earlier gig, and a skill set that only grows. */
+export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => ({
+  ...row,
+  priorGigs: row.id - 1,
+  skillIds: skillsForGig(row.id),
+}))
 
 export type JobTier = { id: number; name: string; xpReq: number; baseCost: number; cps: number };
 const JOB_ROWS: readonly JobTier[] = [
@@ -170,11 +211,7 @@ export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map((row) => ({
   baseCost: scalePurchaseCost(row.baseCost),
 }))
 
-/** Phase A: click adds XP only. Phase B+: click adds money (XP drip optional). */
-export const PHASE_A_CLICK_IS_XP = true;
 /** Balatro pops: big on gig/fight/unlock; medium on click. */
 export const MONEY_POP = { click: "medium", gigClear: "large", fightWin: "large", unlock: "large" } as const;
 
 export const BASE_XP_PER_CLICK = 1;
-/** Share of the XP-per-click stat a click still drips once clicks pay money (Phase B+). */
-export const XP_DRIP_FRACTION = 0.25;
