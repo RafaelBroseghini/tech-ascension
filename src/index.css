@@ -439,7 +439,7 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .pop-boosted { color: var(--text); font-size: clamp(2.4rem, 1.6rem + 2.2vw, 3.2rem); }
 
-/* Waterfall: pixel thumbs of owned tiers, dropped from the cursor. */
+/* Waterfall: developer-icons of owned rows, dropped from the cursor. */
 .drops {
   position: fixed;
   inset: 0;
@@ -451,6 +451,11 @@ img { -webkit-user-drag: none; user-select: none; }
 .drop {
   position: absolute;
   animation: drop-fall 300ms linear forwards;
+}
+
+.drop .developer-icons {
+  display: block;
+  opacity: 0.5;
 }
 
 .confetti {
