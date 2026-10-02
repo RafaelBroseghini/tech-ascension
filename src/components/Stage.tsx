@@ -63,6 +63,7 @@ export function Stage() {
   const tiltRef = useRef<HTMLSpanElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const heat = useRef(0)
+  const lastSide = useRef(1)
 
   const ownedTier = highestOwnedTier(owned)
   const artId = ownedTier?.id ?? 0
@@ -107,22 +108,36 @@ export function Stage() {
       tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
       return
     }
-    // Press in toward the click, spring past rest exactly once, settle. No wobble.
-    const power = 1 + heat.current * 0.5 + (boosted ? 0.2 : 0)
-    const frame = (scale: string, rx: number, ry: number) =>
-      `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`
+    // Press in away from the click, then shake side to side with a decaying wobble.
+    // Fast clicking (heat) and boosts push the shake harder.
+    const power = 1 + heat.current * 0.9 + (boosted ? 0.35 : 0)
+    const side = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
+    const frame = (scale: string, rx: number, ry: number, rz: number, tx: number, ty: number) =>
+      `perspective(700px) translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${scale})`
     tilt.animate(
       [
-        { transform: frame("1", 0, 0), offset: 0, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-        { transform: frame("0.91, 0.93", -ny * 9 * power, nx * 9 * power), offset: 0.3, easing: "cubic-bezier(0.34, 1.2, 0.5, 1)" },
-        { transform: frame("1.045, 1.04", ny * 2, -nx * 2), offset: 0.68, easing: "cubic-bezier(0.65, 0, 0.35, 1)" },
-        { transform: frame("1", 0, 0), offset: 1 },
+        { transform: frame("1", 0, 0, 0, 0, 0), offset: 0 },
+        {
+          transform: frame("0.9", -ny * 14 * power, nx * 14 * power, -side * 2 * power, -nx * 5, -ny * 5),
+          offset: 0.14,
+        },
+        {
+          transform: frame("1.09, 0.95", ny * 5, -nx * 6, side * 4 * power, side * 9 * power, 0),
+          offset: 0.34,
+        },
+        { transform: frame("0.98, 1.02", 0, 0, -side * 3 * power, -side * 7 * power, 0), offset: 0.52 },
+        { transform: frame("1.02", 0, 0, side * 1.6 * power, side * 4 * power, 0), offset: 0.7 },
+        { transform: frame("1", 0, 0, -side * 0.7, -side * 1.6, 0), offset: 0.86 },
+        { transform: frame("1", 0, 0, 0, 0, 0), offset: 1 },
       ],
-      { duration: 220 },
+      { duration: 380, easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
     )
     img?.animate(
-      [{ filter: "brightness(1.25)" }, { filter: "brightness(1)" }],
-      { duration: 160, easing: "ease-out" },
+      [
+        { filter: `brightness(${1.35 + heat.current * 0.4}) saturate(1.3)` },
+        { filter: "brightness(1) saturate(1)" },
+      ],
+      { duration: 260, easing: "ease-out" },
     )
   }
 
@@ -202,6 +217,12 @@ export function Stage() {
         aria-label={`Click to earn. Current stage ${stageName}. ${subject ?? ""}`}
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
+        <span className="aura" aria-hidden="true" />
+        <span className="motes" aria-hidden="true">
+          {Array.from({ length: 9 }, (_, index) => (
+            <i key={index} style={{ ["--i" as string]: index }} />
+          ))}
+        </span>
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">
@@ -215,6 +236,7 @@ export function Stage() {
                 height={256}
                 draggable={false}
               />
+              <i className="sheen" aria-hidden="true" />
             </span>
           </span>
         </span>

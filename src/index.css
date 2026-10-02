@@ -292,6 +292,47 @@ img { -webkit-user-drag: none; user-select: none; }
   border-radius: 50%;
   background: var(--ink);
   opacity: 0.45;
+  z-index: 0;
+}
+
+/* Idle life: a breathing aura that warms with click heat, rising motes, and a sheen over the art. */
+.aura {
+  position: absolute;
+  inset: -24%;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 50%, transparent), transparent 72%);
+  opacity: calc(0.4 + var(--heat) * 0.6);
+  transform: scale(calc(0.92 + var(--heat) * 0.22));
+  animation: aura-breathe 3.4s var(--ease-in-out) infinite;
+}
+
+.is-boosted .aura { animation-duration: 0.9s; }
+
+.motes { position: absolute; inset: -10%; z-index: 0; pointer-events: none; }
+
+.motes i {
+  position: absolute;
+  left: calc(8% + var(--i) * 10%);
+  bottom: 6%;
+  width: 5px;
+  height: 5px;
+  background: var(--accent-hi);
+  box-shadow: 0 0 0 1px var(--ink);
+  transform: rotate(45deg);
+  opacity: 0;
+  animation: mote-rise calc(4.2s + var(--i) * 0.45s) ease-in infinite;
+  animation-delay: calc(var(--i) * -0.9s);
+}
+
+.sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.2) 50%, transparent 62%);
+  transform: translateX(-120%);
+  animation: sheen 6s var(--ease-in-out) infinite;
 }
 
 .sprite-bob {
@@ -300,7 +341,7 @@ img { -webkit-user-drag: none; user-select: none; }
   display: block;
   width: 100%;
   height: 100%;
-  animation: idle-bob 3.2s var(--ease-in-out) infinite;
+  animation: float 3.2s var(--ease-in-out) infinite;
 }
 
 .sprite-tilt {
@@ -322,7 +363,9 @@ img { -webkit-user-drag: none; user-select: none; }
   border-radius: var(--radius-lg);
   border: 4px solid var(--ink);
   background: var(--accent-deep);
-  box-shadow: 7px 7px 0 var(--ink);
+  box-shadow:
+    7px 7px 0 var(--ink),
+    0 0 calc(var(--heat) * 46px) calc(var(--heat) * 6px) var(--accent);
 }
 
 .sprite-frame::after {
