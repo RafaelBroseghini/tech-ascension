@@ -23,12 +23,13 @@ getState(): {
  clickPower: number      // base $ per click (paid once the first gig is cleared)
  xpPerClick: number      // base XP per click, 1 + skills (what a click pays in phase A)
  xpPerSec: number
- owned: Record<string, number>      // phase D capital tiers, keyed by tier id ("26")
+ owned: Record<string, number>      // phase D capital rows, keyed by id ("1")
  skills: Record<string, number>     // phase A, keyed by skill id
- equipment: Record<string, number>  // phase C, keyed by equipment id
+ equipment: Record<string, number>  // Gear tab, keyed by gear id
  jobs: number[]                     // owned job ids
  gigs: number[]                     // cleared gig ids
- unlocks: { gigBoard: boolean; jobBoard: boolean; capital: boolean }
+ unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }   // gear opens with the Job Board
+ nextUnlock: { key: string; name: string; tab: "A" | "B" | "C" | "G" | "D"; needs: string[]; either: boolean } | null   // the shop banner target
  era: "early" | "mid" | "upper" | "q3" | "end"
  spriteTierId: number
  activeBoost: { mult: number; endsAt: number } | null
@@ -42,7 +43,7 @@ click(): { money: number; xp: number }
 buy(tierId: number): boolean          // phase D capital tier (ids 19-66)
 buySkill(skillId: number): boolean
 buyJob(jobId: number): boolean
-buyEquipment(equipId: number): boolean
+buyEquipment(equipId: number): boolean   // a Gear tab row
 completeGig(gigId: number): boolean   // normal gates
 forceGig(gigId: number): boolean      // bypasses XP / prior-gig / board gates
 setXp(n: number): void
@@ -55,17 +56,19 @@ flee(): void
 reset(): void
 ```
 
-The economy is four phases (tables in `src/data/phases.ts`, capital ladder in `src/data/tiers.ts`):
+The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/gear.ts`, capital in `src/data/capital.ts`):
 
-- **A Skill grind.** 18 skills, bought with XP only. Clicks pay XP only (`xpPerClick`), money stays 0, there is no $/s.
-- **B Gigs.** Gig Board opens at 12,000 lifetime XP with skills 11 (Portfolio) and 12 (React) owned. 8 gigs, each cleared once for a lump $ and an optional `retainerCps`. The first cleared gig turns clicks into money.
-- **C Jobs + equipment.** Job Board opens at 35,000 lifetime XP and 5 cleared gigs. 8 jobs (each held once, salary $/s) and 5 equipment items (repeatable).
-- **D Capital.** The old mid-to-Mars ladder (tiers 19-66). Opens on a senior job (id >= 7) OR $500,000 held at some point.
+- **A Skill grind.** 50 skills, bought with XP only. Clicks pay XP only (`xpPerClick`), money stays 0, there is no $/s.
+- **B Gigs.** Gig Board opens at 12,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned. 50 gigs, each cleared once for a lump $ and an optional `retainerCps`. The first cleared gig turns clicks into money.
+- **C Jobs.** Job Board opens at 35,000 lifetime XP and 5 cleared gigs. 31 jobs (each held once, salary $/s).
+- **Gear** (its own shop tab, between Jobs and Capital; table in `src/data/gear.ts`). Opens at 8,000 lifetime XP. 30 repeatable items bought with `buyEquipment`.
+- **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point.
 
 - `cps` is idle $/s (retainers + salaries + equipment + capital). Click boosts do not change it.
 - `clickPower` is the base $ payout. In money mode a click pays `clickPower × activeBoost.mult` and drips 25% of `xpPerClick` as XP. In phase A a click pays `xpPerClick × activeBoost.mult` XP and no money.
-- Money mode starts at the first cleared gig (or whenever money already exists, as in a migrated save).
+- Money mode starts at the first cleared gig (or whenever money already exists, as with a forced balance).
 - Skills cost XP and spending never lowers `xpTotal`. Jobs, equipment and capital cost money. Repeatable items cost `floor(base × 1.15 ^ owned)`.
+- `nextUnlock` is what the shop banner under the tabs shows. Closed gates come first: Gear (8K XP), Gig Board, Job Board, then Capital. With every gate open it is the locked gig, job or skill with the smallest XP gap, then hidden gear, then the cheapest hidden capital row. `needs` lists only what is still missing.
 - `spriteTierId` is the art id of the stage sprite: the highest owned capital tier, else the art of the furthest job, gig or skill. It is `1` before the first purchase. `era` is `early` until a capital tier is owned.
 - The shop UI hides skills until `xpTotal` reaches their `unlockAtXp`, and capital until `peakMoney` has reached the price. `buy(tierId)` ignores that reveal but still enforces the capital gate. The other `buy*` calls enforce their gates too.
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock. Skills keep studying (XP/s) in every phase.
@@ -82,10 +85,11 @@ Vitest + happy-dom, all through `__GAME__`:
 
 1. **Phase A.** Click until the first skill is affordable. Clicks pay XP only, money and $/s stay 0, `buySkill` spends XP and keeps `xpTotal`, skills study while idle.
 2. **A to B.** `setXp` and buy Portfolio and React: the Gig Board opens (not before both), `completeGig` is gated, the first clear pays the lump and starts money clicks, `lastPop` is large then medium.
-3. **B.** Retainer gig 5 is the first `$/s`.
-4. **B to C to D.** Five gigs and 35K XP open the Job Board, an intern salary adds $/s, a senior job opens capital with no cash.
-5. **D gate.** `buy(19)` fails at $499,999 and works at $500,000.
-6. **Mid jump.** `setMoney` to the base cost of "Fine-tune your first LLM" (tier 26), buy it, and assert the cps / clickPower deltas match `TIERS`. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
+3. **B.** The first retainer gig is the first `$/s`.
+4. **B to C to D.** Five gigs and 35K XP open the Job Board, an intern salary adds $/s, the Senior job (id 14) opens capital with no cash.
+   **Gear.** Gear and `buyEquipment` stay shut until 8,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
+5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
+6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
 7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only.
 8. **Fights.** Spawn, damage, win, flee, timeout, money-gated spawn.
 

@@ -1,4 +1,4 @@
-import type { Era } from "./tiers.ts"
+import type { Era } from "./capital.ts"
 
 /**
  * Click-only boosts. These multiply click power for a short window.

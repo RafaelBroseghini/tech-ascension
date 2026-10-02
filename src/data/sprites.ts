@@ -1,4 +1,4 @@
-import type { Era } from "./tiers.ts"
+import type { Era } from "./capital.ts"
 import { spriteDataUrl, THUMB_SIZE, MAIN_SIZE } from "../pixel/sprites.ts"
 
 /** Main stage art: 64×64 pixel PNG for a tier. Art 0 is the opening attic shown before the first purchase. */

@@ -6,7 +6,7 @@ import {
   BOOST_WAIT_MIN_FACTOR,
 } from "../data/boosts.ts"
 import type { ActiveBoost, BoostEraConfig, BoostWeight } from "../data/boosts.ts"
-import type { Era } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 
 export type BoostClock = {
   activeBoost: ActiveBoost | null

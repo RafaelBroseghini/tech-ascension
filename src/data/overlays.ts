@@ -1,4 +1,4 @@
-import type { Era } from "./tiers.ts"
+import type { Era } from "./capital.ts"
 
 export type Lang = "python" | "go" | "ts" | "java" | "rust" | "cuda"
 
@@ -22,11 +22,11 @@ export const LANG_LABEL: Record<Lang, string> = {
 }
 
 /**
- * Editor-buffer snippets from the IDE overlays brief (v1), 15 bands by highest owned tier id.
+ * Editor-buffer snippets from the IDE overlays brief (v1), 15 bands by the stage art id (src/data/art.ts).
  * Bands never cross an era boundary: the brief's "early→mid", "mid→upper" and "upper→q3"
  * snippets close out the era they ride on (reverse_list, finetune_loop, attention). Within an
  * era the buffer advances by tier band, never at random, so it only changes when progress does.
- * Tier 0 (nothing bought yet) shows the first band.
+ * Art 0 (nothing bought yet) shows the first band.
  */
 export const OVERLAYS: readonly Overlay[] = [
   {

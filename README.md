@@ -26,19 +26,21 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 
 ## How it plays
 
-The economy is phase-gated. Numbers live in `src/data/phases.ts` (A to C) and `src/data/tiers.ts` (D); every repeatable item costs `floor(base × 1.15 ^ owned)`.
+The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, jobs, gates), `src/data/gear.ts` and `src/data/capital.ts`. Every repeatable item costs `floor(base × 1.15 ^ owned)`.
 
 | Phase | Pays in | You buy | Opens when |
 | --- | --- | --- | --- |
-| **A Skill grind** | XP only | 18 skills (XP/click, XP/s) | start |
-| **B Gigs** | first $ | 8 gigs: lump $ on clear, some add a retainer $/s | 12,000 lifetime XP and Portfolio (#11) + React (#12) owned |
-| **C Jobs + gear** | salary $/s | 8 jobs (held once) and 5 equipment items | 35,000 lifetime XP and 5 gigs cleared |
-| **D Capital** | heavy $/s | the old mid-to-Mars ladder (tiers 19-66) | a senior job (id >= 7) OR $500,000 held at some point |
+| **A Skill grind** | XP only | 50 skills (XP/click, XP/s) | start |
+| **B Gigs** | first $ | 50 gigs: lump $ on clear, some add a retainer $/s | 12,000 lifetime XP and Portfolio (#15) + React (#16) owned |
+| **C Jobs** | salary $/s | 31 jobs (held once) | 35,000 lifetime XP and 5 gigs cleared |
+| **Gear** (shop tab, not a phase) | click bonus, $/s | 30 repeatable infra items (desk, Pi lab, GPUs, racks, cloud, Mars) | 8,000 lifetime XP. A row then shows once you have held its `unlockMoney` |
+| **D Capital** | heavy $/s | 25 rows, angel syndicate to Mars Holdings | the Senior job (id >= 14) OR $500,000 held at some point |
 
 - **Clicks.** In phase A a click is study time: it pays XP (`1 + skills`) and money stays $0, with no $/s. The first cleared gig turns clicks into money (`$1 + equipment + capital bonuses`), with a 25% XP drip. Boosts multiply whichever one the click pays.
 - **XP.** Skills cost XP, so spending lowers the balance, but gates and job requirements read lifetime XP (`xpTotal`) and never go down. Skills keep studying (XP/s) in every phase, including offline.
-- **Gigs** clear once, by pressing "Clear gig" when XP and the number of already-cleared gigs allow it. Gig 5 (site maintenance retainer) is the first idle money.
-- **Shop.** Four tabs, one per phase: Skills, Gigs, Jobs (roles plus equipment), Capital (with era sub-tabs). A locked tab shows what it needs, with the requirements ticking off. A newly opened phase takes over the tab. Skills and capital rows appear when they are within reach and carry a `New` tag.
+- **Gigs** clear once, by pressing "Clear gig" when XP and the number of already-cleared gigs allow it. Gig 8 (site maintenance retainer) is the first idle money.
+- **Shop.** Five tabs: Skills, Gigs, Jobs (roles only), Gear (repeatable infra, grouped by kind), Capital (with era sub-tabs). Gear opens at 8,000 lifetime XP, ahead of the Gig Board, because its first rows cost a few hundred dollars. A locked tab shows what it needs, with the requirements ticking off. A newly opened phase takes over the tab (Gear never does, it is not a phase). Skills, gear and capital rows appear when they are within reach and carry a `New` tag.
+- **Next unlock banner.** A slim bar under the tabs always names the next thing to chase and what is missing (`Job Board - need 15,000 more XP · 2 more gigs`). Closed gates come first, cheapest XP threshold first: Gear, then the Gig Board, the Job Board, then Capital (either the Senior job or $500,000). With every gate open it shows the locked gig, job or skill that needs the least XP, then the cheapest hidden gear row, then the cheapest hidden capital row. Clicking it opens that tab. The logic is `nextUnlock` in `src/game/nextUnlock.ts` and the target is exposed as `__GAME__.getState().nextUnlock`.
 - **Stage.** The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of a fixed Catppuccin Mocha IDE whose editor buffer changes with progress (see Art). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.
 - **Rare enemies** spawn once money exists (never in phase A), roll among the current era's enemies (`early` until a capital tier is owned), and pay dollars on a win.
 - Click boosts (`×2` / `×5` / `×10`) multiply **click payout only**. Idle income is unchanged. One boost at a time; the next roll replaces the slot after the current one ends. A toast, a chip over the sprite, a rim light circling the art and the metrics strip show the multiplier while it runs.
@@ -46,7 +48,7 @@ The economy is phase-gated. Numbers live in `src/data/phases.ts` (A to C) and `s
 
 ### Money pops (Balatro feel)
 
-- **Raw digits first.** `formatNumber` keeps whole numbers as raw digits with separators (`1,234,567`) up to 9,999,999, then abbreviates (`10M`, `1.5B`, ... `Qa`). `formatNumber(v, 1000)` / `formatCompact` give the old tight K/M form.
+- **Raw digits first.** `formatNumber` keeps whole numbers as raw digits with separators (`1,234,567`) up to 9,999,999, then abbreviates (`10M`, `1.5B`, ... `Qa`). The hero balance has more room and keeps its digits up to $999,999,999,999 (`HERO_RAW_DIGITS_BELOW`), shrinking the font a notch once it is long. `formatNumber(v, 1000)` / `formatCompact` give the old tight K/M form.
 - **Medium on a click** once money exists: the hero total squashes and rebounds (about 190ms).
 - **Large** on a gig clear, a fight win and a phase unlock: a centered slam-in pop (`+$1,200`, `Gig cleared`) with a chromatic red/cyan split that converges, a bigger squash on the hero total, a count-up of the running total that overshoots then settles, plus the confetti burst and ring.
 - **Never per idle tick.** Idle income just moves the number. `prefers-reduced-motion` turns the pops into a plain fade.
@@ -56,8 +58,9 @@ The economy is phase-gated. Numbers live in `src/data/phases.ts` (A to C) and `s
 
 | What | File |
 | --- | --- |
-| Phase A-C tables (skills, gigs, jobs, equipment, gates) | `src/data/phases.ts` |
-| Phase D capital ladder (tiers 19-66) | `src/data/tiers.ts` |
+| Phase A-C tables (skills, gigs, jobs, gates) | `src/data/phases.ts` |
+| Gear table and its kind groups (re-exported as `EQUIPMENT`) | `src/data/gear.ts` |
+| Phase D capital catalog (25 rows, `artId` + `era`) | `src/data/capital.ts` |
 | Which sprite each skill, gig, job and equipment item uses | `src/data/art.ts` |
 | Sprite URLs (`spriteForTier`, `thumbForTier`) and era accents | `src/data/sprites.ts` |
 | Which code snippet the editor shows for each stage, and its syntax colours | `src/data/overlays.ts` |
@@ -69,31 +72,32 @@ The economy is phase-gated. Numbers live in `src/data/phases.ts` (A to C) and `s
 | Phase screenshots (A XP, B gig pop, C jobs, D capital, fight pop) through `__GAME__` | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
 | Boost rates by era | `src/data/boosts.ts` |
 | Cost, click power, idle, XP rates | `src/game/economy.ts` |
-| Gates, phase, stage | `src/game/phase.ts` |
+| Gates, phase, shop tab order, stage | `src/game/phase.ts` |
+| Next-unlock banner target | `src/game/nextUnlock.ts` |
 | Number formatting (raw digits cutoff) | `src/game/format.ts` |
-| Save, migration, offline credit | `src/game/save.ts` |
+| Save and offline credit | `src/game/save.ts` |
 | Loop, purchases, money pops | `src/game/store.ts` |
 | Centered score pop and hero squash | `src/components/ScorePop.tsx`, `src/components/HeroMoney.tsx` |
 
-Replacing `TIERS` is enough for the capital shop, as long as each row has `id`, `era`, `name`, `baseCost`, `cps`, and `clickBonus`. Add a drawing for the new id in `src/pixel/art.ts` (it falls back to tier 1 art until you do) and add a `fromTier` band in `src/data/overlays.ts` if it should start a new code snippet. Capital counts are stored by tier id, so new ids do not need a save migration. Skills, gigs, jobs and equipment borrow existing drawings through `src/data/art.ts`.
+Replacing `CAPITAL` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.
 
-### What happened to the old early tiers
+**Catalog capacity.** Skills, gigs, jobs, gear and capital are plain typed arrays with unique ids. Nothing assumes 50, 31, 30 or 25 rows. A table drop replaces the array. Ids past the end of an art table reuse its drawings in order (`artFor`). A new gear `kind` is one line in `GEAR_KINDS`. Gig and job ids are checked against the live tables on load, so a removed row drops out of a save. Counts for ids this build does not sell are kept.
 
-Tiers 1-18 (Used laptop ... Hacker Newz front page) are retired. Their content is the new phases: the 18 skills, the gigs, the jobs and the equipment. Their 18 drawings are not dead: each skill uses one of them (art ids 1-18) and gigs, jobs and equipment reuse them, which also keeps the first three IDE snippets (`fizzbuzz.py`, `two_sum.py`, `reverse_list.go`) in play. The old mid-to-end ladder (tiers 19-66) is Phase D unchanged, apart from tier 19 being renamed "Junior ML engineer" so it does not clash with the Junior SWE job. Nothing is unreachable.
+The 66 drawings stay in use: skills, gigs, jobs and gear borrow them through `src/data/art.ts`, and each capital row names the drawing it wants with `artId`. That drawing also picks the editor snippet.
 
 ## Save
 
-`localStorage` key `tech-ascension.save`, schema version 3:
+`localStorage` key `tech-ascension.save`, schema version 4:
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "money": 0,
   "xp": 0,
   "xpTotal": 0,
   "skills": { "1": 2 },
   "equipment": { "1": 1 },
-  "owned": { "26": 1 },
+  "owned": { "1": 1 },
   "jobs": [1, 2],
   "gigs": [1, 2, 3],
   "savedAt": 0,
@@ -102,11 +106,7 @@ Tiers 1-18 (Used laptop ... Hacker Newz front page) are retired. Their content i
 }
 ```
 
-`peakMoney` is optional; older saves without it start from their current balance. `src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to the current version. Version 2 added 18 dev-culture stages, which shifted most tier ids, so loading a version 1 save re-keys `owned` through `V1_TO_V2_TIER_IDS`. That table is frozen history: never edit it.
-
-**Version 3 (phase economy) is a soft reset of the early game with an XP refund.** The retired early generators (ids 1-18) are removed, and everything they cost is paid back as XP at 0.25 XP per dollar (`LEGACY_EARLY_XP_PER_DOLLAR`, priced from the frozen `V2_EARLY_BASE_COSTS`). The old vanity XP counter is replaced by that refund. Money, `peakMoney`, boosts and every capital tier (ids 19+) carry over unchanged. The refund is deliberately a spendable XP balance rather than an unlock: it buys skills, skills open the boards, and the player replays phases A to C quickly. Nobody is softlocked: XP always buys a skill, and anyone who owns a capital tier (or has held $500K) already has Phase D open. Money from the old save still funds jobs, equipment and capital later, and while money exists clicks pay money. A toast says what happened (`phase economy: early gear retired, refunded N XP`), once, because the rewritten save is version 3.
-
-When you add a stage, bump `SAVE_VERSION`, add a migration, and keep the sprite files named by the new ids. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
+`equipment` is the Gear tab. There is no migration: a payload whose `version` is not `SAVE_VERSION`, or that is not a save object, is thrown away and a new career starts (`save was unreadable — new career started`). Bump `SAVE_VERSION` when the shape changes. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
 
 The next-boost timer is session state. Reloading keeps a boost that is still running and schedules a fresh wait afterward.
 

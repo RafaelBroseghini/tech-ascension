@@ -1,5 +1,5 @@
 /** Enemies v1.2 — same-era spawn only. Early HP is a tenth of v1.1: Phase B/C players click for $1+, not the old early-tier click bonuses. Rare spawns start once money exists (first gig). */
-import type { Era } from "./tiers.ts"
+import type { Era } from "./capital.ts"
 
 export type EraGate = Era;
 export type Enemy = { id:number; name:string; eraGate:EraGate; hp:number; reward:number; weight:number };
