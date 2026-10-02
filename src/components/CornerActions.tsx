@@ -24,7 +24,7 @@ export function ResumeButton() {
   return (
     <>
       <button type="button" className="view-resume" data-testid="view-resume" aria-label="View resume" onClick={() => setOpen(true)}>
-        <LinkedOutIcon size={18} />
+        <LinkedOutIcon size={22} />
       </button>
       {open ? <ResumeModal doc={doc} onClose={() => setOpen(false)} /> : null}
     </>
