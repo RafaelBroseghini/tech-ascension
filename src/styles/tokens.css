@@ -1,0 +1,138 @@
+/*
+ * Design tokens for Tech Ascension.
+ * One display face (Chakra Petch), one mono for metrics (JetBrains Mono).
+ * Era palettes are single solid accents on a warm near-black base. No blur
+ * shadows: elevation is a hard offset in ink, Balatro-style.
+ */
+
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #6fe08c;
+}
+@property --accent-hi {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #bff7cb;
+}
+@property --accent-lo {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #2f8f4a;
+}
+@property --accent-deep {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #11261a;
+}
+@property --rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  /* Surfaces: warm ink, stepped. */
+  --ink: #0e0c09;
+  --surface-0: #14110d;
+  --surface-1: #1c1812;
+  --surface-2: #26201a;
+  --line: #3d3427;
+  --line-strong: #5a4d3a;
+
+  --text: #f7f0df;
+  --text-dim: #c4b79d;
+  --text-faint: #8f8470;
+
+  /* Type */
+  --font-display: "Chakra Petch", "Eurostile", "Bahnschrift", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --fs-2xs: 0.68rem;
+  --fs-xs: 0.76rem;
+  --fs-sm: 0.88rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.75rem;
+  --fs-2xl: 2.25rem;
+  --fs-hero: clamp(2.1rem, 1.2rem + 3vw, 3.4rem);
+
+  --track-caps: 0.14em;
+  --track-tight: -0.01em;
+
+  /* Space (4px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* Shape: square-ish, one small radius */
+  --radius: 4px;
+  --radius-lg: 10px;
+  --stroke: 2px;
+
+  /* Elevation: hard offsets only */
+  --lift-1: 0 2px 0 var(--ink);
+  --lift-2: 0 4px 0 var(--ink);
+  --lift-3: 4px 4px 0 var(--ink);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Single overshoot: peaks ~1.07 once and settles. */
+  --ease-pop: cubic-bezier(0.3, 1.7, 0.5, 1);
+  --dur-fast: 120ms;
+  --dur-click: 200ms;
+  --dur-base: 320ms;
+  --dur-slow: 640ms;
+
+  --sprite: 256px;
+
+  --accent: #6fe08c;
+  --accent-hi: #bff7cb;
+  --accent-lo: #2f8f4a;
+  --accent-deep: #11261a;
+  --accent-ink: #07130b;
+
+  color-scheme: dark;
+}
+
+/* Era palettes: one solid accent each, plus a lit and a shaded step. */
+[data-era="early"] {
+  --accent: #6fe08c;
+  --accent-hi: #bff7cb;
+  --accent-lo: #2f8f4a;
+  --accent-deep: #11261a;
+  --accent-ink: #07130b;
+}
+[data-era="mid"] {
+  --accent: #5aa9ff;
+  --accent-hi: #b9dbff;
+  --accent-lo: #2765b8;
+  --accent-deep: #0e1f36;
+  --accent-ink: #06101f;
+}
+[data-era="upper"] {
+  --accent: #f3b94a;
+  --accent-hi: #ffe2a3;
+  --accent-lo: #a8741a;
+  --accent-deep: #31230b;
+  --accent-ink: #1d1304;
+}
+[data-era="q3"] {
+  --accent: #3fdacb;
+  --accent-hi: #b0f4ec;
+  --accent-lo: #1b8c86;
+  --accent-deep: #0a2a2b;
+  --accent-ink: #031615;
+}
+[data-era="end"] {
+  --accent: #ff7b4f;
+  --accent-hi: #ffc0a6;
+  --accent-lo: #b8421f;
+  --accent-deep: #381508;
+  --accent-ink: #1f0903;
+}
