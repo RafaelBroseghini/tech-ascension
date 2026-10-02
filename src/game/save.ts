@@ -5,7 +5,8 @@ import { formatNumber } from "./format.ts"
 import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 
-export const SAVE_VERSION = 4
+/** Catalog ids grew in v4. Any other version wipes; there is no migration. */
+export const SAVE_VERSION = 5
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
 export const OFFLINE_TOAST_MIN_MS = 5_000
 

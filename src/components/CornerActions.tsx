@@ -1,4 +1,4 @@
-import { LinkedIn } from "developer-icons"
+import { LinkedOutIcon } from "./icons/LinkedOut.tsx"
 import { useEffect, useMemo, useState } from "react"
 import { resumeDocument } from "../game/resumeDoc.ts"
 import { useGame } from "../game/store.ts"
@@ -24,7 +24,7 @@ export function ResumeButton() {
   return (
     <>
       <button type="button" className="view-resume" data-testid="view-resume" aria-label="View resume" onClick={() => setOpen(true)}>
-        <LinkedIn size={22} />
+        <LinkedOutIcon size={18} />
       </button>
       {open ? <ResumeModal doc={doc} onClose={() => setOpen(false)} /> : null}
     </>

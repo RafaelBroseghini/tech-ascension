@@ -45,13 +45,13 @@ export function shouldForceBoost(now: number, idleSince: number, meanMs: number)
 
 export function pickMultiplier(weights: readonly BoostWeight[], rand: number): number {
   const total = weights.reduce((sum, row) => sum + row.weight, 0)
-  if (total <= 0 || weights.length === 0) return 2
+  if (total <= 0 || weights.length === 0) return 3
   let roll = Math.min(Math.max(rand, 0), 0.999999999) * total
   for (const row of weights) {
     if (roll < row.weight) return row.mult
     roll -= row.weight
   }
-  return weights[weights.length - 1]?.mult ?? 2
+  return weights[weights.length - 1]?.mult ?? 3
 }
 
 /** Inclusive whole seconds between durMin and durMax. */

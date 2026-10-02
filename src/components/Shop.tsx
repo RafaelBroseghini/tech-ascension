@@ -3,7 +3,7 @@ import type { ReactNode } from "react"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { eraSections } from "../data/eras.ts"
 import { GEAR_KINDS } from "../data/gear.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { ERA_ACCENT, thumbForTier } from "../data/sprites.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Era } from "../data/capital.ts"
@@ -30,7 +30,7 @@ import {
 import type { Requirement, ShopTab } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
-/** A ready row reads "to buy it"; a gap still reads "need 8,000 more XP". */
+/** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 function nextLine(next: NextUnlock): string {
   const body = next.needs.join(next.either ? " or " : " · ")
   return next.needs.every((line) => line.startsWith("to ")) ? body : `need ${body}`
@@ -335,7 +335,7 @@ export function Shop() {
                 </Offer>
               )
             })}
-            {xpTotal >= 12000 && !unlocked.B ? (
+            {xpTotal >= GIG_BOARD_UNLOCK.minXp && !unlocked.B ? (
               <p className="shop-empty">Gig Board is waiting on Portfolio and React.</p>
             ) : null}
           </>

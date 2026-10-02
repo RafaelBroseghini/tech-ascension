@@ -11,7 +11,11 @@ import type { Era } from "./capital.ts"
  * If no boost has landed for BOOST_PITY_FACTOR × mean since the last
  * end (or this session's start), force a roll.
  * One boost at a time: a new roll replaces the active one.
+ *
+ * Multipliers are only 3×, 5× and 10×. Mean waits are longer than the
+ * original 45s–360s table. Gold chrome is UI: activeBoost.mult >= GOLD_MULT_THRESHOLD.
  */
+export const GOLD_MULT_THRESHOLD = 8
 export const BOOST_GRACE_MS = 1_000
 export const BOOST_WAIT_MIN_FACTOR = 0.4
 export const BOOST_WAIT_MAX_FACTOR = 2.5
@@ -33,51 +37,51 @@ export type BoostEraConfig = {
 
 export const BOOST_BY_ERA: Record<Era, BoostEraConfig> = {
   early: {
-    meanWaitMs: 45_000,
+    meanWaitMs: 75_000,
     durMinMs: 8_000,
     durMaxMs: 12_000,
     weights: [
-      { mult: 2, weight: 70 },
+      { mult: 3, weight: 70 },
       { mult: 5, weight: 25 },
       { mult: 10, weight: 5 },
     ],
   },
   mid: {
-    meanWaitMs: 75_000,
+    meanWaitMs: 120_000,
     durMinMs: 8_000,
     durMaxMs: 12_000,
     weights: [
-      { mult: 2, weight: 55 },
+      { mult: 3, weight: 55 },
       { mult: 5, weight: 35 },
       { mult: 10, weight: 10 },
     ],
   },
   upper: {
-    meanWaitMs: 120_000,
+    meanWaitMs: 180_000,
     durMinMs: 6_000,
     durMaxMs: 10_000,
     weights: [
-      { mult: 2, weight: 40 },
+      { mult: 3, weight: 40 },
       { mult: 5, weight: 40 },
       { mult: 10, weight: 20 },
     ],
   },
   q3: {
-    meanWaitMs: 210_000,
+    meanWaitMs: 300_000,
     durMinMs: 5_000,
     durMaxMs: 8_000,
     weights: [
-      { mult: 2, weight: 25 },
+      { mult: 3, weight: 25 },
       { mult: 5, weight: 45 },
       { mult: 10, weight: 30 },
     ],
   },
   end: {
-    meanWaitMs: 360_000,
+    meanWaitMs: 480_000,
     durMinMs: 5_000,
     durMaxMs: 8_000,
     weights: [
-      { mult: 2, weight: 15 },
+      { mult: 3, weight: 15 },
       { mult: 5, weight: 40 },
       { mult: 10, weight: 45 },
     ],

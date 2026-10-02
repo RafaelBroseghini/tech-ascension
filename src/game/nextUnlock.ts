@@ -34,8 +34,8 @@ const study = (p: Progression) => (typeof p.xp === "number" && Number.isFinite(p
 
 /**
  * The one thing to chase next. Closed gates come first, in the order their XP
- * thresholds fall: Gear tab (8K XP), Gig Board (12K + two skills), Job Board
- * (35K + 5 gigs), then Capital (Senior job or $500K). With every gate open,
+ * thresholds fall: Gear tab (10K XP), Gig Board (14K + two skills), Job Board
+ * (40K + 6 gigs), then Capital (Senior job or $500K). With every gate open,
  * walk Skills, then Gigs, Jobs, Gear and Capital in catalog order and stop at
  * the first row that is not owned yet. An earlier unlocked row that was never
  * bought wins over a later row the player already qualifies for. Gear, skills

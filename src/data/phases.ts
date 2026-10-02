@@ -1,18 +1,19 @@
 /**
- * Catalogs v3: 50 skills, 50 gigs, 31 jobs (here), 30 gear (src/data/gear.ts), 25 capital (src/data/capital.ts).
+ * Catalogs v4: 105 skills, 65 gigs, 31 jobs (here), 110 gear (src/data/gear.ts), 25 capital (src/data/capital.ts).
  * Gates, payouts and ordering are the Researcher's table. Only brand names are swapped for the
  * repo's parody style (see the banned-brand test in logic.test.ts). Purchase prices (skill XP
  * costs and job base costs) are doubled once, in scalePurchaseCost; the literals below are unscaled.
  * Ids are unique and 1-based; nothing else in the code assumes how many rows a table has.
  * Gear lives in src/data/gear.ts and is re-exported below as EQUIPMENT.
+ * Skill unlockAtXp in the raw rows is ignored: earlyGrind, scalePurchaseCost and the unlock chain recompute it.
  */
 import { scalePurchaseCost } from "./costs.ts"
 
 export const COST_GROWTH = 1.15 as const;
-export const GIG_BOARD_UNLOCK = { minXp: 12000, requireOwnedSkills: [15, 16] as const };
-export const JOB_BOARD_UNLOCK = { minXp: 35000, minGigsCompleted: 5 } as const;
+export const GIG_BOARD_UNLOCK = { minXp: 14000, requireOwnedSkills: [15, 16] as const };
+export const JOB_BOARD_UNLOCK = { minXp: 40000, minGigsCompleted: 6 } as const;
 export const CAPITAL_UNLOCK = { minJobId: 14, minMoney: 500000 } as const;
-export const GEAR_TAB_UNLOCK = { minXp: 8000 } as const;
+export const GEAR_TAB_UNLOCK = { minXp: 10000 } as const;
 
 export { GEAR as EQUIPMENT } from "./gear.ts";
 export type { GearItem as Equip } from "./gear.ts";
@@ -41,7 +42,7 @@ const SKILL_ROWS: readonly SkillTier[] = [
   { id: 20, name: "LeetCrate Medium patterns", baseXpCost: 5600, xpPerClick: 6, xpPerSec: 4.0, unlockAtXp: 2700 },
   { id: 21, name: "Testing (unit/e2e starter)", baseXpCost: 7000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 3360 },
   { id: 22, name: "Dockyard hello-world", baseXpCost: 8500, xpPerClick: 0, xpPerSec: 4.0, unlockAtXp: 4200 },
-  { id: 23, name: "Polished projects ×3", baseXpCost: 10000, xpPerClick: 0, xpPerSec: 9.0, unlockAtXp: 5100 },
+  { id: 23, name: "Polished projects \u00d73", baseXpCost: 10000, xpPerClick: 0, xpPerSec: 9.0, unlockAtXp: 5100 },
   { id: 24, name: "System design lightweight", baseXpCost: 12000, xpPerClick: 4, xpPerSec: 6.0, unlockAtXp: 6000 },
   { id: 25, name: "Discourd / study group", baseXpCost: 14000, xpPerClick: 0, xpPerSec: 3.5, unlockAtXp: 7200 },
   { id: 26, name: "Mock interviews", baseXpCost: 16500, xpPerClick: 8, xpPerSec: 5.0, unlockAtXp: 8400 },
@@ -69,6 +70,61 @@ const SKILL_ROWS: readonly SkillTier[] = [
   { id: 48, name: "Production war-story journal", baseXpCost: 260000, xpPerClick: 0, xpPerSec: 8.0, unlockAtXp: 138000 },
   { id: 49, name: "Principal study club", baseXpCost: 300000, xpPerClick: 0, xpPerSec: 12.0, unlockAtXp: 156000 },
   { id: 50, name: "Teaching a workshop", baseXpCost: 350000, xpPerClick: 15, xpPerSec: 10.0, unlockAtXp: 180000 },
+  { id: 51, name: "Linux CLI basics", baseXpCost: 280, xpPerClick: 0, xpPerSec: 0.8, unlockAtXp: 110 },
+  { id: 52, name: "Bash scripting habit", baseXpCost: 480, xpPerClick: 0, xpPerSec: 1.2, unlockAtXp: 200 },
+  { id: 53, name: "Python fundamentals", baseXpCost: 900, xpPerClick: 2, xpPerSec: 2.2, unlockAtXp: 380 },
+  { id: 54, name: "Utility CSS landings", baseXpCost: 1100, xpPerClick: 0, xpPerSec: 2.0, unlockAtXp: 520 },
+  { id: 55, name: "Bundler toolchain", baseXpCost: 1400, xpPerClick: 0, xpPerSec: 2.2, unlockAtXp: 700 },
+  { id: 56, name: "App-router framework", baseXpCost: 2600, xpPerClick: 0, xpPerSec: 4.0, unlockAtXp: 1180 },
+  { id: 57, name: "Design-mock for engineers", baseXpCost: 2000, xpPerClick: 0, xpPerSec: 2.5, unlockAtXp: 900 },
+  { id: 58, name: "Lint + format discipline", baseXpCost: 1800, xpPerClick: 0, xpPerSec: 2.0, unlockAtXp: 850 },
+  { id: 59, name: "Python API kit", baseXpCost: 4200, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 2000 },
+  { id: 60, name: "ORM fluency", baseXpCost: 5000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 2500 },
+  { id: 61, name: "Component docs kit", baseXpCost: 6500, xpPerClick: 0, xpPerSec: 4.5, unlockAtXp: 3100 },
+  { id: 62, name: "Alt-framework dabble", baseXpCost: 4800, xpPerClick: 0, xpPerSec: 4.0, unlockAtXp: 2400 },
+  { id: 63, name: "Alt-runtime experiment", baseXpCost: 7800, xpPerClick: 0, xpPerSec: 4.5, unlockAtXp: 4000 },
+  { id: 64, name: "Static-site kit", baseXpCost: 7200, xpPerClick: 0, xpPerSec: 4.0, unlockAtXp: 3800 },
+  { id: 65, name: "API client drills", baseXpCost: 6000, xpPerClick: 0, xpPerSec: 3.5, unlockAtXp: 3000 },
+  { id: 66, name: "Document DB model", baseXpCost: 9000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 4800 },
+  { id: 67, name: "SQL ops basics", baseXpCost: 9500, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 5000 },
+  { id: 68, name: "Client cache layer", baseXpCost: 11000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 5800 },
+  { id: 69, name: "BaaS backend kit", baseXpCost: 12500, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 6500 },
+  { id: 70, name: "Realtime backend taste", baseXpCost: 13000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 6800 },
+  { id: 71, name: "Cloud console tour", baseXpCost: 16000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 8000 },
+  { id: 72, name: "Infra-as-code intro", baseXpCost: 20000, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 10000 },
+  { id: 73, name: "Cluster kubectl 101", baseXpCost: 24000, xpPerClick: 0, xpPerSec: 6.5, unlockAtXp: 12000 },
+  { id: 74, name: "Config-mgmt playbooks", baseXpCost: 22000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 11000 },
+  { id: 75, name: "Go concurrency intro", baseXpCost: 28000, xpPerClick: 0, xpPerSec: 7.0, unlockAtXp: 14000 },
+  { id: 76, name: "Rust ownership toy", baseXpCost: 32000, xpPerClick: 0, xpPerSec: 6.5, unlockAtXp: 16000 },
+  { id: 77, name: "Event-stream intro", baseXpCost: 36000, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 18500 },
+  { id: 78, name: "Edge Workers edge", baseXpCost: 34000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 17500 },
+  { id: 79, name: "Pipeline craft", baseXpCost: 30000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 15500 },
+  { id: 80, name: "Mobile app dabble", baseXpCost: 40000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 21000 },
+  { id: 81, name: "Desktop shell toy", baseXpCost: 38000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 20000 },
+  { id: 82, name: "Prompt engineering habit", baseXpCost: 45000, xpPerClick: 4, xpPerSec: 6.0, unlockAtXp: 24000 },
+  { id: 83, name: "AI-IDE workflow", baseXpCost: 48000, xpPerClick: 0, xpPerSec: 7.0, unlockAtXp: 25500 },
+  { id: 84, name: "LLM pairing habit", baseXpCost: 52000, xpPerClick: 0, xpPerSec: 6.5, unlockAtXp: 27000 },
+  { id: 85, name: "Array math wrangling", baseXpCost: 58000, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 31000 },
+  { id: 86, name: "ML framework lab", baseXpCost: 75000, xpPerClick: 0, xpPerSec: 7.5, unlockAtXp: 40000 },
+  { id: 87, name: "WebAssembly toy", baseXpCost: 85000, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 45000 },
+  { id: 88, name: "Contracts dabble", baseXpCost: 95000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 50000 },
+  { id: 89, name: "Incident commander drills (soft)", baseXpCost: 105000, xpPerClick: 0, xpPerSec: 7.0, unlockAtXp: 56000 },
+  { id: 90, name: "Architecture Decision Records", baseXpCost: 115000, xpPerClick: 0, xpPerSec: 8.0, unlockAtXp: 62000 },
+  { id: 91, name: "Negotiation / scope soft", baseXpCost: 100000, xpPerClick: 0, xpPerSec: 5.0, unlockAtXp: 54000 },
+  { id: 92, name: "Public speaking reps (soft)", baseXpCost: 120000, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 64000 },
+  { id: 93, name: "Multi-region design notes", baseXpCost: 150000, xpPerClick: 5, xpPerSec: 9.0, unlockAtXp: 80000 },
+  { id: 94, name: "Chip architecture reading", baseXpCost: 190000, xpPerClick: 0, xpPerSec: 8.0, unlockAtXp: 100000 },
+  { id: 95, name: "Package manager fluency", baseXpCost: 350, xpPerClick: 0, xpPerSec: 1.0, unlockAtXp: 150 },
+  { id: 96, name: "HTTP caching habit", baseXpCost: 2400, xpPerClick: 0, xpPerSec: 3.0, unlockAtXp: 1100 },
+  { id: 97, name: "Regex fluency", baseXpCost: 700, xpPerClick: 1, xpPerSec: 1.5, unlockAtXp: 280 },
+  { id: 98, name: "Accessibility mindset (soft)", baseXpCost: 15000, xpPerClick: 0, xpPerSec: 4.0, unlockAtXp: 7500 },
+  { id: 99, name: "GitHug Actions taste", baseXpCost: 27000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 14500 },
+  { id: 100, name: "Monorepo tooling", baseXpCost: 35000, xpPerClick: 0, xpPerSec: 6.0, unlockAtXp: 18000 },
+  { id: 101, name: "Feature flag mental model", baseXpCost: 42000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 22000 },
+  { id: 102, name: "SRE runbook writing (soft)", baseXpCost: 90000, xpPerClick: 0, xpPerSec: 6.5, unlockAtXp: 48000 },
+  { id: 103, name: "Threat modeling habit (soft)", baseXpCost: 100000, xpPerClick: 0, xpPerSec: 5.5, unlockAtXp: 52000 },
+  { id: 104, name: "Capacity planning notes", baseXpCost: 135000, xpPerClick: 0, xpPerSec: 7.5, unlockAtXp: 72000 },
+  { id: 105, name: "Mars ops systems study", baseXpCost: 400000, xpPerClick: 10, xpPerSec: 14.0, unlockAtXp: 200000 },
 ] as const;
 
 /**
@@ -105,9 +161,9 @@ export type Gig = {
   retainerCps: number
 }
 
-/** Gig 1 needs the first six skills. Each later gig adds the next skill and keeps all of the earlier ones. */
+/** Gig 1 needs the first six skills. Each later gig adds the next skill, capped at the skill table. */
 function skillsForGig(id: number): readonly number[] {
-  const count = Math.min(50, 5 + id)
+  const count = Math.min(SKILL_ROWS.length, 5 + id)
   return Array.from({ length: count }, (_, index) => index + 1)
 }
 
@@ -136,7 +192,7 @@ const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
   { id: 22, name: "Retainer: 2nd site", xpReq: 48000, lump: 200, retainerCps: 3.5 },
   { id: 23, name: "Dashboard MVP", xpReq: 52000, lump: 2000, retainerCps: 0 },
   { id: 24, name: "Webhook reliability fix", xpReq: 55000, lump: 800, retainerCps: 0 },
-  { id: 25, name: "Migration script (CSV→DB)", xpReq: 58000, lump: 950, retainerCps: 0 },
+  { id: 25, name: "Migration script (CSV\u2192DB)", xpReq: 58000, lump: 950, retainerCps: 0 },
   { id: 26, name: "Chatbot FAQ wrapper", xpReq: 62000, lump: 1500, retainerCps: 0 },
   { id: 27, name: "SEO landing pack", xpReq: 65000, lump: 700, retainerCps: 1.0 },
   { id: 28, name: "API-spec docs cleanup", xpReq: 68000, lump: 500, retainerCps: 0 },
@@ -162,6 +218,21 @@ const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
   { id: 48, name: "Staff-aug 6-week embed", xpReq: 350000, lump: 35000, retainerCps: 40.0 },
   { id: 49, name: "Fractional CTO weekend", xpReq: 400000, lump: 15000, retainerCps: 10.0 },
   { id: 50, name: "Exit gig: handoff docs", xpReq: 450000, lump: 5000, retainerCps: 0 },
+  { id: 51, name: "Status page + runbook pack", xpReq: 47000, lump: 650, retainerCps: 0 },
+  { id: 52, name: "CSV\u2192warehouse loader", xpReq: 70000, lump: 1400, retainerCps: 0 },
+  { id: 53, name: "Email deliverability fix", xpReq: 88000, lump: 1700, retainerCps: 0 },
+  { id: 54, name: "Design-token extract", xpReq: 105000, lump: 2400, retainerCps: 0 },
+  { id: 55, name: "Cluster deploy for SMB", xpReq: 145000, lump: 4200, retainerCps: 0 },
+  { id: 56, name: "Edge Workers rewrite", xpReq: 175000, lump: 5000, retainerCps: 0 },
+  { id: 57, name: "Infra-as-code land-and-expand", xpReq: 190000, lump: 6500, retainerCps: 0 },
+  { id: 58, name: "GPU inference cost cut", xpReq: 230000, lump: 11000, retainerCps: 0 },
+  { id: 59, name: "Multi-cloud DR drill", xpReq: 280000, lump: 14000, retainerCps: 0 },
+  { id: 60, name: "SaaS acquisition diligence", xpReq: 320000, lump: 22000, retainerCps: 0 },
+  { id: 61, name: "Chip IP integration spike", xpReq: 380000, lump: 28000, retainerCps: 0 },
+  { id: 62, name: "Orbital uplink software", xpReq: 500000, lump: 40000, retainerCps: 20.0 },
+  { id: 63, name: "Mars habitat firmware", xpReq: 650000, lump: 60000, retainerCps: 0 },
+  { id: 64, name: "Colony mesh networking", xpReq: 800000, lump: 90000, retainerCps: 30.0 },
+  { id: 65, name: "Legacy empire handoff", xpReq: 1000000, lump: 50000, retainerCps: 0 },
 ]
 
 /** Each gig requires every earlier gig, and a skill set that only grows. */

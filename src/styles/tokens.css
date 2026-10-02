@@ -111,6 +111,12 @@
   --ide-tabs: 34px;
   --ide-status: 24px;
 
+  /* Click-boost gold, independent of the era accent. Used at mult >= 8. */
+  --boost-gold: #f3b94a;
+  --boost-gold-hi: #ffe2a3;
+  --boost-gold-lo: #a8741a;
+  --boost-gold-ink: #1d1304;
+
   --accent: #6fe08c;
   --accent-hi: #bff7cb;
   --accent-lo: #2f8f4a;

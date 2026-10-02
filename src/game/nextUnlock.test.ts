@@ -19,19 +19,19 @@ describe("next unlock teaser", () => {
       key: "board:gear",
       name: "Gear",
       tab: "G",
-      needs: ["8,000 more XP"],
+      needs: ["10,000 more XP"],
       either: false,
     })
-    const partial = nextUnlock({ ...EMPTY, xpTotal: 12_000, skills: { "15": 1 } })
+    const partial = nextUnlock({ ...EMPTY, xpTotal: 14_000, skills: { "15": 1 } })
     expect(partial).toMatchObject({ key: "board:gig", name: "Gig Board", tab: "B", needs: ["Own React / one framework"] })
   })
 
   it("moves to the Job Board with the XP and gig gaps, then to Capital", () => {
     const gigs = { ...EMPTY, xpTotal: 20_000, skills: { "15": 1, "16": 1 }, gigs: [1, 2, 3] }
-    expect(nextUnlock(gigs)).toMatchObject({ key: "board:job", name: "Job Board", tab: "C", needs: ["15,000 more XP", "2 more gigs"] })
-    expect(nextUnlock({ ...gigs, xpTotal: 35_000, gigs: [1, 2, 3, 4] })?.needs).toEqual(["1 more gig"])
+    expect(nextUnlock(gigs)).toMatchObject({ key: "board:job", name: "Job Board", tab: "C", needs: ["20,000 more XP", "3 more gigs"] })
+    expect(nextUnlock({ ...gigs, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5] })?.needs).toEqual(["1 more gig"])
 
-    const capital = nextUnlock({ ...EMPTY, xpTotal: 100_000, skills: { "15": 1, "16": 1 }, gigs: [1, 2, 3, 4, 5], peakMoney: 120_000 })
+    const capital = nextUnlock({ ...EMPTY, xpTotal: 100_000, skills: { "15": 1, "16": 1 }, gigs: [1, 2, 3, 4, 5, 6], peakMoney: 120_000 })
     expect(capital).toMatchObject({ key: "board:capital", tab: "D", either: true })
     expect(capital?.needs).toEqual(["Senior SWE (60,000 more XP)", "$380,000 more held"])
   })
@@ -43,7 +43,7 @@ describe("next unlock teaser", () => {
       tab: "C",
       needs: ["5,000 more XP"],
     })
-    const open = { ...EMPTY, xpTotal: 36_000, skills: { "15": 1, "16": 1 }, gigs: ALL_GIGS, jobs: [14], peakMoney: 600_000 }
+    const open = { ...EMPTY, xpTotal: 40_000, skills: { "15": 1, "16": 1 }, gigs: ALL_GIGS, jobs: [14], peakMoney: 600_000 }
     expect(nextUnlock(open)).toMatchObject({
       key: "skill:1",
       name: "Used laptop",
@@ -88,16 +88,16 @@ describe("next unlock teaser", () => {
 })
 
 describe("gear tab", () => {
-  it("sits between Jobs and Capital and opens at 8,000 lifetime XP", () => {
+  it("sits between Jobs and Capital and opens at 10,000 lifetime XP", () => {
     expect(SHOP_TABS).toEqual(["A", "B", "C", "G", "D"])
-    expect(equipmentOpen({ xpTotal: 7_999, equipment: {} })).toBe(false)
-    expect(equipmentOpen({ xpTotal: 8_000, equipment: {} })).toBe(true)
+    expect(equipmentOpen({ xpTotal: 9_999, equipment: {} })).toBe(false)
+    expect(equipmentOpen({ xpTotal: 10_000, equipment: {} })).toBe(true)
     expect(equipmentOpen({ xpTotal: 0, equipment: { "1": 1 } })).toBe(true)
   })
 
   it("keeps the gear table as repeatable rows with a known kind", () => {
     expect(EQUIPMENT).toBe(GEAR)
-    expect(GEAR).toHaveLength(30)
+    expect(GEAR).toHaveLength(110)
     expect(GEAR[0]?.name).toBe("Thocky keyboard")
     expect(GEAR.map((row) => row.name)).toContain("Raspberry Pie lab")
     const kinds = new Set(GEAR_KINDS.map((kind) => kind.id))

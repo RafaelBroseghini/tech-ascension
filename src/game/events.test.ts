@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
 import type { EventDef } from "./events.ts"
-import { advanceEventClock, applyEvent, eligibleEvents, EVENT_AFTER_BLOCK_MS, eventById, pickEvent } from "./events.ts"
+import { advanceEventClock, applyEvent, eligibleEvents, EVENT_AFTER_BLOCK_MS, eventById, eventRequiresMet, pickEvent } from "./events.ts"
 import { BOOST_WAIT_MAX_FACTOR, BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
 import type { Era } from "../data/capital.ts"
 import { FOREVER_MULT_MAX, FOREVER_MULT_MIN, modFactors, pruneTemp } from "./mods.ts"
@@ -31,7 +31,7 @@ describe("events table (v2)", () => {
   it("ships the researcher's 110 rows with unique ids and sane fields", () => {
     expect(EVENTS).toHaveLength(110)
     expect(new Set(EVENTS.map((event) => event.id)).size).toBe(110)
-    expect(EVENT_MEAN_WAIT_MS).toBe(150_000)
+    expect(EVENT_MEAN_WAIT_MS).toBe(240_000)
     for (const event of EVENTS) {
       expect(event.weight).toBeGreaterThan(0)
       expect(event.eras.length).toBeGreaterThan(0)
@@ -66,7 +66,8 @@ describe("events table (v2)", () => {
       const dry = eligibleEvents(era, false)
       expect(dry.length).toBeGreaterThan(0)
       expect(dry.some(touchesMoney)).toBe(false)
-      expect(eligibleEvents(era, true)).toHaveLength(eventsForEra(era).length)
+      const open = eventsForEra(era).filter((event) => eventRequiresMet(event))
+      expect(eligibleEvents(era, true)).toHaveLength(open.length)
     }
   })
 
@@ -82,6 +83,29 @@ describe("events table (v2)", () => {
     }
     const total = pool.reduce((sum, event) => sum + event.weight, 0)
     for (const event of pool) expect(Math.abs((counts.get(event.id) ?? 0) / 4_000 - event.weight / total)).toBeLessThan(0.01)
+  })
+})
+
+describe("event requires", () => {
+  it("treats a missing or empty gate as eligible, and ANDs filled fields", () => {
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }] }))).toBe(true)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minGigs: 0, minGearOwned: 0 } }))).toBe(true)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2 } }))).toBe(false)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2 } }), { jobs: [2] })).toBe(true)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 7 } }), { jobs: [2, 6] })).toBe(false)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { jobIds: [6, 8] } }), { jobs: [8] })).toBe(true)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { gigIds: [8, 22] } }), { gigs: [22] })).toBe(true)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { gigIds: [8, 22] } }), { gigs: [1] })).toBe(false)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "4": 1 } })).toBe(false)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "7": 2 } })).toBe(true)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2] })).toBe(false)
+    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2], gigs: [1] })).toBe(true)
+  })
+
+  it("keeps required rows out of an empty career and lets them in once the gate is met", () => {
+    expect(eligibleEvents("mid", true).some((event) => event.id === 26)).toBe(false)
+    expect(eligibleEvents("mid", true, { jobs: [2] }).some((event) => event.id === 26)).toBe(true)
+    expect(eligibleEvents("early", true).some((event) => event.requires?.minJobId || event.requires?.gigIds || event.requires?.gearIds)).toBe(false)
   })
 })
 
@@ -179,7 +203,7 @@ describe("modFactors", () => {
 describe("advanceEventClock", () => {
   const ctx = { era: "early" as Era, paying: true, blocked: false }
 
-  it("schedules a clamped exponential wait around the 150s mean, then fires", () => {
+  it("schedules a clamped exponential wait around the configured mean, then fires", () => {
     const first = advanceEventClock(null, ctx, 1_000, () => 0.5)
     expect(first.fire).toBeNull()
     const wait = (first.nextEventAt ?? 0) - 1_000

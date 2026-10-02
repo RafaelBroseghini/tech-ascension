@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
+import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
 import { ERA_ACCENT, spriteForTier } from "../data/sprites.ts"
@@ -252,9 +253,10 @@ export function Stage() {
   }
 
   const mult = activeBoost?.mult ?? 1
+  const gold = boosted && mult >= GOLD_MULT_THRESHOLD
 
   return (
-    <section className={boosted ? "stage-panel is-boosted" : "stage-panel"} aria-label="Click stage">
+    <section className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : ""].filter(Boolean).join(" ")} aria-label="Click stage">
       <IdeChrome />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">

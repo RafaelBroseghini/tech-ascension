@@ -1,3 +1,5 @@
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { CLICK_ICONS, GEAR_ICONS, GIG_ICONS, iconPool, JOB_ICONS, pickClickIcon, SKILL_ICONS } from "./clickIcons.ts"
 import type { IconName } from "./clickIcons.ts"
@@ -5,9 +7,14 @@ import type { IconName } from "./clickIcons.ts"
 const none = { skills: {}, equipment: {}, jobs: [] as number[], gigs: [] as number[] }
 
 describe("click icon pool", () => {
-  it("maps about 22 skills and only real developer-icons", () => {
-    expect(Object.keys(SKILL_ICONS).length).toBeGreaterThanOrEqual(20)
-    expect(Object.keys(SKILL_ICONS).length).toBeLessThanOrEqual(26)
+  it("maps 61 skills onto icon components, with LinkedOut on skill 27", () => {
+    expect(Object.keys(SKILL_ICONS)).toHaveLength(61)
+    expect(SKILL_ICONS[27]).toEqual(["LinkedOut"])
+    expect("LinkedIn" in CLICK_ICONS).toBe(false)
+    const mark = renderToStaticMarkup(createElement(CLICK_ICONS.LinkedOut, { size: 24 }))
+    expect(mark).toContain("LinkedOut")
+    expect(mark.toLowerCase()).not.toContain("linkedin")
+    expect(mark).toContain("#0B5CAB")
     const names = new Set<IconName>()
     for (const table of [SKILL_ICONS, GEAR_ICONS, GIG_ICONS, JOB_ICONS]) {
       for (const icons of Object.values(table)) for (const name of icons) names.add(name)
@@ -20,7 +27,9 @@ describe("click icon pool", () => {
     expect(iconPool({ ...none, skills: { "1": 1, "7": 1, "8": 1, "20": 1, "36": 1, "40": 1, "41": 1 } })).toEqual([])
     expect(SKILL_ICONS[8]).toBeUndefined()
     expect(SKILL_ICONS[40]).toBeUndefined()
+    for (const id of [89, 90, 91, 92, 93, 94, 98, 102, 103, 104, 105]) expect(SKILL_ICONS[id]).toBeUndefined()
     expect(iconPool({ ...none, skills: { "9": 0, "16": 1 } })).toEqual(["React"])
+    expect(iconPool({ ...none, skills: { "27": 1 } })).toEqual(["LinkedOut"])
     expect(iconPool({ ...none, equipment: { "1": 1 } })).toEqual([])
   })
 

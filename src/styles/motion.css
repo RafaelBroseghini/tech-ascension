@@ -224,6 +224,10 @@
     box-shadow: 0 0 0 3px var(--accent);
   }
 
+  .is-boost-gold .rim {
+    box-shadow: 0 0 0 3px var(--boost-gold);
+  }
+
   .score-pop,
   .score-pop-amount {
     animation: pop-fade 1500ms linear forwards !important;

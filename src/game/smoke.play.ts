@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 import { ENEMIES, FIGHT_DURATION_MS } from "../data/enemies.ts"
-import { CAPITAL_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { installGameHarness } from "./harness.ts"
@@ -60,7 +60,7 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   expect(idleAfter.cps).toBe(0)
 })
 
-test("A → B: Portfolio + React and 12K XP open the Gig Board, and the first gig still needs its skills", () => {
+test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gig still needs its skills", () => {
   game.reset()
   game.setXp(1_000_000)
   expect(game.getState().unlocks.gigBoard).toBe(false)
@@ -117,10 +117,10 @@ test("B: a retainer gig is the first $/s", () => {
 
 test("B → C → D: job board, a salary, then capital through a senior job", () => {
   game.reset()
-  game.setXp(35_000)
-  for (const id of [1, 2, 3, 4]) expect(game.forceGig(id)).toBe(true)
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id < JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
   expect(game.getState().unlocks.jobBoard).toBe(false)
-  expect(game.forceGig(5)).toBe(true)
+  expect(game.forceGig(JOB_BOARD_UNLOCK.minGigsCompleted)).toBe(true)
   const board = game.getState()
   expect(board.unlocks.jobBoard).toBe(true)
   expect(board.phase).toBe("C")
@@ -150,14 +150,14 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   expect(d.lastPop).toMatchObject({ kind: "unlock", size: "large" })
 })
 
-test("Gear opens at 8K XP, and the next-unlock target follows the gates", () => {
+test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
   game.reset()
-  expect(game.getState().nextUnlock).toMatchObject({ key: "board:gear", tab: "G", needs: ["8,000 more XP"] })
+  expect(game.getState().nextUnlock).toMatchObject({ key: "board:gear", tab: "G", needs: ["10,000 more XP"] })
   expect(game.getState().unlocks.gear).toBe(false)
   game.setMoney(1e6)
   expect(game.buyEquipment(1)).toBe(false)
 
-  game.setXp(8_000)
+  game.setXp(GEAR_TAB_UNLOCK.minXp)
   expect(game.getState().unlocks.gear).toBe(true)
   expect(game.buyEquipment(1)).toBe(true)
   expect(game.getState().equipment).toEqual({ "1": 1 })
@@ -167,9 +167,11 @@ test("Gear opens at 8K XP, and the next-unlock target follows the gates", () => 
   game.setXp(1_000_000)
   expect(game.buySkill(15)).toBe(true)
   expect(game.buySkill(16)).toBe(true)
-  for (const id of [1, 2, 3, 4]) expect(game.forceGig(id)).toBe(true)
-  expect(game.getState().nextUnlock).toMatchObject({ key: "board:job", tab: "C", needs: ["1 more gig"] })
+  for (let id = 1; id <= 4; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.getState().nextUnlock).toMatchObject({ key: "board:job", tab: "C", needs: ["2 more gigs"] })
   expect(game.forceGig(5)).toBe(true)
+  expect(game.getState().nextUnlock).toMatchObject({ key: "board:job", tab: "C", needs: ["1 more gig"] })
+  expect(game.forceGig(6)).toBe(true)
   expect(game.getState().nextUnlock).toMatchObject({ key: "board:capital", tab: "D", either: true })
 })
 

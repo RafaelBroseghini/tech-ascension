@@ -95,7 +95,7 @@ export function canBuyJob(p: Gates & Pick<Progress, "money">, job: JobTier): boo
   return jobState(p, job) === "ready" && canAfford(p.money, job.baseCost)
 }
 
-/** The Gear tab opens at 8,000 lifetime XP, independent of the boards. Owning gear keeps it open, so forced progress never hides it. */
+/** The Gear tab opens at GEAR_TAB_UNLOCK lifetime XP, independent of the boards. Owning gear keeps it open, so forced progress never hides it. */
 export function equipmentOpen(p: Pick<Progress, "xpTotal" | "equipment">): boolean {
   return p.xpTotal >= GEAR_TAB_UNLOCK.minXp || Object.values(p.equipment).some((count) => count > 0)
 }
