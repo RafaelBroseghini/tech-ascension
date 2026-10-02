@@ -1,0 +1,190 @@
+/*
+ * The IDE shell behind the stage. Catppuccin Mocha, fixed: no rule here reads an era accent.
+ * Only the code layer and the active tab change as progress does.
+ */
+
+.ide {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  grid-template-columns: var(--ide-activity) var(--ide-tree) minmax(0, 1fr);
+  grid-template-rows: var(--ide-tabs) minmax(0, 1fr) var(--ide-status);
+  grid-template-areas:
+    "activity tree tabs"
+    "activity tree editor"
+    "status status status";
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--mocha-base);
+  color: var(--mocha-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+}
+
+.ide-activity {
+  grid-area: activity;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding-top: var(--sp-4);
+  background: var(--mocha-crust);
+}
+
+.ide-icon {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--mocha-surface);
+  border-radius: var(--radius);
+}
+.ide-icon-files { border-color: var(--mocha-overlay); }
+.ide-icon-search { border-radius: 50%; }
+.ide-icon-git { border-radius: 50% 50% 4px 50%; }
+
+.ide-tree {
+  grid-area: tree;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--sp-3) 0;
+  background: var(--mocha-mantle);
+}
+.ide-tree-title {
+  margin: 0 0 var(--sp-2);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.ide-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  margin: 0;
+  padding-left: calc(var(--sp-3) + var(--depth) * 12px);
+}
+.ide-caret {
+  width: 0;
+  height: 0;
+  border: 4px solid transparent;
+  border-left-color: var(--mocha-overlay);
+  border-right-width: 0;
+}
+.ide-file {
+  width: 8px;
+  height: 10px;
+  border: 1.5px solid var(--mocha-overlay);
+  border-radius: 1px;
+}
+.ghost-bar {
+  display: block;
+  height: 8px;
+  max-width: 100%;
+  border-radius: 2px;
+  background: var(--mocha-surface);
+}
+
+.ide-tabs {
+  grid-area: tabs;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--mocha-mantle);
+}
+.ide-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4);
+  border-right: 1px solid var(--mocha-crust);
+  white-space: nowrap;
+}
+.ide-tab.is-active {
+  color: var(--mocha-text);
+  background: var(--mocha-base);
+  box-shadow: inset 0 2px 0 var(--mocha-mauve);
+}
+.ide-tab.is-active span { animation: code-in 260ms linear; }
+.ide-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mocha-blue);
+}
+.ide-tab-dot[data-lang="python"] { background: var(--mocha-blue); }
+.ide-tab-dot[data-lang="go"] { background: var(--mocha-sky); }
+.ide-tab-dot[data-lang="ts"] { background: var(--mocha-blue); }
+.ide-tab-dot[data-lang="java"] { background: var(--mocha-peach); }
+.ide-tab-dot[data-lang="rust"] { background: var(--mocha-rosewater); }
+.ide-tab-dot[data-lang="cuda"] { background: var(--mocha-green); }
+
+.ide-editor {
+  grid-area: editor;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--mocha-base);
+}
+
+/* The buffer sits behind the sprite and the readouts, so it is dimmed to stay a backdrop. */
+.code-layer {
+  position: absolute;
+  inset: 0;
+  padding: var(--sp-4) 0 0 var(--sp-3);
+}
+.code-enter { animation: code-in 260ms linear; }
+.code-leave { animation: code-out 260ms linear forwards; }
+
+.code {
+  margin: 0;
+  opacity: 0.62;
+  color: var(--mocha-text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: 1.65;
+  tab-size: 4;
+  white-space: pre;
+}
+.code-line { display: block; min-height: 1.65em; }
+.code-num {
+  display: inline-block;
+  width: 3ch;
+  margin-right: 2ch;
+  color: var(--mocha-overlay);
+  text-align: right;
+  user-select: none;
+}
+
+.tok-kw { color: var(--mocha-mauve); }
+.tok-str { color: var(--mocha-green); }
+.tok-num { color: var(--mocha-peach); }
+.tok-op { color: var(--mocha-sky); }
+.tok-type { color: var(--mocha-rosewater); }
+.tok-fn { color: var(--mocha-blue); }
+
+.ide-status {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-3) 0 0;
+  background: var(--mocha-crust);
+  letter-spacing: 0.04em;
+}
+.ide-mode {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-3);
+  background: var(--mocha-mauve);
+  color: var(--mocha-crust);
+  font-weight: 700;
+}
+.ide-status-gap { flex: 1; }
+
+@media (max-width: 860px) {
+  .ide-tree { display: none; }
+}

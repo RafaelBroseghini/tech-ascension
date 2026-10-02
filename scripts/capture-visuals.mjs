@@ -44,7 +44,7 @@ await game(() => window.__GAME__.reset())
 await page.reload()
 await page.waitForFunction(() => window.__GAME__)
 await settle()
-await shot("00-fresh-desk")
+await shot("00-fresh-ide-fizzbuzz")
 
 await game(() => {
   const g = window.__GAME__
@@ -109,16 +109,18 @@ const lateEra = async (name, topTier) => {
   await settle(900)
   await shot(name)
 }
-await lateEra("04-bg-lab", 34)
-await lateEra("05-bg-dc", 55)
-await lateEra("06-bg-mars", 66)
+await lateEra("04a-ide-mid-debounce", 20)
+await lateEra("04b-ide-mid-binary-search", 24)
+await lateEra("05-ide-upper-attention", 42)
+await lateEra("06-ide-q3-gemm", 47)
+await lateEra("07-ide-end-habitat", 66)
 await page.getByTestId("owned-strip").evaluate((el) => (el.scrollTop = el.scrollHeight))
 await settle(200)
-await shot("07-owned-strip-scrolled")
+await shot("08-owned-strip-scrolled")
 
 await page.setViewportSize({ width: 390, height: 800 })
 await settle()
-await shot("08-mobile")
+await shot("09-mobile")
 
 await browser.close()
 if (vite?.pid) process.kill(-vite.pid)

@@ -91,6 +91,26 @@
 
   --sprite: 256px;
 
+  /* Catppuccin Mocha: the fixed IDE chrome. Never follows the era accent. */
+  --mocha-rosewater: #f5e0dc;
+  --mocha-mauve: #cba6f7;
+  --mocha-green: #a6e3a1;
+  --mocha-peach: #fab387;
+  --mocha-sky: #89dceb;
+  --mocha-blue: #89b4fa;
+  --mocha-text: #cdd6f4;
+  --mocha-overlay: #6c7086;
+  --mocha-surface: #313244;
+  --mocha-base: #1e1e2e;
+  --mocha-mantle: #181825;
+  --mocha-crust: #11111b;
+
+  --ide-activity: 44px;
+  --ide-tree: 168px;
+  --ide-rail: calc(var(--ide-activity) + var(--ide-tree));
+  --ide-tabs: 34px;
+  --ide-status: 24px;
+
   --accent: #6fe08c;
   --accent-hi: #bff7cb;
   --accent-lo: #2f8f4a;

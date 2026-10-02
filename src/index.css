@@ -5,6 +5,7 @@
 @import "@fontsource/jetbrains-mono/latin-700.css";
 @import "./styles/tokens.css";
 @import "./styles/motion.css";
+@import "./styles/ide.css";
 
 :root {
   font: 16px/1.4 var(--font-display);
@@ -38,8 +39,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .sprite,
 .owned-thumb,
 .offer img,
-.drop,
-.backdrop-layer img {
+.drop {
   image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
@@ -190,40 +190,10 @@ img { -webkit-user-drag: none; user-select: none; }
   align-items: center;
   justify-content: flex-start;
   gap: var(--sp-3);
-  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  padding: calc(var(--ide-tabs) + var(--sp-4)) var(--sp-4) calc(var(--ide-status) + var(--sp-3)) calc(var(--ide-rail) + var(--sp-4));
   overflow: hidden;
-  background-color: var(--accent-deep);
+  background-color: var(--mocha-base);
 }
-
-/* Era-shared pixel backdrop. Sits behind everything; a flat scrim keeps the money and strip readable. */
-.backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.backdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, rgb(14 12 9 / 0.55), rgb(14 12 9 / 0.12) 34%, rgb(14 12 9 / 0.12) 58%, rgb(14 12 9 / 0.62));
-}
-
-.backdrop-layer { position: absolute; inset: 0; }
-.backdrop-enter { animation: bg-in 640ms linear backwards; }
-
-.backdrop-layer img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 60%;
-}
-
-.backdrop-blink { animation: bg-blink 1.1s steps(1, end) infinite; }
 
 .boost-chip-slot {
   position: absolute;
@@ -379,7 +349,7 @@ img { -webkit-user-drag: none; user-select: none; }
   will-change: transform;
 }
 
-/* Pixel art stands free on the backdrop: hard shadow falling down-right (light is top-left). */
+/* Pixel art stands free on the stage: hard shadow falling down-right (light is top-left). */
 .sprite-frame {
   position: relative;
   display: block;
@@ -1098,7 +1068,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .metrics dd { font-size: var(--fs-md); }
 
   .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); }
-  .stage-panel { padding: var(--sp-4) var(--sp-3) var(--sp-4); gap: var(--sp-3); }
+  .stage-panel { --ide-tree: 0px; --ide-rail: var(--ide-activity); padding: calc(var(--ide-tabs) + var(--sp-3)) var(--sp-3) calc(var(--ide-status) + var(--sp-3)) calc(var(--ide-rail) + var(--sp-3)); gap: var(--sp-3); }
   .hitbox { --size: 192px; margin-top: var(--sp-5); }
   .stage-panel h2 { font-size: var(--fs-lg); }
 
