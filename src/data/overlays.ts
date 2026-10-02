@@ -1,5 +1,4 @@
 export type Lang = "python" | "go" | "ts" | "java" | "rust" | "md" | "yaml" | "toml" | "mod"
-
 export const LANG_LABEL: Record<Lang, string> = {
   python: "Python",
   go: "Go",

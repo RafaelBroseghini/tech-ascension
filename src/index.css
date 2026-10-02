@@ -190,7 +190,7 @@ img { -webkit-user-drag: none; user-select: none; }
   align-items: center;
   justify-content: flex-start;
   gap: var(--sp-3);
-  padding: calc(var(--ide-tabs) + var(--sp-4)) var(--sp-4) calc(var(--ide-status) + var(--sp-3)) calc(var(--ide-rail) + var(--sp-4));
+  padding: calc(var(--ide-tabs) + var(--sp-7)) var(--sp-4) calc(var(--ide-status) + var(--sp-3)) calc(var(--ide-rail) + var(--sp-4));
   overflow: hidden;
   background-color: var(--mocha-base);
 }
@@ -480,7 +480,7 @@ img { -webkit-user-drag: none; user-select: none; }
   flex: 0 1 auto;
   min-height: 0;
   width: min(100%, 34rem);
-  max-height: calc(var(--row) * 8);
+  max-height: calc(var(--row) * 5 + var(--stroke) * 2);
   margin: var(--sp-2) 0 0;
   padding: 0;
   list-style: none;
@@ -583,7 +583,7 @@ img { -webkit-user-drag: none; user-select: none; }
   justify-content: space-between;
   gap: var(--sp-3);
   align-items: flex-end;
-  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  padding: var(--sp-5) var(--sp-4) var(--sp-3);
 }
 
 .shop-head h2 {
@@ -881,8 +881,7 @@ img { -webkit-user-drag: none; user-select: none; }
   animation: fight-in 220ms var(--ease-out);
 }
 
-.fight-kicker,
-.fight-win-kicker {
+.fight-kicker {
   margin: 0;
   color: var(--accent);
   font-size: var(--fs-xs);
@@ -891,8 +890,7 @@ img { -webkit-user-drag: none; user-select: none; }
   text-transform: uppercase;
 }
 
-.fight-name,
-.fight-win-name {
+.fight-name {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-lg);
@@ -1024,16 +1022,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .fight-win-sprite { width: 144px; height: 144px; animation: fight-win-pop 520ms var(--ease-pop); filter: saturate(0.7) brightness(0.9); }
 
-.fight-win-reward {
-  margin: 0;
-  color: #f3d37a;
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 800;
-  text-shadow: 3px 3px 0 var(--ink);
-  animation: fight-win-pop 520ms var(--ease-pop) 120ms backwards;
-}
-
 @keyframes fight-in { from { opacity: 0; } }
 @keyframes fight-bob { 50% { transform: translateY(-5px); } }
 @keyframes fight-hit {
@@ -1043,7 +1031,7 @@ img { -webkit-user-drag: none; user-select: none; }
 @keyframes fight-win-pop { from { transform: scale(0.6); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fight, .fight-win, .fight-win-sprite, .fight-win-reward, .fight-sprite { animation: none; }
+  .fight, .fight-win, .fight-win-sprite, .fight-sprite { animation: none; }
   .fight-hit { animation-duration: 1ms; }
 }
 
@@ -1081,6 +1069,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .metrics .m-xp-rate dd { color: var(--mocha-sky); }
 
 .hero-money-value.is-xp { color: var(--mocha-sky); }
+.hero-money-value.is-long { font-size: clamp(1.7rem, 0.8rem + 2.6vw, 2.9rem); }
 
 .hero-money-sub {
   max-width: 28ch;
@@ -1301,4 +1290,55 @@ img { -webkit-user-drag: none; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .event-backdrop, .event-modal { animation: none; }
+}
+
+/* ---------- next unlock teaser (always under the tabs) ---------- */
+
+.next-unlock {
+  flex: none;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px var(--sp-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  border-bottom: var(--stroke) solid var(--surface-2);
+  border-left: 4px solid var(--accent);
+  background: var(--surface-1);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.next-unlock:hover:not(:disabled) { background: var(--surface-2); }
+.next-unlock:disabled { cursor: default; border-left-color: var(--line-strong); }
+
+.next-kicker {
+  grid-row: span 2;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.next-name {
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.next-needs {
+  min-width: 0;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }

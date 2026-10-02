@@ -1,5 +1,5 @@
 import type { ActiveBoost } from "../data/boosts.ts"
-import type { Era } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 import { clickPower, idlePerSec, ownedCount, xpPerClick, xpPerSec } from "./economy.ts"
 import { eventById } from "./events.ts"
 import { remainingMs } from "./fight.ts"
@@ -8,7 +8,9 @@ import { itemsOf } from "../data/idePacks.ts"
 import { ideView } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
-import { capitalUnlocked, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
+import { nextUnlock } from "./nextUnlock.ts"
+import type { NextUnlock } from "./nextUnlock.ts"
+import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import { persistNow, useGame, writeStateAt } from "./store.ts"
@@ -64,16 +66,18 @@ export type GameSnapshot = {
   /** The most recent event, kept after it is dismissed. */
   lastEvent: EventSnapshot | null
   ide: IdeSnapshot
-  /** Phase D capital tiers, keyed by tier id ("26"). */
-  owned: Record<string, number>
+  /** Phase D capital tiers, keyed by tier id ("26"). */  owned: Record<string, number>
   skills: Record<string, number>
   equipment: Record<string, number>
   jobs: number[]
   /** Completed gig ids. */
   gigs: number[]
-  unlocks: { gigBoard: boolean; jobBoard: boolean; capital: boolean }
+  /** `gear` opens with the Job Board. */
+  unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }
+  /** The target in the shop banner under the tabs, or null when nothing is left to unlock. */
+  nextUnlock: NextUnlock | null
   era: Era
-  /** Art id of the stage sprite: capital tier id, or the art of the furthest skill/gig/job. 1 before the first purchase. */
+  /** Art id of the stage sprite: art id of the highest owned capital row, or the art of the furthest skill, gig or job. 1 before the first purchase. */
   spriteTierId: number
   activeBoost: ActiveBoost | null
   savedAt: number
@@ -94,7 +98,7 @@ export type OfflineCatchup = {
 export type GameHarness = {
   getState: () => GameSnapshot
   click: () => { money: number; xp: number }
-  /** Buy one Phase D capital tier. False before capital unlocks or when it costs too much. */
+  /** Buy one Phase D capital row. False before capital unlocks or when it costs too much. */
   buy: (tierId: number) => boolean
   buySkill: (skillId: number) => boolean
   buyJob: (jobId: number) => boolean
@@ -181,8 +185,10 @@ export function installGameHarness(): GameHarness {
         unlocks: {
           gigBoard: gigBoardUnlocked(state),
           jobBoard: jobBoardUnlocked(state),
+          gear: equipmentOpen(state),
           capital: capitalUnlocked(state),
         },
+        nextUnlock: nextUnlock(state),
         era: eraOf(state),
         spriteTierId: stage?.artId ?? 1,
         activeBoost: liveBoost(state.activeBoost, now),

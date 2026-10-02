@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { IDE_PACKS, itemsOf, packForTier, packsInEra, previewPackForEra } from "../data/idePacks.ts"
 import type { DeckPack, FilePack, InboxPack } from "../data/idePacks.ts"
-import { TIERS } from "../data/tiers.ts"
+import { CAPITAL } from "../data/capital.ts"
 import { ideView, PREVIEW_HOLD_MS } from "./ide.ts"
 import type { IdeSelection } from "./ide.ts"
 import { useGame } from "./store.ts"
@@ -81,9 +81,9 @@ describe("IDE content v2", () => {
   it("keys every tier to a pack inside the tier's era, never going backwards", () => {
     let last = 0
     const order = IDE_PACKS.map((pack) => pack.id)
-    for (const tier of TIERS) {
-      const pack = packForTier(tier.id)
-      expect(pack.era).toBe(tier.era)
+    for (const row of CAPITAL) {
+      const pack = packForTier(row.artId)
+      expect(pack.era).toBe(row.era)
       expect(order.indexOf(pack.id)).toBeGreaterThanOrEqual(last)
       last = order.indexOf(pack.id)
     }
@@ -103,7 +103,7 @@ describe("IDE content v2", () => {
 })
 
 describe("IDE era preview", () => {
-  const base = { skills: {}, owned: { "20": 1 }, jobs: [], gigs: [] }
+  const base = { skills: {}, owned: {}, jobs: [2], gigs: [] }
   const sel = (packId: string, index: number): IdeSelection => ({ packId, index })
 
   it("rests on the owned pack and previews another era's first pack", () => {
@@ -136,16 +136,16 @@ describe("IDE navigation and snap-back in the store", () => {
   const game = () => useGame.getState()
 
   it("selects files and keeps the choice per pack", () => {
-    useGame.setState({ owned: { "20": 1 } })
+    useGame.setState({ jobs: [2], owned: {} })
     game().selectIde("debounce", 1)
     expect(ideView(game()).index).toBe(1)
-    useGame.setState({ owned: { "24": 1 } })
+    useGame.setState({ owned: { "1": 1 } })
     expect(ideView(game()).pack.id).toBe("search")
     expect(ideView(game()).index).toBe(0)
   })
 
   it("shows the browsed era until the hold lapses, then snaps back to the owned pack", () => {
-    useGame.setState({ owned: { "20": 1 } })
+    useGame.setState({ jobs: [2], owned: {} })
     game().setPreviewEra("end")
     expect(ideView(game()).previewing).toBe(true)
     expect(ideView(game()).pack.kind).toBe("deck")
@@ -158,7 +158,7 @@ describe("IDE navigation and snap-back in the store", () => {
   })
 
   it("interacting with the IDE or the shop extends the hold", () => {
-    useGame.setState({ owned: { "20": 1 } })
+    useGame.setState({ jobs: [2], owned: {} })
     game().setPreviewEra("q3")
     const first = game().previewUntil
     useGame.setState({ previewUntil: first - 10_000 })
@@ -174,11 +174,11 @@ describe("IDE navigation and snap-back in the store", () => {
   })
 
   it("buying into a new era ends the preview, buying inside the owned era keeps it", () => {
-    useGame.setState({ money: 1e15, peakMoney: 1e15, gigs: [1], owned: { "26": 1 } })
+    useGame.setState({ money: 1e15, peakMoney: 1e15, gigs: [1], owned: { "1": 1 } })
     game().setPreviewEra("upper")
-    game().buy(27, "one")
+    game().buy(2, "one")
     expect(game().previewEra).toBe("upper")
-    game().buy(34, "one")
+    game().buy(6, "one")
     expect(game().previewEra).toBeNull()
   })
 

@@ -27,13 +27,9 @@ function WinBanner() {
   }, [win, dismiss])
 
   if (!win) return null
-  const enemy = enemyById(win.enemyId)
   return (
     <div className="fight-win" role="status" data-testid="fight-win" key={win.id}>
       <img className="fight-win-sprite" src={enemySprite(win.enemyId)} alt="" width={ENEMY_SIZE} height={ENEMY_SIZE} draggable={false} />
-      <p className="fight-win-kicker">Defeated</p>
-      <p className="fight-win-name">{enemy?.name}</p>
-      <p className="fight-win-reward">+${formatNumber(win.reward)}</p>
     </div>
   )
 }

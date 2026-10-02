@@ -1,5 +1,5 @@
 import type { Lang } from "./overlays.ts"
-import type { Era } from "./tiers.ts"
+import type { Era } from "./capital.ts"
 
 /**
  * IDE content v2. What the editor pane shows depends on the era:

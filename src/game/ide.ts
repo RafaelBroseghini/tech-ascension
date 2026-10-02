@@ -1,6 +1,6 @@
 import { itemsOf, packForTier, previewPackForEra } from "../data/idePacks.ts"
 import type { IdePack } from "../data/idePacks.ts"
-import type { Era } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 import type { Progress } from "./economy.ts"
 import { stageOf } from "./phase.ts"
 

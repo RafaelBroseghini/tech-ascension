@@ -6,12 +6,11 @@ import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
-import { COST_GROWTH, TIERS } from "../data/tiers.ts"
+import { COST_GROWTH, CAPITAL } from "../data/capital.ts"
 import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } from "./boosts.ts"
 import {
   canAfford,
   clickPower,
-  highestRevealedId,
   idleParts,
   idlePerSec,
   isRevealed,
@@ -41,18 +40,18 @@ describe("economy", () => {
   })
 
   it("adds click bonuses and leaves idle unboosted", () => {
-    const junior = TIERS.find((tier) => tier.name === "Junior ML engineer")
-    if (!junior) throw new Error("missing Junior ML engineer")
-    expect(junior.clickBonus).toBe(3)
-    const owned = { [String(junior.id)]: 2 }
+    const batch = CAPITAL.find((row) => row.name === "WhyCombinator batch investment")
+    if (!batch) throw new Error("missing WhyCombinator batch investment")
+    expect(batch.clickBonus).toBe(10)
+    const owned = { [String(batch.id)]: 2 }
     const p = { ...NONE, owned, equipment: { "1": 1 } }
-    expect(clickPower(p)).toBe(1 + 5 + 6)
+    expect(clickPower(p)).toBe(1 + 2 + 20)
     const live = production(p, { mult: 10, endsAt: 1_000 }, 500)
-    expect(live.click).toBe(120)
-    expect(live.idle).toBeCloseTo(2 * junior.cps)
+    expect(live.click).toBe(230)
+    expect(live.idle).toBeCloseTo(2 * batch.cps)
     expect(live.mult).toBe(10)
     const expired = production(p, { mult: 10, endsAt: 1_000 }, 1_000)
-    expect(expired.click).toBe(12)
+    expect(expired.click).toBe(23)
     expect(expired.idle).toBeCloseTo(live.idle)
     expect(expired.mult).toBe(1)
   })
@@ -61,28 +60,28 @@ describe("economy", () => {
     expect(xpPerClick({})).toBe(1)
     expect(xpPerSec({})).toBe(0)
     const skills = { "1": 2, "2": 5, "11": 1 }
-    expect(xpPerClick(skills)).toBe(1 + 2 * 1 + 5)
-    expect(xpPerSec(skills)).toBeCloseTo(5 * 0.2 + 1 * 3.0)
+    expect(xpPerClick(skills)).toBe(1 + 2 * 1 + 1 * 3)
+    expect(xpPerSec(skills)).toBeCloseTo(5 * 0.1 + 1 * 2.0)
   })
 
   it("sums idle $/s from retainers, salaries, equipment and capital", () => {
-    const p = { ...NONE, gigs: [1, 5, 8], jobs: [2, 7], equipment: { "2": 2, "4": 1 }, owned: { "19": 1 } }
+    const p = { ...NONE, gigs: [1, 8, 17], jobs: [2, 14], equipment: { "4": 2, "7": 1 }, owned: { "3": 1 } }
     const parts = idleParts(p)
     expect(parts.retainers).toBeCloseTo(0 + 2 + 3)
     expect(parts.jobs).toBe(25 + 200)
-    expect(parts.equipment).toBe(6)
+    expect(parts.equipment).toBe(2 * 2 + 8)
     expect(parts.capital).toBe(800)
-    expect(idlePerSec(p)).toBeCloseTo(5 + 225 + 6 + 800)
+    expect(idlePerSec(p)).toBeCloseTo(5 + 225 + 12 + 800)
   })
 
   it("lists every owned source, biggest $/s first, summing to idle", () => {
     expect(ownedSources(NONE)).toEqual([])
-    const p = { ...NONE, skills: { "1": 3, "5": 1 }, equipment: { "4": 2 }, gigs: [1, 5], jobs: [1, 2], owned: { "19": 1 } }
+    const p = { ...NONE, skills: { "1": 3, "5": 1 }, equipment: { "2": 2 }, gigs: [1, 8], jobs: [1, 2], owned: { "3": 1 } }
     const rows = ownedSources(p)
-    expect(rows.map((row) => row.key)).toEqual(["capital:19", "job:2", "job:1", "gig:5", "equipment:4", "skill:5", "skill:1"])
+    expect(rows.map((row) => row.key)).toEqual(["capital:3", "job:2", "job:1", "gig:8", "equipment:2", "skill:5", "skill:1"])
     expect(rows.reduce((sum, row) => sum + row.idle, 0)).toBeCloseTo(idlePerSec(p))
     expect(rows.find((row) => row.key === "skill:1")?.click).toBe(3)
-    expect(rows.find((row) => row.key === "equipment:4")?.click).toBe(6)
+    expect(rows.find((row) => row.key === "equipment:2")?.click).toBe(6)
   })
 
   it("quotes a max buy that stops when the next copy is too expensive", () => {
@@ -157,28 +156,28 @@ describe("save", () => {
     save.skills = { "2": 10 }
     const hydrated = hydrate(JSON.stringify(save), 3_600_000)
     expect(hydrated.save.money).toBe(0)
-    expect(hydrated.save.xp).toBeCloseTo(2 * 3600)
-    expect(hydrated.save.xpTotal).toBeCloseTo(2 * 3600)
-    expect(hydrated.toast).toBe(`welcome back, studied +${formatNumber(2 * 3600)} XP`)
+    expect(hydrated.save.xp).toBeCloseTo(3600)
+    expect(hydrated.save.xpTotal).toBeCloseTo(3600)
+    expect(hydrated.toast).toBe(`welcome back, studied +${formatNumber(3600)} XP`)
   })
 
   it("drops an expired click boost and keeps a live one", () => {
     const now = 10_000
     const expired = hydrate(
-      JSON.stringify({ version: 3, money: 3, xp: 1, owned: { "26": 4 }, savedAt: now, activeBoost: { mult: 5, endsAt: now } }),
+      JSON.stringify({ version: SAVE_VERSION, money: 3, xp: 1, owned: { "3": 4 }, savedAt: now, activeBoost: { mult: 5, endsAt: now } }),
       now,
     )
     expect(expired.save.activeBoost).toBeUndefined()
-    expect(expired.save.owned["26"]).toBe(4)
+    expect(expired.save.owned["3"]).toBe(4)
 
     const live = hydrate(
-      JSON.stringify({ version: 3, money: 0, xp: 0, owned: {}, savedAt: now, activeBoost: { mult: 2, endsAt: now + 5_000 } }),
+      JSON.stringify({ version: SAVE_VERSION, money: 0, xp: 0, owned: {}, savedAt: now, activeBoost: { mult: 2, endsAt: now + 5_000 } }),
       now,
     )
     expect(live.save.activeBoost).toEqual({ mult: 2, endsAt: now + 5_000 })
   })
 
-  it("round-trips a current save and normalises junk in the fields", () => {
+  it("round-trips a save and normalises junk in the new fields", () => {
     const save = freshSave(5)
     save.xp = 40
     save.xpTotal = 900
@@ -189,7 +188,7 @@ describe("save", () => {
     const again = parseSave(JSON.parse(JSON.stringify(save)))
     expect(again).toMatchObject({ version: SAVE_VERSION, xp: 40, xpTotal: 900, skills: { "3": 2 }, equipment: { "1": 1 }, jobs: [1, 2], gigs: [1, 3] })
 
-    const messy = parseSave({ version: 3, xp: 50, xpTotal: 10, jobs: [1, 1, 99, "x", -2], gigs: [2, 2, 0.5, 404], skills: { "1": -3, a: 2 }, owned: { "99": 4, nope: 8 } })
+    const messy = parseSave({ version: SAVE_VERSION, xp: 50, xpTotal: 10, jobs: [1, 1, 99, "x", -2], gigs: [2, 2, 0.5, 404], skills: { "1": -3, a: 2 }, owned: { "99": 4, nope: 8 } })
     expect(messy?.xpTotal).toBe(50)
     expect(messy?.jobs).toEqual([1])
     expect(messy?.gigs).toEqual([2])
@@ -197,34 +196,14 @@ describe("save", () => {
     expect(messy?.owned).toEqual({ "99": 4 })
   })
 
-  describe("schema mismatch wipes the save", () => {
-    const v2 = JSON.stringify({ version: 2, money: 1234, xp: 99_999, savedAt: 1, peakMoney: 5000, owned: { "1": 2, "26": 3 } })
-
-    it("starts a fresh career for any other version, with no refund, carry-over or toast", () => {
-      const texts = [
-        v2,
-        JSON.stringify({ version: 1, money: 5, owned: { "1": 2 }, savedAt: 1 }),
-        JSON.stringify({ money: 9, owned: [2, 0, 3], savedAt: 50 }),
-        JSON.stringify({ version: SAVE_VERSION + 1, money: 9, xp: 9, savedAt: 1 }),
-      ]
-      for (const text of texts) {
-        const hydrated = hydrate(text, 7_200_000)
-        expect(hydrated.reset).toBe(true)
-        expect(hydrated.toast).toBeNull()
-        expect(hydrated.save).toEqual(freshSave(7_200_000))
-      }
-    })
-
-    it("does not parse an old schema at all", () => {
-      expect(parseSave(JSON.parse(v2))).toBeNull()
-      expect(parseSave(null)).toBeNull()
-      expect(parseSave([])).toBeNull()
-    })
-
-    it("keeps a current save and reports no reset", () => {
-      const hydrated = hydrate(JSON.stringify(freshSave(0)), 0)
-      expect(hydrated.reset).toBe(false)
-    })
+  it("wipes a save from any other version instead of migrating it", () => {
+    const old = { version: 2, money: 1234, xp: 99_999, savedAt: 1, peakMoney: 5000, owned: { "1": 2, "26": 3 } }
+    for (const payload of [old, { ...old, version: SAVE_VERSION - 1 }, { ...old, version: SAVE_VERSION + 1 }, { money: 9, owned: [2, 0, 3], savedAt: 50 }, [], "text", 7]) {
+      expect(parseSave(payload)).toBeNull()
+      const hydrated = hydrate(JSON.stringify(payload), 10_000)
+      expect(hydrated.save).toEqual(freshSave(10_000))
+      expect(hydrated.toast).toMatch(/unreadable/)
+    }
   })
 
   it("starts over when the payload is unreadable", () => {
@@ -284,18 +263,38 @@ describe("click boosts", () => {
   })
 })
 
-describe("tier table", () => {
-  it("is the capital ladder: contiguous ids from 19 and strictly rising prices", () => {
-    TIERS.forEach((tier, index) => {
-      expect(tier.id).toBe(index + 19)
-      if (index > 0) expect(tier.baseCost).toBeGreaterThan(TIERS[index - 1]?.baseCost ?? 0)
-    })
+describe("catalog tables", () => {
+  const contiguous = (rows: readonly { id: number }[]) => rows.every((row, index) => row.id === index + 1)
+
+  it("ships Catalogs v3: 50 skills, 50 gigs, 31 jobs, 30 gear, 25 capital, ids 1..n", () => {
+    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([50, 50, 31, 30, 25])
+    for (const rows of [SKILL_TIERS, GIGS, JOB_TIERS, EQUIPMENT, CAPITAL]) expect(contiguous(rows)).toBe(true)
+  })
+
+  it("keeps every row paid for: positive costs, and an income or click bonus", () => {
+    for (const row of [...EQUIPMENT, ...CAPITAL]) {
+      expect(row.baseCost).toBeGreaterThan(0)
+      expect(row.cps + row.clickBonus).toBeGreaterThan(0)
+    }
+    for (const row of SKILL_TIERS) expect(row.xpPerClick + row.xpPerSec).toBeGreaterThan(0)
+    for (const job of JOB_TIERS) expect(job.cps).toBeGreaterThan(0)
+  })
+
+  it("draws every capital row with a real sprite, with eras that never go backwards", () => {
+    const order = ["mid", "upper", "q3", "end"]
+    let last = 0
+    for (const row of CAPITAL) {
+      expect(row.artId).toBeGreaterThanOrEqual(19)
+      expect(row.artId).toBeLessThanOrEqual(66)
+      expect(order.indexOf(row.era)).toBeGreaterThanOrEqual(last)
+      last = order.indexOf(row.era)
+    }
   })
 
   it("uses no real brand names", () => {
     const banned =
-      /\b(stack ?overflow|freecodecamp|youtube|github|kaggle|pytorch|tensorflow|y combinator|yc|raspberry pi|mac mini|openclaw|docker|kubernetes|hacker news|blackwell|leetcode|upwork|discord|linkedin|wordpress)\b/i
-    const names = [...TIERS, ...SKILL_TIERS, ...GIGS, ...JOB_TIERS, ...EQUIPMENT].map((row) => row.name)
+      /\b(stack ?overflow|freecodecamp|youtube|github|kaggle|pytorch|tensorflow|y combinator|yc|raspberry pi|mac mini|openclaw|docker|kubernetes|hacker news|blackwell|leetcode|upwork|discord|linkedin|wordpress|figma|shopify|stripe|auth0|clerk|cs50|mdn|redis|graphql|trpc|postgres|chrome)\b/i
+    const names = [...CAPITAL, ...SKILL_TIERS, ...GIGS, ...JOB_TIERS, ...EQUIPMENT].map((row) => row.name)
     for (const name of names) expect(name).not.toMatch(banned)
   })
 })
@@ -383,22 +382,21 @@ describe("click waterfall", () => {
 
   it("only draws from owned items of every kind", () => {
     expect(ownedArtIds(NONE)).toEqual([])
-    const ids = ownedArtIds({ skills: { "1": 2, "2": 0 }, equipment: { "1": 1 }, owned: { "26": 1 }, jobs: [1], gigs: [1] })
-    expect(ids.sort((a, b) => a - b)).toEqual([...new Set([SKILL_ART[0], EQUIP_ART[0], 26, JOB_ART[0], GIG_ART[0]])].sort((a, b) => (a ?? 0) - (b ?? 0)))
+    const capitalArt = CAPITAL.find((row) => row.id === 1)?.artId
+    const ids = ownedArtIds({ skills: { "1": 2, "2": 0 }, equipment: { "1": 1 }, owned: { "1": 1 }, jobs: [1], gigs: [1] })
+    expect(ids.sort((a, b) => a - b)).toEqual([...new Set([SKILL_ART[0], EQUIP_ART[0], capitalArt, JOB_ART[0], GIG_ART[0]])].sort((a, b) => (a ?? 0) - (b ?? 0)))
   })
 })
 
 describe("hidden upgrades", () => {
-  it("reveals a capital tier only once its price has been reached, plus everything before it", () => {
-    const [first, second, third] = TIERS
-    if (!first || !second || !third) throw new Error("need three tiers")
+  it("reveals each capital row once its own price has been held", () => {
+    const [first, second, third] = CAPITAL
+    if (!first || !second || !third) throw new Error("need three rows")
     expect(isRevealed(first, {}, 0)).toBe(false)
     expect(isRevealed(first, {}, first.baseCost - 1)).toBe(false)
     expect(isRevealed(first, {}, first.baseCost)).toBe(true)
     expect(isRevealed(second, {}, first.baseCost)).toBe(false)
-    expect(highestRevealedId({}, third.baseCost)).toBe(third.id)
-    expect(isRevealed(first, { [String(third.id)]: 1 }, 0)).toBe(true)
-    expect(isRevealed(second, { [String(third.id)]: 1 }, 0)).toBe(true)
+    expect(isRevealed(first, { [String(third.id)]: 1 }, 0)).toBe(false)
     expect(isRevealed(third, { [String(third.id)]: 1 }, 0)).toBe(true)
   })
 
@@ -406,7 +404,8 @@ describe("hidden upgrades", () => {
     const [first, second, third] = SKILL_TIERS
     if (!first || !second || !third) throw new Error("need three skills")
     expect(isSkillRevealed(first, {}, 0)).toBe(true)
-    expect(isSkillRevealed(second, {}, 0)).toBe(true)
+    expect(isSkillRevealed(second, {}, 0)).toBe(false)
+    expect(isSkillRevealed(second, {}, second.unlockAtXp)).toBe(true)
     expect(isSkillRevealed(third, {}, third.unlockAtXp - 1)).toBe(false)
     expect(isSkillRevealed(third, {}, third.unlockAtXp)).toBe(true)
     expect(isSkillRevealed(third, { [String(third.id)]: 1 }, 0)).toBe(true)
@@ -417,7 +416,7 @@ describe("hidden upgrades", () => {
     expect(fresh.peakMoney).toBe(0)
     const loaded = hydrate(JSON.stringify({ ...fresh, money: 20, peakMoney: 500, savedAt: 1_000 }), 1_000)
     expect(loaded.save.peakMoney).toBe(500)
-    const noPeak = hydrate(JSON.stringify({ version: SAVE_VERSION, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
-    expect(noPeak.save.peakMoney).toBe(90)
+    const unset = hydrate(JSON.stringify({ version: SAVE_VERSION, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
+    expect(unset.save.peakMoney).toBe(90)
   })
 })

@@ -34,93 +34,107 @@ await page.waitForFunction(() => window.__GAME__)
 const shot = (name) => page.screenshot({ path: `${outDir}/${prefix}-${name}.png` })
 const game = (fn, arg) => page.evaluate(fn, arg)
 const settle = (ms = 700) => page.waitForTimeout(ms)
-const tab = async (label) => {
-  await settle(500)
-  await page.getByRole("tab", { name: label }).click()
-  await settle(900)
-}
 
 await game(() => window.__GAME__.reset())
 await page.reload()
 await page.waitForFunction(() => window.__GAME__)
 await settle()
-await shot("00-fresh-ide-fizzbuzz")
+await shot("00-fresh-phase-a")
 
+// Phase A: clicks are XP, the shop is skills, money does not exist yet.
 await game(() => {
   const g = window.__GAME__
-  g.setMoney(1000)
-  g.buy(1)
-  g.buy(2)
-  g.buy(3)
-  g.buy(3)
-  g.setMoney(120)
+  g.setXp(900)
+  for (let i = 0; i < 4; i++) g.click()
+  g.buySkill(1)
+  g.buySkill(2)
+  g.buySkill(3)
+  g.buySkill(4)
+  g.setXp(1500)
 })
 await settle()
-await shot("01-early-owned-strip")
+await shot("01-phase-a-xp")
 
-// Real pointer-downs from inside the page, every 22ms, so the waterfall is mid-fall when the shot lands.
-const spam = (ms) =>
-  page.evaluate((span) => {
-    const hit = document.querySelector('[data-testid="stage"]')
-    const box = hit.getBoundingClientRect()
-    let i = 0
-    const id = setInterval(() => {
-      i++
-      hit.dispatchEvent(
-        new PointerEvent("pointerdown", {
-          bubbles: true,
-          pointerType: "mouse",
-          button: 0,
-          clientX: box.left + 30 + ((i * 37) % 130),
-          clientY: box.top + 40 + ((i * 53) % 100),
-        }),
-      )
-    }, 22)
-    setTimeout(() => clearInterval(id), span)
-  }, ms)
-const liveDrops = () => page.evaluate(() => document.querySelectorAll(".drop").length)
-
-await spam(600)
-await page.waitForTimeout(420)
-console.log("waterfall thumbs alive mid-spam:", await liveDrops())
-await shot("02-spam-click-waterfall")
+await page.getByRole("tab", { name: "Gigs" }).click()
 await settle(500)
+await shot("02-gig-board-locked")
+
+// Phase B: Portfolio + React open the board; a real click on "Clear gig" pops the lump.
+await game(() => {
+  const g = window.__GAME__
+  g.setXp(30_000)
+  g.buySkill(15)
+  g.buySkill(16)
+})
+await settle(1800)
+await page.getByRole("tab", { name: "Gigs" }).click()
+await settle(500)
+await shot("03-phase-b-gig-board")
+await page.getByRole("button", { name: "Clear gig" }).first().click()
+await page.waitForTimeout(340)
+await shot("04-gig-clear-pop")
+await settle(1800)
+
+// A medium squash on a paying click: grab the hero total mid-squash.
+await page.evaluate(() => {
+  const hit = document.querySelector('[data-testid="stage"]')
+  const box = hit.getBoundingClientRect()
+  hit.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0, clientX: box.left + 90, clientY: box.top + 90 }))
+})
+await page.waitForTimeout(55)
+await shot("05-click-medium-squash")
+await settle(900)
+
+// Phase C: five gigs and 35K XP open the Job Board.
+await game(() => {
+  const g = window.__GAME__
+  g.setXp(60_000)
+  for (const id of [2, 3, 4, 5]) g.forceGig(id)
+  g.buyJob(1)
+  g.setMoney(30_000)
+  g.buyJob(2)
+  g.setMoney(60_000)
+  g.buyEquipment(1)
+  g.setMoney(40_000)
+})
+await settle(1800)
+await page.getByRole("tab", { name: "Jobs" }).click()
+await settle(700)
+await shot("06-phase-c-jobs")
+
+// Phase D: $500K held opens capital.
+await game(() => {
+  const g = window.__GAME__
+  g.setMoney(2_500_000)
+  g.buy(1)
+  g.buy(3)
+})
+await settle(1800)
+await page.getByRole("tab", { name: "Capital" }).click()
+await settle(700)
+await shot("07-phase-d-capital")
 
 await game(() => {
   const g = window.__GAME__
-  g.setMoney(7e6)
-  g.buy(15)
-  g.forceBoost(5, 60_000)
+  g.flee()
+  g.forceEnemy(11)
+  g.setMoney(1_000)
 })
-await tab("Mid")
-await spam(600)
-await page.waitForTimeout(420)
-console.log("waterfall thumbs alive mid-boost:", await liveDrops())
-await shot("03-mid-boost-waterfall")
-
-const lateEra = async (name, topTier) => {
-  await game((top) => {
-    const g = window.__GAME__
-    g.reset()
-    g.setMoney(1e28)
-    for (let id = 1; id <= top; id++) g.buy(id)
-    for (let id = 1; id <= top; id += 3) g.buy(id)
-  }, topTier)
-  await settle(900)
-  await shot(name)
-}
-await lateEra("04a-ide-mid-debounce", 20)
-await lateEra("04b-ide-mid-binary-search", 24)
-await lateEra("05-ide-upper-attention-pack", 42)
-await lateEra("06-ide-q3-email-inbox", 47)
-await lateEra("07-ide-end-slide-deck", 66)
-await page.getByTestId("owned-strip").evaluate((el) => (el.scrollTop = el.scrollHeight))
-await settle(200)
-await shot("08-owned-strip-scrolled")
+await settle()
+await shot("08-fight")
+await game(() => {
+  const g = window.__GAME__
+  g.flee()
+  g.forceEnemy(2)
+  for (let i = 0; i < 400 && g.getState().fight; i++) g.click()
+})
+await page.waitForTimeout(380)
+await shot("09-fight-win-pop")
+await settle(2200)
 
 await page.setViewportSize({ width: 390, height: 800 })
 await settle()
-await shot("09-mobile")
+await shot("10-mobile")
 
 await browser.close()
 if (vite?.pid) process.kill(-vite.pid)

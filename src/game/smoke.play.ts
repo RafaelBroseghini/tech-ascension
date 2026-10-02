@@ -1,7 +1,7 @@
 import { expect, test } from "vitest"
 import { ENEMIES, FIGHT_DURATION_MS } from "../data/enemies.ts"
 import { CAPITAL_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
-import { TIERS } from "../data/tiers.ts"
+import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { installGameHarness } from "./harness.ts"
 import { hydrate } from "./save.ts"
@@ -9,7 +9,7 @@ import { hydrate } from "./save.ts"
 const game = installGameHarness()
 
 function tierByName(name: string) {
-  const row = TIERS.find((item) => item.name === name)
+  const row = CAPITAL.find((item) => item.name === name)
   if (!row) throw new Error(`missing tier ${name}`)
   return row
 }
@@ -47,11 +47,11 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
 
   game.setXp(1_000)
   expect(game.buySkill(2)).toBe(true)
-  expect(game.getState().xpPerSec).toBeCloseTo(0.2)
+  expect(game.getState().xpPerSec).toBeCloseTo(0.1)
   const idleBefore = game.getState()
   game.tick(10_000)
   const idleAfter = game.getState()
-  expect(idleAfter.xp - idleBefore.xp).toBeCloseTo(2)
+  expect(idleAfter.xp - idleBefore.xp).toBeCloseTo(1)
   expect(idleAfter.money).toBe(0)
   expect(idleAfter.cps).toBe(0)
 })
@@ -61,13 +61,13 @@ test("A → B: Portfolio + React and 12K XP open the Gig Board, the first gig st
   game.setXp(30_000)
   expect(game.getState().unlocks.gigBoard).toBe(false)
   expect(game.getState().phase).toBe("A")
-  expect(game.buySkill(11)).toBe(true)
+  expect(game.buySkill(15)).toBe(true)
   expect(game.getState().phase).toBe("A")
-  expect(game.buySkill(12)).toBe(true)
+  expect(game.buySkill(16)).toBe(true)
 
   const open = game.getState()
   expect(open.phase).toBe("B")
-  expect(open.unlocks).toEqual({ gigBoard: true, jobBoard: false, capital: false })
+  expect(open.unlocks).toEqual({ gigBoard: true, jobBoard: false, gear: true, capital: false })
   expect(open.lastPop).toMatchObject({ kind: "unlock", size: "large" })
   expect(open.money).toBe(0)
   expect(game.click().money).toBe(0)
@@ -93,12 +93,12 @@ test("A → B: Portfolio + React and 12K XP open the Gig Board, the first gig st
 test("B: a retainer gig is the first $/s", () => {
   game.reset()
   game.setXp(30_000)
-  game.buySkill(11)
-  game.buySkill(12)
+  game.buySkill(15)
+  game.buySkill(16)
   for (const id of [1, 2, 3]) expect(game.completeGig(id)).toBe(true)
   expect(game.getState().cps).toBe(0)
-  const retainer = GIGS[4]
-  if (!retainer) throw new Error("missing gig 5")
+  const retainer = GIGS.find((gig) => gig.retainerCps > 0)
+  if (!retainer) throw new Error("missing retainer gig")
   expect(game.completeGig(retainer.id)).toBe(true)
   expect(game.getState().cps).toBe(retainer.retainerCps)
   const before = game.getState()
@@ -120,7 +120,7 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
 
   const intern = JOB_TIERS[0]
   const junior = JOB_TIERS[1]
-  const senior = JOB_TIERS[6]
+  const senior = JOB_TIERS.find((job) => job.id === 14)
   if (!intern || !junior || !senior) throw new Error("missing jobs")
   expect(game.buyJob(intern.id)).toBe(true)
   expect(game.getState().cps).toBeCloseTo(board.cps + intern.cps)
@@ -142,29 +142,52 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   expect(d.lastPop).toMatchObject({ kind: "unlock", size: "large" })
 })
 
+test("Gear opens at 8K XP, and the next-unlock target follows the gates", () => {
+  game.reset()
+  expect(game.getState().nextUnlock).toMatchObject({ key: "board:gear", tab: "G", needs: ["8,000 more XP"] })
+  expect(game.getState().unlocks.gear).toBe(false)
+  game.setMoney(1e6)
+  expect(game.buyEquipment(1)).toBe(false)
+
+  game.setXp(8_000)
+  expect(game.getState().unlocks.gear).toBe(true)
+  expect(game.buyEquipment(1)).toBe(true)
+  expect(game.getState().equipment).toEqual({ "1": 1 })
+  expect(game.getState().clickPower).toBe(1 + 2)
+
+  game.reset()
+  game.setXp(35_000)
+  expect(game.buySkill(15)).toBe(true)
+  expect(game.buySkill(16)).toBe(true)
+  for (const id of [1, 2, 3, 4]) expect(game.forceGig(id)).toBe(true)
+  expect(game.getState().nextUnlock).toMatchObject({ key: "board:job", tab: "C", needs: ["1 more gig"] })
+  expect(game.forceGig(5)).toBe(true)
+  expect(game.getState().nextUnlock).toMatchObject({ key: "board:capital", tab: "D", either: true })
+})
+
 test("D: capital waits for $500K held (or a senior job)", () => {
   game.reset()
   game.setMoney(CAPITAL_UNLOCK.minMoney - 1)
   expect(game.getState().phase).toBe("A")
-  expect(game.buy(19)).toBe(false)
+  expect(game.buy(1)).toBe(false)
   game.setMoney(CAPITAL_UNLOCK.minMoney)
   expect(game.getState().phase).toBe("D")
-  expect(game.buy(19)).toBe(true)
-  expect(game.getState().owned).toEqual({ "19": 1 })
+  expect(game.buy(1)).toBe(true)
+  expect(game.getState().owned).toEqual({ "1": 1 })
   expect(game.getState().era).toBe("mid")
-  expect(game.getState().spriteTierId).toBe(19)
+  expect(game.getState().spriteTierId).toBe(25)
 })
 
 test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   game.reset()
-  const row = tierByName("Fine-tune your first LLM")
+  const row = tierByName("WhyCombinator batch investment")
   game.setMoney(row.baseCost)
   const before = game.getState()
   expect(game.buy(row.id)).toBe(true)
   const after = game.getState()
   expect(after.cps - before.cps).toBe(row.cps)
   expect(after.clickPower - before.clickPower).toBe(row.clickBonus)
-  expect(after.spriteTierId).toBe(row.id)
+  expect(after.spriteTierId).toBe(row.artId)
   expect(after.era).toBe("mid")
 
   const cps = after.cps
@@ -181,11 +204,13 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 test("offline catch-up pays 1h and caps at 8h", () => {
   game.reset()
   game.setXp(30_000)
-  game.buySkill(11)
-  game.buySkill(12)
-  for (const id of [1, 2, 3, 5]) game.forceGig(id)
+  game.buySkill(15)
+  game.buySkill(16)
+  const retainer = GIGS.find((gig) => gig.retainerCps > 0)
+  if (!retainer) throw new Error("missing retainer gig")
+  for (const id of [1, 2, 3, retainer.id]) game.forceGig(id)
   const cps = game.getState().cps
-  expect(cps).toBeCloseTo(GIGS[4]?.retainerCps ?? 0)
+  expect(cps).toBeCloseTo(retainer.retainerCps)
 
   const hour = 60 * 60 * 1000
   const oneHour = game.advanceOffline(hour)
@@ -288,7 +313,7 @@ test("fight: flee ends clean with no reward and no penalty", () => {
 
 test("fight: timeout ends clean with no reward, idle income keeps running", () => {
   game.reset()
-  expect(game.forceGig(5)).toBe(true)
+  expect(game.forceGig(8)).toBe(true)
   expect(game.getState().cps).toBeGreaterThan(0)
   const row = enemy(3)
   game.forceEnemy(row.id)
@@ -329,8 +354,8 @@ test("fight: rare spawn waits for money, then comes from idle time, era-gated, o
 
 test("fight: spawn pool is the current era only, forceEnemy ignores the gate", () => {
   game.reset()
-  game.setMoney(tierByName("Fine-tune your first LLM").baseCost)
-  expect(game.buy(tierByName("Fine-tune your first LLM").id)).toBe(true)
+  game.setMoney(tierByName("WhyCombinator batch investment").baseCost)
+  expect(game.buy(tierByName("WhyCombinator batch investment").id)).toBe(true)
   expect(game.getState().era).toBe("mid")
   game.tick(8 * 60 * 60 * 1000)
   game.tick(8 * 60 * 60 * 1000)
@@ -457,11 +482,11 @@ test("ide: the pack follows the owned era, tabs navigate, the shop era previews 
   game.setMoney(1e28)
   const top = (name: string) => {
     const row = tierByName(name)
-    for (let id = 19; id <= row.id; id++) game.buy(id)
+    for (let id = 1; id <= row.id; id++) game.buy(id)
     return row
   }
-  top("Dockyard containers")
-  expect(game.getState().ide).toMatchObject({ era: "mid", packId: "debounce", kind: "files", items: ["debounce.ts", "debounce.test.ts", "README.md"] })
+  top("Angel syndicate seat")
+  expect(game.getState().ide).toMatchObject({ era: "mid", packId: "search", kind: "files", items: ["BinarySearch.java", "BinarySearchTest.java"] })
   expect(game.ideSelect(1)).toBe(true)
   expect(game.getState().ide.index).toBe(1)
   expect(game.ideSelect(3)).toBe(false)
@@ -469,21 +494,21 @@ test("ide: the pack follows the owned era, tabs navigate, the shop era previews 
   expect(game.getState().ide.index).toBe(1)
 
   game.previewEra("q3")
-  expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", previewing: true, restPackId: "debounce", index: 0 })
+  expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", previewing: true, restPackId: "search", index: 0 })
   expect(game.ideSelect(2)).toBe(true)
   expect(game.getState().ide.items[2]).toBe("CUDA OOM on node gpu-17")
   game.previewEra("end")
   expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", previewing: true })
   game.previewEra(null)
-  expect(game.getState().ide).toMatchObject({ packId: "debounce", previewing: false })
+  expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
 
   game.previewEra("upper")
   game.tick(60_000)
-  expect(game.getState().ide).toMatchObject({ packId: "debounce", previewing: false })
+  expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
 
-  top("Own foundry capacity")
+  top("Custom accelerator IP")
   expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", packId: "frontier" })
-  top("Mars megacampus")
+  top("Mars megacampus Holdings")
   expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", packId: "mars", items: ["Habitat power", "GPU shed policy", "Dust storm runbook"] })
 })
 

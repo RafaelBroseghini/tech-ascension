@@ -1,5 +1,5 @@
-import type { Era } from "./tiers.ts"
-import { TIERS } from "./tiers.ts"
+import type { Era } from "./capital.ts"
+import { CAPITAL } from "./capital.ts"
 
 export type EraSection = {
   id: Era
@@ -15,10 +15,10 @@ const ERA_COPY: Record<Era, { label: string; hint: string }> = {
   end: { label: "Endgame", hint: "Mars" },
 }
 
-/** Tab order follows first appearance in TIERS. New eras still get a tab. */
+/** Tab order follows first appearance in CAPITAL. New eras still get a tab. */
 export function eraSections(): EraSection[] {
   const seen: Era[] = []
-  for (const tier of TIERS) {
+  for (const tier of CAPITAL) {
     if (!seen.includes(tier.era)) seen.push(tier.era)
   }
   return seen.map((id) => {
@@ -31,6 +31,6 @@ export function eraSections(): EraSection[] {
   })
 }
 
-export function tiersInEra(era: Era) {
-  return TIERS.filter((tier) => tier.era === era)
+export function capitalInEra(era: Era) {
+  return CAPITAL.filter((tier) => tier.era === era)
 }

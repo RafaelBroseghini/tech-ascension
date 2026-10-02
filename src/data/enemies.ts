@@ -3,7 +3,7 @@
  * Early HP stays a tenth of the table (88-140, not 880-1400): since the phase economy, Phase B/C players click
  * for $1+, so a 1000 HP early fight could not be won inside the 30s clock. Rare spawns start once money exists.
  */
-import type { Era } from "./tiers.ts"
+import type { Era } from "./capital.ts"
 
 export type EraGate = Era;
 export type Enemy = { id:number; name:string; eraGate:EraGate; hp:number; reward:number; weight:number };

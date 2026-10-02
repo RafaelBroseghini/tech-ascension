@@ -3,7 +3,7 @@ import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
 import type { EventDef } from "./events.ts"
 import { advanceEventClock, applyEvent, eligibleEvents, EVENT_AFTER_BLOCK_MS, eventById, pickEvent } from "./events.ts"
 import { BOOST_WAIT_MAX_FACTOR, BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
-import type { Era } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 import { FOREVER_MULT_MAX, FOREVER_MULT_MIN, modFactors, pruneTemp } from "./mods.ts"
 import { useGame } from "./store.ts"
 import { hydrate } from "./save.ts"
@@ -325,7 +325,7 @@ describe("events in the store", () => {
   })
 
   it("idle income credits a timed multiplier only for the seconds it ran", () => {
-    useGame.setState({ money: 0, peakMoney: 1, gigs: [5], xp: 0 })
+    useGame.setState({ money: 0, peakMoney: 1, gigs: [8], xp: 0 })
     const cps = 2
     useGame.getState().fireEvent(97)
     const start = useGame.getState().now
@@ -349,7 +349,7 @@ describe("events in the store", () => {
   })
 
   it("event multipliers survive a reload and credit offline income", () => {
-    useGame.setState({ money: 0, peakMoney: 1, gigs: [5], xp: 0 })
+    useGame.setState({ money: 0, peakMoney: 1, gigs: [8], xp: 0 })
     useGame.getState().fireEvent(41)
     const text = localStorage.getItem("tech-ascension.save")
     const savedAt = JSON.parse(text ?? "{}").savedAt as number

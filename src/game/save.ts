@@ -5,12 +5,12 @@ import { formatNumber } from "./format.ts"
 import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
 export const OFFLINE_TOAST_MIN_MS = 5_000
 
 export type SaveData = {
-  version: 3
+  version: typeof SAVE_VERSION
   money: number
   /** Spendable XP. */
   xp: number
@@ -18,9 +18,9 @@ export type SaveData = {
   xpTotal: number
   /** Phase A skill counts keyed by skill id. */
   skills: OwnedMap
-  /** Phase C equipment counts keyed by equipment id. */
+  /** Gear counts keyed by gear id. */
   equipment: OwnedMap
-  /** Phase D capital counts keyed by tier id (stringified, ids 19+). Unknown ids are kept. */
+  /** Phase D capital counts keyed by tier id (stringified, ids 1-25). Unknown ids are kept. */
   owned: OwnedMap
   /** Owned job ids. */
   jobs: number[]
@@ -29,8 +29,8 @@ export type SaveData = {
   savedAt: number
   /** Omitted when no boost is running. Cleared on load if endsAt has passed. */
   activeBoost?: ActiveBoost
-  /** Highest balance ever held. Gates which shop rows are revealed. Older saves omit it. */
-  peakMoney?: number
+  /** Highest balance ever held. Gates which shop rows are revealed. */
+  peakMoney: number
   /** Permanent event multiplier. Omitted at 1. */
   foreverMult?: number
   /** Timed event multipliers still running. Dropped on load once ended. */
@@ -44,7 +44,7 @@ export type Hydrated = {
   reset: boolean
 }
 
-const UNREADABLE_TOAST = "save was unreadable — new career started"
+const UNREADABLE = "save was unreadable — new career started"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -120,33 +120,33 @@ export function offlineCredit(cps: number, savedAt: number, now: number): number
 }
 
 /**
- * Returns null unless the payload is a save of exactly this version. There is no migration:
- * a save from any other schema is not carried over, the caller starts a fresh career.
- * Fields are still sanitised so a hand-edited or damaged save of this version cannot poison the economy.
+ * Current schema only. A save of any other version, or anything that is not a save object, is not
+ * loaded: returns null and the caller starts a fresh career. There is no migration.
+ * Fields are still sanitised so a hand-edited save of this version cannot poison the economy.
  */
 export function parseSave(input: unknown): SaveData | null {
   if (!isRecord(input) || input.version !== SAVE_VERSION) return null
-  const current = input
 
-  const boost = normalizeBoost(current.activeBoost)
-  const xp = Math.max(0, finite(current.xp))
+  const boost = normalizeBoost(input.activeBoost)
+  const xp = Math.max(0, finite(input.xp))
+  const money = Math.max(0, finite(input.money))
   const save: SaveData = {
-    version: 3,
-    money: Math.max(0, finite(current.money)),
+    version: SAVE_VERSION,
+    money,
     xp,
-    xpTotal: Math.max(xp, finite(current.xpTotal)),
-    skills: normalizeOwned(current.skills),
-    equipment: normalizeOwned(current.equipment),
-    owned: normalizeOwned(current.owned),
-    jobs: normalizeIds(current.jobs, (id) => jobById(id) !== undefined),
-    gigs: normalizeIds(current.gigs, (id) => gigById(id) !== undefined),
-    savedAt: Math.max(0, finite(current.savedAt)),
+    xpTotal: Math.max(xp, finite(input.xpTotal)),
+    skills: normalizeOwned(input.skills),
+    equipment: normalizeOwned(input.equipment),
+    owned: normalizeOwned(input.owned),
+    jobs: normalizeIds(input.jobs, (id) => jobById(id) !== undefined),
+    gigs: normalizeIds(input.gigs, (id) => gigById(id) !== undefined),
+    savedAt: Math.max(0, finite(input.savedAt)),
+    peakMoney: Math.max(money, finite(input.peakMoney)),
   }
   if (boost) save.activeBoost = boost
-  save.peakMoney = Math.max(save.money, finite(current.peakMoney))
-  const foreverMult = clampForever(finite(current.foreverMult) || 1)
+  const foreverMult = clampForever(finite(input.foreverMult) || 1)
   if (foreverMult !== 1) save.foreverMult = foreverMult
-  const temp = normalizeTemp(current.tempMults)
+  const temp = normalizeTemp(input.tempMults)
   if (Object.keys(temp).length > 0) save.tempMults = temp
   return save
 }
@@ -156,18 +156,13 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     return { save: freshSave(now), toast: null, reset: false }
   }
 
-  let parsed: unknown
+  let loaded: SaveData | null = null
   try {
-    parsed = JSON.parse(rawText)
+    loaded = parseSave(JSON.parse(rawText))
   } catch {
-    return { save: freshSave(now), toast: UNREADABLE_TOAST, reset: true }
+    loaded = null
   }
-
-  // A different schema version is wiped without a word: there are no old saves to carry over.
-  const loaded = parseSave(parsed)
-  if (!loaded) {
-    return { save: freshSave(now), toast: isRecord(parsed) ? null : UNREADABLE_TOAST, reset: true }
-  }
+  if (!loaded) return { save: freshSave(now), toast: UNREADABLE, reset: true }
 
   const away = Math.min(Math.max(0, now - loaded.savedAt), OFFLINE_CAP_MS)
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
@@ -181,7 +176,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     xpTotal: loaded.xpTotal + xpCredit,
     savedAt: now,
   }
-  save.peakMoney = Math.max(save.peakMoney ?? 0, save.money)
+  save.peakMoney = Math.max(save.peakMoney, save.money)
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
   }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { xpPerClick } from "../game/economy.ts"
 import { modFactors, modsOf } from "../game/mods.ts"
-import { formatNumber } from "../game/format.ts"
+import { formatNumber, HERO_RAW_DIGITS_BELOW } from "../game/format.ts"
 import { moneyMode } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
@@ -43,7 +43,7 @@ function useScore(target: number): number {
     return () => cancelAnimationFrame(frame.current)
   }, [pop])
 
-  return tween ? Math.max(0, tween.value) : target
+  return tween ? Math.max(0, Math.floor(tween.value)) : target
 }
 
 export function HeroMoney() {
@@ -58,6 +58,7 @@ export function HeroMoney() {
   const paying = useGame((state) => moneyMode(state))
   const valueRef = useRef<HTMLSpanElement>(null)
   const shown = useScore(money)
+  const text = formatNumber(shown, HERO_RAW_DIGITS_BELOW)
 
   useEffect(() => {
     const el = valueRef.current
@@ -114,9 +115,9 @@ export function HeroMoney() {
         key={buyStamp}
         ref={valueRef}
         data-testid="money"
-        className={buyStamp > 0 ? "hero-money-value tick-up" : "hero-money-value"}
+        className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", text.length > 11 ? "is-long" : ""].filter(Boolean).join(" ")}
       >
-        ${formatNumber(shown)}
+        ${text}
       </span>
     </div>
   )

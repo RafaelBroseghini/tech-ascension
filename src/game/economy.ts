@@ -1,17 +1,17 @@
 import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../data/phases.ts"
-import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
-import { TIERS } from "../data/tiers.ts"
-import type { Tier } from "../data/tiers.ts"
+import { CAPITAL } from "../data/capital.ts"
+import type { Capital } from "../data/capital.ts"
 import { modFactors, NO_MODS } from "./mods.ts"
-import type { EventMods } from "./mods.ts"
 
+import type { EventMods } from "./mods.ts"
 /**
  * Balances and costs are IEEE-754 doubles.
  *
  * `Math.floor` is exact only while the result is <= Number.MAX_SAFE_INTEGER
- * (~9.01e15). Foundry and Mars tiers (~1e16–5e22) still play, but the last
+ * (~9.01e15). The last Mars capital rows (~1e15–5e16) still play, but the last
  * dollars are approximate. When exact integers past ~1e15 matter, swap this
  * module for decimal.js or break_infinity.js. Call sites should keep using
  * `nextCost`, `clickPower`, `idlePerSec`, and `production`.
@@ -31,7 +31,7 @@ export type Progress = {
   peakMoney: number
   skills: OwnedMap
   equipment: OwnedMap
-  /** Phase D capital tiers (TIERS). */
+  /** Phase D capital tiers (CAPITAL). */
   owned: OwnedMap
   /** Owned job ids (each role is held once). */
   jobs: readonly number[]
@@ -41,13 +41,13 @@ export type Progress = {
 
 export const BASE_CLICK = 1
 
-const TIER_BY_ID = new Map<number, Tier>(TIERS.map((tier) => [tier.id, tier]))
+const CAPITAL_BY_ID = new Map<number, Capital>(CAPITAL.map((tier) => [tier.id, tier]))
 const SKILL_BY_ID = new Map<number, SkillTier>(SKILL_TIERS.map((row) => [row.id, row]))
 const GIG_BY_ID = new Map<number, Gig>(GIGS.map((row) => [row.id, row]))
 const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
 const EQUIP_BY_ID = new Map<number, Equip>(EQUIPMENT.map((row) => [row.id, row]))
 
-export const tierById = (id: number): Tier | undefined => TIER_BY_ID.get(id)
+export const capitalById = (id: number): Capital | undefined => CAPITAL_BY_ID.get(id)
 export const skillById = (id: number): SkillTier | undefined => SKILL_BY_ID.get(id)
 export const gigById = (id: number): Gig | undefined => GIG_BY_ID.get(id)
 export const jobById = (id: number): JobTier | undefined => JOB_BY_ID.get(id)
@@ -118,7 +118,7 @@ export function xpPerSec(skills: OwnedMap): number {
 export function clickPower(p: Pick<Progress, "equipment" | "owned">): number {
   let bonus = 0
   for (const row of EQUIPMENT) bonus += ownedCount(p.equipment, row.id) * row.clickBonus
-  for (const tier of TIERS) bonus += ownedCount(p.owned, tier.id) * tier.clickBonus
+  for (const tier of CAPITAL) bonus += ownedCount(p.owned, tier.id) * tier.clickBonus
   return BASE_CLICK + bonus
 }
 
@@ -132,7 +132,7 @@ export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gi
   let equipment = 0
   for (const row of EQUIPMENT) equipment += ownedCount(p.equipment, row.id) * row.cps
   let capital = 0
-  for (const tier of TIERS) capital += ownedCount(p.owned, tier.id) * tier.cps
+  for (const tier of CAPITAL) capital += ownedCount(p.owned, tier.id) * tier.cps
   return { retainers, jobs, equipment, capital }
 }
 
@@ -143,13 +143,13 @@ export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "g
 }
 
 /** One capital tier's share of idle $/s. */
-export function tierIdlePerSec(tier: Tier, owned: OwnedMap): number {
+export function capitalIdlePerSec(tier: Capital, owned: OwnedMap): number {
   return ownedCount(owned, tier.id) * tier.cps
 }
 
-export function highestOwnedTier(owned: OwnedMap): Tier | null {
-  let best: Tier | null = null
-  for (const tier of TIERS) {
+export function highestOwnedCapital(owned: OwnedMap): Capital | null {
+  let best: Capital | null = null
+  for (const tier of CAPITAL) {
     if (ownedCount(owned, tier.id) <= 0) continue
     if (!best || tier.id > best.id) best = tier
   }
@@ -186,59 +186,50 @@ const KIND_RANK: Record<OwnedKind, number> = { capital: 0, job: 1, equipment: 2,
 /** Everything owned: capital, jobs, equipment, gig retainers, skills. Biggest $/s first, then biggest XP/s. */
 export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): OwnedSource[] {
   const rows: OwnedSource[] = []
-  for (const tier of TIERS) {
+  for (const tier of CAPITAL) {
     const count = ownedCount(p.owned, tier.id)
     if (count > 0)
-      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.id, count, idle: count * tier.cps, xpIdle: 0, click: count * tier.clickBonus })
+      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.artId, count, idle: count * tier.cps, xpIdle: 0, click: count * tier.clickBonus })
   }
   for (const id of p.jobs) {
     const job = jobById(id)
     if (job)
-      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: JOB_ART[id - 1] ?? 1, count: 1, idle: job.cps, xpIdle: 0, click: 0 })
+      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: job.cps, xpIdle: 0, click: 0 })
   }
   for (const row of EQUIPMENT) {
     const count = ownedCount(p.equipment, row.id)
     if (count > 0)
-      rows.push({ key: `equipment:${row.id}`, kind: "equipment", id: row.id, name: row.name, artId: EQUIP_ART[row.id - 1] ?? 1, count, idle: count * row.cps, xpIdle: 0, click: count * row.clickBonus })
+      rows.push({ key: `equipment:${row.id}`, kind: "equipment", id: row.id, name: row.name, artId: artFor(EQUIP_ART, row.id), count, idle: count * row.cps, xpIdle: 0, click: count * row.clickBonus })
   }
   for (const id of p.gigs) {
     const gig = gigById(id)
     if (gig && gig.retainerCps > 0)
-      rows.push({ key: `gig:${id}`, kind: "gig", id, name: gig.name, artId: GIG_ART[id - 1] ?? 1, count: 1, idle: gig.retainerCps, xpIdle: 0, click: 0 })
+      rows.push({ key: `gig:${id}`, kind: "gig", id, name: gig.name, artId: artFor(GIG_ART, id), count: 1, idle: gig.retainerCps, xpIdle: 0, click: 0 })
   }
   for (const row of SKILL_TIERS) {
     const count = ownedCount(p.skills, row.id)
     if (count > 0)
-      rows.push({ key: `skill:${row.id}`, kind: "skill", id: row.id, name: row.name, artId: SKILL_ART[row.id - 1] ?? 1, count, idle: 0, xpIdle: count * row.xpPerSec, click: count * row.xpPerClick })
+      rows.push({ key: `skill:${row.id}`, kind: "skill", id: row.id, name: row.name, artId: artFor(SKILL_ART, row.id), count, idle: 0, xpIdle: count * row.xpPerSec, click: count * row.xpPerClick })
   }
   return rows.sort(
     (a, b) => b.idle - a.idle || KIND_RANK[a.kind] - KIND_RANK[b.kind] || b.xpIdle - a.xpIdle || b.id - a.id,
   )
 }
 
-/**
- * A capital tier stays hidden until the player has held enough money to buy its first
- * copy (peakMoney), or already owns it or something later. Costs rise with id,
- * so reveals are always a prefix of TIERS.
- */
-export function isRevealed(tier: Tier, owned: OwnedMap, peakMoney: number): boolean {
-  if (ownedCount(owned, tier.id) > 0) return true
-  const best = highestOwnedTier(owned)
-  if (best && tier.id < best.id) return true
-  return canAfford(peakMoney, tier.baseCost)
-}
-
-export function highestRevealedId(owned: OwnedMap, peakMoney: number): number {
-  let id = 0
-  for (const tier of TIERS) {
-    if (isRevealed(tier, owned, peakMoney)) id = Math.max(id, tier.id)
-  }
-  return id
+/** A capital row stays hidden until the player has held its price (peakMoney) once, or owns it. */
+export function isRevealed(tier: Capital, owned: OwnedMap, peakMoney: number): boolean {
+  return ownedCount(owned, tier.id) > 0 || canAfford(peakMoney, tier.baseCost)
 }
 
 /** A skill shows once lifetime XP reaches its `unlockAtXp`, or when it is already owned. */
 export function isSkillRevealed(row: SkillTier, skills: OwnedMap, xpTotal: number): boolean {
   return ownedCount(skills, row.id) > 0 || xpTotal >= row.unlockAtXp
+}
+
+/** A gear row shows once the player has held its `unlockMoney` and holds its `unlockJobId` (0 = none), or already owns it. */
+export function isGearRevealed(row: Equip, equipment: OwnedMap, peakMoney: number, jobs: readonly number[]): boolean {
+  if (ownedCount(equipment, row.id) > 0) return true
+  return canAfford(peakMoney, row.unlockMoney) && (row.unlockJobId === 0 || jobs.includes(row.unlockJobId))
 }
 
 export function boostMultiplier(boost: ActiveBoost | null | undefined, now: number): number {

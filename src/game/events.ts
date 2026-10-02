@@ -1,6 +1,6 @@
 import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
 import type { EventEffect, GameEvent } from "../data/events.ts"
-import type { Era } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 import { sampleWaitMs } from "./boosts.ts"
 import { formatNumber } from "./format.ts"
 import { clampForever } from "./mods.ts"

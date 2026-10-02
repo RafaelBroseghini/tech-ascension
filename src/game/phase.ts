@@ -1,34 +1,39 @@
-import { CAPITAL_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } from "../data/phases.ts"
 import type { Gig, JobTier } from "../data/phases.ts"
-import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
-import type { Era } from "../data/tiers.ts"
-import { canAfford, highestOwnedSkill, highestOwnedTier, jobById, ownedCount, skillById } from "./economy.ts"
+import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import type { Era } from "../data/capital.ts"
+import { canAfford, capitalById, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 
-/** A skill grind, B gigs, C job + equipment, D capital. */
+/** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
 export type Phase = "A" | "B" | "C" | "D"
 
 export const PHASES: readonly Phase[] = ["A", "B", "C", "D"]
 
+/** Shop tabs, left to right. "G" (Gear) sits between Jobs and Capital and never becomes the current phase. */
+export type ShopTab = Phase | "G"
+
+export const SHOP_TABS: readonly ShopTab[] = ["A", "B", "C", "G", "D"]
+
 export const PHASE_NAME: Record<Phase, string> = {
   A: "Skill grind",
   B: "Gigs",
-  C: "Jobs + gear",
+  C: "Jobs",
   D: "Capital",
 }
 
-type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs">
+export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs">
 
 /**
  * Gates latch: each one also opens when the player already holds what it leads to (a gig done,
- * a job taken, a capital tier owned), so forced progress never sits behind a closed board.
+ * a job taken, a capital row owned), so forced progress never sits behind a closed board.
  */
 export function gigBoardUnlocked(p: Gates): boolean {
   if (p.gigs.length > 0) return true
   return (
     p.xpTotal >= GIG_BOARD_UNLOCK.minXp &&
-    GIG_BOARD_UNLOCK.requireOwnedTier.every((id) => ownedCount(p.skills, id) > 0)
+    GIG_BOARD_UNLOCK.requireOwnedSkills.every((id) => ownedCount(p.skills, id) > 0)
   )
 }
 
@@ -37,7 +42,7 @@ export function jobBoardUnlocked(p: Gates): boolean {
   return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= JOB_BOARD_UNLOCK.minGigsCompleted
 }
 
-/** Senior job (id >= 7) OR $500K held at some point (peakMoney) OR any capital tier already owned. */
+/** The Senior job (id 14) or higher OR $500K held at some point (peakMoney) OR any capital row already owned. */
 export function capitalUnlocked(p: Gates): boolean {
   if (p.jobs.some((id) => id >= CAPITAL_UNLOCK.minJobId)) return true
   if (canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney)) return true
@@ -82,54 +87,44 @@ export function canBuyJob(p: Gates & Pick<Progress, "money">, job: JobTier): boo
   return jobState(p, job) === "ready" && canAfford(p.money, job.baseCost)
 }
 
-export function equipmentOpen(p: Gates): boolean {
-  return jobBoardUnlocked(p)
+/** The Gear tab opens at 8,000 lifetime XP, independent of the boards. Owning gear keeps it open, so forced progress never hides it. */
+export function equipmentOpen(p: Pick<Progress, "xpTotal" | "equipment">): boolean {
+  return p.xpTotal >= GEAR_TAB_UNLOCK.minXp || Object.values(p.equipment).some((count) => count > 0)
 }
 
 export type Stage = {
   /** Sprite and code-overlay id (see src/data/art.ts). 0 is the opening scene. */
   artId: number
   name: string
-  /** Era for boosts, fights and the stage accent. Only owned capital tiers move it past "early". */
+  /** Era for boosts, fights and the stage accent. Only owned capital rows move it past "early". */
   era: Era
 }
 
 /** The stage shows the furthest thing the player holds: capital, then job, then gig, then skill. */
 export function stageOf(p: Pick<Progress, "skills" | "owned" | "jobs" | "gigs">): Stage | null {
-  const tier = highestOwnedTier(p.owned)
-  if (tier) return { artId: tier.id, name: tier.name, era: tier.era }
+  const tier = highestOwnedCapital(p.owned)
+  if (tier) return { artId: tier.artId, name: tier.name, era: tier.era }
   const jobId = Math.max(0, ...p.jobs)
-  if (jobId > 0) return { artId: JOB_ART[jobId - 1] ?? 1, name: JOB_STAGE_NAME[jobId - 1] ?? "Engineer", era: "early" }
+  if (jobId > 0) return { artId: artFor(JOB_ART, jobId), name: jobById(jobId)?.name ?? "Engineer", era: "early" }
   const gigId = Math.max(0, ...p.gigs)
-  if (gigId > 0) return { artId: GIG_ART[gigId - 1] ?? 1, name: "Freelancer", era: "early" }
+  if (gigId > 0) return { artId: artFor(GIG_ART, gigId), name: "Freelancer", era: "early" }
   const skill = highestOwnedSkill(p.skills)
-  if (skill) return { artId: SKILL_ART[skill.id - 1] ?? 1, name: skill.name, era: "early" }
+  if (skill) return { artId: artFor(SKILL_ART, skill.id), name: skill.name, era: "early" }
   return null
 }
 
-const JOB_STAGE_NAME: readonly string[] = [
-  "Intern",
-  "Junior engineer",
-  "Reviewer",
-  "On-call engineer",
-  "Mid-level engineer",
-  "Systems designer",
-  "Senior engineer",
-  "Staff engineer",
-]
-
 export function eraOf(p: Pick<Progress, "owned">): Era {
-  return highestOwnedTier(p.owned)?.era ?? "early"
+  return highestOwnedCapital(p.owned)?.era ?? "early"
 }
 
 /** Art ids of everything owned, for the click waterfall. */
 export function ownedArtIds(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): number[] {
   const ids = new Set<number>()
-  for (const [key, count] of Object.entries(p.owned)) if (count > 0 && Number(key) > 0) ids.add(Number(key))
-  for (const [key, count] of Object.entries(p.skills)) if (count > 0) ids.add(SKILL_ART[Number(key) - 1] ?? 0)
-  for (const [key, count] of Object.entries(p.equipment)) if (count > 0) ids.add(EQUIP_ART[Number(key) - 1] ?? 0)
-  for (const id of p.jobs) ids.add(JOB_ART[id - 1] ?? 0)
-  for (const id of p.gigs) ids.add(GIG_ART[id - 1] ?? 0)
+  for (const [key, count] of Object.entries(p.owned)) if (count > 0) ids.add(capitalById(Number(key))?.artId ?? 0)
+  for (const [key, count] of Object.entries(p.skills)) if (count > 0) ids.add(artFor(SKILL_ART, Number(key)))
+  for (const [key, count] of Object.entries(p.equipment)) if (count > 0) ids.add(artFor(EQUIP_ART, Number(key)))
+  for (const id of p.jobs) ids.add(artFor(JOB_ART, id))
+  for (const id of p.gigs) ids.add(artFor(GIG_ART, id))
   ids.delete(0)
   return [...ids]
 }
@@ -139,11 +134,15 @@ export type Requirement = { text: string; met: boolean }
 export function gigBoardRequirements(p: Gates): Requirement[] {
   return [
     { text: `${formatNumber(GIG_BOARD_UNLOCK.minXp)} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= GIG_BOARD_UNLOCK.minXp },
-    ...GIG_BOARD_UNLOCK.requireOwnedTier.map((id) => ({
+    ...GIG_BOARD_UNLOCK.requireOwnedSkills.map((id) => ({
       text: `Own ${skillById(id)?.name ?? `skill ${id}`}`,
       met: ownedCount(p.skills, id) > 0,
     })),
   ]
+}
+
+export function gearRequirements(p: Pick<Progress, "xpTotal">): Requirement[] {
+  return [{ text: `${formatNumber(GEAR_TAB_UNLOCK.minXp)} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= GEAR_TAB_UNLOCK.minXp }]
 }
 
 export function jobBoardRequirements(p: Gates): Requirement[] {
