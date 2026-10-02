@@ -17,11 +17,11 @@ export type Tier = {
 export const TIERS: readonly Tier[] = [
   // early — learn to ship
   { id: 1, era: "early", name: "Used laptop", baseCost: 15, cps: 0.1, clickBonus: 0 },
-  { id: 2, era: "early", name: "Stack Overflow account", baseCost: 50, cps: 0.3, clickBonus: 0 },
-  { id: 3, era: "early", name: "FreeCodeCamp streak", baseCost: 120, cps: 0.8, clickBonus: 0 },
-  { id: 4, era: "early", name: "YouTube CS / ML intro", baseCost: 300, cps: 2, clickBonus: 0 },
-  { id: 5, era: "early", name: "Personal GitHub", baseCost: 750, cps: 5, clickBonus: 1 },
-  { id: 6, era: "early", name: "Portfolio + Kaggle notebook", baseCost: 1800, cps: 12, clickBonus: 0 },
+  { id: 2, era: "early", name: "Stack Overblow account", baseCost: 50, cps: 0.3, clickBonus: 0 },
+  { id: 3, era: "early", name: "FreeCodeChamp streak", baseCost: 120, cps: 0.8, clickBonus: 0 },
+  { id: 4, era: "early", name: "YouToob CS / ML intro", baseCost: 300, cps: 2, clickBonus: 0 },
+  { id: 5, era: "early", name: "Personal GitHug", baseCost: 750, cps: 5, clickBonus: 1 },
+  { id: 6, era: "early", name: "Portfolio + Gaggle notebook", baseCost: 1800, cps: 12, clickBonus: 0 },
   { id: 7, era: "early", name: "Hackathon weekend", baseCost: 4500, cps: 28, clickBonus: 0 },
   { id: 8, era: "early", name: "Open-source ML PR", baseCost: 11000, cps: 65, clickBonus: 2 },
   { id: 9, era: "early", name: "Bootcamp / CS + ML electives", baseCost: 28000, cps: 150, clickBonus: 0 },
@@ -29,7 +29,7 @@ export const TIERS: readonly Tier[] = [
 
   // mid — engineer + ML craft
   { id: 11, era: "mid", name: "Junior SWE", baseCost: 180000, cps: 800, clickBonus: 3 },
-  { id: 12, era: "mid", name: "PyTorch / TF fluency", baseCost: 450000, cps: 1800, clickBonus: 0 },
+  { id: 12, era: "mid", name: "PyTorchy / TensorFlux fluency", baseCost: 450000, cps: 1800, clickBonus: 0 },
   { id: 13, era: "mid", name: "Production ML pipeline", baseCost: 1.1e6, cps: 4000, clickBonus: 0 },
   { id: 14, era: "mid", name: "Mid-level ML engineer", baseCost: 2.8e6, cps: 9000, clickBonus: 5 },
   { id: 15, era: "mid", name: "Fine-tune your first LLM", baseCost: 7e6, cps: 20000, clickBonus: 0 },
@@ -45,7 +45,7 @@ export const TIERS: readonly Tier[] = [
   { id: 23, era: "upper", name: "Launch your AI SaaS", baseCost: 14e9, cps: 15e6, clickBonus: 15 },
   { id: 24, era: "upper", name: "Angel stake in AI startups", baseCost: 35e9, cps: 35e6, clickBonus: 0 },
   { id: 25, era: "upper", name: "Found your AI company", baseCost: 90e9, cps: 80e6, clickBonus: 0 },
-  { id: 26, era: "upper", name: "YC — LLM product batch", baseCost: 230e9, cps: 180e6, clickBonus: 20 },
+  { id: 26, era: "upper", name: "WhyCombinator — LLM product batch", baseCost: 230e9, cps: 180e6, clickBonus: 20 },
   { id: 27, era: "upper", name: "Series A (you own majority)", baseCost: 600e9, cps: 420e6, clickBonus: 0 },
   { id: 28, era: "upper", name: "Acquire a rival AI startup", baseCost: 1.6e12, cps: 1e9, clickBonus: 0 },
   { id: 29, era: "upper", name: "Hold a public AI / chip company", baseCost: 4.2e12, cps: 2.3e9, clickBonus: 25 },
