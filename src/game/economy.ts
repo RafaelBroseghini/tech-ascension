@@ -66,6 +66,26 @@ export function highestOwnedTier(owned: OwnedMap): Tier | null {
   return best
 }
 
+/**
+ * A tier stays hidden until the player has held enough money to buy its first
+ * copy (peakMoney), or already owns it or something later. Costs rise with id,
+ * so reveals are always a prefix of TIERS.
+ */
+export function isRevealed(tier: Tier, owned: OwnedMap, peakMoney: number): boolean {
+  if (ownedCount(owned, tier.id) > 0) return true
+  const best = highestOwnedTier(owned)
+  if (best && tier.id < best.id) return true
+  return canAfford(peakMoney, tier.baseCost)
+}
+
+export function highestRevealedId(owned: OwnedMap, peakMoney: number): number {
+  let id = 0
+  for (const tier of TIERS) {
+    if (isRevealed(tier, owned, peakMoney)) id = Math.max(id, tier.id)
+  }
+  return id
+}
+
 export function boostMultiplier(boost: ActiveBoost | null | undefined, now: number): number {
   if (!boost) return 1
   if (!(boost.endsAt > now)) return 1

@@ -1,8 +1,8 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { eraSections, tiersInEra } from "../data/eras.ts"
-import { spriteForTier } from "../data/sprites.ts"
+import { ERA_ACCENT, spriteForTier } from "../data/sprites.ts"
 import type { Era } from "../data/tiers.ts"
-import { canAfford, highestOwnedTier, nextCost, ownedCount } from "../game/economy.ts"
+import { canAfford, highestOwnedTier, isRevealed, nextCost, ownedCount } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 
@@ -17,20 +17,46 @@ function OwnedCount({ value }: { value: number }) {
 
 export function Shop() {
   const money = useGame((state) => state.money)
+  const peakMoney = useGame((state) => state.peakMoney)
   const owned = useGame((state) => state.owned)
   const buy = useGame((state) => state.buy)
   const wipe = useGame((state) => state.wipe)
-  const sections = eraSections()
-  const [era, setEra] = useState<Era>(
-    () => highestOwnedTier(useGame.getState().owned)?.era ?? "early",
-  )
+  const [pickedEra, setPickedEra] = useState<Era | null>(null)
   const [flashId, setFlashId] = useState<number | null>(null)
-  const rows = tiersInEra(era)
+  const [fresh, setFresh] = useState<ReadonlySet<number>>(new Set())
+
+  const revealedByEra = useMemo(() => {
+    const map = new Map<Era, ReturnType<typeof tiersInEra>>()
+    for (const section of eraSections()) {
+      const rows = tiersInEra(section.id).filter((tier) => isRevealed(tier, owned, peakMoney))
+      if (rows.length > 0) map.set(section.id, rows)
+    }
+    return map
+  }, [owned, peakMoney])
+
+  const sections = eraSections().filter((section) => revealedByEra.has(section.id))
+  const fallbackEra = highestOwnedTier(owned)?.era ?? sections[sections.length - 1]?.id ?? "early"
+  const era = pickedEra && revealedByEra.has(pickedEra) ? pickedEra : fallbackEra
+  const rows = revealedByEra.get(era) ?? []
   const current = sections.find((section) => section.id === era)
+
+  const revealedIds = [...revealedByEra.values()].flat().map((tier) => tier.id)
+  const [known, setKnown] = useState<ReadonlySet<number>>(() => new Set(revealedIds))
+  if (revealedIds.length !== known.size || revealedIds.some((id) => !known.has(id))) {
+    const added = revealedIds.filter((id) => !known.has(id))
+    setKnown(new Set(revealedIds))
+    setFresh((current) => (revealedIds.length === 0 ? new Set() : new Set([...current, ...added])))
+  }
 
   function onBuy(id: number, mode: "one" | "max") {
     setFlashId(id)
     buy(id, mode)
+    setFresh((current) => {
+      if (!current.has(id)) return current
+      const next = new Set(current)
+      next.delete(id)
+      return next
+    })
     window.setTimeout(() => {
       setFlashId((currentId) => (currentId === id ? null : currentId))
     }, 240)
@@ -43,33 +69,48 @@ export function Shop() {
           <p className="eyebrow">Shop</p>
           <h2>Buy the next rung</h2>
         </div>
-        <p className="era-hint">{current?.hint}</p>
+        {current ? <p className="era-hint">{current.hint}</p> : null}
       </div>
-      <div className="era-tabs" role="tablist" aria-label="Career eras">
-        {sections.map((section) => {
-          const affordable = tiersInEra(section.id).some((tier) =>
-            canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))),
-          )
-          return (
-            <button
-              key={section.id}
-              type="button"
-              role="tab"
-              aria-selected={section.id === era}
-              className={section.id === era ? "era-tab active" : "era-tab"}
-              onClick={() => setEra(section.id)}
-            >
-              {section.label}
-              {affordable ? <i className="deal-dot" aria-label="Something is affordable" /> : null}
-            </button>
-          )
-        })}
-      </div>
+      {sections.length > 1 ? (
+        <div className="era-tabs" role="tablist" aria-label="Career eras">
+          {sections.map((section) => {
+            const eraRows = revealedByEra.get(section.id) ?? []
+            const affordable = eraRows.some((tier) =>
+              canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))),
+            )
+            const hasFresh = section.id !== era && eraRows.some((tier) => fresh.has(tier.id))
+            return (
+              <button
+                key={section.id}
+                type="button"
+                role="tab"
+                aria-selected={section.id === era}
+                className={[
+                  "era-tab",
+                  section.id === era ? "active" : "",
+                  hasFresh ? "has-fresh" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                style={{ ["--tab-glow" as string]: ERA_ACCENT[section.id].glow }}
+                onClick={() => setPickedEra(section.id)}
+              >
+                {section.label}
+                {affordable ? <i className="deal-dot" aria-label="Something is affordable" /> : null}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       <div className="shop-list">
+        {rows.length === 0 ? (
+          <p className="shop-empty">Nothing within reach yet. Keep clicking.</p>
+        ) : null}
         {rows.map((tier) => {
           const have = ownedCount(owned, tier.id)
           const cost = nextCost(tier.baseCost, have)
           const afford = canAfford(money, cost)
+          const isFresh = fresh.has(tier.id)
           return (
             <article
               key={tier.id}
@@ -77,13 +118,18 @@ export function Shop() {
                 "offer",
                 afford ? "afford" : "",
                 flashId === tier.id ? "flash" : "",
+                isFresh ? "fresh" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
+              style={{ ["--offer-glow" as string]: ERA_ACCENT[tier.era].glow }}
             >
               <img src={spriteForTier(tier.id)} alt="" width={48} height={48} />
               <div className="offer-copy">
-                <h3>{tier.name}</h3>
+                <h3>
+                  {tier.name}
+                  {isFresh ? <span className="new-tag">New</span> : null}
+                </h3>
                 <p>
                   +{formatNumber(tier.cps)}/s
                   {tier.clickBonus > 0 ? ` · +${formatNumber(tier.clickBonus)} click` : ""}

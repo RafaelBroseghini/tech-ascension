@@ -2,12 +2,14 @@
 import fs from "node:fs"
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { SPRITE_BY_TIER, SPRITE_SUBJECTS } from "../data/sprites.ts"
+import { SPRITE_BY_TIER, SPRITE_SUBJECTS, spriteForTier } from "../data/sprites.ts"
 import { TIERS } from "../data/tiers.ts"
 import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } from "./boosts.ts"
 import {
   canAfford,
   clickPower,
+  highestRevealedId,
+  isRevealed,
   nextCost,
   ownedCount,
   production,
@@ -159,16 +161,44 @@ describe("click boosts", () => {
 })
 
 describe("sprites", () => {
-  it("maps every tier to a unique labeled svg", () => {
+  it("maps every tier, plus the opening scene, to a webp on disk", () => {
     expect(new Set(TIERS.map((tier) => tier.id)).size).toBe(TIERS.length)
     for (const tier of TIERS) {
       const subject = SPRITE_SUBJECTS.find((row) => row.id === tier.id)
       expect(subject?.name).toBe(tier.name)
-      expect(SPRITE_BY_TIER[tier.id]).toBe(`/sprites/${tier.id}.svg`)
-      const file = fs.readFileSync(`public/sprites/${tier.id}.svg`, "utf8")
-      expect(file).toContain("<title>")
-      expect(file).toContain(subject?.subject ?? "")
-      expect(file).toContain(`width="256"`)
+      expect(subject?.subject.length).toBeGreaterThan(10)
+      expect(SPRITE_BY_TIER[tier.id]).toBe(`/sprites/${tier.id}.webp`)
     }
+    for (const id of [0, ...TIERS.map((tier) => tier.id)]) {
+      const bytes = fs.readFileSync(`public/sprites/${id}.webp`)
+      expect(bytes.subarray(0, 4).toString("ascii")).toBe("RIFF")
+      expect(bytes.subarray(8, 12).toString("ascii")).toBe("WEBP")
+      expect(bytes.length).toBeGreaterThan(8_000)
+    }
+    expect(spriteForTier(0)).toBe("/sprites/0.webp")
+  })
+})
+
+describe("hidden upgrades", () => {
+  it("reveals a tier only once its price has been reached, plus everything before it", () => {
+    const [first, second, third] = TIERS
+    if (!first || !second || !third) throw new Error("need three tiers")
+    expect(isRevealed(first, {}, 0)).toBe(false)
+    expect(isRevealed(first, {}, first.baseCost - 1)).toBe(false)
+    expect(isRevealed(first, {}, first.baseCost)).toBe(true)
+    expect(isRevealed(second, {}, first.baseCost)).toBe(false)
+    expect(highestRevealedId({}, third.baseCost)).toBe(3)
+    expect(isRevealed(first, { "3": 1 }, 0)).toBe(true)
+    expect(isRevealed(second, { "3": 1 }, 0)).toBe(true)
+    expect(isRevealed(third, { "3": 1 }, 0)).toBe(true)
+  })
+
+  it("persists the peak balance and never lets it fall below current money", () => {
+    const fresh = freshSave(1_000)
+    expect(fresh.peakMoney).toBe(0)
+    const loaded = hydrate(JSON.stringify({ ...fresh, money: 20, peakMoney: 500, savedAt: 1_000 }), 1_000)
+    expect(loaded.save.peakMoney).toBe(500)
+    const legacy = hydrate(JSON.stringify({ version: 1, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
+    expect(legacy.save.peakMoney).toBe(90)
   })
 })

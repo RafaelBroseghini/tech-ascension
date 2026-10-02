@@ -17,6 +17,8 @@ export type SaveV1 = {
   savedAt: number
   /** Omitted when no boost is running. Cleared on load if endsAt has passed. */
   activeBoost?: ActiveBoost
+  /** Highest balance ever held. Gates which shop rows are revealed. Older saves omit it. */
+  peakMoney?: number
 }
 
 export type Hydrated = {
@@ -84,6 +86,7 @@ export function freshSave(now: number): SaveV1 {
     xp: 0,
     owned: {},
     savedAt: now,
+    peakMoney: 0,
   }
 }
 
@@ -126,6 +129,7 @@ export function migrate(input: unknown): SaveV1 | null {
     savedAt: Math.max(0, finite(current.savedAt)),
   }
   if (boost) save.activeBoost = boost
+  save.peakMoney = Math.max(save.money, finite(current.peakMoney))
   return save
 }
 
@@ -153,6 +157,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     money: migrated.money + credit,
     savedAt: now,
   }
+  save.peakMoney = Math.max(save.peakMoney ?? 0, save.money)
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
   }

@@ -35,17 +35,20 @@ export function MetricsBar() {
           <dt>$/click</dt>
           <dd data-testid="per-click">${formatNumber(rates.click)}</dd>
         </div>
-        <div>
-          <dt>$/s</dt>
-          <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
-        </div>
-        <div>
-          <dt>Click boost</dt>
-          <dd data-testid="boost">
-            ×{formatMultiplier(rates.mult)}
-            {seconds > 0 ? ` · ${seconds}s` : ""}
-          </dd>
-        </div>
+        {rates.idle > 0 ? (
+          <div className="metric-in">
+            <dt>$/s</dt>
+            <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
+          </div>
+        ) : null}
+        {seconds > 0 ? (
+          <div className="metric-in metric-boost">
+            <dt>Click boost</dt>
+            <dd data-testid="boost">
+              ×{formatMultiplier(rates.mult)} · {seconds}s
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>Stage</dt>
           <dd data-testid="stage-name">{stage?.name ?? "High school"}</dd>

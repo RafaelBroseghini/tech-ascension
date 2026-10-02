@@ -12,8 +12,7 @@
     "play:agent": "node scripts/play-agent.mjs",
     "preview": "vite preview",
     "build:pages": "tsc -b && vite build --base=/tech-ascension/",
-    "preview:pages": "npm run build:pages && vite preview --base=/tech-ascension/ --host 127.0.0.1 --port 43124 --strictPort",
-    "sprites": "node scripts/generate-sprites.mjs"
+    "preview:pages": "npm run build:pages && vite preview --base=/tech-ascension/ --host 127.0.0.1 --port 43124 --strictPort"
   },
   "dependencies": {
     "react": "^19.2.8",

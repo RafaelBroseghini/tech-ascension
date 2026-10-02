@@ -27,6 +27,7 @@ export type ToastMessage = {
 type GameState = {
   money: number
   xp: number
+  peakMoney: number
   owned: OwnedMap
   activeBoost: ActiveBoost | null
   nextBoostAt: number | null
@@ -51,6 +52,7 @@ function toSave(state: GameState, now: number): SaveV1 {
     xp: state.xp,
     owned: state.owned,
     savedAt: now,
+    peakMoney: Math.max(state.peakMoney, state.money),
   }
   if (state.activeBoost && state.activeBoost.endsAt > now) {
     save.activeBoost = state.activeBoost
@@ -84,6 +86,7 @@ const booted = boot()
 export const useGame = create<GameState>((set, get) => ({
   money: booted.hydrated.save.money,
   xp: booted.hydrated.save.xp,
+  peakMoney: booted.hydrated.save.peakMoney ?? booted.hydrated.save.money,
   owned: booted.hydrated.save.owned,
   activeBoost: booted.hydrated.save.activeBoost ?? null,
   nextBoostAt: null,
@@ -178,6 +181,7 @@ export const useGame = create<GameState>((set, get) => ({
     set({
       money: 0,
       xp: 0,
+      peakMoney: 0,
       owned: {},
       activeBoost: null,
       nextBoostAt: null,
@@ -190,6 +194,11 @@ export const useGame = create<GameState>((set, get) => ({
     })
   },
 }))
+
+// Any code path that raises money (clicks, idle ticks, harness) keeps the peak current.
+useGame.subscribe((state) => {
+  if (state.money > state.peakMoney) useGame.setState({ peakMoney: state.money })
+})
 
 export function persistNow(): void {
   const now = Date.now()
