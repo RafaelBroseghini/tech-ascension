@@ -1,9 +1,18 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import type { Era } from "../data/tiers.ts"
 import { clickPower, highestOwnedTier, idlePerSec, ownedCount, tierById } from "./economy.ts"
+import { remainingMs } from "./fight.ts"
+import type { FightOutcome } from "./fight.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import { persistNow, useGame, writeStateAt } from "./store.ts"
 import { readSaveText } from "./storage.ts"
+
+export type FightSnapshot = {
+  enemyId: number
+  hp: number
+  maxHp: number
+  remainingMs: number
+}
 
 export type GameSnapshot = {
   money: number
@@ -18,6 +27,10 @@ export type GameSnapshot = {
   spriteTierId: number
   activeBoost: ActiveBoost | null
   savedAt: number
+  /** Running rare-enemy fight, or null when idle. */
+  fight: FightSnapshot | null
+  /** How the most recent fight ended (reward is 0 unless it was a win), or null. */
+  lastFight: { kind: FightOutcome["kind"]; enemyId: number; reward: number } | null
 }
 
 export type OfflineCatchup = {
@@ -33,6 +46,10 @@ export type GameHarness = {
   setMoney: (n: number) => void
   forceBoost: (mult: number, ms: number) => void
   advanceOffline: (ms: number) => OfflineCatchup
+  /** Start a fight with this enemy id now, bypassing the rare spawn. False for an unknown id. */
+  forceEnemy: (enemyId: number) => boolean
+  /** End the current fight with no reward. */
+  flee: () => void
   reset: () => void
 }
 
@@ -70,6 +87,17 @@ export function installGameHarness(): GameHarness {
         spriteTierId,
         activeBoost: liveBoost(state.activeBoost, now),
         savedAt: readSavedAt(),
+        fight: state.fight
+          ? {
+              enemyId: state.fight.enemyId,
+              hp: state.fight.hp,
+              maxHp: state.fight.maxHp,
+              remainingMs: remainingMs(state.fight, state.now),
+            }
+          : null,
+        lastFight: state.fightResult
+          ? { kind: state.fightResult.kind, enemyId: state.fightResult.enemyId, reward: state.fightResult.reward }
+          : null,
       }
     },
 
@@ -127,6 +155,10 @@ export function installGameHarness(): GameHarness {
         toast: hydrated.toast,
       }
     },
+
+    forceEnemy: (enemyId) => useGame.getState().forceEnemy(enemyId),
+
+    flee: () => useGame.getState().flee(),
 
     reset: () => {
       useGame.getState().wipe()

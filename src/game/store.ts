@@ -10,6 +10,8 @@ import {
   tierById,
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
+import { advanceEnemyClock, applyDamage, endFight, enemyById, startFight } from "./fight.ts"
+import type { Fight, FightOutcome } from "./fight.ts"
 import { formatMultiplier } from "./format.ts"
 import { freshSave, hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import type { SaveV1 } from "./save.ts"
@@ -18,6 +20,8 @@ import type { ActiveBoost } from "../data/boosts.ts"
 import { TIERS } from "../data/tiers.ts"
 
 const SAVE_EVERY_MS = 4_000
+
+export type FightResult = FightOutcome & { id: number }
 
 export type ToastMessage = {
   id: number
@@ -33,6 +37,10 @@ type GameState = {
   nextBoostAt: number | null
   idleSince: number
   now: number
+  fight: Fight | null
+  nextEnemyAt: number | null
+  fightResult: FightResult | null
+  fightSeq: number
   toast: ToastMessage | null
   toastSeq: number
   buyStamp: number
@@ -40,7 +48,11 @@ type GameState = {
   celebrationTierId: number
   click: () => { money: number; xp: number }
   buy: (tierId: number, mode?: "one" | "max") => void
+  hit: () => { money: number; xp: number }
+  flee: () => void
+  forceEnemy: (enemyId: number) => boolean
   dismissToast: () => void
+  dismissFightResult: () => void
   tick: (now: number) => void
   wipe: () => void
 }
@@ -92,6 +104,10 @@ export const useGame = create<GameState>((set, get) => ({
   nextBoostAt: null,
   idleSince: booted.now,
   now: booted.now,
+  fight: null,
+  nextEnemyAt: null,
+  fightResult: null,
+  fightSeq: 0,
   toast: booted.toast,
   toastSeq: booted.toastSeq,
   buyStamp: 0,
@@ -100,6 +116,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   click: () => {
     const state = get()
+    if (state.fight) return get().hit()
     const now = Date.now()
     const rates = production(state.owned, state.activeBoost, now)
     set({
@@ -108,6 +125,42 @@ export const useGame = create<GameState>((set, get) => ({
       now,
     })
     return { money: rates.click, xp: 1 }
+  },
+
+  hit: () => {
+    const state = get()
+    const fight = state.fight
+    if (!fight) return { money: 0, xp: 0 }
+    const damage = production(state.owned, state.activeBoost, Date.now()).click
+    const result = applyDamage(fight, damage)
+    if (!result.outcome) {
+      set({ fight: result.fight })
+      return { money: 0, xp: 0 }
+    }
+    const fightSeq = state.fightSeq + 1
+    set({
+      fight: null,
+      nextEnemyAt: null,
+      money: state.money + result.outcome.reward,
+      fightResult: { ...result.outcome, id: fightSeq },
+      fightSeq,
+    })
+    persistNow()
+    return { money: 0, xp: 0 }
+  },
+
+  flee: () => {
+    const fight = get().fight
+    if (!fight) return
+    const fightSeq = get().fightSeq + 1
+    set({ fight: null, nextEnemyAt: null, fightResult: { ...endFight(fight, "flee"), id: fightSeq }, fightSeq })
+  },
+
+  forceEnemy: (enemyId) => {
+    const enemy = enemyById(enemyId)
+    if (!enemy) return false
+    set({ fight: startFight(enemy, get().now), nextEnemyAt: null, fightResult: null })
+    return true
   },
 
   buy: (tierId, mode = "one") => {
@@ -141,21 +194,34 @@ export const useGame = create<GameState>((set, get) => ({
 
   dismissToast: () => set({ toast: null }),
 
+  dismissFightResult: () => set({ fightResult: null }),
+
   tick: (now) => {
     const state = get()
     const dt = Math.max(0, Math.min(now - state.now, OFFLINE_CAP_MS))
     const era = highestOwnedTier(state.owned)?.era ?? "early"
+    const enemy = advanceEnemyClock({ fight: state.fight, nextEnemyAt: state.nextEnemyAt }, era, now, Math.random)
+    // Boost rolls wait out a fight so a boost cannot land and expire unseen behind the overlay.
+    const fighting = enemy.clock.fight !== null
     const clock: BoostClock = {
       activeBoost: state.activeBoost,
       nextBoostAt: state.nextBoostAt,
       idleSince: state.idleSince,
     }
-    const advanced = advanceBoostClock(clock, era, now, Math.random)
+    const advanced = fighting ? { clock, spawned: null } : advanceBoostClock(clock, era, now, Math.random)
     const gain = idlePerSec(state.owned) * (dt / 1000)
-    const toastSeq = advanced.spawned ? state.toastSeq + 1 : state.toastSeq
-    const toast = advanced.spawned
+    let toastSeq = advanced.spawned ? state.toastSeq + 1 : state.toastSeq
+    let toast = advanced.spawned
       ? { id: toastSeq, text: `click boost ×${formatMultiplier(advanced.spawned.mult)}` }
       : state.toast
+    let fightResult = state.fightResult
+    let fightSeq = state.fightSeq
+    if (enemy.outcome) {
+      fightSeq += 1
+      fightResult = { ...enemy.outcome, id: fightSeq }
+      toastSeq += 1
+      toast = { id: toastSeq, text: `${enemyById(enemy.outcome.enemyId)?.name ?? "Enemy"} got away` }
+    }
 
     set({
       money: state.money + gain,
@@ -163,6 +229,10 @@ export const useGame = create<GameState>((set, get) => ({
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
       idleSince: advanced.clock.idleSince,
+      fight: enemy.clock.fight,
+      nextEnemyAt: enemy.clock.nextEnemyAt,
+      fightResult,
+      fightSeq,
       toast,
       toastSeq,
     })
@@ -187,6 +257,10 @@ export const useGame = create<GameState>((set, get) => ({
       nextBoostAt: null,
       idleSince: now,
       now,
+      fight: null,
+      nextEnemyAt: null,
+      fightResult: null,
+      fightSeq: 0,
       toast: null,
       buyStamp: 0,
       celebrationNonce: 0,

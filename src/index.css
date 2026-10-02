@@ -891,6 +891,193 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .tick-up { display: inline-block; animation: tick-up 320ms var(--ease-out); }
 
+/* ---------- rare enemy fight (overlay on the stage, shop stays live) ---------- */
+
+.fight,
+.fight-win {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  text-align: center;
+}
+
+.fight {
+  background: rgb(14 12 9 / 0.78);
+  animation: fight-in 220ms var(--ease-out);
+}
+
+.fight-kicker,
+.fight-win-kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.fight-name,
+.fight-win-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.fight-target {
+  position: relative;
+  width: min(288px, 56vw);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: crosshair;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.fight-sprite,
+.fight-win-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  animation: fight-bob 1600ms ease-in-out infinite;
+}
+
+.fight-hit {
+  position: absolute;
+  pointer-events: none;
+  color: var(--accent-hi);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: var(--fs-md);
+  text-shadow: 2px 2px 0 var(--ink);
+  animation: fight-hit 700ms var(--ease-out) forwards;
+}
+
+.fight-bars {
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.fight-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+
+.fight-label {
+  color: var(--text-dim);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.fight-num {
+  min-width: 7ch;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.fight-bar {
+  height: 14px;
+  border: var(--stroke) solid var(--ink);
+  background: var(--accent-ink);
+  overflow: hidden;
+}
+
+.fight-bar i {
+  display: block;
+  height: 100%;
+  background: #e0484f;
+  transition: width 120ms linear;
+}
+
+.fight-time i { background: var(--accent); transition-duration: 100ms; }
+.fight-time.is-urgent i { background: #f3b94a; }
+
+.fight-foot {
+  width: min(380px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.fight-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  text-align: left;
+}
+
+.fight-hint b { color: var(--text); font-family: var(--font-mono); }
+
+.fight-flee {
+  flex: none;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  padding: 8px 18px;
+  background: var(--text);
+  color: var(--ink);
+  font-weight: 800;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: var(--lift-2);
+}
+
+.fight-flee:active { transform: translateY(2px); box-shadow: none; }
+
+.fight-win {
+  z-index: 7;
+  pointer-events: none;
+  background: rgb(14 12 9 / 0.62);
+  animation: fight-in 220ms var(--ease-out);
+}
+
+.fight-win-sprite { width: 144px; height: 144px; animation: fight-win-pop 520ms var(--ease-pop); filter: saturate(0.7) brightness(0.9); }
+
+.fight-win-reward {
+  margin: 0;
+  color: #f3d37a;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  text-shadow: 3px 3px 0 var(--ink);
+  animation: fight-win-pop 520ms var(--ease-pop) 120ms backwards;
+}
+
+@keyframes fight-in { from { opacity: 0; } }
+@keyframes fight-bob { 50% { transform: translateY(-5px); } }
+@keyframes fight-hit {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, -48px); }
+}
+@keyframes fight-win-pop { from { transform: scale(0.6); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fight, .fight-win, .fight-win-sprite, .fight-win-reward, .fight-sprite { animation: none; }
+  .fight-hit { animation-duration: 1ms; }
+}
+
 /* ---------- small screens ---------- */
 
 @media (max-width: 860px) {

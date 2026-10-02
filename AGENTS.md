@@ -24,6 +24,8 @@ getState(): {
   spriteTierId: number
   activeBoost: { mult: number; endsAt: number } | null
   savedAt: number
+ fight: { enemyId: number; hp: number; maxHp: number; remainingMs: number } | null
+ lastFight: { kind: "win" | "flee" | "timeout"; enemyId: number; reward: number } | null
 }
 
 click(): { money: number; xp: number }
@@ -32,6 +34,8 @@ tick(ms: number): void
 setMoney(n: number): void
 forceBoost(mult: number, ms: number): void
 advanceOffline(ms: number): { credited: number; toast: string | null }
+forceEnemy(enemyId: number): boolean
+flee(): void
 reset(): void
 ```
 
@@ -44,6 +48,8 @@ reset(): void
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock.
 - `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll.
 - `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours. The toast is the same `welcome back, credited $X` path as a reload.
+- `forceEnemy(id)` starts a rare-enemy fight now (ids 1–44, `src/data/enemies.ts`), bypassing the random spawn. Returns false for an unknown id.
+- During a fight `click()` damages the enemy by `clickPower × activeBoost.mult` and pays no money. A kill pays `reward`. `flee()` and the 30s timeout (`tick`) end the fight with no reward and no penalty. `lastFight` reports how the last one ended.
 - `reset()` wipes the save back to high school.
 
 ## Smoke (`npm run smoke:play`)
