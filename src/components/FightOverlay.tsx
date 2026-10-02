@@ -3,6 +3,7 @@ import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
 import { ENEMY_SIZE, enemySprite } from "../pixel/enemies.ts"
 import { FIGHT_DURATION_MS, enemyById } from "../game/fight.ts"
 import { production } from "../game/economy.ts"
+import { modsOf } from "../game/mods.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 
@@ -46,6 +47,8 @@ export function FightOverlay() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const activeBoost = useGame((state) => state.activeBoost)
+  const foreverMult = useGame((state) => state.foreverMult)
+  const tempMults = useGame((state) => state.tempMults)
   const hit = useGame((state) => state.hit)
   const flee = useGame((state) => state.flee)
   const [hits, setHits] = useState<Hit[]>([])
@@ -56,7 +59,7 @@ export function FightOverlay() {
 
   const enemy = enemyById(fight.enemyId)
   const left = Math.max(0, fight.endsAt - now)
-  const damage = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now).click
+  const damage = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults })).click
   const hpPct = Math.max(0, Math.min(100, (fight.hp / fight.maxHp) * 100))
   const timePct = Math.max(0, Math.min(100, (left / FIGHT_DURATION_MS) * 100))
   const urgent = left <= 8_000

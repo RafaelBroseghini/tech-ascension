@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { EventModal } from "./components/EventModal.tsx"
 import { MetricsBar } from "./components/MetricsBar.tsx"
 import { Shop } from "./components/Shop.tsx"
 import { Stage } from "./components/Stage.tsx"
@@ -30,6 +31,7 @@ export default function App() {
         <Shop />
       </main>
       <Toast />
+      <EventModal />
     </div>
   )
 }

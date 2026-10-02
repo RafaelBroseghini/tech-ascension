@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { xpPerClick } from "../game/economy.ts"
+import { modFactors, modsOf } from "../game/mods.ts"
 import { formatNumber } from "../game/format.ts"
 import { moneyMode } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
@@ -49,6 +50,9 @@ export function HeroMoney() {
   const money = useGame((state) => state.money)
   const xp = useGame((state) => state.xp)
   const skills = useGame((state) => state.skills)
+  const foreverMult = useGame((state) => state.foreverMult)
+  const tempMults = useGame((state) => state.tempMults)
+  const now = useGame((state) => state.now)
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
   const paying = useGame((state) => moneyMode(state))
@@ -98,7 +102,7 @@ export function HeroMoney() {
         <span data-testid="hero-xp" className="hero-money-value is-xp">
           {formatNumber(Math.floor(xp))}
         </span>
-        <span className="hero-money-sub">+{formatNumber(xpPerClick(skills))} per click · money starts with your first gig</span>
+        <span className="hero-money-sub">+{formatNumber(xpPerClick(skills) * modFactors(modsOf({ foreverMult, tempMults }), now, now).click)} per click · money starts with your first gig</span>
       </div>
     )
   }

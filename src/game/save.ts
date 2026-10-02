@@ -3,6 +3,8 @@ import { COST_GROWTH, LEGACY_EARLY_XP_PER_DOLLAR } from "../data/phases.ts"
 import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { formatNumber } from "./format.ts"
+import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
+import type { TempMults } from "./mods.ts"
 
 export const SAVE_VERSION = 3
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
@@ -30,6 +32,10 @@ export type SaveData = {
   activeBoost?: ActiveBoost
   /** Highest balance ever held. Gates which shop rows are revealed. Older saves omit it. */
   peakMoney?: number
+  /** Permanent event multiplier. Omitted at 1. */
+  foreverMult?: number
+  /** Timed event multipliers still running. Dropped on load once ended. */
+  tempMults?: TempMults
 }
 
 export type Hydrated = {
@@ -164,6 +170,19 @@ function normalizeBoost(raw: unknown): ActiveBoost | undefined {
   return { mult, endsAt }
 }
 
+function normalizeTemp(raw: unknown): TempMults {
+  const out: TempMults = {}
+  if (!isRecord(raw)) return out
+  for (const target of TEMP_TARGETS) {
+    const entry = raw[target]
+    if (!isRecord(entry)) continue
+    const mult = finite(entry.mult)
+    const endsAt = finite(entry.endsAt)
+    if (mult > 0 && endsAt > 0) out[target] = { mult, endsAt }
+  }
+  return out
+}
+
 export function freshSave(now: number): SaveData {
   return {
     version: SAVE_VERSION,
@@ -226,6 +245,10 @@ export function migrate(input: unknown): SaveData | null {
   }
   if (boost) save.activeBoost = boost
   save.peakMoney = Math.max(save.money, finite(current.peakMoney))
+  const foreverMult = clampForever(finite(current.foreverMult) || 1)
+  if (foreverMult !== 1) save.foreverMult = foreverMult
+  const temp = normalizeTemp(current.tempMults)
+  if (Object.keys(temp).length > 0) save.tempMults = temp
   return save
 }
 
@@ -246,8 +269,10 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     return { save: freshSave(now), toast: "save was unreadable — new career started" }
   }
 
-  const credit = offlineCredit(idlePerSec(migrated), migrated.savedAt, now)
-  const xpCredit = offlineCredit(xpPerSec(migrated.skills), migrated.savedAt, now)
+  const away = Math.min(Math.max(0, now - migrated.savedAt), OFFLINE_CAP_MS)
+  const fx = modFactors({ foreverMult: migrated.foreverMult ?? 1, temp: migrated.tempMults ?? {} }, migrated.savedAt, migrated.savedAt + away)
+  const credit = offlineCredit(idlePerSec(migrated) * fx.cps, migrated.savedAt, now)
+  const xpCredit = offlineCredit(xpPerSec(migrated.skills) * fx.xpIdle, migrated.savedAt, now)
   const elapsed = now - migrated.savedAt
   const save: SaveData = {
     ...migrated,
@@ -259,6 +284,11 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   save.peakMoney = Math.max(save.peakMoney ?? 0, save.money)
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
+  }
+  if (save.tempMults) {
+    const live = pruneTemp(save.tempMults, now)
+    if (Object.keys(live).length > 0) save.tempMults = live
+    else delete save.tempMults
   }
 
   let toast: string | null = null
