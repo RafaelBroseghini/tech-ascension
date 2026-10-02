@@ -40,7 +40,11 @@ function WinBanner() {
 export function FightOverlay() {
   const fight = useGame((state) => state.fight)
   const now = useGame((state) => state.now)
+  const skills = useGame((state) => state.skills)
+  const equipment = useGame((state) => state.equipment)
   const owned = useGame((state) => state.owned)
+  const jobs = useGame((state) => state.jobs)
+  const gigs = useGame((state) => state.gigs)
   const activeBoost = useGame((state) => state.activeBoost)
   const hit = useGame((state) => state.hit)
   const flee = useGame((state) => state.flee)
@@ -52,7 +56,7 @@ export function FightOverlay() {
 
   const enemy = enemyById(fight.enemyId)
   const left = Math.max(0, fight.endsAt - now)
-  const damage = production(owned, activeBoost, now).click
+  const damage = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now).click
   const hpPct = Math.max(0, Math.min(100, (fight.hp / fight.maxHp) * 100))
   const timePct = Math.max(0, Math.min(100, (left / FIGHT_DURATION_MS) * 100))
   const urgent = left <= 8_000

@@ -1,5 +1,8 @@
+import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import type { Equip, Gig, JobTier, SkillTier } from "../data/phases.ts"
+import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
-import { COST_GROWTH, TIERS } from "../data/tiers.ts"
+import { TIERS } from "../data/tiers.ts"
 import type { Tier } from "../data/tiers.ts"
 
 /**
@@ -11,15 +14,42 @@ import type { Tier } from "../data/tiers.ts"
  * module for decimal.js or break_infinity.js. Call sites should keep using
  * `nextCost`, `clickPower`, `idlePerSec`, and `production`.
  */
+
+/** Counts keyed by item id (stringified). Used for skills, equipment and capital tiers. */
 export type OwnedMap = Record<string, number>
+
+/** The slice of game state every economy formula reads. */
+export type Progress = {
+  money: number
+  /** Spendable XP. Skills cost XP. */
+  xp: number
+  /** Lifetime XP earned. Never spent. Phase gates and job requirements read this. */
+  xpTotal: number
+  /** Highest money balance ever held. */
+  peakMoney: number
+  skills: OwnedMap
+  equipment: OwnedMap
+  /** Phase D capital tiers (TIERS). */
+  owned: OwnedMap
+  /** Owned job ids (each role is held once). */
+  jobs: readonly number[]
+  /** Completed gig ids (each gig clears once). */
+  gigs: readonly number[]
+}
 
 export const BASE_CLICK = 1
 
 const TIER_BY_ID = new Map<number, Tier>(TIERS.map((tier) => [tier.id, tier]))
+const SKILL_BY_ID = new Map<number, SkillTier>(SKILL_TIERS.map((row) => [row.id, row]))
+const GIG_BY_ID = new Map<number, Gig>(GIGS.map((row) => [row.id, row]))
+const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
+const EQUIP_BY_ID = new Map<number, Equip>(EQUIPMENT.map((row) => [row.id, row]))
 
-export function tierById(id: number): Tier | undefined {
-  return TIER_BY_ID.get(id)
-}
+export const tierById = (id: number): Tier | undefined => TIER_BY_ID.get(id)
+export const skillById = (id: number): SkillTier | undefined => SKILL_BY_ID.get(id)
+export const gigById = (id: number): Gig | undefined => GIG_BY_ID.get(id)
+export const jobById = (id: number): JobTier | undefined => JOB_BY_ID.get(id)
+export const equipById = (id: number): Equip | undefined => EQUIP_BY_ID.get(id)
 
 export function ownedCount(owned: OwnedMap, id: number): number {
   const value = owned[String(id)]
@@ -40,38 +70,79 @@ export function canAfford(money: number, cost: number): boolean {
   return cost - money <= Math.max(1, Math.abs(cost)) * 1e-8
 }
 
-export function clickPower(owned: OwnedMap): number {
-  let bonus = 0
-  for (const tier of TIERS) {
-    bonus += ownedCount(owned, tier.id) * tier.clickBonus
+export function quotePurchase(
+  budget: number,
+  baseCost: number,
+  owned: number,
+  mode: "one" | "max",
+): { count: number; total: number } {
+  const empty = { count: 0, total: 0 }
+  if (mode === "one") {
+    const cost = nextCost(baseCost, owned)
+    if (!(cost > 0) || !canAfford(budget, cost)) return empty
+    return { count: 1, total: cost }
   }
+
+  let count = 0
+  let total = 0
+  let pool = budget
+  let have = owned
+  for (let i = 0; i < 5000; i++) {
+    const cost = nextCost(baseCost, have)
+    if (!(cost > 0) || !Number.isFinite(cost) || !canAfford(pool, cost)) break
+    pool -= cost
+    total += cost
+    have += 1
+    count += 1
+  }
+  return { count, total }
+}
+
+/** XP per click from skills, before any boost. Base 1 plus every owned copy's xpPerClick. */
+export function xpPerClick(skills: OwnedMap): number {
+  let sum = BASE_XP_PER_CLICK
+  for (const row of SKILL_TIERS) sum += ownedCount(skills, row.id) * row.xpPerClick
+  return sum
+}
+
+/** Idle XP/s from skills (study time). Runs in every phase. */
+export function xpPerSec(skills: OwnedMap): number {
+  let sum = 0
+  for (const row of SKILL_TIERS) sum += ownedCount(skills, row.id) * row.xpPerSec
+  return sum
+}
+
+/** Base money per click: $1 plus equipment and capital click bonuses. Phase B+ only pays it out. */
+export function clickPower(p: Pick<Progress, "equipment" | "owned">): number {
+  let bonus = 0
+  for (const row of EQUIPMENT) bonus += ownedCount(p.equipment, row.id) * row.clickBonus
+  for (const tier of TIERS) bonus += ownedCount(p.owned, tier.id) * tier.clickBonus
   return BASE_CLICK + bonus
 }
 
-/** Idle $/s from generators. Click boosts do not apply. */
-export function idlePerSec(owned: OwnedMap): number {
-  let cps = 0
-  for (const tier of TIERS) {
-    cps += ownedCount(owned, tier.id) * tier.cps
-  }
-  return cps
+export type IdleParts = { retainers: number; jobs: number; equipment: number; capital: number }
+
+export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs">): IdleParts {
+  let retainers = 0
+  for (const id of p.gigs) retainers += gigById(id)?.retainerCps ?? 0
+  let jobs = 0
+  for (const id of p.jobs) jobs += jobById(id)?.cps ?? 0
+  let equipment = 0
+  for (const row of EQUIPMENT) equipment += ownedCount(p.equipment, row.id) * row.cps
+  let capital = 0
+  for (const tier of TIERS) capital += ownedCount(p.owned, tier.id) * tier.cps
+  return { retainers, jobs, equipment, capital }
 }
 
-/** One tier's share of idle $/s: owned × cps. Sums to idlePerSec across tiers. */
+/** Idle $/s: gig retainers + salaries + equipment + capital. Click boosts never apply. */
+export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs">): number {
+  const parts = idleParts(p)
+  return parts.retainers + parts.jobs + parts.equipment + parts.capital
+}
+
+/** One capital tier's share of idle $/s. */
 export function tierIdlePerSec(tier: Tier, owned: OwnedMap): number {
   return ownedCount(owned, tier.id) * tier.cps
-}
-
-export type OwnedSource = { tier: Tier; count: number; idle: number }
-
-/** Every generator with owned > 0, biggest $/s contributor first (ties: later tier first). */
-export function ownedSources(owned: OwnedMap): OwnedSource[] {
-  const rows: OwnedSource[] = []
-  for (const tier of TIERS) {
-    const count = ownedCount(owned, tier.id)
-    if (count > 0) rows.push({ tier, count, idle: tierIdlePerSec(tier, owned) })
-  }
-  return rows.sort((a, b) => b.idle - a.idle || b.tier.id - a.tier.id)
 }
 
 export function highestOwnedTier(owned: OwnedMap): Tier | null {
@@ -83,8 +154,68 @@ export function highestOwnedTier(owned: OwnedMap): Tier | null {
   return best
 }
 
+export function highestOwnedSkill(skills: OwnedMap): SkillTier | null {
+  let best: SkillTier | null = null
+  for (const row of SKILL_TIERS) {
+    if (ownedCount(skills, row.id) > 0 && (!best || row.id > best.id)) best = row
+  }
+  return best
+}
+
+export type OwnedKind = "skill" | "gig" | "job" | "equipment" | "capital"
+
+export type OwnedSource = {
+  key: string
+  kind: OwnedKind
+  id: number
+  name: string
+  artId: number
+  count: number
+  /** $/s this row contributes. */
+  idle: number
+  /** XP/s this row contributes. */
+  xpIdle: number
+  /** Click bonus this row contributes: dollars for equipment and capital, XP for skills. */
+  click: number
+}
+
+const KIND_RANK: Record<OwnedKind, number> = { capital: 0, job: 1, equipment: 2, gig: 3, skill: 4 }
+
+/** Everything owned: capital, jobs, equipment, gig retainers, skills. Biggest $/s first, then biggest XP/s. */
+export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): OwnedSource[] {
+  const rows: OwnedSource[] = []
+  for (const tier of TIERS) {
+    const count = ownedCount(p.owned, tier.id)
+    if (count > 0)
+      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.id, count, idle: count * tier.cps, xpIdle: 0, click: count * tier.clickBonus })
+  }
+  for (const id of p.jobs) {
+    const job = jobById(id)
+    if (job)
+      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: JOB_ART[id - 1] ?? 1, count: 1, idle: job.cps, xpIdle: 0, click: 0 })
+  }
+  for (const row of EQUIPMENT) {
+    const count = ownedCount(p.equipment, row.id)
+    if (count > 0)
+      rows.push({ key: `equipment:${row.id}`, kind: "equipment", id: row.id, name: row.name, artId: EQUIP_ART[row.id - 1] ?? 1, count, idle: count * row.cps, xpIdle: 0, click: count * row.clickBonus })
+  }
+  for (const id of p.gigs) {
+    const gig = gigById(id)
+    if (gig && gig.retainerCps > 0)
+      rows.push({ key: `gig:${id}`, kind: "gig", id, name: gig.name, artId: GIG_ART[id - 1] ?? 1, count: 1, idle: gig.retainerCps, xpIdle: 0, click: 0 })
+  }
+  for (const row of SKILL_TIERS) {
+    const count = ownedCount(p.skills, row.id)
+    if (count > 0)
+      rows.push({ key: `skill:${row.id}`, kind: "skill", id: row.id, name: row.name, artId: SKILL_ART[row.id - 1] ?? 1, count, idle: 0, xpIdle: count * row.xpPerSec, click: count * row.xpPerClick })
+  }
+  return rows.sort(
+    (a, b) => b.idle - a.idle || KIND_RANK[a.kind] - KIND_RANK[b.kind] || b.xpIdle - a.xpIdle || b.id - a.id,
+  )
+}
+
 /**
- * A tier stays hidden until the player has held enough money to buy its first
+ * A capital tier stays hidden until the player has held enough money to buy its first
  * copy (peakMoney), or already owns it or something later. Costs rise with id,
  * so reveals are always a prefix of TIERS.
  */
@@ -103,6 +234,11 @@ export function highestRevealedId(owned: OwnedMap, peakMoney: number): number {
   return id
 }
 
+/** A skill shows once lifetime XP reaches its `unlockAtXp`, or when it is already owned. */
+export function isSkillRevealed(row: SkillTier, skills: OwnedMap, xpTotal: number): boolean {
+  return ownedCount(skills, row.id) > 0 || xpTotal >= row.unlockAtXp
+}
+
 export function boostMultiplier(boost: ActiveBoost | null | undefined, now: number): number {
   if (!boost) return 1
   if (!(boost.endsAt > now)) return 1
@@ -112,42 +248,16 @@ export function boostMultiplier(boost: ActiveBoost | null | undefined, now: numb
 
 /** Click gain includes the boost. Idle never does. */
 export function production(
-  owned: OwnedMap,
+  p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">,
   boost: ActiveBoost | null | undefined,
   now: number,
-): { click: number; idle: number; mult: number } {
+): { click: number; idle: number; mult: number; xpClick: number; xpIdle: number } {
   const mult = boostMultiplier(boost, now)
   return {
-    click: clickPower(owned) * mult,
-    idle: idlePerSec(owned),
+    click: clickPower(p) * mult,
+    idle: idlePerSec(p),
     mult,
+    xpClick: xpPerClick(p.skills),
+    xpIdle: xpPerSec(p.skills),
   }
-}
-
-export function quotePurchase(
-  money: number,
-  baseCost: number,
-  owned: number,
-  mode: "one" | "max",
-): { count: number; total: number } {
-  const empty = { count: 0, total: 0 }
-  if (mode === "one") {
-    const cost = nextCost(baseCost, owned)
-    if (!(cost > 0) || !canAfford(money, cost)) return empty
-    return { count: 1, total: cost }
-  }
-
-  let count = 0
-  let total = 0
-  let pool = money
-  let have = owned
-  for (let i = 0; i < 5000; i++) {
-    const cost = nextCost(baseCost, have)
-    if (!(cost > 0) || !Number.isFinite(cost) || !canAfford(pool, cost)) break
-    pool -= cost
-    total += cost
-    have += 1
-    count += 1
-  }
-  return { count, total }
 }

@@ -438,7 +438,6 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 .pop-boosted { color: var(--text); font-size: clamp(2.4rem, 1.6rem + 2.2vw, 3.2rem); }
-.pop-xp { color: var(--text); font-size: clamp(1.15rem, 0.95rem + 0.6vw, 1.45rem); }
 
 /* Waterfall: pixel thumbs of owned tiers, dropped from the cursor. */
 .drops {
@@ -1074,4 +1073,143 @@ img { -webkit-user-drag: none; user-select: none; }
 
   .offer { grid-template-columns: 64px minmax(0, 1fr); }
   .offer-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+}
+
+/* ---------- phase economy ---------- */
+
+.metrics .m-phase dd { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
+.metrics .m-xp-rate dd { color: var(--mocha-sky); }
+
+.hero-money-value.is-xp { color: var(--mocha-sky); }
+
+.hero-money-sub {
+  max-width: 28ch;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.era-tab.is-locked { color: var(--text-faint); opacity: 0.62; }
+.era-tab.is-locked.active { opacity: 1; }
+.era-tabs.era-sub { padding-top: 2px; }
+.era-sub .era-tab { padding: 6px 12px 6px; font-size: var(--fs-xs); }
+
+.lock-pip {
+  display: inline-block;
+  width: 8px;
+  height: 7px;
+  margin-right: 6px;
+  background: currentColor;
+  vertical-align: 0;
+  clip-path: polygon(0 35%, 20% 35%, 20% 0, 80% 0, 80% 35%, 100% 35%, 100% 100%, 0 100%);
+}
+
+.shop-section {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  border-bottom: var(--stroke) solid var(--surface-1);
+}
+
+.offer.is-locked { opacity: 0.55; }
+.offer.is-done { opacity: 0.7; }
+.offer.is-done h3 { color: var(--text-dim); }
+
+.lock-panel {
+  margin: var(--sp-4);
+  padding: var(--sp-4);
+  border: var(--stroke) dashed var(--line-strong);
+  background: var(--surface-1);
+}
+
+.lock-title {
+  margin: 0 0 var(--sp-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.lock-panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+
+.lock-panel li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.lock-panel li i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+
+.lock-panel li.met { color: var(--text); }
+.lock-panel li.met i { background: var(--accent); border-color: var(--accent); }
+.lock-note { margin: var(--sp-2) 0 0; color: var(--text-faint); font-family: var(--font-mono); font-size: var(--fs-2xs); }
+
+/* Balatro score pop: centered, squashed in, chromatic split that settles, then gone. */
+.score-pop {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 44%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 92%;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  animation: score-pop 1500ms cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
+}
+
+.score-pop-kicker,
+.score-pop-label {
+  padding: 2px 10px;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.score-pop-kicker { color: var(--accent-hi); }
+
+.score-pop-amount {
+  position: relative;
+  color: var(--mocha-peach);
+  font-family: var(--font-mono);
+  font-size: clamp(3rem, 1.6rem + 5vw, 5.4rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-shadow: 0 5px 0 var(--ink), 4px 0 0 var(--ink), -4px 0 0 var(--ink), 0 -4px 0 var(--ink);
+  animation: score-chroma 1500ms ease-out forwards;
+}
+
+.score-pop-amount.is-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 1rem + 3vw, 3.2rem);
+  white-space: normal;
+  letter-spacing: 0;
+  color: var(--accent-hi);
 }
