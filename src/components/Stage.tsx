@@ -7,6 +7,7 @@ import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 import { capDrops, FALL_MS, ownedTierIds, waterfallCount } from "../game/waterfall.ts"
 import type { Drop } from "../game/waterfall.ts"
+import { FightOverlay } from "./FightOverlay.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { StageBackdrop } from "./StageBackdrop.tsx"
@@ -164,7 +165,7 @@ export function Stage() {
 
   function fire(clientX: number | null, clientY: number | null) {
     const box = hitboxRef.current
-    if (!box) return
+    if (!box || useGame.getState().fight) return
     const gain = click()
     heat.current = Math.min(1, heat.current + 0.14)
     box.style.setProperty("--heat", heat.current.toFixed(3))
@@ -349,6 +350,7 @@ export function Stage() {
         <h2>{stageName}</h2>
       </div>
       <OwnedStrip />
+      <FightOverlay />
     </section>
   )
 }

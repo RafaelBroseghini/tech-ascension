@@ -1,0 +1,53 @@
+/** Enemies v1 — tech ascension */
+import type { Era } from "./tiers.ts"
+
+export type EraGate = Era;
+export type Enemy = { id:number; name:string; eraGate:EraGate; hp:number; reward:number; weight:number };
+export const ENEMIES: readonly Enemy[] = [
+  { id: 1, name: "Merge Conflict Hydra", eraGate: "early", hp: 120, reward: 80, weight: 10 },
+  { id: 2, name: "Off-by-One Beetle", eraGate: "early", hp: 90, reward: 50, weight: 12 },
+  { id: 3, name: "Null Pointer Specter", eraGate: "early", hp: 150, reward: 100, weight: 10 },
+  { id: 4, name: "Stack Overflow Troll", eraGate: "early", hp: 180, reward: 140, weight: 8 },
+  { id: 5, name: "Imposter Syndrome Shade", eraGate: "early", hp: 200, reward: 160, weight: 7 },
+  { id: 6, name: "Broken Build Golem", eraGate: "early", hp: 160, reward: 120, weight: 9 },
+  { id: 7, name: "CSS Centipede", eraGate: "early", hp: 100, reward: 60, weight: 11 },
+  { id: 8, name: "Internship Gatekeeper", eraGate: "early", hp: 220, reward: 200, weight: 6 },
+  { id: 9, name: "Whiteboard Wraith", eraGate: "early", hp: 250, reward: 220, weight: 5 },
+  { id: 10, name: "Flaky Test Phantom", eraGate: "early", hp: 140, reward: 90, weight: 10 },
+  { id: 11, name: "On-Call Pager Demon", eraGate: "mid", hp: 800, reward: 2500, weight: 10 },
+  { id: 12, name: "Prod Outage Kraken", eraGate: "mid", hp: 1200, reward: 4000, weight: 7 },
+  { id: 13, name: "Tech Debt Titan", eraGate: "mid", hp: 1500, reward: 5500, weight: 6 },
+  { id: 14, name: "Code Review Nitpickler", eraGate: "mid", hp: 600, reward: 1800, weight: 12 },
+  { id: 15, name: "Meeting Vampire", eraGate: "mid", hp: 700, reward: 2200, weight: 10 },
+  { id: 16, name: "Legacy COBOL Lich", eraGate: "mid", hp: 1800, reward: 7000, weight: 5 },
+  { id: 17, name: "Memory Leak Ooze", eraGate: "mid", hp: 900, reward: 3000, weight: 9 },
+  { id: 18, name: "Kubernetes Pod Swarm", eraGate: "mid", hp: 1100, reward: 3800, weight: 8 },
+  { id: 19, name: "Promotion Packet Sphinx", eraGate: "mid", hp: 2000, reward: 8500, weight: 4 },
+  { id: 20, name: "Vibe-Coding Gremlin", eraGate: "mid", hp: 650, reward: 2000, weight: 11 },
+  { id: 21, name: "Investor Pitch Drake", eraGate: "upper", hp: 8000, reward: 80000, weight: 8 },
+  { id: 22, name: "Churn Hydra", eraGate: "upper", hp: 6500, reward: 60000, weight: 9 },
+  { id: 23, name: "Competitor Clone", eraGate: "upper", hp: 9000, reward: 100000, weight: 7 },
+  { id: 24, name: "Hallucinating LLM", eraGate: "upper", hp: 7500, reward: 75000, weight: 8 },
+  { id: 25, name: "GPU Shortage Golem", eraGate: "upper", hp: 12000, reward: 150000, weight: 5 },
+  { id: 26, name: "Term Sheet Serpent", eraGate: "upper", hp: 10000, reward: 120000, weight: 6 },
+  { id: 27, name: "Acquisition Shark", eraGate: "upper", hp: 15000, reward: 200000, weight: 4 },
+  { id: 28, name: "Open-Source Fork Fiend", eraGate: "upper", hp: 5500, reward: 50000, weight: 10 },
+  { id: 29, name: "Boardroom Basilisk", eraGate: "upper", hp: 18000, reward: 250000, weight: 3 },
+  { id: 30, name: "Fab Yield Specter", eraGate: "q3", hp: 80000, reward: 2000000, weight: 8 },
+  { id: 31, name: "CUDA Dragon", eraGate: "q3", hp: 100000, reward: 2800000, weight: 7 },
+  { id: 32, name: "Export-Control Colossus", eraGate: "q3", hp: 140000, reward: 4000000, weight: 4 },
+  { id: 33, name: "Thermal Throttle Djinn", eraGate: "q3", hp: 70000, reward: 1600000, weight: 9 },
+  { id: 34, name: "Mask-Align Wraith", eraGate: "q3", hp: 90000, reward: 2200000, weight: 7 },
+  { id: 35, name: "Frontier Eval Minotaur", eraGate: "q3", hp: 120000, reward: 3500000, weight: 5 },
+  { id: 36, name: "Supply-Chain Kraken", eraGate: "q3", hp: 160000, reward: 5000000, weight: 3 },
+  { id: 37, name: "Datacenter Brownout", eraGate: "end", hp: 500000, reward: 40000000, weight: 8 },
+  { id: 38, name: "BGP Hijack Phantom", eraGate: "end", hp: 450000, reward: 35000000, weight: 7 },
+  { id: 39, name: "Orbital Debris Swarm", eraGate: "end", hp: 700000, reward: 60000000, weight: 5 },
+  { id: 40, name: "Solar Flare Wyrm", eraGate: "end", hp: 900000, reward: 90000000, weight: 4 },
+  { id: 41, name: "Martian Dust Devil", eraGate: "end", hp: 1200000, reward: 120000000, weight: 4 },
+  { id: 42, name: "Alien Latency Lobster", eraGate: "end", hp: 800000, reward: 75000000, weight: 5 },
+  { id: 43, name: "Terraform Titan", eraGate: "end", hp: 1500000, reward: 180000000, weight: 3 },
+  { id: 44, name: "Black Hole Budget", eraGate: "end", hp: 2000000, reward: 250000000, weight: 2 },
+] as const;
+export const FIGHT_DURATION_MS = 30_000;
+export const ENEMY_MEAN_WAIT_MS = { early: 90_000, mid: 120_000, upper: 150_000, q3: 180_000, end: 210_000 } as const;
