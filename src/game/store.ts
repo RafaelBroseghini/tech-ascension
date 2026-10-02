@@ -7,7 +7,7 @@ import {
   ownedCount,
   production,
   quotePurchase,
-  tierById,
+  tierByKey,
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { formatMultiplier } from "./format.ts"
@@ -37,9 +37,9 @@ type GameState = {
   toastSeq: number
   buyStamp: number
   celebrationNonce: number
-  celebrationTierId: number
+  celebrationTierKey: string
   click: () => { money: number; xp: number }
-  buy: (tierId: number, mode?: "one" | "max") => void
+  buy: (tierKey: string, mode?: "one" | "max") => void
   dismissToast: () => void
   tick: (now: number) => void
   wipe: () => void
@@ -47,7 +47,7 @@ type GameState = {
 
 function toSave(state: GameState, now: number): SaveV1 {
   const save: SaveV1 = {
-    version: 2,
+    version: 3,
     money: state.money,
     xp: state.xp,
     owned: state.owned,
@@ -61,7 +61,7 @@ function toSave(state: GameState, now: number): SaveV1 {
 }
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
-  return TIERS.some((tier) => tier.era === era && ownedCount(owned, tier.id) > 0)
+  return TIERS.some((tier) => tier.era === era && ownedCount(owned, tier.key) > 0)
 }
 
 let lastSaveAt = 0
@@ -96,7 +96,7 @@ export const useGame = create<GameState>((set, get) => ({
   toastSeq: booted.toastSeq,
   buyStamp: 0,
   celebrationNonce: 0,
-  celebrationTierId: 0,
+  celebrationTierKey: "",
 
   click: () => {
     const state = get()
@@ -110,30 +110,30 @@ export const useGame = create<GameState>((set, get) => ({
     return { money: rates.click, xp: 1 }
   },
 
-  buy: (tierId, mode = "one") => {
-    const tier = tierById(tierId)
+  buy: (tierKey, mode = "one") => {
+    const tier = tierByKey(tierKey)
     if (!tier) return
     const state = get()
-    const have = ownedCount(state.owned, tier.id)
+    const have = ownedCount(state.owned, tier.key)
     const quote = quotePurchase(state.money, tier.baseCost, have, mode)
     if (quote.count <= 0) return
 
-    const owned: OwnedMap = { ...state.owned, [String(tier.id)]: have + quote.count }
+    const owned: OwnedMap = { ...state.owned, [tier.key]: have + quote.count }
     const prevBest = highestOwnedTier(state.owned)
     const nextBest = highestOwnedTier(owned)
-    const newHighest = Boolean(nextBest && (!prevBest || nextBest.id > prevBest.id))
+    const newHighest = Boolean(nextBest && (!prevBest || nextBest.rank > prevBest.rank))
     const newEra = !eraAlreadyOwned(state.owned, tier.era)
     const celebrate = have === 0 && (newHighest || newEra)
     const now = Date.now()
 
     set({
       money: Math.max(0, state.money - quote.total),
-      xp: state.xp + tier.id * quote.count,
+      xp: state.xp + tier.rank * quote.count,
       owned,
       now,
       buyStamp: state.buyStamp + 1,
       celebrationNonce: celebrate ? state.celebrationNonce + 1 : state.celebrationNonce,
-      celebrationTierId: celebrate ? tier.id : state.celebrationTierId,
+      celebrationTierKey: celebrate ? tier.key : state.celebrationTierKey,
     })
     writeSave(toSave(get(), now))
     lastSaveAt = now
@@ -190,7 +190,7 @@ export const useGame = create<GameState>((set, get) => ({
       toast: null,
       buyStamp: 0,
       celebrationNonce: 0,
-      celebrationTierId: 0,
+      celebrationTierKey: "",
     })
   },
 }))

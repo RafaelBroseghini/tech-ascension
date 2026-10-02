@@ -8,7 +8,7 @@ import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } fro
 import {
   canAfford,
   clickPower,
-  highestRevealedId,
+  highestRevealedRank,
   isRevealed,
   nextCost,
   ownedCount,
@@ -16,7 +16,7 @@ import {
   quotePurchase,
 } from "./economy.ts"
 import { formatNumber } from "./format.ts"
-import { freshSave, hydrate, migrate, OFFLINE_CAP_MS, offlineCredit } from "./save.ts"
+import { freshSave, hydrate, migrate, OFFLINE_CAP_MS, offlineCredit, V2_IDS_TO_KEYS } from "./save.ts"
 
 describe("economy", () => {
   it("grows cost by 1.15 and floors", () => {
@@ -29,7 +29,7 @@ describe("economy", () => {
     const github = TIERS.find((tier) => tier.name === "Personal GitHug")
     if (!github) throw new Error("missing Personal GitHug")
     expect(github.clickBonus).toBe(1)
-    const owned = { "1": 1, [String(github.id)]: 2 }
+    const owned = { "used-laptop": 1, [github.key]: 2 }
     expect(clickPower(owned)).toBe(3)
     const live = production(owned, { mult: 10, endsAt: 1_000 }, 500)
     expect(live.click).toBe(30)
@@ -65,7 +65,7 @@ describe("format", () => {
 
 describe("save", () => {
   it("caps offline credit at 8 hours and writes the welcome toast", () => {
-    const owned = { "1": 10 }
+    const owned = { "used-laptop": 10 }
     const cps = 1
     const savedAt = 0
     const now = OFFLINE_CAP_MS + 60_000
@@ -82,44 +82,47 @@ describe("save", () => {
   it("drops an expired click boost and keeps a live one", () => {
     const now = 10_000
     const expired = hydrate(
-      JSON.stringify({ version: 1, money: 3, xp: 1, owned: { "2": 4 }, savedAt: now, activeBoost: { mult: 5, endsAt: now } }),
+      JSON.stringify({ version: 3, money: 3, xp: 1, owned: { "stack-overblow": 4 }, savedAt: now, activeBoost: { mult: 5, endsAt: now } }),
       now,
     )
     expect(expired.save.activeBoost).toBeUndefined()
-    expect(expired.save.owned["2"]).toBe(4)
+    expect(expired.save.owned["stack-overblow"]).toBe(4)
 
     const live = hydrate(
-      JSON.stringify({ version: 1, money: 0, xp: 0, owned: {}, savedAt: now, activeBoost: { mult: 2, endsAt: now + 5_000 } }),
+      JSON.stringify({ version: 3, money: 0, xp: 0, owned: {}, savedAt: now, activeBoost: { mult: 2, endsAt: now + 5_000 } }),
       now,
     )
     expect(live.save.activeBoost).toEqual({ mult: 2, endsAt: now + 5_000 })
   })
 
-  it("migrates a legacy owned array and keeps unknown tier ids", () => {
+  it("migrates a legacy owned array and keeps unknown stage keys", () => {
     const migrated = migrate({ money: 9, owned: [2, 0, 3], savedAt: 50 })
-    expect(migrated?.version).toBe(2)
-    expect(migrated?.owned[String(TIERS[0]?.id)]).toBe(2)
-    expect(migrated?.owned[String(TIERS[2]?.id)]).toBe(3)
-    expect(ownedCount(migrated?.owned ?? {}, TIERS[1]?.id ?? 0)).toBe(0)
+    expect(migrated?.version).toBe(3)
+    expect(migrated?.owned["used-laptop"]).toBe(2)
+    expect(migrated?.owned["freecodechamp"]).toBe(3)
+    expect(ownedCount(migrated?.owned ?? {}, "stack-overblow")).toBe(0)
 
-    const future = migrate({ version: 1, money: 1, xp: 0, owned: { "99": 4, nope: 8 }, savedAt: 1 })
-    expect(future?.owned["99"]).toBe(4)
-    expect(future?.owned.nope).toBeUndefined()
+    const future = migrate({ version: 3, money: 1, xp: 0, owned: { "future-stage": 4, "Not A Key": 8 }, savedAt: 1 })
+    expect(future?.owned["future-stage"]).toBe(4)
+    expect(future?.owned["Not A Key"]).toBeUndefined()
   })
 
-  it("re-keys v1 owned counts onto the v2 stage ids", () => {
-    const byName = (name: string) => TIERS.find((tier) => tier.name === name)?.id
+  it("carries v1 and v2 numeric ids onto stable stage keys", () => {
     const v1 = { version: 1, money: 5, xp: 0, savedAt: 1, owned: { "1": 2, "4": 1, "15": 3, "48": 1 } }
-    const migrated = migrate(v1)
-    expect(migrated?.version).toBe(2)
-    expect(migrated?.owned[String(byName("Used laptop"))]).toBe(2)
-    expect(migrated?.owned[String(byName("YouToob CS / ML intro"))]).toBe(1)
-    expect(migrated?.owned[String(byName("Fine-tune your first LLM"))]).toBe(3)
-    expect(migrated?.owned[String(byName("Mars megacampus"))]).toBe(1)
-    expect(Object.keys(migrated?.owned ?? {})).toHaveLength(4)
+    const fromV1 = migrate(v1)
+    expect(fromV1?.version).toBe(3)
+    expect(fromV1?.owned).toEqual({
+      "used-laptop": 2,
+      "youtoob-intro": 1,
+      "first-llm-finetune": 3,
+      "mars-megacampus": 1,
+    })
 
-    const again = migrate({ ...v1, version: 2, owned: migrated?.owned })
-    expect(again?.owned).toEqual(migrated?.owned)
+    const v2 = { version: 2, money: 5, xp: 0, savedAt: 1, owned: { "1": 2, "5": 1, "26": 3, "66": 1 } }
+    expect(migrate(v2)?.owned).toEqual(fromV1?.owned)
+
+    const again = migrate({ ...v1, version: 3, owned: fromV1?.owned })
+    expect(again?.owned).toEqual(fromV1?.owned)
   })
 
   it("starts over when the payload is unreadable", () => {
@@ -179,9 +182,11 @@ describe("click boosts", () => {
 })
 
 describe("tier table", () => {
-  it("has contiguous ids and strictly rising prices", () => {
+  it("has unique url-safe keys, rank equal to position, and strictly rising prices", () => {
+    expect(new Set(TIERS.map((tier) => tier.key)).size).toBe(TIERS.length)
     TIERS.forEach((tier, index) => {
-      expect(tier.id).toBe(index + 1)
+      expect(tier.key).toMatch(/^[a-z0-9][a-z0-9-]*$/)
+      expect(tier.rank).toBe(index + 1)
       if (index > 0) expect(tier.baseCost).toBeGreaterThan(TIERS[index - 1]?.baseCost ?? 0)
     })
   })
@@ -189,26 +194,38 @@ describe("tier table", () => {
   it("uses no real brand names", () => {
     const banned =
       /\b(stack ?overflow|freecodecamp|youtube|github|kaggle|pytorch|tensorflow|y combinator|yc|raspberry pi|mac mini|openclaw|docker|kubernetes|hacker news|blackwell)\b/i
-    for (const tier of TIERS) expect(tier.name).not.toMatch(banned)
+    for (const tier of TIERS) {
+      expect(tier.name).not.toMatch(banned)
+      expect(tier.key).not.toMatch(banned)
+    }
+  })
+
+  it("covers every key the v2 save table points at", () => {
+    const keys = new Set(TIERS.map((tier) => tier.key))
+    for (const key of Object.values(V2_IDS_TO_KEYS)) expect(keys.has(key)).toBe(true)
+    expect(Object.keys(V2_IDS_TO_KEYS)).toHaveLength(66)
   })
 })
 
 describe("sprites", () => {
-  it("maps every tier, plus the opening scene, to a webp on disk", () => {
-    expect(new Set(TIERS.map((tier) => tier.id)).size).toBe(TIERS.length)
+  it("gives every stage, plus the opening scene, a webp named by its key", () => {
     for (const tier of TIERS) {
-      const subject = SPRITE_SUBJECTS.find((row) => row.id === tier.id)
+      const subject = SPRITE_SUBJECTS.find((row) => row.key === tier.key)
       expect(subject?.name).toBe(tier.name)
       expect(subject?.subject.length).toBeGreaterThan(10)
-      expect(SPRITE_BY_TIER[tier.id]).toBe(`/sprites/${tier.id}.webp`)
+      expect(SPRITE_BY_TIER[tier.key]).toBe(`/sprites/${tier.key}.webp`)
     }
-    for (const id of [0, ...TIERS.map((tier) => tier.id)]) {
-      const bytes = fs.readFileSync(`public/sprites/${id}.webp`)
+    expect(SPRITE_SUBJECTS).toHaveLength(TIERS.length)
+    const files = ["start", ...TIERS.map((tier) => tier.key)]
+    for (const name of files) {
+      const bytes = fs.readFileSync(`public/sprites/${name}.webp`)
       expect(bytes.subarray(0, 4).toString("ascii")).toBe("RIFF")
       expect(bytes.subarray(8, 12).toString("ascii")).toBe("WEBP")
       expect(bytes.length).toBeGreaterThan(8_000)
     }
-    expect(spriteForTier(0)).toBe("/sprites/0.webp")
+    expect(fs.readdirSync("public/sprites")).toHaveLength(files.length)
+    expect(spriteForTier("start")).toBe("/sprites/start.webp")
+    expect(spriteForTier("no-such-stage")).toBe("/sprites/start.webp")
   })
 })
 
@@ -220,10 +237,11 @@ describe("hidden upgrades", () => {
     expect(isRevealed(first, {}, first.baseCost - 1)).toBe(false)
     expect(isRevealed(first, {}, first.baseCost)).toBe(true)
     expect(isRevealed(second, {}, first.baseCost)).toBe(false)
-    expect(highestRevealedId({}, third.baseCost)).toBe(3)
-    expect(isRevealed(first, { "3": 1 }, 0)).toBe(true)
-    expect(isRevealed(second, { "3": 1 }, 0)).toBe(true)
-    expect(isRevealed(third, { "3": 1 }, 0)).toBe(true)
+    expect(highestRevealedRank({}, third.baseCost)).toBe(3)
+    const ownsThird = { [third.key]: 1 }
+    expect(isRevealed(first, ownsThird, 0)).toBe(true)
+    expect(isRevealed(second, ownsThird, 0)).toBe(true)
+    expect(isRevealed(third, ownsThird, 0)).toBe(true)
   })
 
   it("persists the peak balance and never lets it fall below current money", () => {
@@ -231,7 +249,7 @@ describe("hidden upgrades", () => {
     expect(fresh.peakMoney).toBe(0)
     const loaded = hydrate(JSON.stringify({ ...fresh, money: 20, peakMoney: 500, savedAt: 1_000 }), 1_000)
     expect(loaded.save.peakMoney).toBe(500)
-    const legacy = hydrate(JSON.stringify({ version: 1, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
+    const legacy = hydrate(JSON.stringify({ version: 3, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
     expect(legacy.save.peakMoney).toBe(90)
   })
 })

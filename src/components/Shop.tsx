@@ -22,8 +22,8 @@ export function Shop() {
   const buy = useGame((state) => state.buy)
   const wipe = useGame((state) => state.wipe)
   const [pickedEra, setPickedEra] = useState<Era | null>(null)
-  const [flashId, setFlashId] = useState<number | null>(null)
-  const [fresh, setFresh] = useState<ReadonlySet<number>>(new Set())
+  const [flashId, setFlashId] = useState<string | null>(null)
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
 
   const revealedByEra = useMemo(() => {
     const map = new Map<Era, ReturnType<typeof tiersInEra>>()
@@ -40,15 +40,15 @@ export function Shop() {
   const rows = revealedByEra.get(era) ?? []
   const current = sections.find((section) => section.id === era)
 
-  const revealedIds = [...revealedByEra.values()].flat().map((tier) => tier.id)
-  const [known, setKnown] = useState<ReadonlySet<number>>(() => new Set(revealedIds))
+  const revealedIds = [...revealedByEra.values()].flat().map((tier) => tier.key)
+  const [known, setKnown] = useState<ReadonlySet<string>>(() => new Set(revealedIds))
   if (revealedIds.length !== known.size || revealedIds.some((id) => !known.has(id))) {
     const added = revealedIds.filter((id) => !known.has(id))
     setKnown(new Set(revealedIds))
     setFresh((current) => (revealedIds.length === 0 ? new Set() : new Set([...current, ...added])))
   }
 
-  function onBuy(id: number, mode: "one" | "max") {
+  function onBuy(id: string, mode: "one" | "max") {
     setFlashId(id)
     buy(id, mode)
     setFresh((current) => {
@@ -76,9 +76,9 @@ export function Shop() {
           {sections.map((section) => {
             const eraRows = revealedByEra.get(section.id) ?? []
             const affordable = eraRows.some((tier) =>
-              canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))),
+              canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.key))),
             )
-            const hasFresh = section.id !== era && eraRows.some((tier) => fresh.has(tier.id))
+            const hasFresh = section.id !== era && eraRows.some((tier) => fresh.has(tier.key))
             return (
               <button
                 key={section.id}
@@ -107,24 +107,24 @@ export function Shop() {
           <p className="shop-empty">Nothing within reach yet. Keep clicking.</p>
         ) : null}
         {rows.map((tier, index) => {
-          const have = ownedCount(owned, tier.id)
+          const have = ownedCount(owned, tier.key)
           const cost = nextCost(tier.baseCost, have)
           const afford = canAfford(money, cost)
-          const isFresh = fresh.has(tier.id)
+          const isFresh = fresh.has(tier.key)
           return (
             <article
-              key={tier.id}
+              key={tier.key}
               className={[
                 "offer",
                 afford ? "afford" : "",
-                flashId === tier.id ? "flash" : "",
+                flashId === tier.key ? "flash" : "",
                 isFresh ? "fresh" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               style={{ ["--offer-glow" as string]: ERA_ACCENT[tier.era].glow, ["--i" as string]: index }}
             >
-              <img src={spriteForTier(tier.id)} alt="" width={48} height={48} />
+              <img src={spriteForTier(tier.key)} alt="" width={48} height={48} />
               <div className="offer-copy">
                 <h3>
                   {tier.name}
@@ -138,10 +138,10 @@ export function Shop() {
                 </p>
               </div>
               <div className="offer-actions">
-                <button type="button" disabled={!afford} onClick={() => onBuy(tier.id, "one")}>
+                <button type="button" disabled={!afford} onClick={() => onBuy(tier.key, "one")}>
                   Buy ${formatNumber(cost)}
                 </button>
-                <button type="button" className="ghost" disabled={!afford} onClick={() => onBuy(tier.id, "max")}>
+                <button type="button" className="ghost" disabled={!afford} onClick={() => onBuy(tier.key, "max")}>
                   Max
                 </button>
               </div>

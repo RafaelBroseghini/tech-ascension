@@ -4,63 +4,57 @@ import { installGameHarness } from "./harness.ts"
 
 const game = installGameHarness()
 
-function tierByName(name: string) {
-  const row = TIERS.find((item) => item.name === name)
-  if (!row) throw new Error(`missing tier ${name}`)
+function tier(key: string) {
+  const row = TIERS.find((item) => item.key === key)
+  if (!row) throw new Error(`missing stage ${key}`)
   return row
 }
 
-function tier(id: number) {
-  const row = TIERS.find((item) => item.id === id)
-  if (!row) throw new Error(`missing tier ${id}`)
-  return row
-}
-
-test("early loop buys tiers 1–3", () => {
+test("early loop buys the first three stages", () => {
   game.reset()
   const start = game.getState()
   expect(start.money).toBe(0)
   expect(start.cps).toBe(0)
-  expect(start.spriteTierId).toBe(1)
+  expect(start.spriteTierKey).toBe("used-laptop")
   expect(start.owned).toEqual({})
 
-  const cost = tier(1).baseCost + tier(2).baseCost + tier(3).baseCost
+  const cost = tier("used-laptop").baseCost + tier("stack-overblow").baseCost + tier("freecodechamp").baseCost
   let guard = 0
   while (game.getState().money < cost) {
     game.click()
     guard += 1
-    if (guard > 500) throw new Error("clicks did not pay for tiers 1–3")
+    if (guard > 500) throw new Error("clicks did not pay for the first three stages")
   }
 
   const ready = game.getState()
-  expect(game.buy(1)).toBe(true)
+  expect(game.buy("used-laptop")).toBe(true)
   const afterFirst = game.getState()
   expect(afterFirst.money).toBeLessThan(ready.money)
   expect(afterFirst.cps).toBeGreaterThan(ready.cps)
   expect(afterFirst.xp).toBeGreaterThan(ready.xp)
-  expect(afterFirst.spriteTierId).toBe(1)
+  expect(afterFirst.spriteTierKey).toBe("used-laptop")
 
-  expect(game.buy(2)).toBe(true)
-  expect(game.buy(3)).toBe(true)
+  expect(game.buy("stack-overblow")).toBe(true)
+  expect(game.buy("freecodechamp")).toBe(true)
   const after = game.getState()
   expect(after.money).toBeLessThan(afterFirst.money)
-  expect(after.cps).toBeCloseTo(tier(1).cps + tier(2).cps + tier(3).cps)
+  expect(after.cps).toBeCloseTo(tier("used-laptop").cps + tier("stack-overblow").cps + tier("freecodechamp").cps)
   expect(after.xp).toBeGreaterThan(afterFirst.xp)
-  expect(after.spriteTierId).toBe(3)
+  expect(after.spriteTierKey).toBe("freecodechamp")
   expect(after.era).toBe("early")
-  expect(after.owned).toMatchObject({ "1": 1, "2": 1, "3": 1 })
+  expect(after.owned).toMatchObject({ "used-laptop": 1, "stack-overblow": 1, "freecodechamp": 1 })
 })
 
 test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   game.reset()
-  const row = tierByName("Fine-tune your first LLM")
+  const row = tier("first-llm-finetune")
   game.setMoney(row.baseCost)
   const before = game.getState()
-  expect(game.buy(row.id)).toBe(true)
+  expect(game.buy(row.key)).toBe(true)
   const after = game.getState()
   expect(after.cps - before.cps).toBe(row.cps)
   expect(after.clickPower - before.clickPower).toBe(row.clickBonus)
-  expect(after.spriteTierId).toBe(row.id)
+  expect(after.spriteTierKey).toBe(row.key)
   expect(after.era).toBe("mid")
 
   const cps = after.cps
@@ -76,10 +70,10 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 
 test("offline catch-up pays 1h and caps at 8h", () => {
   game.reset()
-  game.setMoney(tier(1).baseCost)
-  expect(game.buy(1)).toBe(true)
+  game.setMoney(tier("used-laptop").baseCost)
+  expect(game.buy("used-laptop")).toBe(true)
   const cps = game.getState().cps
-  expect(cps).toBeCloseTo(tier(1).cps)
+  expect(cps).toBeCloseTo(tier("used-laptop").cps)
 
   const hour = 60 * 60 * 1000
   const oneHour = game.advanceOffline(hour)

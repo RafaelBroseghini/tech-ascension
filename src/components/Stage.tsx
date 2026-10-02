@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
-import { ERA_ACCENT, spriteForTier, START_SUBJECT, subjectForTier } from "../data/sprites.ts"
-import { highestOwnedTier, tierById } from "../game/economy.ts"
+import { ERA_ACCENT, spriteForTier, START_KEY, START_SUBJECT, subjectForTier } from "../data/sprites.ts"
+import { highestOwnedTier, tierByKey } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 
@@ -16,8 +16,8 @@ let seq = 1
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
-function burstBits(tierId: number): Bit[] {
-  const tier = tierById(tierId)
+function burstBits(tierKey: string): Bit[] {
+  const tier = tierByKey(tierKey)
   const glow = ERA_ACCENT[tier?.era ?? "early"].glow
   const colors = [glow, glow, "#f7f0df"]
   return Array.from({ length: 20 }, () => {
@@ -84,26 +84,26 @@ export function Stage() {
   const lastSide = useRef(1)
 
   const ownedTier = highestOwnedTier(owned)
-  const artId = ownedTier?.id ?? 0
-  const artTier = tierById(ownedTier?.id ?? 1)
-  const subject = artId === 0 ? START_SUBJECT : subjectForTier(artId)?.subject
+  const artKey = ownedTier?.key ?? START_KEY
+  const artTier = ownedTier
+  const subject = ownedTier ? subjectForTier(artKey)?.subject : START_SUBJECT
   const accent = ERA_ACCENT[artTier?.era ?? "early"]
   const boosted = Boolean(activeBoost && activeBoost.endsAt > now)
   const stageName = ownedTier?.name ?? "High school"
   const boostLeft = activeBoost && boosted ? Math.max(0, activeBoost.endsAt - now) : 0
 
-  const lastArt = useRef(artId)
+  const lastArt = useRef(artKey)
   useEffect(() => {
-    if (lastArt.current === artId) return
-    lastArt.current = artId
+    if (lastArt.current === artKey) return
+    lastArt.current = artKey
     setEntered(true)
-  }, [artId])
+  }, [artKey])
 
   useEffect(() => {
     return useGame.subscribe((state, previous) => {
       if (state.celebrationNonce === previous.celebrationNonce || state.celebrationNonce === 0) return
       if (prefersReducedMotion()) return
-      setBits(burstBits(state.celebrationTierId))
+      setBits(burstBits(state.celebrationTierKey))
       setRings((current) => [...current, { id: seq++, x: 50, y: 50, big: true }].slice(-12))
     })
   }, [])
@@ -186,7 +186,7 @@ export function Stage() {
     setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
     const dropX = hasPoint ? clientX : rect.left + rect.width / 2
     const dropY = hasPoint ? clientY : rect.top + rect.height * 0.45
-    const born = stageDrops(dropX, dropY, spriteForTier(artId), boosted ? 3 : 2)
+    const born = stageDrops(dropX, dropY, spriteForTier(artKey), boosted ? 3 : 2)
     setDrops((current) => [...current, ...born].slice(-36))
     window.setTimeout(() => {
       setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
@@ -247,10 +247,10 @@ export function Stage() {
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">
               <img
-                key={artId}
+                key={artKey}
                 ref={imgRef}
                 className={entered ? "sprite sprite-enter" : "sprite"}
-                src={spriteForTier(artId)}
+                src={spriteForTier(artKey)}
                 alt=""
                 width={256}
                 height={256}

@@ -40,7 +40,7 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 | --- | --- |
 | Generator table | `src/data/tiers.ts` |
 | Sprite subjects and `SPRITE_BY_TIER` | `src/data/sprites.ts` |
-| Art | `public/sprites/{id}.webp` (512×512; `0.webp` is the opening scene) |
+| Art | `public/sprites/{key}.webp` (512×512, named by stage key; `start.webp` is the opening scene) |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
 | Keyframes and the `prefers-reduced-motion` kill switch | `src/styles/motion.css` |
 | Before/after screenshots through `__GAME__` | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
@@ -49,25 +49,25 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 | Save, migration, offline credit | `src/game/save.ts` |
 | Loop and purchases | `src/game/store.ts` |
 
-Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `name`, `baseCost`, `cps`, and `clickBonus`. Add a matching subject in `src/data/sprites.ts` and a file at `public/sprites/{id}.webp` when you want new art. Owned counts are stored by tier id, so new ids do not need a save migration.
+**Adding a stage.** Insert one row into `TIERS` at the right price with a new, permanent `key` (plus `era`, `name`, `baseCost`, `cps`, `clickBonus`), add a caption with the same `key` in `src/data/sprites.ts`, and drop `public/sprites/{key}.webp` in. That is all: saves, sprites and the shop are keyed by `key`, so there is no save migration and nothing else renumbers. Keep rows in ascending price order (a test enforces it). Display names, prices and position can change freely later. Never rename a `key`.
 
 ## Save
 
-`localStorage` key `tech-ascension.save`, schema version 2:
+`localStorage` key `tech-ascension.save`, schema version 3:
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "money": 0,
   "xp": 0,
-  "owned": { "1": 2 },
+  "owned": { "used-laptop": 2 },
   "savedAt": 0,
   "activeBoost": { "mult": 5, "endsAt": 0 },
   "peakMoney": 0
 }
 ```
 
-`peakMoney` is optional; older saves without it start from their current balance. `src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to the current version. Version 2 added 18 dev-culture stages (Raspberry Pie, Mac Minnie, OpenKlaw and others), which shifted most tier ids, so loading a version 1 save re-keys `owned` through `V1_TO_V2_TIER_IDS`. That table is frozen history: never edit it. When you add a stage, bump `SAVE_VERSION`, add a migration that remaps ids, and keep the sprite files named by the new ids. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
+`peakMoney` is optional; older saves without it start from their current balance. `src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to the current version. `owned` is keyed by stage key. Versions 1 and 2 used numeric tier ids, and the 18 dev-culture stages added in version 2 shifted them. Loading an old save re-keys `owned` through the frozen tables `V1_TO_V2_TIER_IDS` and `V2_IDS_TO_KEYS` (never edit them). Because keys never change, adding stages needs no further migration. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
 
 The next-boost timer is session state. Reloading keeps a boost that is still running and schedules a fresh wait afterward.
 
@@ -97,10 +97,10 @@ Clicks register on pointer-down. The sprite bumps up, tips slightly away from th
 
 ## Art
 
-All 67 sprites are painterly fantasy illustrations (one per tier plus the opening scene; 66 tiers), generated as 1024px images and stored as 512px WebP. To swap one, drop a square image in as `public/sprites/{id}.webp`, for example:
+All 67 sprites are painterly fantasy illustrations (one per tier plus the opening scene; 66 tiers), generated as 1024px images and stored as 512px WebP. To swap one, drop a square image in as `public/sprites/{key}.webp`, for example:
 
 ```bash
-ffmpeg -i new.png -vf scale=512:512 -c:v libwebp -quality 82 public/sprites/12.webp
+ffmpeg -i new.png -vf scale=512:512 -c:v libwebp -quality 82 public/sprites/cubernetes.webp
 ```
 
 Update the matching caption in `src/data/sprites.ts` as well.

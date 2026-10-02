@@ -15,14 +15,14 @@ export type OwnedMap = Record<string, number>
 
 export const BASE_CLICK = 1
 
-const TIER_BY_ID = new Map<number, Tier>(TIERS.map((tier) => [tier.id, tier]))
+const TIER_BY_KEY = new Map<string, Tier>(TIERS.map((tier) => [tier.key, tier]))
 
-export function tierById(id: number): Tier | undefined {
-  return TIER_BY_ID.get(id)
+export function tierByKey(key: string): Tier | undefined {
+  return TIER_BY_KEY.get(key)
 }
 
-export function ownedCount(owned: OwnedMap, id: number): number {
-  const value = owned[String(id)]
+export function ownedCount(owned: OwnedMap, key: string): number {
+  const value = owned[key]
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0
 }
 
@@ -43,7 +43,7 @@ export function canAfford(money: number, cost: number): boolean {
 export function clickPower(owned: OwnedMap): number {
   let bonus = 0
   for (const tier of TIERS) {
-    bonus += ownedCount(owned, tier.id) * tier.clickBonus
+    bonus += ownedCount(owned, tier.key) * tier.clickBonus
   }
   return BASE_CLICK + bonus
 }
@@ -52,7 +52,7 @@ export function clickPower(owned: OwnedMap): number {
 export function idlePerSec(owned: OwnedMap): number {
   let cps = 0
   for (const tier of TIERS) {
-    cps += ownedCount(owned, tier.id) * tier.cps
+    cps += ownedCount(owned, tier.key) * tier.cps
   }
   return cps
 }
@@ -60,30 +60,30 @@ export function idlePerSec(owned: OwnedMap): number {
 export function highestOwnedTier(owned: OwnedMap): Tier | null {
   let best: Tier | null = null
   for (const tier of TIERS) {
-    if (ownedCount(owned, tier.id) <= 0) continue
-    if (!best || tier.id > best.id) best = tier
+    if (ownedCount(owned, tier.key) <= 0) continue
+    if (!best || tier.rank > best.rank) best = tier
   }
   return best
 }
 
 /**
  * A tier stays hidden until the player has held enough money to buy its first
- * copy (peakMoney), or already owns it or something later. Costs rise with id,
+ * copy (peakMoney), or already owns it or something later. Prices rise with rank,
  * so reveals are always a prefix of TIERS.
  */
 export function isRevealed(tier: Tier, owned: OwnedMap, peakMoney: number): boolean {
-  if (ownedCount(owned, tier.id) > 0) return true
+  if (ownedCount(owned, tier.key) > 0) return true
   const best = highestOwnedTier(owned)
-  if (best && tier.id < best.id) return true
+  if (best && tier.rank < best.rank) return true
   return canAfford(peakMoney, tier.baseCost)
 }
 
-export function highestRevealedId(owned: OwnedMap, peakMoney: number): number {
-  let id = 0
+export function highestRevealedRank(owned: OwnedMap, peakMoney: number): number {
+  let rank = 0
   for (const tier of TIERS) {
-    if (isRevealed(tier, owned, peakMoney)) id = Math.max(id, tier.id)
+    if (isRevealed(tier, owned, peakMoney)) rank = Math.max(rank, tier.rank)
   }
-  return id
+  return rank
 }
 
 export function boostMultiplier(boost: ActiveBoost | null | undefined, now: number): number {

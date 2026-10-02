@@ -9,7 +9,7 @@ Drive the game through `window.__GAME__`. Do not scrape buttons or guess DOM sel
 - Prefer `__GAME__` over DOM selectors.
 - Run `npm run smoke:play` first to prove mechanics. It must exit non-zero on any failed assert.
 - Free play: `npm run play:agent`, then drive the open page with `__GAME__`.
-- Do not grind past mid (tier 33, Principal AI architect) in automated runs unless the user asks. Early tiers and a single mid check are enough.
+- Do not grind past mid (`principal-ai-architect`) in automated runs unless the user asks. Early tiers and a single mid check are enough.
 
 ## API
 
@@ -21,13 +21,14 @@ getState(): {
   clickPower: number
   owned: Record<string, number>
   era: "early" | "mid" | "upper" | "q3" | "end"
-  spriteTierId: number
+  spriteTierKey: string
   activeBoost: { mult: number; endsAt: number } | null
   savedAt: number
 }
 
 click(): { money: number; xp: number }
-buy(tierId: number): boolean
+stages(): { key: string; name: string; era: string; baseCost: number }[]
+buy(tierKey: string): boolean
 tick(ms: number): void
 setMoney(n: number): void
 forceBoost(mult: number, ms: number): void
@@ -37,10 +38,11 @@ reset(): void
 
 - `cps` is idle $/s. Click boosts do not change it.
 - `clickPower` is the base payout. A click pays `clickPower × activeBoost.mult` (mult is 1 when no boost is active).
-- `owned` is keyed by tier id (`"1"`, `"26"`, …).
-- `spriteTierId` is the highest owned tier. It is `1` before the first purchase, and `era` follows that tier. (The UI shows a separate opening scene at that point.)
-- The shop UI hides tiers until your balance has reached their price once (`peakMoney`). `buy(tierId)` ignores this, so agents can still buy any tier directly.
-- `buy` purchases one copy and returns false when the id is unknown or the cost is too high.
+- Stages are identified by a permanent string `key` (`"used-laptop"`, `"first-llm-finetune"`, …), never by position. `stages()` lists them all in price order.
+- `owned` is keyed by stage key.
+- `spriteTierKey` is the key of the highest owned stage. It is `"used-laptop"` before the first purchase, and `era` follows that stage. (The UI shows a separate opening scene at that point.)
+- The shop UI hides tiers until your balance has reached their price once (`peakMoney`). `buy(tierKey)` ignores this, so agents can still buy any tier directly.
+- `buy` purchases one copy and returns false when the key is unknown or the cost is too high.
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock.
 - `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll.
 - `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours. The toast is the same `welcome back, credited $X` path as a reload.
@@ -50,8 +52,8 @@ reset(): void
 
 Vitest + happy-dom, three scenarios, all through `__GAME__`:
 
-1. **Early loop.** Click until tiers 1–3 are affordable, buy them, and assert money falls on each buy, `$/s` and XP rise, and `spriteTierId` advances to 3.
-2. **Mid jump.** `setMoney` to the base cost of "Fine-tune your first LLM" (tier 26), buy it, and assert the cps / clickPower deltas match `TIERS`. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
+1. **Early loop.** Click until `used-laptop`, `stack-overblow` and `freecodechamp` are affordable, buy them, and assert money falls on each buy, `$/s` and XP rise, and `spriteTierKey` advances to `freecodechamp`.
+2. **Mid jump.** `setMoney` to the base cost of "Fine-tune your first LLM" (`first-llm-finetune`), buy it, and assert the cps / clickPower deltas match `TIERS`. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
 3. **Offline.** Buy tier 1, `advanceOffline` 1 hour, and assert credit ≈ `cps × 3600`. `advanceOffline` 10 hours and assert credit is capped at `cps × 8 × 3600`. Both calls must return a welcome-back toast.
 
 ## Free play (`npm run play:agent`)
@@ -70,9 +72,9 @@ await page.evaluate(() => window.__GAME__.getState())
 await page.evaluate(() => {
   const game = window.__GAME__
   while (game.getState().money < 185) game.click()
-  game.buy(1)
-  game.buy(2)
-  game.buy(3)
+  game.buy("used-laptop")
+  game.buy("stack-overblow")
+  game.buy("freecodechamp")
 })
 
 await browser.close()
@@ -88,19 +90,19 @@ Early ladder:
 const game = window.__GAME__
 game.reset()
 while (game.getState().money < 185) game.click()
-game.buy(1)
-game.buy(2)
-game.buy(3)
+game.buy("used-laptop")
+game.buy("stack-overblow")
+game.buy("freecodechamp")
 game.getState()
 ```
 
-Click boost (tier 26, still mid):
+Click boost (`first-llm-finetune`, still mid):
 
 ```js
 const game = window.__GAME__
 game.reset()
 game.setMoney(7e6)
-game.buy(26)
+game.buy("first-llm-finetune")
 game.forceBoost(5, 10_000)
 const before = game.getState()
 game.click()
@@ -113,7 +115,7 @@ Offline sim:
 const game = window.__GAME__
 game.reset()
 game.setMoney(15)
-game.buy(1)
+game.buy("used-laptop")
 game.advanceOffline(60 * 60 * 1000)
 game.advanceOffline(10 * 60 * 60 * 1000)
 ```

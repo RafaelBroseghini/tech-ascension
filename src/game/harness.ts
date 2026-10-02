@@ -1,6 +1,7 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import type { Era } from "../data/tiers.ts"
-import { clickPower, highestOwnedTier, idlePerSec, ownedCount, tierById } from "./economy.ts"
+import { TIERS } from "../data/tiers.ts"
+import { clickPower, highestOwnedTier, idlePerSec, ownedCount, tierByKey } from "./economy.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import { persistNow, useGame, writeStateAt } from "./store.ts"
 import { readSaveText } from "./storage.ts"
@@ -14,8 +15,8 @@ export type GameSnapshot = {
   clickPower: number
   owned: Record<string, number>
   era: Era
-  /** Highest owned tier, or 1 before the first purchase. */
-  spriteTierId: number
+  /** Key of the highest owned stage, or the first stage's key before the first purchase. */
+  spriteTierKey: string
   activeBoost: ActiveBoost | null
   savedAt: number
 }
@@ -25,10 +26,19 @@ export type OfflineCatchup = {
   toast: string | null
 }
 
+export type StageInfo = {
+  key: string
+  name: string
+  era: Era
+  baseCost: number
+}
+
 export type GameHarness = {
   getState: () => GameSnapshot
+  /** All stages in price order. Use `key` with `buy` and to read `owned`. */
+  stages: () => StageInfo[]
   click: () => { money: number; xp: number }
-  buy: (tierId: number) => boolean
+  buy: (tierKey: string) => boolean
   tick: (ms: number) => void
   setMoney: (n: number) => void
   forceBoost: (mult: number, ms: number) => void
@@ -58,8 +68,8 @@ export function installGameHarness(): GameHarness {
       const state = useGame.getState()
       const now = Date.now()
       const best = highestOwnedTier(state.owned)
-      const spriteTierId = best?.id ?? 1
-      const era = tierById(spriteTierId)?.era ?? "early"
+      const spriteTierKey = best?.key ?? TIERS[0]?.key ?? ""
+      const era = tierByKey(spriteTierKey)?.era ?? "early"
       return {
         money: state.money,
         xp: state.xp,
@@ -67,18 +77,20 @@ export function installGameHarness(): GameHarness {
         clickPower: clickPower(state.owned),
         owned: { ...state.owned },
         era,
-        spriteTierId,
+        spriteTierKey,
         activeBoost: liveBoost(state.activeBoost, now),
         savedAt: readSavedAt(),
       }
     },
 
+    stages: () => TIERS.map((tier) => ({ key: tier.key, name: tier.name, era: tier.era, baseCost: tier.baseCost })),
+
     click: () => useGame.getState().click(),
 
-    buy: (tierId) => {
-      const before = ownedCount(useGame.getState().owned, tierId)
-      useGame.getState().buy(tierId, "one")
-      return ownedCount(useGame.getState().owned, tierId) > before
+    buy: (tierKey) => {
+      const before = ownedCount(useGame.getState().owned, tierKey)
+      useGame.getState().buy(tierKey, "one")
+      return ownedCount(useGame.getState().owned, tierKey) > before
     },
 
     tick: (ms) => {
