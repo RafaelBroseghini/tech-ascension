@@ -3,7 +3,7 @@
  *  - click is a ~260ms bump: the sprite pops up, tips away from the pointer and
  *    settles with a tiny jitter; it restarts on every click and is a little
  *    bigger when hot. No side-to-side shaking.
- *  - idle life (float, aura, motes, sheen) is slow and never covers the UI
+ *  - idle life (side-to-side sway, aura, motes, sheen) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
  * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
@@ -18,9 +18,10 @@
   100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
 }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(-0.4deg); }
-  50% { transform: translateY(-6px) rotate(0.4deg); }
+/* Idle sway: left to right and back over 3.6s, 6px each way. */
+@keyframes sway {
+  0%, 100% { transform: translateX(-6px) rotate(-0.5deg); }
+  50% { transform: translateX(6px) rotate(0.5deg); }
 }
 
 @keyframes aura-breathe {
@@ -157,6 +158,11 @@
     transition-duration: 0.01ms !important;
     transition-delay: 0s !important;
     scroll-behavior: auto !important;
+  }
+
+  .sprite-bob {
+    animation: none !important;
+    transform: none !important;
   }
 
   .confetti,

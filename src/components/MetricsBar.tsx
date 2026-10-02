@@ -3,12 +3,10 @@ import { formatMultiplier, formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 
 export function MetricsBar() {
-  const money = useGame((state) => state.money)
   const xp = useGame((state) => state.xp)
   const owned = useGame((state) => state.owned)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
-  const buyStamp = useGame((state) => state.buyStamp)
   const rates = production(owned, activeBoost, now)
   const stage = highestOwnedTier(owned)
   const seconds =
@@ -21,12 +19,6 @@ export function MetricsBar() {
         <h1>Tech Ascension</h1>
       </div>
       <dl className="metrics">
-        <div className="m-money">
-          <dt>Money</dt>
-          <dd data-testid="money" key={buyStamp} className={buyStamp > 0 ? "tick-up" : undefined}>
-            ${formatNumber(money)}
-          </dd>
-        </div>
         {rates.idle > 0 ? (
           <div className="metric-in m-rate">
             <dt>$/s</dt>
