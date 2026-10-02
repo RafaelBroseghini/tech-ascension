@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { eraSections, capitalInEra } from "../data/eras.ts"
@@ -116,7 +116,10 @@ export function Shop() {
 
   const [picked, setPicked] = useState<ShopTab | null>(null)
   const [lastPhase, setLastPhase] = useState(phase)
-  const [pickedEra, setPickedEra] = useState<Era | null>(null)
+  // The era tab doubles as the IDE preview: the store holds it and snaps it back to the owned era.
+  const pickedEra = useGame((s) => s.previewEra)
+  const setPickedEra = useGame((s) => s.setPreviewEra)
+  const holdPreview = useGame((s) => s.holdPreview)
   const [flashKey, setFlashKey] = useState<string | null>(null)
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
   const listRef = useRef<HTMLDivElement>(null)
@@ -197,8 +200,12 @@ export function Shop() {
 
   const tabGlow = PHASE_TAB[tab].glow
 
+  useEffect(() => {
+    if (tab !== "D") setPickedEra(null)
+  }, [tab, setPickedEra])
+
   return (
-    <aside className="shop" data-testid="shop" data-phase={tab}>
+    <aside className="shop" data-testid="shop" data-phase={tab} onPointerMove={holdPreview}>
       <div className="shop-head">
         <div>
           <p className="eyebrow">

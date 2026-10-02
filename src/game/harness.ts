@@ -1,8 +1,13 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import type { Era } from "../data/capital.ts"
 import { clickPower, idlePerSec, ownedCount, xpPerClick, xpPerSec } from "./economy.ts"
+import { eventById } from "./events.ts"
 import { remainingMs } from "./fight.ts"
 import type { FightOutcome } from "./fight.ts"
+import { itemsOf } from "../data/idePacks.ts"
+import { ideView } from "./ide.ts"
+import { modFactors, modsOf, pruneTemp } from "./mods.ts"
+import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
 import type { NextUnlock } from "./nextUnlock.ts"
 import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
@@ -20,6 +25,22 @@ export type FightSnapshot = {
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "fightWin" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
+export type EventSnapshot = { eventId: number; name: string; lines: string[] }
+
+export type IdeSnapshot = {
+  /** Era of the pack on screen. */
+  era: Era
+  packId: string
+  kind: "files" | "inbox" | "deck"
+  /** File names, email subjects or slide titles, in tab order. */
+  items: string[]
+  index: number
+  /** True while a shop era tab is previewing a pack other than the owned one. */
+  previewing: boolean
+  /** The pack progress alone would show. */
+  restPackId: string
+}
+
 export type GameSnapshot = {
   money: number
   /** Spendable XP. Skills cost XP. */
@@ -28,16 +49,24 @@ export type GameSnapshot = {
   xpTotal: number
   /** A skill grind, B gigs, C jobs + gear, D capital. */
   phase: Phase
-  /** Idle $/s. Click boosts do not change this. */
+  /** Idle $/s. Click boosts do not change this; random-event multipliers do. */
   cps: number
-  /** Base money per click, before activeBoost. Paid once the first gig is cleared. */
+  /** Money per click, before activeBoost. Paid once the first gig is cleared. */
   clickPower: number
-  /** Base XP per click (1 + skills). In Phase A this is what a click pays. */
+  /** XP per click (1 + skills). In Phase A this is what a click pays. */
   xpPerClick: number
   /** Idle XP/s from skills. */
   xpPerSec: number
-  /** Phase D capital rows, keyed by capital id ("6"). */
-  owned: Record<string, number>
+  /** Permanent random-event multiplier already folded into cps, clickPower, xpPerClick and xpPerSec. */
+  foreverMult: number
+  /** Running timed event multipliers, keyed by target. */
+  tempMults: TempMults
+  /** The event modal on screen, or null. */
+  event: EventSnapshot | null
+  /** The most recent event, kept after it is dismissed. */
+  lastEvent: EventSnapshot | null
+  ide: IdeSnapshot
+  /** Phase D capital tiers, keyed by tier id ("26"). */  owned: Record<string, number>
   skills: Record<string, number>
   equipment: Record<string, number>
   jobs: number[]
@@ -87,6 +116,13 @@ export type GameHarness = {
   forceEnemy: (enemyId: number) => boolean
   /** End the current fight with no reward. */
   flee: () => void
+  /** Fire this event now. False for an unknown id or during a fight. Replaces an open event. */
+  forceEvent: (eventId: number) => boolean
+  dismissEvent: () => void
+  /** Open file, email or slide `index` of the pack on screen. */
+  ideSelect: (index: number) => boolean
+  /** Preview an era's pack as the shop era tab does, or null to snap back to the owned one. */
+  previewEra: (era: Era | null) => void
   reset: () => void
 }
 
@@ -106,21 +142,41 @@ function liveBoost(boost: ActiveBoost | null, now: number): ActiveBoost | null {
   return { mult: boost.mult, endsAt: boost.endsAt }
 }
 
+function eventSnapshot(event: { eventId: number; lines: { text: string }[] } | null): EventSnapshot | null {
+  if (!event) return null
+  return { eventId: event.eventId, name: eventById(event.eventId)?.name ?? "", lines: event.lines.map((line) => line.text) }
+}
+
 export function installGameHarness(): GameHarness {
   const api: GameHarness = {
     getState: () => {
       const state = useGame.getState()
       const now = Date.now()
       const stage = stageOf(state)
+      const fx = modFactors(modsOf(state), now, now)
+      const view = ideView(state)
       return {
         money: state.money,
         xp: state.xp,
         xpTotal: state.xpTotal,
         phase: state.phase,
-        cps: idlePerSec(state),
-        clickPower: clickPower(state),
-        xpPerClick: xpPerClick(state.skills),
-        xpPerSec: xpPerSec(state.skills),
+        cps: idlePerSec(state) * fx.cps,
+        clickPower: clickPower(state) * fx.click,
+        xpPerClick: xpPerClick(state.skills) * fx.click,
+        xpPerSec: xpPerSec(state.skills) * fx.xpIdle,
+        foreverMult: state.foreverMult,
+        tempMults: pruneTemp(state.tempMults, now),
+        event: eventSnapshot(state.event),
+        lastEvent: eventSnapshot(state.lastEvent),
+        ide: {
+          era: view.pack.era,
+          packId: view.pack.id,
+          kind: view.pack.kind,
+          items: itemsOf(view.pack).map((item) => item.label),
+          index: view.index,
+          previewing: view.previewing,
+          restPackId: view.restPack.id,
+        },
         owned: { ...state.owned },
         skills: { ...state.skills },
         equipment: { ...state.equipment },
@@ -222,6 +278,7 @@ export function installGameHarness(): GameHarness {
         xp: hydrated.save.xp,
         xpTotal: hydrated.save.xpTotal,
         owned: hydrated.save.owned,
+        tempMults: hydrated.save.tempMults ?? {},
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
         idleSince: now,
@@ -240,6 +297,19 @@ export function installGameHarness(): GameHarness {
     forceEnemy: (enemyId) => useGame.getState().forceEnemy(enemyId),
 
     flee: () => useGame.getState().flee(),
+
+    forceEvent: (eventId) => useGame.getState().fireEvent(eventId),
+
+    dismissEvent: () => useGame.getState().dismissEvent(),
+
+    ideSelect: (index) => {
+      const view = ideView(useGame.getState())
+      if (!Number.isInteger(index) || index < 0 || index >= view.count) return false
+      useGame.getState().selectIde(view.pack.id, index)
+      return true
+    },
+
+    previewEra: (era) => useGame.getState().setPreviewEra(era),
 
     reset: () => {
       useGame.getState().wipe()

@@ -31,8 +31,21 @@ describe("enemy table", () => {
     expect(ENEMY_MEAN_WAIT_MS.early).toBe(90_000)
     expect(ENEMY_MEAN_WAIT_MS.end).toBe(210_000)
     expect(ENEMY_SPAWN_SAME_ERA_ONLY).toBe(true)
-    expect(enemyById(1)).toMatchObject({ hp: 88, reward: 150 })
-    expect(enemyById(44)).toMatchObject({ hp: 480_000, reward: 200_000_000 })
+    expect(enemyById(1)).toMatchObject({ hp: 88, reward: 500 })
+    expect(enemyById(44)).toMatchObject({ hp: 480_000, reward: 2_500_000_000 })
+  })
+
+  it("pays the v1.2 payday rewards and keeps early fights winnable at $1 a click", () => {
+    expect(ENEMIES.map((enemy) => enemy.reward)).toEqual([
+      500, 250, 600, 750, 900, 550, 280, 1_100, 1_300, 400,
+      50_000, 90_000, 120_000, 32_000, 40_000, 150_000, 60_000, 75_000, 200_000, 36_000,
+      2_500_000, 1_800_000, 3_500_000, 2_200_000, 5_000_000, 4_000_000, 7_000_000, 1_200_000, 9_000_000,
+      40_000_000, 65_000_000, 120_000_000, 30_000_000, 50_000_000, 90_000_000, 140_000_000,
+      350_000_000, 300_000_000, 500_000_000, 750_000_000, 1_000_000_000, 550_000_000, 1_400_000_000, 2_500_000_000,
+    ])
+    for (const enemy of ENEMIES.filter((row) => row.eraGate === "early")) {
+      expect(enemy.hp).toBeLessThanOrEqual(150)
+    }
   })
 
   it("draws a 96×96 pixel sprite for every enemy inside the shared palette", () => {

@@ -1203,6 +1203,95 @@ img { -webkit-user-drag: none; user-select: none; }
   color: var(--accent-hi);
 }
 
+/* ---------- random event modal ---------- */
+
+.event-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: rgb(14 12 9 / 0.62);
+  animation: event-fade 200ms var(--ease-out);
+}
+
+.event-modal {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--lift-3), inset 0 0 0 2px var(--line);
+  text-align: center;
+  outline: none;
+  animation: toast-in 280ms var(--ease-pop);
+}
+
+.event-kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.event-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.event-flavor { margin: 0; color: var(--text-dim); font-size: var(--fs-sm); }
+
+.event-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-line {
+  padding: var(--sp-2) var(--sp-3);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 700;
+}
+.event-line.is-good { color: #6fe08c; }
+.event-line.is-bad { color: #ff7b6b; }
+.event-line.is-neutral { color: var(--text-dim); font-weight: 500; }
+
+.event-dismiss {
+  align-self: center;
+  min-width: 9rem;
+  padding: 10px 18px 11px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--lift-2);
+}
+.event-dismiss:hover { background: var(--accent-hi); }
+
+@keyframes event-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .event-backdrop, .event-modal { animation: none; }
+}
+
 /* ---------- next unlock teaser (always under the tabs) ---------- */
 
 .next-unlock {

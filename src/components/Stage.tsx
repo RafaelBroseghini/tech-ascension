@@ -234,7 +234,7 @@ export function Stage() {
 
   return (
     <section className={boosted ? "stage-panel is-boosted" : "stage-panel"} aria-label="Click stage">
-      <IdeChrome tierId={artId} />
+      <IdeChrome />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
         {boosted ? (

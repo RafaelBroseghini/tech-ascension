@@ -1,4 +1,7 @@
 import { production } from "../game/economy.ts"
+import { formatMult, TARGET_LABEL } from "../game/events.ts"
+import { TEMP_TARGETS } from "../game/mods.ts"
+import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
 import { moneyMode, PHASE_NAME, stageOf } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
@@ -14,7 +17,9 @@ export function MetricsBar() {
   const peakMoney = useGame((state) => state.peakMoney)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
-  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now)
+  const foreverMult = useGame((state) => state.foreverMult)
+  const tempMults = useGame((state) => state.tempMults)
+  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
   const stage = stageOf({ skills, owned, jobs, gigs })
   const paying = moneyMode({ peakMoney, gigs, jobs })
   const seconds =
@@ -66,6 +71,24 @@ export function MetricsBar() {
             </dd>
           </div>
         ) : null}
+        {foreverMult !== 1 ? (
+          <div className="m-boost">
+            <dt>Event bonus</dt>
+            <dd data-testid="forever-mult">x{formatMult(foreverMult)}</dd>
+          </div>
+        ) : null}
+        {TEMP_TARGETS.map((target) => {
+          const entry = tempMults[target]
+          if (!entry || !(entry.endsAt > now)) return null
+          return (
+            <div key={target} className="m-boost">
+              <dt>{TARGET_LABEL[target]}</dt>
+              <dd data-testid={`temp-${target}`}>
+                x{formatMult(entry.mult)} · {Math.ceil((entry.endsAt - now) / 1000)}s
+              </dd>
+            </div>
+          )
+        })}
         <div className="m-stage">
           <dt>Stage</dt>
           <dd data-testid="stage-name">{stage?.name ?? "High school"}</dd>

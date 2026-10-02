@@ -4,7 +4,9 @@ import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital } from "../data/capital.ts"
+import { modFactors, NO_MODS } from "./mods.ts"
 
+import type { EventMods } from "./mods.ts"
 /**
  * Balances and costs are IEEE-754 doubles.
  *
@@ -237,18 +239,23 @@ export function boostMultiplier(boost: ActiveBoost | null | undefined, now: numb
   return boost.mult
 }
 
-/** Click gain includes the boost. Idle never does. */
+/**
+ * Click gain includes the click boost. Idle never does. `mods` are the random-event multipliers:
+ * the permanent one scales every stream, a timed one scales its own (click, idle $, idle XP).
+ */
 export function production(
   p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">,
   boost: ActiveBoost | null | undefined,
   now: number,
+  mods: EventMods = NO_MODS,
 ): { click: number; idle: number; mult: number; xpClick: number; xpIdle: number } {
   const mult = boostMultiplier(boost, now)
+  const fx = modFactors(mods, now, now)
   return {
-    click: clickPower(p) * mult,
-    idle: idlePerSec(p),
+    click: clickPower(p) * mult * fx.click,
+    idle: idlePerSec(p) * fx.cps,
     mult,
-    xpClick: xpPerClick(p.skills),
-    xpIdle: xpPerSec(p.skills),
+    xpClick: xpPerClick(p.skills) * fx.click,
+    xpIdle: xpPerSec(p.skills) * fx.xpIdle,
   }
 }

@@ -2,6 +2,8 @@ import type { ActiveBoost } from "../data/boosts.ts"
 import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { formatNumber } from "./format.ts"
+import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
+import type { TempMults } from "./mods.ts"
 
 export const SAVE_VERSION = 4
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
@@ -29,12 +31,20 @@ export type SaveData = {
   activeBoost?: ActiveBoost
   /** Highest balance ever held. Gates which shop rows are revealed. */
   peakMoney: number
+  /** Permanent event multiplier. Omitted at 1. */
+  foreverMult?: number
+  /** Timed event multipliers still running. Dropped on load once ended. */
+  tempMults?: TempMults
 }
 
 export type Hydrated = {
   save: SaveData
   toast: string | null
+  /** True when a stored save was thrown away (corrupt, or a different schema version) and a fresh one returned. */
+  reset: boolean
 }
+
+const UNREADABLE = "save was unreadable — new career started"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -73,6 +83,19 @@ function normalizeBoost(raw: unknown): ActiveBoost | undefined {
   return { mult, endsAt }
 }
 
+function normalizeTemp(raw: unknown): TempMults {
+  const out: TempMults = {}
+  if (!isRecord(raw)) return out
+  for (const target of TEMP_TARGETS) {
+    const entry = raw[target]
+    if (!isRecord(entry)) continue
+    const mult = finite(entry.mult)
+    const endsAt = finite(entry.endsAt)
+    if (mult > 0 && endsAt > 0) out[target] = { mult, endsAt }
+  }
+  return out
+}
+
 export function freshSave(now: number): SaveData {
   return {
     version: SAVE_VERSION,
@@ -98,7 +121,8 @@ export function offlineCredit(cps: number, savedAt: number, now: number): number
 
 /**
  * Current schema only. A save of any other version, or anything that is not a save object, is not
- * loaded: returns null and the caller starts a fresh career.
+ * loaded: returns null and the caller starts a fresh career. There is no migration.
+ * Fields are still sanitised so a hand-edited save of this version cannot poison the economy.
  */
 export function parseSave(input: unknown): SaveData | null {
   if (!isRecord(input) || input.version !== SAVE_VERSION) return null
@@ -120,12 +144,16 @@ export function parseSave(input: unknown): SaveData | null {
     peakMoney: Math.max(money, finite(input.peakMoney)),
   }
   if (boost) save.activeBoost = boost
+  const foreverMult = clampForever(finite(input.foreverMult) || 1)
+  if (foreverMult !== 1) save.foreverMult = foreverMult
+  const temp = normalizeTemp(input.tempMults)
+  if (Object.keys(temp).length > 0) save.tempMults = temp
   return save
 }
 
 export function hydrate(rawText: string | null, now: number): Hydrated {
   if (rawText == null) {
-    return { save: freshSave(now), toast: null }
+    return { save: freshSave(now), toast: null, reset: false }
   }
 
   let loaded: SaveData | null = null
@@ -134,10 +162,12 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   } catch {
     loaded = null
   }
-  if (!loaded) return { save: freshSave(now), toast: "save was unreadable — new career started" }
+  if (!loaded) return { save: freshSave(now), toast: UNREADABLE, reset: true }
 
-  const credit = offlineCredit(idlePerSec(loaded), loaded.savedAt, now)
-  const xpCredit = offlineCredit(xpPerSec(loaded.skills), loaded.savedAt, now)
+  const away = Math.min(Math.max(0, now - loaded.savedAt), OFFLINE_CAP_MS)
+  const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
+  const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now)
+  const xpCredit = offlineCredit(xpPerSec(loaded.skills) * fx.xpIdle, loaded.savedAt, now)
   const elapsed = now - loaded.savedAt
   const save: SaveData = {
     ...loaded,
@@ -150,6 +180,11 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
   }
+  if (save.tempMults) {
+    const live = pruneTemp(save.tempMults, now)
+    if (Object.keys(live).length > 0) save.tempMults = live
+    else delete save.tempMults
+  }
 
   let toast: string | null = null
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
@@ -158,5 +193,5 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     else if (xpCredit > 0) toast = `welcome back, studied +${formatNumber(xpCredit)} XP`
   }
 
-  return { save, toast }
+  return { save, toast, reset: false }
 }

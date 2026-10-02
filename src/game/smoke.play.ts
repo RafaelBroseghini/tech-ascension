@@ -2,7 +2,9 @@ import { expect, test } from "vitest"
 import { ENEMIES, FIGHT_DURATION_MS } from "../data/enemies.ts"
 import { CAPITAL_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
+import { EVENTS } from "../data/events.ts"
 import { installGameHarness } from "./harness.ts"
+import { hydrate } from "./save.ts"
 
 const game = installGameHarness()
 
@@ -381,4 +383,142 @@ test("fight: boost rolls wait out the fight, shop stays usable", () => {
   game.flee()
   game.tick(100)
   expect(game.getState().activeBoost).not.toBeNull()
+})
+
+test("events: forceEvent applies the table row once, the modal closes without undoing it", () => {
+  game.reset()
+  expect(game.forceEvent(99_999)).toBe(false)
+  expect(game.getState().event).toBeNull()
+
+  game.forceGig(1)
+  game.setMoney(1_000)
+  const row = EVENTS.find((item) => item.id === 21)
+  expect(row?.effects).toEqual([{ kind: "money", delta: 800 }])
+  expect(game.forceEvent(21)).toBe(true)
+  const fired = game.getState()
+  expect(fired.money).toBe(1_800)
+  expect(fired.event).toEqual({ eventId: 21, name: "Open-source bounty", lines: ["+$800"] })
+
+  expect(game.forceEvent(3)).toBe(true)
+  expect(game.getState().event?.eventId).toBe(3)
+  expect(game.getState().money).toBe(1_770)
+
+  game.dismissEvent()
+  expect(game.getState().event).toBeNull()
+  expect(game.getState().lastEvent?.eventId).toBe(3)
+  expect(game.getState().money).toBe(1_770)
+})
+
+test("events: a penalty never takes more than you have", () => {
+  game.reset()
+  game.forceGig(1)
+  game.setMoney(10)
+  game.setXp(5)
+  expect(game.forceEvent(3)).toBe(true)
+  expect(game.getState().money).toBe(0)
+  expect(game.forceEvent(106)).toBe(true)
+  expect(game.getState().xp).toBe(0)
+  expect(game.getState().xpTotal).toBe(5)
+  game.dismissEvent()
+  expect(game.click().money).toBeGreaterThan(0)
+})
+
+test("events: a permanent multiplier scales click and cps, a timed one scales its target only", () => {
+  game.reset()
+  game.forceGig(5)
+  game.tick(1)
+  const base = game.getState()
+  expect(base.foreverMult).toBe(1)
+
+  game.forceEvent(41)
+  const forever = game.getState()
+  expect(forever.foreverMult).toBe(1.03)
+  expect(forever.clickPower).toBeCloseTo(base.clickPower * 1.03)
+  expect(forever.cps).toBeCloseTo(base.cps * 1.03)
+
+  game.forceEvent(58)
+  const timed = game.getState()
+  expect(timed.tempMults.click?.mult).toBe(1.2)
+  expect(timed.clickPower).toBeCloseTo(base.clickPower * 1.03 * 1.2)
+  expect(timed.cps).toBeCloseTo(forever.cps)
+  game.dismissEvent()
+})
+
+test("events: none fire during a fight, forceEnemy closes an open one", () => {
+  game.reset()
+  game.forceEvent(2)
+  expect(game.getState().event).not.toBeNull()
+  expect(game.forceEnemy(1)).toBe(true)
+  expect(game.getState().event).toBeNull()
+  expect(game.forceEvent(2)).toBe(false)
+  game.flee()
+  expect(game.forceEvent(2)).toBe(true)
+  game.dismissEvent()
+})
+
+test("fight: v1.2 rewards pay out like a payday", () => {
+  game.reset()
+  game.forceGig(1)
+  game.forceBoost(10, 60_000)
+  const row = enemy(1)
+  expect(row.reward).toBe(500)
+  game.forceEnemy(row.id)
+  const before = game.getState().money
+  let guard = 0
+  while (game.getState().fight) {
+    game.click()
+    if (++guard > row.hp) throw new Error("enemy never died")
+  }
+  const won = game.getState()
+  expect(won.money - before).toBe(500)
+  expect(won.lastFight).toEqual({ kind: "win", enemyId: 1, reward: 500 })
+  expect(won.lastPop).toMatchObject({ kind: "fightWin", size: "large", amount: 500 })
+})
+
+test("ide: the pack follows the owned era, tabs navigate, the shop era previews and snaps back", () => {
+  game.reset()
+  expect(game.getState().ide).toMatchObject({ era: "early", packId: "fizzbuzz", kind: "files", index: 0, previewing: false })
+
+  game.setMoney(1e28)
+  const top = (name: string) => {
+    const row = tierByName(name)
+    for (let id = 1; id <= row.id; id++) game.buy(id)
+    return row
+  }
+  top("Angel syndicate seat")
+  expect(game.getState().ide).toMatchObject({ era: "mid", packId: "search", kind: "files", items: ["BinarySearch.java", "BinarySearchTest.java"] })
+  expect(game.ideSelect(1)).toBe(true)
+  expect(game.getState().ide.index).toBe(1)
+  expect(game.ideSelect(3)).toBe(false)
+  expect(game.ideSelect(-1)).toBe(false)
+  expect(game.getState().ide.index).toBe(1)
+
+  game.previewEra("q3")
+  expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", previewing: true, restPackId: "search", index: 0 })
+  expect(game.ideSelect(2)).toBe(true)
+  expect(game.getState().ide.items[2]).toBe("CUDA OOM on node gpu-17")
+  game.previewEra("end")
+  expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", previewing: true })
+  game.previewEra(null)
+  expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
+
+  game.previewEra("upper")
+  game.tick(60_000)
+  expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
+
+  top("Custom accelerator IP")
+  expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", packId: "frontier" })
+  top("Mars megacampus Holdings")
+  expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", packId: "mars", items: ["Habitat power", "GPU shed policy", "Dust storm runbook"] })
+})
+
+test("save: a save from another schema version is wiped, not migrated", () => {
+  game.reset()
+  game.forceGig(1)
+  localStorage.setItem("tech-ascension.save", JSON.stringify({ version: 2, money: 5e9, xp: 99, owned: { "26": 3 }, savedAt: 1 }))
+  const hydrated = hydrate(localStorage.getItem("tech-ascension.save"), Date.now())
+  expect(hydrated.reset).toBe(true)
+  expect(hydrated.save.money).toBe(0)
+  expect(hydrated.save.owned).toEqual({})
+  game.reset()
 })

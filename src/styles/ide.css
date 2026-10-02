@@ -1,6 +1,7 @@
 /*
  * The IDE shell behind the stage. Catppuccin Mocha, fixed: no rule here reads an era accent.
- * Only the code layer and the active tab change as progress does.
+ * The pane changes with progress (file packs, inbox, slide deck). The tab bar, the explorer list and
+ * the status bar take clicks; the editor stays a pointer-transparent backdrop under the stage.
  */
 
 .ide {
@@ -49,7 +50,31 @@
   overflow: hidden;
   padding: var(--sp-3) 0;
   background: var(--mocha-mantle);
+  pointer-events: auto;
 }
+.ide-list { display: flex; flex-direction: column; margin-bottom: var(--sp-3); }
+.ide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--mocha-overlay);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ide-item:hover { color: var(--mocha-text); background: var(--mocha-surface); }
+.ide-item.is-active { color: var(--mocha-text); background: var(--mocha-surface); box-shadow: inset 2px 0 0 var(--mocha-mauve); }
+.ide-item i { flex: none; margin-top: 3px; }
+.ide-item-text { display: flex; flex-direction: column; min-width: 0; }
+.ide-item-main, .ide-item-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-item-sub { font-size: 0.85em; color: var(--mocha-overlay); }
+.ide-item.is-inbox .ide-item-main { color: var(--mocha-text); }
+.ide-mail-dot, .ide-slide-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mocha-blue); }
+.ide-slide-dot { border-radius: 1px; background: var(--mocha-peach); }
 .ide-tree-title {
   margin: 0 0 var(--sp-2);
   padding: 0 var(--sp-3);
@@ -93,15 +118,25 @@
   min-width: 0;
   overflow: hidden;
   background: var(--mocha-mantle);
+  pointer-events: auto;
 }
 .ide-tab {
   display: flex;
   align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
   gap: var(--sp-2);
   padding: 0 var(--sp-4);
+  border: 0;
   border-right: 1px solid var(--mocha-crust);
+  background: transparent;
+  color: var(--mocha-overlay);
+  font: inherit;
   white-space: nowrap;
+  cursor: pointer;
 }
+.ide-tab:hover:not(.is-active) { color: var(--mocha-text); background: var(--mocha-surface); }
+.ide-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ide-tab.is-active {
   color: var(--mocha-text);
   background: var(--mocha-base);
@@ -119,7 +154,10 @@
 .ide-tab-dot[data-lang="ts"] { background: var(--mocha-blue); }
 .ide-tab-dot[data-lang="java"] { background: var(--mocha-peach); }
 .ide-tab-dot[data-lang="rust"] { background: var(--mocha-rosewater); }
-.ide-tab-dot[data-lang="cuda"] { background: var(--mocha-green); }
+.ide-tab-dot[data-lang="md"] { background: var(--mocha-overlay); }
+.ide-tab-dot[data-lang="yaml"], .ide-tab-dot[data-lang="toml"], .ide-tab-dot[data-lang="mod"] { background: var(--mocha-green); }
+.ide-tab-dot[data-lang="inbox"] { background: var(--mocha-blue); }
+.ide-tab-dot[data-lang="deck"] { border-radius: 1px; background: var(--mocha-peach); }
 
 .ide-editor {
   grid-area: editor;
@@ -167,6 +205,7 @@
 
 .ide-status {
   grid-area: status;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: var(--sp-4);
@@ -183,7 +222,41 @@
   color: var(--mocha-crust);
   font-weight: 700;
 }
+.ide-mode.is-preview { background: var(--mocha-peach); }
 .ide-status-gap { flex: 1; }
+.ide-deck-nav { display: flex; align-items: center; gap: var(--sp-2); }
+.ide-deck-nav button {
+  width: 22px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--mocha-surface);
+  color: var(--mocha-text);
+  line-height: 1;
+  cursor: pointer;
+}
+.ide-deck-nav button:hover:not(:disabled) { background: var(--mocha-mauve); color: var(--mocha-crust); }
+.ide-deck-nav button:disabled { opacity: 0.35; cursor: default; }
+
+/* Inbox and deck panes live in the left gutter, clear of the sprite in the middle of the stage. */
+.mail, .slide {
+  /* Half the editor, minus the half-width of the sprite hitbox and the code layer's padding. */
+  width: clamp(7rem, calc(50% - 108px), 12rem);
+  margin: 0;
+  color: var(--mocha-text);
+  line-height: 1.5;
+}
+.mail-subject { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 700; color: var(--mocha-text); }
+.mail-from { margin: 0 0 var(--sp-3); color: var(--mocha-overlay); }
+.mail-from span { margin-right: 0.5ch; color: var(--mocha-mauve); text-transform: uppercase; letter-spacing: var(--track-caps); }
+.mail-body { margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--mocha-surface); white-space: normal; }
+.slide { padding: var(--sp-3); border: 1px solid var(--mocha-surface); border-radius: var(--radius); background: var(--mocha-mantle); }
+.slide-count { margin: 0 0 var(--sp-2); font-size: var(--fs-2xs); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--mocha-overlay); }
+.slide-title { margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--mocha-peach); }
+.slide ul { margin: 0; padding-left: 1.2em; }
+.slide li { margin-bottom: var(--sp-1); }
+.slide li::marker { color: var(--mocha-mauve); }
 
 @media (max-width: 860px) {
   .ide-tree { display: none; }
