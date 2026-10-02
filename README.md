@@ -16,6 +16,14 @@ npm run smoke:play
 npm run build
 ```
 
+### Preview as GitHub Pages would serve it
+
+```bash
+npm run preview:pages
+```
+
+Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43124/tech-ascension/](http://127.0.0.1:43124/tech-ascension/), the same sub-path a project Pages site uses. Asset URLs must go through `import.meta.env.BASE_URL` (or Vite-processed HTML) so they work under that prefix.
+
 ## How it plays
 
 - Click the 256×256 stage sprite for money and 1 XP. Click power starts at $1 and grows when a generator has a click bonus.

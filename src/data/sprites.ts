@@ -60,13 +60,13 @@ export const SPRITE_SUBJECTS: readonly SpriteSubject[] = [
 
 /** Tier id → public sprite URL. Missing ids fall back to tier 1. */
 export const SPRITE_BY_TIER: Record<number, string> = Object.fromEntries(
-  SPRITE_SUBJECTS.map((row) => [row.id, `/sprites/${row.id}.svg`]),
+  SPRITE_SUBJECTS.map((row) => [row.id, `${import.meta.env.BASE_URL}sprites/${row.id}.svg`]),
 )
 
 const SUBJECT_BY_ID = new Map(SPRITE_SUBJECTS.map((row) => [row.id, row]))
 
 export function spriteForTier(id: number): string {
-  return SPRITE_BY_TIER[id] ?? SPRITE_BY_TIER[1] ?? "/sprites/1.svg"
+  return SPRITE_BY_TIER[id] ?? SPRITE_BY_TIER[1] ?? `${import.meta.env.BASE_URL}sprites/1.svg`
 }
 
 export function subjectForTier(id: number): SpriteSubject | undefined {
