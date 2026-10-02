@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
 import { ERA_ACCENT, spriteForTier, START_SUBJECT, subjectForTier } from "../data/sprites.ts"
 import { highestOwnedTier, tierById } from "../game/economy.ts"
@@ -8,6 +9,7 @@ import { useGame } from "../game/store.ts"
 type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
+type Drop = { id: number; x: number; y: number; dx: number; dy: number; rot: number; size: number; src: string }
 type Ring = { id: number; x: number; y: number; big: boolean }
 
 let seq = 1
@@ -48,6 +50,21 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
   })
 }
 
+const DROP_MS = 500
+
+function stageDrops(x: number, y: number, src: string, count: number): Drop[] {
+  return Array.from({ length: count }, () => ({
+    id: seq++,
+    x: x + (Math.random() - 0.5) * 18,
+    y: y + (Math.random() - 0.5) * 12,
+    dx: (Math.random() - 0.5) * 90,
+    dy: 220 + Math.random() * 140,
+    rot: (Math.random() - 0.5) * 80,
+    size: 26 + Math.random() * 18,
+    src,
+  }))
+}
+
 export function Stage() {
   const owned = useGame((state) => state.owned)
   const activeBoost = useGame((state) => state.activeBoost)
@@ -57,12 +74,14 @@ export function Stage() {
   const [bits, setBits] = useState<Bit[]>([])
   const [sparks, setSparks] = useState<Spark[]>([])
   const [rings, setRings] = useState<Ring[]>([])
+  const [drops, setDrops] = useState<Drop[]>([])
   const [entered, setEntered] = useState(false)
 
   const hitboxRef = useRef<HTMLButtonElement>(null)
   const tiltRef = useRef<HTMLSpanElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const heat = useRef(0)
+  const lastSide = useRef(1)
 
   const ownedTier = highestOwnedTier(owned)
   const artId = ownedTier?.id ?? 0
@@ -107,22 +126,31 @@ export function Stage() {
       tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
       return
     }
-    // Press in toward the click, spring past rest exactly once, settle. No wobble.
-    const power = 1 + heat.current * 0.5 + (boosted ? 0.2 : 0)
-    const frame = (scale: string, rx: number, ry: number) =>
-      `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`
+    // A bump: the sprite pops up and tips slightly away from the click, then settles
+    // with a tiny jitter. Fast clicking (heat) and boosts make it a little bigger.
+    const power = 1 + heat.current * 0.5 + (boosted ? 0.25 : 0)
+    const dir = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
+    const frame = (scale: number, rx: number, ry: number, rz: number, tx: number, ty: number) =>
+      `perspective(700px) translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${scale})`
     tilt.animate(
       [
-        { transform: frame("1", 0, 0), offset: 0, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-        { transform: frame("0.91, 0.93", -ny * 9 * power, nx * 9 * power), offset: 0.3, easing: "cubic-bezier(0.34, 1.2, 0.5, 1)" },
-        { transform: frame("1.045, 1.04", ny * 2, -nx * 2), offset: 0.68, easing: "cubic-bezier(0.65, 0, 0.35, 1)" },
-        { transform: frame("1", 0, 0), offset: 1 },
+        { transform: frame(1, 0, 0, 0, 0, 0), offset: 0 },
+        {
+          transform: frame(1 + 0.06 * power, -ny * 5 * power, nx * 5 * power, dir * 1.2 * power, 0, -5 * power),
+          offset: 0.22,
+        },
+        { transform: frame(0.985, 0, 0, -dir * 0.8, 1.5 * power, 1), offset: 0.45 },
+        { transform: frame(1.01, 0, 0, dir * 0.4, -1 * power, 0), offset: 0.68 },
+        { transform: frame(1, 0, 0, 0, 0, 0), offset: 1 },
       ],
-      { duration: 220 },
+      { duration: 260, easing: "cubic-bezier(0.25, 0.9, 0.3, 1)" },
     )
     img?.animate(
-      [{ filter: "brightness(1.25)" }, { filter: "brightness(1)" }],
-      { duration: 160, easing: "ease-out" },
+      [
+        { filter: `brightness(${1.3 + heat.current * 0.3}) saturate(1.2)` },
+        { filter: "brightness(1) saturate(1)" },
+      ],
+      { duration: 220, easing: "ease-out" },
     )
   }
 
@@ -156,6 +184,13 @@ export function Stage() {
       ].slice(-30),
     )
     setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
+    const dropX = hasPoint ? clientX : rect.left + rect.width / 2
+    const dropY = hasPoint ? clientY : rect.top + rect.height * 0.45
+    const born = stageDrops(dropX, dropY, spriteForTier(artId), boosted ? 3 : 2)
+    setDrops((current) => [...current, ...born].slice(-36))
+    window.setTimeout(() => {
+      setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
+    }, DROP_MS + 120)
     setSparks((current) =>
       [...current, ...clickSparks(x, y, accent.glow, boosted ? 14 : 9)].slice(-90),
     )
@@ -202,6 +237,12 @@ export function Stage() {
         aria-label={`Click to earn. Current stage ${stageName}. ${subject ?? ""}`}
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
+        <span className="aura" aria-hidden="true" />
+        <span className="motes" aria-hidden="true">
+          {Array.from({ length: 9 }, (_, index) => (
+            <i key={index} style={{ ["--i" as string]: index }} />
+          ))}
+        </span>
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">
@@ -215,6 +256,7 @@ export function Stage() {
                 height={256}
                 draggable={false}
               />
+              <i className="sheen" aria-hidden="true" />
             </span>
           </span>
         </span>
@@ -268,6 +310,29 @@ export function Stage() {
           />
         ))}
       </button>
+      {createPortal(
+        <div className="drops" aria-hidden="true">
+          {drops.map((drop) => (
+            <img
+              key={drop.id}
+              className="drop"
+              src={drop.src}
+              alt=""
+              draggable={false}
+              style={{
+                left: drop.x - drop.size / 2,
+                top: drop.y - drop.size / 2,
+                width: drop.size,
+                height: drop.size,
+                ["--dx" as string]: `${drop.dx}px`,
+                ["--dy" as string]: `${drop.dy}px`,
+                ["--rot" as string]: `${drop.rot}deg`,
+              }}
+            />
+          ))}
+        </div>,
+        document.body,
+      )}
       <div className="plate">
         <p className="era-tag">{ownedTier ? accent.kicker : "Before the offer"}</p>
         <h2>{stageName}</h2>

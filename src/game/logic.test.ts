@@ -26,11 +26,14 @@ describe("economy", () => {
   })
 
   it("adds click bonuses and leaves idle unboosted", () => {
-    const owned = { "1": 1, "5": 2 }
+    const github = TIERS.find((tier) => tier.name === "Personal GitHug")
+    if (!github) throw new Error("missing Personal GitHug")
+    expect(github.clickBonus).toBe(1)
+    const owned = { "1": 1, [String(github.id)]: 2 }
     expect(clickPower(owned)).toBe(3)
     const live = production(owned, { mult: 10, endsAt: 1_000 }, 500)
     expect(live.click).toBe(30)
-    expect(live.idle).toBeCloseTo(0.1 + 10)
+    expect(live.idle).toBeCloseTo(0.1 + 2 * github.cps)
     expect(live.mult).toBe(10)
     const expired = production(owned, { mult: 10, endsAt: 1_000 }, 1_000)
     expect(expired.click).toBe(3)
@@ -94,7 +97,7 @@ describe("save", () => {
 
   it("migrates a legacy owned array and keeps unknown tier ids", () => {
     const migrated = migrate({ money: 9, owned: [2, 0, 3], savedAt: 50 })
-    expect(migrated?.version).toBe(1)
+    expect(migrated?.version).toBe(2)
     expect(migrated?.owned[String(TIERS[0]?.id)]).toBe(2)
     expect(migrated?.owned[String(TIERS[2]?.id)]).toBe(3)
     expect(ownedCount(migrated?.owned ?? {}, TIERS[1]?.id ?? 0)).toBe(0)
@@ -102,6 +105,21 @@ describe("save", () => {
     const future = migrate({ version: 1, money: 1, xp: 0, owned: { "99": 4, nope: 8 }, savedAt: 1 })
     expect(future?.owned["99"]).toBe(4)
     expect(future?.owned.nope).toBeUndefined()
+  })
+
+  it("re-keys v1 owned counts onto the v2 stage ids", () => {
+    const byName = (name: string) => TIERS.find((tier) => tier.name === name)?.id
+    const v1 = { version: 1, money: 5, xp: 0, savedAt: 1, owned: { "1": 2, "4": 1, "15": 3, "48": 1 } }
+    const migrated = migrate(v1)
+    expect(migrated?.version).toBe(2)
+    expect(migrated?.owned[String(byName("Used laptop"))]).toBe(2)
+    expect(migrated?.owned[String(byName("YouToob CS / ML intro"))]).toBe(1)
+    expect(migrated?.owned[String(byName("Fine-tune your first LLM"))]).toBe(3)
+    expect(migrated?.owned[String(byName("Mars megacampus"))]).toBe(1)
+    expect(Object.keys(migrated?.owned ?? {})).toHaveLength(4)
+
+    const again = migrate({ ...v1, version: 2, owned: migrated?.owned })
+    expect(again?.owned).toEqual(migrated?.owned)
   })
 
   it("starts over when the payload is unreadable", () => {
@@ -157,6 +175,21 @@ describe("click boosts", () => {
     )
     expect(pity.spawned?.mult).toBe(2)
     expect(pity.clock.activeBoost).toEqual(pity.spawned)
+  })
+})
+
+describe("tier table", () => {
+  it("has contiguous ids and strictly rising prices", () => {
+    TIERS.forEach((tier, index) => {
+      expect(tier.id).toBe(index + 1)
+      if (index > 0) expect(tier.baseCost).toBeGreaterThan(TIERS[index - 1]?.baseCost ?? 0)
+    })
+  })
+
+  it("uses no real brand names", () => {
+    const banned =
+      /\b(stack ?overflow|freecodecamp|youtube|github|kaggle|pytorch|tensorflow|y combinator|yc|raspberry pi|mac mini|openclaw|docker|kubernetes|hacker news|blackwell)\b/i
+    for (const tier of TIERS) expect(tier.name).not.toMatch(banned)
   })
 })
 

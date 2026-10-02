@@ -2,14 +2,13 @@ import type { ActiveBoost } from "../data/boosts.ts"
 import { idlePerSec } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { formatNumber } from "./format.ts"
-import { TIERS } from "../data/tiers.ts"
 
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
 export const OFFLINE_TOAST_MIN_MS = 5_000
 
 export type SaveV1 = {
-  version: 1
+  version: 2
   money: number
   xp: number
   /** Owned counts keyed by tier id (stringified). Unknown ids are kept. */
@@ -26,6 +25,15 @@ export type Hydrated = {
   toast: string | null
 }
 
+/**
+ * Version 1 saves keyed owned counts by the original 48 tier ids. Stages added in
+ * version 2 shifted most ids, so v1 -> v2 re-keys owned counts through this table.
+ * Never edit it: it describes a frozen past layout.
+ */
+export const V1_TO_V2_TIER_IDS: Readonly<Record<string, number>> = {
+  1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 9, 7: 11, 8: 13, 9: 15, 10: 17, 11: 19, 12: 21, 13: 23, 14: 24, 15: 26, 16: 28, 17: 29, 18: 31, 19: 32, 20: 33, 21: 34, 22: 36, 23: 37, 24: 39, 25: 40, 26: 41, 27: 42, 28: 43, 29: 44, 30: 45, 31: 46, 32: 48, 33: 49, 34: 50, 35: 51, 36: 52, 37: 53, 38: 54, 39: 56, 40: 57, 41: 58, 42: 60, 43: 61, 44: 62, 45: 63, 46: 64, 47: 65, 48: 66,
+}
+
 type Migration = (raw: Record<string, unknown>) => Record<string, unknown>
 
 /**
@@ -37,9 +45,14 @@ const MIGRATIONS: Migration[] = [
     version: 1,
     money: raw.money,
     xp: raw.xp,
-    owned: raw.owned,
+    owned: Array.isArray(raw.owned) ? legacyArrayToMap(raw.owned) : raw.owned,
     savedAt: raw.savedAt,
     activeBoost: raw.activeBoost,
+  }),
+  (raw) => ({
+    ...raw,
+    version: 2,
+    owned: remapOwned(raw.owned, V1_TO_V2_TIER_IDS),
   }),
 ]
 
@@ -51,17 +64,26 @@ function finite(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
 }
 
+/** The unversioned format stored counts by position in the original 48-tier list (id = index + 1). */
+function legacyArrayToMap(values: unknown[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  values.forEach((value, index) => {
+    out[String(index + 1)] = value
+  })
+  return out
+}
+
+function remapOwned(raw: unknown, table: Readonly<Record<string, number>>): unknown {
+  if (!isRecord(raw)) return raw
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    out[String(table[key] ?? key)] = value
+  }
+  return out
+}
+
 function normalizeOwned(raw: unknown): OwnedMap {
   const out: OwnedMap = {}
-  if (Array.isArray(raw)) {
-    raw.forEach((value, index) => {
-      const tier = TIERS[index]
-      if (!tier) return
-      const count = finite(value)
-      if (count > 0) out[String(tier.id)] = Math.floor(count)
-    })
-    return out
-  }
   if (!isRecord(raw)) return out
   for (const [key, value] of Object.entries(raw)) {
     if (!/^\d+$/.test(key)) continue
@@ -122,7 +144,7 @@ export function migrate(input: unknown): SaveV1 | null {
 
   const boost = normalizeBoost(current.activeBoost)
   const save: SaveV1 = {
-    version: 1,
+    version: 2,
     money: Math.max(0, finite(current.money)),
     xp: Math.max(0, finite(current.xp)),
     owned: normalizeOwned(current.owned),

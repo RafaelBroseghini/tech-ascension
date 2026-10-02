@@ -1,16 +1,42 @@
 /*
  * Motion. Rules of the room:
- *  - click overshoots once (~200ms), never multi-bounce
- *  - idle bob stays under 3px
+ *  - click is a ~260ms bump: the sprite pops up, tips away from the pointer and
+ *    settles with a tiny jitter; it restarts on every click and is a little
+ *    bigger when hot. No side-to-side shaking.
+ *  - idle life (float, aura, motes, sheen) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
- * The click squash itself is driven from Stage.tsx via WAAPI so it can aim
+ * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
  * at the pointer; its keyframes live there.
  */
 
-@keyframes idle-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+/* Gravity: slow start, fast end. Fully gone by 500ms. */
+@keyframes drop-fall {
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
+  15% { transform: translate(calc(var(--dx) * 0.1), -14px) rotate(calc(var(--rot) * 0.2)) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-0.4deg); }
+  50% { transform: translateY(-6px) rotate(0.4deg); }
+}
+
+@keyframes aura-breathe {
+  0%, 100% { filter: brightness(0.9); }
+  50% { filter: brightness(1.25); }
+}
+
+@keyframes mote-rise {
+  0% { transform: translate(0, 0) rotate(45deg) scale(0.6); opacity: 0; }
+  15% { opacity: 0.95; }
+  100% { transform: translate(calc(var(--i) * 3px - 12px), -300px) rotate(225deg) scale(1.1); opacity: 0; }
+}
+
+@keyframes sheen {
+  0%, 62% { transform: translateX(-120%); }
+  86%, 100% { transform: translateX(120%); }
 }
 
 @keyframes pop-rise {
@@ -136,6 +162,9 @@
   .confetti,
   .ring,
   .spark,
+  .motes,
+  .sheen,
+  .drops,
   .era-sweep,
   .rim::before {
     display: none !important;
