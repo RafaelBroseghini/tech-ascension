@@ -881,8 +881,7 @@ img { -webkit-user-drag: none; user-select: none; }
   animation: fight-in 220ms var(--ease-out);
 }
 
-.fight-kicker,
-.fight-win-kicker {
+.fight-kicker {
   margin: 0;
   color: var(--accent);
   font-size: var(--fs-xs);
@@ -891,8 +890,7 @@ img { -webkit-user-drag: none; user-select: none; }
   text-transform: uppercase;
 }
 
-.fight-name,
-.fight-win-name {
+.fight-name {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-lg);
@@ -1024,16 +1022,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .fight-win-sprite { width: 144px; height: 144px; animation: fight-win-pop 520ms var(--ease-pop); filter: saturate(0.7) brightness(0.9); }
 
-.fight-win-reward {
-  margin: 0;
-  color: #f3d37a;
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: 800;
-  text-shadow: 3px 3px 0 var(--ink);
-  animation: fight-win-pop 520ms var(--ease-pop) 120ms backwards;
-}
-
 @keyframes fight-in { from { opacity: 0; } }
 @keyframes fight-bob { 50% { transform: translateY(-5px); } }
 @keyframes fight-hit {
@@ -1043,7 +1031,7 @@ img { -webkit-user-drag: none; user-select: none; }
 @keyframes fight-win-pop { from { transform: scale(0.6); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fight, .fight-win, .fight-win-sprite, .fight-win-reward, .fight-sprite { animation: none; }
+  .fight, .fight-win, .fight-win-sprite, .fight-sprite { animation: none; }
   .fight-hit { animation-duration: 1ms; }
 }
 

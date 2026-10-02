@@ -42,7 +42,7 @@ function useScore(target: number): number {
     return () => cancelAnimationFrame(frame.current)
   }, [pop])
 
-  return tween ? Math.max(0, tween.value) : target
+  return tween ? Math.max(0, Math.floor(tween.value)) : target
 }
 
 export function HeroMoney() {

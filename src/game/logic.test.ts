@@ -252,6 +252,14 @@ describe("save", () => {
       expect(future?.owned.nope).toBeUndefined()
     })
 
+    it("tells the player what happened, once", () => {
+      const first = hydrate(JSON.stringify(v2), 10_000)
+      expect(first.toast).toMatch(/^phase economy: early gear retired, refunded [\d,]+ XP$/)
+      expect(first.save.version).toBe(3)
+      const second = hydrate(JSON.stringify(first.save), 10_000)
+      expect(second.toast).toBeNull()
+    })
+
     it("is idempotent: a migrated save loads again unchanged", () => {
       const once = migrate(v2)
       const twice = migrate(JSON.parse(JSON.stringify(once)))

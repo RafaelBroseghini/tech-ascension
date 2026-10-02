@@ -196,7 +196,7 @@ export function Shop() {
           <p className="eyebrow">
             Phase {tab} · {PHASE_NAME[tab]}
           </p>
-          <h2>{PHASE_TAB[tab].title}</h2>
+          <h2>{unlocked[tab] ? PHASE_TAB[tab].title : `${PHASE_TAB[tab].label} locked`}</h2>
         </div>
         <p className="era-hint">{PHASE_TAB[tab].hint}</p>
       </div>
