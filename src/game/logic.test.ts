@@ -1,7 +1,8 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { OVERLAYS, overlayForTier, tokenize } from "../data/overlays.ts"
+import { IDE_PACKS } from "../data/idePacks.ts"
+import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, LEGACY_EARLY_XP_PER_DOLLAR, SKILL_TIERS } from "../data/phases.ts"
@@ -380,59 +381,13 @@ describe("pixel sprites", () => {
   })
 })
 
-describe("IDE code overlays", () => {
-  it("ships the fifteen brief snippets, in order, each at most 18 lines", () => {
-    expect(OVERLAYS.map((o) => o.file)).toEqual([
-      "fizzbuzz.py",
-      "two_sum.py",
-      "reverse_list.go",
-      "debounce.ts",
-      "BinarySearch.java",
-      "worker_pool.go",
-      "finetune_loop.py",
-      "rate_limit.ts",
-      "lru.rs",
-      "attention.py",
-      "gemm.cu",
-      "consensus.go",
-      "edge_route.ts",
-      "orbital_sync.py",
-      "habitat_ctl.rs",
-    ])
-    for (const overlay of OVERLAYS) {
-      expect(overlay.code.split("\n").length).toBeLessThanOrEqual(18)
-      expect(overlay.code).not.toMatch(/^\s*$/m)
-    }
-  })
-
-  it("keys every tier to one band that stays inside the tier's era, never going backwards", () => {
-    let last = 0
-    for (const tier of TIERS) {
-      const overlay = overlayForTier(tier.id)
-      expect(overlay.era).toBe(tier.era)
-      expect(overlay.id).toBeGreaterThanOrEqual(last)
-      last = overlay.id
-    }
-    // Bands 1–3 (ids 0–18) are the phase A–C art ids: skills, gigs and early jobs reach them.
-    expect(new Set(Array.from({ length: 67 }, (_, id) => overlayForTier(id).id)).size).toBe(15)
-  })
-
-  it("starts on fizzbuzz before the first purchase and ends on the habitat controller", () => {
-    expect(overlayForTier(0).file).toBe("fizzbuzz.py")
-    expect(overlayForTier(1).file).toBe("fizzbuzz.py")
-    expect(overlayForTier(33).file).toBe("finetune_loop.py")
-    expect(overlayForTier(44).file).toBe("attention.py")
-    expect(overlayForTier(50).file).toBe("consensus.go")
-    expect(overlayForTier(66).file).toBe("habitat_ctl.rs")
-  })
-
-  it("tokenizes without losing or adding a character", () => {
-    for (const overlay of OVERLAYS) {
-      expect(
-        tokenize(overlay.code, overlay.lang)
-          .map((token) => token.text)
-          .join(""),
-      ).toBe(overlay.code)
+describe("IDE lexer", () => {
+  it("tokenizes every pack file without losing or adding a character", () => {
+    for (const pack of IDE_PACKS) {
+      if (pack.kind !== "files") continue
+      for (const file of pack.files) {
+        expect(tokenize(file.code, file.lang).map((token) => token.text).join("")).toBe(file.code)
+      }
     }
     const kinds = tokenize('for i in range(1, 101): print("Fizz")', "python")
     expect(kinds.find((t) => t.text === "for")?.kind).toBe("kw")
