@@ -695,6 +695,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .offer {
   --a: var(--offer-glow, var(--accent));
   position: relative;
+  flex: 0 0 auto;
   overflow: hidden;
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) auto;
