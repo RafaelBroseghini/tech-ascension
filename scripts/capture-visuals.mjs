@@ -111,9 +111,9 @@ const lateEra = async (name, topTier) => {
 }
 await lateEra("04a-ide-mid-debounce", 20)
 await lateEra("04b-ide-mid-binary-search", 24)
-await lateEra("05-ide-upper-attention", 42)
-await lateEra("06-ide-q3-gemm", 47)
-await lateEra("07-ide-end-habitat", 66)
+await lateEra("05-ide-upper-attention-pack", 42)
+await lateEra("06-ide-q3-email-inbox", 47)
+await lateEra("07-ide-end-slide-deck", 66)
 await page.getByTestId("owned-strip").evaluate((el) => (el.scrollTop = el.scrollHeight))
 await settle(200)
 await shot("08-owned-strip-scrolled")

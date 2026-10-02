@@ -26,6 +26,19 @@ getState(): {
   savedAt: number
  fight: { enemyId: number; hp: number; maxHp: number; remainingMs: number } | null
  lastFight: { kind: "win" | "flee" | "timeout"; enemyId: number; reward: number } | null
+ foreverMult: number
+ tempMults: Partial<Record<"click" | "cps" | "xpPerSec", { mult: number; endsAt: number }>>
+ event: { eventId: number; name: string; lines: string[] } | null
+ lastEvent: { eventId: number; name: string; lines: string[] } | null
+ ide: {
+  era: "early" | "mid" | "upper" | "q3" | "end"
+  packId: string
+  kind: "files" | "inbox" | "deck"
+  items: string[]
+  index: number
+  previewing: boolean
+  restPackId: string
+ }
 }
 
 click(): { money: number; xp: number }
@@ -36,6 +49,10 @@ forceBoost(mult: number, ms: number): void
 advanceOffline(ms: number): { credited: number; toast: string | null }
 forceEnemy(enemyId: number): boolean
 flee(): void
+forceEvent(eventId: number): boolean
+dismissEvent(): void
+ideSelect(index: number): boolean
+previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
 reset(): void
 ```
 
@@ -50,6 +67,10 @@ reset(): void
 - `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours. The toast is the same `welcome back, credited $X` path as a reload.
 - `forceEnemy(id)` starts a rare-enemy fight now (ids 1–44, `src/data/enemies.ts`), bypassing the random spawn and the era gate. Returns false for an unknown id. Random spawns roll only among enemies whose `eraGate` equals the current era.
 - During a fight `click()` damages the enemy by `clickPower × activeBoost.mult` and pays no money. A kill pays `reward`. `flee()` and the 30s timeout (`tick`) end the fight with no reward and no penalty. `lastFight` reports how the last one ended.
+- `forceEvent(id)` fires a random event now (ids 1–110, `src/data/events.ts`) and applies it. Returns false for an unknown id or during a fight. An open event is replaced, never stacked. `event` is the modal on screen, `lastEvent` is kept after `dismissEvent()`. Random events roll roughly every 150s from rows whose `eras` include `any` or the current era; cash events wait until money exists. Effects never push money or spendable XP below 0.
+- `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
+- `ide` describes the editor pane: early is single files, mid and upper are multi-file packs, q3 an email inbox, end a slide deck. `ideSelect(i)` opens file, email or slide `i` of the pack on screen (false when out of range). `previewEra(era)` shows that era's first pack the way the shop's Capital era tab does (`previewing: true`, `restPackId` is the owned pack); `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era.
+- A save from any other `version` is wiped on load. There is no migration.
 - `reset()` wipes the save back to high school.
 
 ## Smoke (`npm run smoke:play`)

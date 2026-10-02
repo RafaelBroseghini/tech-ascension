@@ -241,7 +241,8 @@
 
 /* Inbox and deck panes live in the left gutter, clear of the sprite in the middle of the stage. */
 .mail, .slide {
-  width: min(100%, 17rem);
+  /* Half the editor, minus the half-width of the sprite hitbox and the code layer's padding. */
+  width: clamp(7rem, calc(50% - 108px), 12rem);
   margin: 0;
   color: var(--mocha-text);
   line-height: 1.5;
