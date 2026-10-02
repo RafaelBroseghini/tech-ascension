@@ -480,7 +480,7 @@ img { -webkit-user-drag: none; user-select: none; }
   flex: 0 1 auto;
   min-height: 0;
   width: min(100%, 34rem);
-  max-height: calc(var(--row) * 8);
+  max-height: calc(var(--row) * 5 + var(--stroke) * 2);
   margin: var(--sp-2) 0 0;
   padding: 0;
   list-style: none;
