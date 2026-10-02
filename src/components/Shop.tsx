@@ -9,6 +9,7 @@ import type { Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, nextCost, ownedCount } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { nextUnlock } from "../game/nextUnlock.ts"
+import type { NextUnlock } from "../game/nextUnlock.ts"
 import {
   capitalRequirements,
   capitalUnlocked,
@@ -26,6 +27,12 @@ import {
 } from "../game/phase.ts"
 import type { Requirement, ShopTab } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
+
+/** A ready row reads "to buy it"; a gap still reads "need 8,000 more XP". */
+function nextLine(next: NextUnlock): string {
+  const body = next.needs.join(next.either ? " or " : " · ")
+  return next.needs.every((line) => line.startsWith("to ")) ? body : `need ${body}`
+}
 
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string }> = {
   A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "#6fe08c" },
@@ -143,7 +150,7 @@ export function Shop() {
 
   const skillRows = SKILL_TIERS.filter((row) => isSkillRevealed(row, skills, xpTotal))
   const equipRows = EQUIPMENT.filter((row) => isGearRevealed(row, equipment, peakMoney, jobs))
-  const next = nextUnlock({ ...gates, equipment })
+  const next = nextUnlock({ ...gates, equipment, money, xp })
 
   const revealedByEra = useMemo(() => {
     const map = new Map<Era, ReturnType<typeof capitalInEra>>()
@@ -257,7 +264,7 @@ export function Shop() {
         {next ? (
           <>
             <strong className="next-name">{next.name}</strong>
-            <span className="next-needs">need {next.needs.join(next.either ? " or " : " · ")}</span>
+            <span className="next-needs">{nextLine(next)}</span>
           </>
         ) : (
           <span className="next-needs">Everything is open</span>

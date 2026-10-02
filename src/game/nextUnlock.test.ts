@@ -36,30 +36,54 @@ describe("next unlock teaser", () => {
     expect(capital?.needs).toEqual(["Senior SWE (60,000 more XP)", "$380,000 more held"])
   })
 
-  it("with every board open, points at the locked row that needs the least XP", () => {
+  it("with every board open, walks catalog order and stops at the first unbought row", () => {
     expect(nextUnlock({ ...EMPTY, xpTotal: 40_000, skills: ALL_SKILLS, gigs: ALL_GIGS, jobs: [1], peakMoney: 600_000 })).toMatchObject({
       key: "job:2",
+      name: "Junior SWE",
       tab: "C",
       needs: ["5,000 more XP"],
     })
-    expect(nextUnlock({ ...EMPTY, xpTotal: 36_000, skills: { "15": 1, "16": 1 }, gigs: ALL_GIGS, jobs: [14], peakMoney: 600_000 })).toMatchObject({
-      key: "skill:37",
+    const open = { ...EMPTY, xpTotal: 36_000, skills: { "15": 1, "16": 1 }, gigs: ALL_GIGS, jobs: [14], peakMoney: 600_000 }
+    expect(nextUnlock(open)).toMatchObject({
+      key: "skill:1",
+      name: "Used laptop",
       tab: "A",
-      needs: ["1,200 more XP"],
+      needs: [`${SKILL_TIERS[0]?.baseXpCost ?? 0} XP`],
+    })
+    expect(nextUnlock({ ...open, xp: SKILL_TIERS[0]?.baseXpCost ?? 0 })).toMatchObject({
+      key: "skill:1",
+      needs: ["to buy it"],
     })
   })
 
-  it("reports a gig that only waits on earlier gigs", () => {
+  it("does not skip an earlier gig that is ready but uncleared", () => {
     const next = nextUnlock({ ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, jobs: ALL_JOBS, gigs: [1], peakMoney: 1e9 })
-    expect(next).toMatchObject({ key: "gig:4", name: GIGS[3]?.name, tab: "B", needs: ["1 more gig"] })
+    expect(next).toMatchObject({ key: "gig:2", name: GIGS[1]?.name, tab: "B", needs: ["to clear it"] })
+    expect(next?.key).not.toBe("gig:4")
   })
 
-  it("falls back to hidden gear, then the cheapest hidden capital row, then nothing", () => {
+  it("stops on the first unbought gear row, then the first unbought capital row", () => {
     const done = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, jobs: ALL_JOBS, gigs: ALL_GIGS }
-    expect(nextUnlock(done)).toMatchObject({ key: "gear:2", tab: "G", needs: ["$50 more held"] })
-    const tier = nextUnlock({ ...done, peakMoney: 250_000_000 })
-    expect(tier).toMatchObject({ key: "capital:7", name: CAPITAL[6]?.name, tab: "D" })
-    expect(nextUnlock({ ...done, peakMoney: 1e30 })).toBeNull()
+    expect(nextUnlock(done)).toMatchObject({
+      key: "gear:1",
+      name: "Thocky keyboard",
+      tab: "G",
+      needs: [`$${formatNumber(GEAR[0]?.baseCost ?? 0)}`],
+    })
+    expect(nextUnlock({ ...done, money: GEAR[0]?.baseCost ?? 0 })).toMatchObject({ key: "gear:1", needs: ["to buy it"] })
+
+    const ownedGear = Object.fromEntries(GEAR.map((row) => [String(row.id), 1]))
+    const tier = nextUnlock({ ...done, equipment: ownedGear, peakMoney: 250_000_000 })
+    expect(tier).toMatchObject({ key: "capital:1", name: CAPITAL[0]?.name, tab: "D", needs: [`$${formatNumber(CAPITAL[0]?.baseCost ?? 0)}`] })
+
+    const ownedCapital = Object.fromEntries(CAPITAL.map((row) => [String(row.id), 1]))
+    expect(nextUnlock({ ...done, equipment: ownedGear, owned: ownedCapital, peakMoney: 1e30 })).toBeNull()
+  })
+
+  it("keeps a later gear row behind one that is revealed and still unbought", () => {
+    const done = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, jobs: ALL_JOBS, gigs: ALL_GIGS, peakMoney: 1e9, money: 1e9 }
+    expect(nextUnlock(done)?.key).toBe("gear:1")
+    expect(nextUnlock({ ...done, equipment: { "1": 1 } })).toMatchObject({ key: "gear:2", name: GEAR[1]?.name, needs: ["to buy it"] })
   })
 })
 

@@ -1,10 +1,13 @@
 /**
  * Catalogs v3: 50 skills, 50 gigs, 31 jobs (here), 30 gear (src/data/gear.ts), 25 capital (src/data/capital.ts).
- * Numbers, gates and ordering are the Researcher's table verbatim. Only brand names are swapped for the
- * repo's parody style (see the banned-brand test in logic.test.ts). Ids are unique and 1-based; nothing
- * else in the code assumes how many rows a table has.
+ * Gates, payouts and ordering are the Researcher's table. Only brand names are swapped for the
+ * repo's parody style (see the banned-brand test in logic.test.ts). Purchase prices (skill XP
+ * costs and job base costs) are doubled once, in scalePurchaseCost; the literals below are unscaled.
+ * Ids are unique and 1-based; nothing else in the code assumes how many rows a table has.
  * Gear lives in src/data/gear.ts and is re-exported below as EQUIPMENT.
  */
+import { scalePurchaseCost } from "./costs.ts"
+
 export const COST_GROWTH = 1.15 as const;
 export const GIG_BOARD_UNLOCK = { minXp: 12000, requireOwnedSkills: [15, 16] as const };
 export const JOB_BOARD_UNLOCK = { minXp: 35000, minGigsCompleted: 5 } as const;
@@ -15,7 +18,7 @@ export { GEAR as EQUIPMENT } from "./gear.ts";
 export type { GearItem as Equip } from "./gear.ts";
 
 export type SkillTier = { id: number; name: string; baseXpCost: number; xpPerClick: number; xpPerSec: number; unlockAtXp: number };
-export const SKILL_TIERS: readonly SkillTier[] = [
+const SKILL_ROWS: readonly SkillTier[] = [
   { id: 1, name: "Used laptop", baseXpCost: 10, xpPerClick: 1, xpPerSec: 0, unlockAtXp: 0 },
   { id: 2, name: "Stack Overblow lurker", baseXpCost: 20, xpPerClick: 0, xpPerSec: 0.1, unlockAtXp: 6 },
   { id: 3, name: "FreeCodeChamp streak", baseXpCost: 35, xpPerClick: 0, xpPerSec: 0.25, unlockAtXp: 12 },
@@ -67,6 +70,11 @@ export const SKILL_TIERS: readonly SkillTier[] = [
   { id: 49, name: "Principal study club", baseXpCost: 300000, xpPerClick: 0, xpPerSec: 12.0, unlockAtXp: 156000 },
   { id: 50, name: "Teaching a workshop", baseXpCost: 350000, xpPerClick: 15, xpPerSec: 10.0, unlockAtXp: 180000 },
 ] as const;
+
+export const SKILL_TIERS: readonly SkillTier[] = SKILL_ROWS.map((row) => ({
+  ...row,
+  baseXpCost: scalePurchaseCost(row.baseXpCost),
+}))
 
 export type Gig = { id: number; name: string; xpReq: number; priorGigs: number; lump: number; retainerCps: number };
 export const GIGS: readonly Gig[] = [
@@ -123,7 +131,7 @@ export const GIGS: readonly Gig[] = [
 ] as const;
 
 export type JobTier = { id: number; name: string; xpReq: number; baseCost: number; cps: number };
-export const JOB_TIERS: readonly JobTier[] = [
+const JOB_ROWS: readonly JobTier[] = [
   { id: 1, name: "Internship offer", xpReq: 35000, baseCost: 0, cps: 8 },
   { id: 2, name: "Junior SWE", xpReq: 45000, baseCost: 500, cps: 25 },
   { id: 3, name: "Junior + mentor buddy", xpReq: 50000, baseCost: 800, cps: 30 },
@@ -156,6 +164,11 @@ export const JOB_TIERS: readonly JobTier[] = [
   { id: 30, name: "Empire operator", xpReq: 2000000, baseCost: 1000000000, cps: 35000 },
   { id: 31, name: "Sovereign tech chair", xpReq: 2500000, baseCost: 5000000000, cps: 80000 },
 ] as const;
+
+export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map((row) => ({
+  ...row,
+  baseCost: scalePurchaseCost(row.baseCost),
+}))
 
 /** Phase A: click adds XP only. Phase B+: click adds money (XP drip optional). */
 export const PHASE_A_CLICK_IS_XP = true;

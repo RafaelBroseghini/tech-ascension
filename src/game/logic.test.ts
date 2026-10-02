@@ -5,7 +5,8 @@ import { IDE_PACKS } from "../data/idePacks.ts"
 import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { PURCHASE_COST_SCALE } from "../data/costs.ts"
+import { GEAR_TAB_UNLOCK, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { COST_GROWTH, CAPITAL } from "../data/capital.ts"
 import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } from "./boosts.ts"
 import {
@@ -269,6 +270,21 @@ describe("catalog tables", () => {
   it("ships Catalogs v3: 50 skills, 50 gigs, 31 jobs, 30 gear, 25 capital, ids 1..n", () => {
     expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([50, 50, 31, 30, 25])
     for (const rows of [SKILL_TIERS, GIGS, JOB_TIERS, EQUIPMENT, CAPITAL]) expect(contiguous(rows)).toBe(true)
+  })
+
+  it("doubles purchase prices and leaves payouts, gig lumps and gates alone", () => {
+    expect(PURCHASE_COST_SCALE).toBe(2)
+    expect(SKILL_TIERS[0]?.baseXpCost).toBe(20)
+    expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
+    expect(JOB_TIERS[0]?.baseCost).toBe(0)
+    expect(JOB_TIERS[1]?.baseCost).toBe(1_000)
+    expect(JOB_TIERS[1]?.cps).toBe(25)
+    expect(EQUIPMENT[0]?.baseCost).toBe(400)
+    expect(EQUIPMENT[0]?.clickBonus).toBe(2)
+    expect(CAPITAL[0]?.baseCost).toBe(200_000)
+    expect(CAPITAL[0]?.cps).toBe(50)
+    expect(GIGS[0]?.lump).toBe(40)
+    expect(GEAR_TAB_UNLOCK.minXp).toBe(8_000)
   })
 
   it("keeps every row paid for: positive costs, and an income or click bonus", () => {

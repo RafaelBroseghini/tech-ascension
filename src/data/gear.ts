@@ -4,7 +4,10 @@
  * `unlockMoney` (peakMoney) and holds job `unlockJobId` (0 = no job needed), or already owns it.
  * A table drop needs unique ids. `kind` groups rows under a section header, in GEAR_KINDS order,
  * so a new kind is one line here and no UI edit.
+ * `baseCost` below is unscaled; the export doubles it.
  */
+import { scalePurchaseCost } from "./costs.ts"
+
 export type GearKind = "desk" | "lab" | "storage" | "cloud" | "gpu" | "rack" | "orbit" | "mars"
 
 export const GEAR_KINDS: readonly { id: GearKind; label: string }[] = [
@@ -29,7 +32,7 @@ export type GearItem = {
   unlockJobId: number
 }
 
-export const GEAR: readonly GearItem[] = [
+const GEAR_ROWS: readonly GearItem[] = [
   { id: 1, kind: "desk", name: "Thocky keyboard", baseCost: 200, clickBonus: 2, cps: 0, unlockMoney: 0, unlockJobId: 0 },
   { id: 2, kind: "desk", name: "Second monitor", baseCost: 400, clickBonus: 3, cps: 0, unlockMoney: 50, unlockJobId: 0 },
   { id: 3, kind: "desk", name: "Ergo chair", baseCost: 600, clickBonus: 0, cps: 0.5, unlockMoney: 100, unlockJobId: 0 },
@@ -61,3 +64,8 @@ export const GEAR: readonly GearItem[] = [
   { id: 29, kind: "rack", name: "Cooling plant share", baseCost: 80000000, clickBonus: 0, cps: 10000, unlockMoney: 40000000, unlockJobId: 0 },
   { id: 30, kind: "storage", name: "Spare parts vault", baseCost: 10000000, clickBonus: 0, cps: 500, unlockMoney: 5000000, unlockJobId: 0 },
 ] as const
+
+export const GEAR: readonly GearItem[] = GEAR_ROWS.map((row) => ({
+  ...row,
+  baseCost: scalePurchaseCost(row.baseCost),
+}))

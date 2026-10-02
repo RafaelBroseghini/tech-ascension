@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { CAPITAL_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL } from "../data/capital.ts"
+import { CAPITAL_UNLOCK, EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
 import { FIGHT_DURATION_MS } from "../data/enemies.ts"
 import { gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
 import {
@@ -80,8 +81,8 @@ describe("phase gates", () => {
     expect(jobState(EMPTY, junior)).toBe("board-locked")
     expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
     expect(jobState(board, junior)).toBe("ready")
-    expect(canBuyJob({ ...board, money: 499 }, junior)).toBe(false)
-    expect(canBuyJob({ ...board, money: 500 }, junior)).toBe(true)
+    expect(canBuyJob({ ...board, money: junior.baseCost - 1 }, junior)).toBe(false)
+    expect(canBuyJob({ ...board, money: junior.baseCost }, junior)).toBe(true)
     expect(jobState({ ...board, jobs: [2] }, junior)).toBe("owned")
   })
 
@@ -135,12 +136,13 @@ describe("phase A: XP only", () => {
   })
 
   it("buys skills with XP only and keeps lifetime XP when spending", () => {
-    useGame.setState({ money: 0, xp: 10, xpTotal: 10 })
+    const skillCost = SKILL_TIERS[0]?.baseXpCost ?? 0
+    useGame.setState({ money: 0, xp: skillCost, xpTotal: skillCost })
     useGame.getState().buySkill(1)
     let state = useGame.getState()
     expect(ownedCount(state.skills, 1)).toBe(1)
     expect(state.xp).toBe(0)
-    expect(state.xpTotal).toBe(10)
+    expect(state.xpTotal).toBe(skillCost)
     expect(state.money).toBe(0)
 
     expect(useGame.getState().click().xp).toBe(2)
@@ -292,9 +294,10 @@ describe("phase C: jobs and equipment", () => {
     expect(useGame.getState().buyJob(1)).toBe(false)
 
     expect(useGame.getState().buyJob(2)).toBe(false)
-    useGame.setState({ xpTotal: 45_000, money: 499 })
+    const juniorCost = JOB_TIERS[1]?.baseCost ?? 0
+    useGame.setState({ xpTotal: 45_000, money: juniorCost - 1 })
     expect(useGame.getState().buyJob(2)).toBe(false)
-    useGame.setState({ money: 500 })
+    useGame.setState({ money: juniorCost })
     expect(useGame.getState().buyJob(2)).toBe(true)
     expect(useGame.getState().money).toBe(0)
     expect(idlePerSec(useGame.getState())).toBe(8 + 25)
@@ -310,7 +313,8 @@ describe("phase C: jobs and equipment", () => {
     useGame.setState({ money: 1_000_000 })
     useGame.getState().buyEquipment(1)
     useGame.getState().buyEquipment(1)
-    expect(useGame.getState().money).toBe(1_000_000 - 200 - nextCost(200, 1))
+    const keyboard = EQUIPMENT[0]?.baseCost ?? 0
+    expect(useGame.getState().money).toBe(1_000_000 - keyboard - nextCost(keyboard, 1))
     expect(useGame.getState().click().money).toBe(1 + 2 * 2)
     useGame.getState().buyEquipment(4)
     expect(idlePerSec(useGame.getState())).toBe(2)
@@ -343,7 +347,8 @@ describe("phase D: capital", () => {
     useGame.getState().buy(1)
     const state = useGame.getState()
     expect(ownedCount(state.owned, 1)).toBe(2)
-    expect(state.money).toBe(500_000 - 100_000 - nextCost(100_000, 1))
+    const seat = CAPITAL[0]?.baseCost ?? 0
+    expect(state.money).toBe(500_000 - seat - nextCost(seat, 1))
     expect(idlePerSec(state)).toBe(100)
   })
 
@@ -351,7 +356,7 @@ describe("phase D: capital", () => {
     useGame.setState({ money: 0 })
     useGame.setState({ jobs: [14] })
     expect(useGame.getState().phase).toBe("D")
-    useGame.setState({ money: 100_000 })
+    useGame.setState({ money: CAPITAL[0]?.baseCost ?? 0 })
     useGame.getState().buy(1)
     expect(ownedCount(useGame.getState().owned, 1)).toBe(1)
   })
