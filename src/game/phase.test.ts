@@ -1,0 +1,362 @@
+import { beforeEach, describe, expect, it } from "vitest"
+import { CAPITAL_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
+import { FIGHT_DURATION_MS } from "../data/enemies.ts"
+import { gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
+import {
+  canBuyJob,
+  capitalUnlocked,
+  gigBoardUnlocked,
+  gigState,
+  jobBoardUnlocked,
+  jobState,
+  moneyMode,
+  phaseOf,
+  stageOf,
+} from "./phase.ts"
+import { useGame } from "./store.ts"
+
+const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
+
+describe("phase gates", () => {
+  it("opens the Gig Board at 12K lifetime XP with Portfolio (#11) and React (#12) owned", () => {
+    expect(GIG_BOARD_UNLOCK).toEqual({ minXp: 12000, requireOwnedTier: [11, 12] })
+    const skills = { "11": 1, "12": 1 }
+    expect(gigBoardUnlocked(EMPTY)).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000 })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000, skills: { "11": 1 } })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000, skills: { "12": 1 } })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 11_999, skills })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000, skills })).toBe(true)
+  })
+
+  it("opens the Job Board at 35K lifetime XP and 5 completed gigs", () => {
+    expect(JOB_BOARD_UNLOCK).toEqual({ minXp: 35000, minGigsCompleted: 5 })
+    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4] })).toBe(false)
+    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 34_999, gigs: [1, 2, 3, 4, 5] })).toBe(false)
+    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4, 5] })).toBe(true)
+  })
+
+  it("opens capital on a senior job (id >= 7) OR $500K held, and stays open once you own capital", () => {
+    expect(CAPITAL_UNLOCK).toEqual({ minJobId: 7, minMoney: 500_000 })
+    expect(capitalUnlocked(EMPTY)).toBe(false)
+    expect(capitalUnlocked({ ...EMPTY, jobs: [1, 2, 3, 4, 5, 6] })).toBe(false)
+    expect(capitalUnlocked({ ...EMPTY, jobs: [7] })).toBe(true)
+    expect(capitalUnlocked({ ...EMPTY, jobs: [8] })).toBe(true)
+    expect(capitalUnlocked({ ...EMPTY, peakMoney: 499_999 })).toBe(false)
+    expect(capitalUnlocked({ ...EMPTY, peakMoney: 500_000 })).toBe(true)
+    expect(capitalUnlocked({ ...EMPTY, owned: { "26": 1 } })).toBe(true)
+  })
+
+  it("reports the furthest phase and never skips the gates", () => {
+    expect(phaseOf(EMPTY)).toBe("A")
+    expect(phaseOf({ ...EMPTY, xpTotal: 12_000, skills: { "11": 1, "12": 1 } })).toBe("B")
+    expect(phaseOf({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4, 5] })).toBe("C")
+    expect(phaseOf({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4, 5], jobs: [7] })).toBe("D")
+    expect(phaseOf({ ...EMPTY, peakMoney: 600_000 })).toBe("D")
+  })
+
+  it("pays clicks in money only after the first gig (or once money exists)", () => {
+    expect(moneyMode({ peakMoney: 0, gigs: [], jobs: [] })).toBe(false)
+    expect(moneyMode({ peakMoney: 0, gigs: [1], jobs: [] })).toBe(true)
+    expect(moneyMode({ peakMoney: 1, gigs: [], jobs: [] })).toBe(true)
+  })
+
+  it("gates each gig on XP and on how many gigs are already cleared", () => {
+    const gig3 = gigById(3)
+    if (!gig3) throw new Error("missing gig 3")
+    const open = { ...EMPTY, xpTotal: gig3.xpReq, skills: { "11": 1, "12": 1 } }
+    expect(gigState(EMPTY, gig3)).toBe("board-locked")
+    expect(gigState(open, gig3)).toBe("locked")
+    expect(gigState({ ...open, gigs: [1] }, gig3)).toBe("locked")
+    expect(gigState({ ...open, gigs: [1, 2] }, gig3)).toBe("ready")
+    expect(gigState({ ...open, xpTotal: gig3.xpReq - 1, gigs: [1, 2] }, gig3)).toBe("locked")
+    expect(gigState({ ...open, gigs: [1, 2, 3] }, gig3)).toBe("done")
+  })
+
+  it("gates jobs on the board, lifetime XP and the price", () => {
+    const junior = jobById(2)
+    if (!junior) throw new Error("missing job 2")
+    const board = { ...EMPTY, xpTotal: 45_000, gigs: [1, 2, 3, 4, 5] }
+    expect(jobState(EMPTY, junior)).toBe("board-locked")
+    expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
+    expect(jobState(board, junior)).toBe("ready")
+    expect(canBuyJob({ ...board, money: 499 }, junior)).toBe(false)
+    expect(canBuyJob({ ...board, money: 500 }, junior)).toBe(true)
+    expect(jobState({ ...board, jobs: [2] }, junior)).toBe("owned")
+  })
+
+  it("picks the stage art from the furthest thing held", () => {
+    const none = { skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
+    expect(stageOf(none)).toBeNull()
+    expect(stageOf({ ...none, skills: { "1": 1 } })).toMatchObject({ artId: 1, name: "Used laptop", era: "early" })
+    expect(stageOf({ ...none, skills: { "1": 1 }, gigs: [2] })?.name).toBe("Freelancer")
+    expect(stageOf({ ...none, gigs: [2], jobs: [7] })?.name).toBe("Senior engineer")
+    expect(stageOf({ ...none, jobs: [7], owned: { "26": 1 } })).toMatchObject({ artId: 26, era: "mid" })
+  })
+})
+
+describe("phase tables", () => {
+  it("ships 18 skills, 8 gigs and 8 jobs with the table's ordering", () => {
+    expect(SKILL_TIERS).toHaveLength(18)
+    expect(GIGS).toHaveLength(8)
+    expect(JOB_TIERS).toHaveLength(8)
+    SKILL_TIERS.forEach((row, index) => {
+      expect(row.id).toBe(index + 1)
+      if (index > 0) expect(row.baseXpCost).toBeGreaterThan(SKILL_TIERS[index - 1]?.baseXpCost ?? 0)
+    })
+    JOB_TIERS.forEach((row, index) => expect(row.xpReq).toBeGreaterThanOrEqual(index > 0 ? JOB_TIERS[index - 1]?.xpReq ?? 0 : 0))
+  })
+
+  it("has exactly one first idle source among the gigs, and it is a retainer", () => {
+    const retainers = GIGS.filter((gig) => gig.retainerCps > 0)
+    expect(retainers.map((gig) => gig.id)).toEqual([5, 6, 7, 8])
+    expect(GIGS.filter((gig) => gig.priorGigs < 3).every((gig) => gig.retainerCps === 0)).toBe(true)
+  })
+
+  it("makes large pops for gig clear, fight win and unlock, and a medium pop for a click", () => {
+    expect(MONEY_POP).toEqual({ click: "medium", gigClear: "large", fightWin: "large", unlock: "large" })
+  })
+})
+
+describe("phase A: XP only", () => {
+  beforeEach(() => useGame.getState().wipe())
+
+  it("pays clicks in XP, never in money, and has no $/s", () => {
+    const game = useGame.getState()
+    const gain = game.click()
+    expect(gain).toEqual({ money: 0, xp: 1 })
+    for (let i = 0; i < 9; i++) useGame.getState().click()
+    const state = useGame.getState()
+    expect(state.xp).toBe(10)
+    expect(state.xpTotal).toBe(10)
+    expect(state.money).toBe(0)
+    expect(state.pop).toBeNull()
+    expect(idlePerSec(state)).toBe(0)
+  })
+
+  it("buys skills with XP only and keeps lifetime XP when spending", () => {
+    useGame.setState({ money: 0, xp: 10, xpTotal: 10 })
+    useGame.getState().buySkill(1)
+    let state = useGame.getState()
+    expect(ownedCount(state.skills, 1)).toBe(1)
+    expect(state.xp).toBe(0)
+    expect(state.xpTotal).toBe(10)
+    expect(state.money).toBe(0)
+
+    expect(useGame.getState().click().xp).toBe(2)
+    useGame.getState().buySkill(1)
+    state = useGame.getState()
+    expect(ownedCount(state.skills, 1)).toBe(1)
+
+    useGame.setState({ xp: 1000 })
+    useGame.getState().buySkill(1, "max")
+    expect(ownedCount(useGame.getState().skills, 1)).toBeGreaterThan(5)
+    expect(nextCost(10, 2)).toBe(13)
+  })
+
+  it("never lets money pay for a skill", () => {
+    useGame.setState({ money: 1e9, xp: 0 })
+    useGame.getState().buySkill(1)
+    expect(ownedCount(useGame.getState().skills, 1)).toBe(0)
+  })
+
+  it("studies while idle: skills add XP/s and idle time still adds no money", () => {
+    useGame.setState({ skills: { "2": 5 } })
+    const before = useGame.getState()
+    useGame.getState().tick(before.now + 10_000)
+    const after = useGame.getState()
+    expect(after.xp - before.xp).toBeCloseTo(10)
+    expect(after.xpTotal - before.xpTotal).toBeCloseTo(10)
+    expect(after.money).toBe(0)
+  })
+
+  it("a boost multiplies the XP a click pays", () => {
+    useGame.setState({ activeBoost: { mult: 5, endsAt: Date.now() + 10_000 } })
+    expect(useGame.getState().click().xp).toBe(5)
+    expect(useGame.getState().money).toBe(0)
+  })
+
+  it("opens the Gig Board with a large unlock pop exactly once", () => {
+    useGame.setState({ xp: 20_000, xpTotal: 20_000, skills: { "11": 1 } })
+    expect(useGame.getState().phase).toBe("A")
+    useGame.setState({ skills: { "11": 1, "12": 1 } })
+    const state = useGame.getState()
+    expect(state.phase).toBe("B")
+    expect(state.pop).toMatchObject({ kind: "unlock", size: "large", amount: 0 })
+    expect(state.toast?.text).toBe("Gig Board unlocked")
+    const id = state.pop?.id
+    useGame.getState().tick(state.now + 1_000)
+    expect(useGame.getState().pop?.id).toBe(id)
+    expect(useGame.getState().phase).toBe("B")
+  })
+
+  it("does not spawn rare enemies until money exists", () => {
+    const state = useGame.getState()
+    useGame.getState().tick(state.now + 8 * 60 * 60 * 1000)
+    useGame.getState().tick(useGame.getState().now + 8 * 60 * 60 * 1000)
+    expect(useGame.getState().fight).toBeNull()
+  })
+})
+
+describe("phase B: gigs", () => {
+  beforeEach(() => {
+    useGame.getState().wipe()
+    useGame.setState({ xp: 12_000, xpTotal: 12_000, skills: { "11": 1, "12": 1 } })
+  })
+
+  it("pays the lump on clear with a large pop, and clicks start paying money", () => {
+    expect(useGame.getState().phase).toBe("B")
+    expect(useGame.getState().click().money).toBe(0)
+    expect(useGame.getState().clearGig(1)).toBe(true)
+    const state = useGame.getState()
+    expect(state.money).toBe(40)
+    expect(state.gigs).toEqual([1])
+    expect(state.pop).toMatchObject({ kind: "gigClear", size: "large", amount: 40, label: "Fix broken login / blog-engine bug" })
+    expect(idlePerSec(state)).toBe(0)
+
+    const gain = useGame.getState().click()
+    expect(gain.money).toBe(1)
+    expect(gain.xp).toBeCloseTo(1.5)
+    expect(useGame.getState().money).toBe(41)
+    expect(useGame.getState().pop).toMatchObject({ kind: "click", size: "medium", amount: 1 })
+  })
+
+  it("clears each gig once, and only when XP and prior gigs allow", () => {
+    expect(useGame.getState().clearGig(1)).toBe(true)
+    expect(useGame.getState().clearGig(1)).toBe(false)
+    expect(useGame.getState().clearGig(3)).toBe(false)
+    expect(useGame.getState().clearGig(2)).toBe(false)
+    useGame.setState({ xpTotal: 14_000 })
+    expect(useGame.getState().clearGig(2)).toBe(true)
+    expect(useGame.getState().money).toBe(40 + 120)
+    expect(useGame.getState().clearGig(9999)).toBe(false)
+  })
+
+  it("forceGig skips the requirements but not the one-clear rule", () => {
+    expect(useGame.getState().clearGig(8, true)).toBe(true)
+    expect(useGame.getState().money).toBe(1200)
+    expect(useGame.getState().clearGig(8, true)).toBe(false)
+  })
+
+  it("a retainer is the first idle money, paid per second", () => {
+    useGame.setState({ xpTotal: 25_000 })
+    for (const id of [1, 2, 3]) expect(useGame.getState().clearGig(id, true)).toBe(true)
+    expect(idlePerSec(useGame.getState())).toBe(0)
+    expect(useGame.getState().clearGig(5)).toBe(true)
+    const before = useGame.getState()
+    expect(idlePerSec(before)).toBe(2)
+    expect(before.money).toBe(40 + 120 + 350 + 100)
+    useGame.getState().tick(before.now + 10_000)
+    expect(useGame.getState().money - before.money).toBeCloseTo(20)
+  })
+
+  it("lets a rare enemy spawn once the first gig is cleared, and a win pays dollars with a large pop", () => {
+    useGame.getState().clearGig(1)
+    useGame.getState().tick(useGame.getState().now + 8 * 60 * 60 * 1000)
+    useGame.getState().tick(useGame.getState().now + 8 * 60 * 60 * 1000)
+    expect(useGame.getState().fight).not.toBeNull()
+
+    useGame.getState().flee()
+    useGame.setState({ activeBoost: null })
+    expect(useGame.getState().forceEnemy(2)).toBe(true)
+    const before = useGame.getState().money
+    for (let i = 0; i < 66; i++) useGame.getState().click()
+    const state = useGame.getState()
+    expect(state.fight).toBeNull()
+    expect(state.money - before).toBe(80)
+    expect(state.pop).toMatchObject({ kind: "fightWin", size: "large", amount: 80, label: "Off-by-One Beetle" })
+    expect(state.fightResult).toMatchObject({ kind: "win", reward: 80 })
+    expect(FIGHT_DURATION_MS).toBe(30_000)
+  })
+})
+
+describe("phase C: jobs and equipment", () => {
+  beforeEach(() => {
+    useGame.getState().wipe()
+    useGame.setState({ xp: 35_000, xpTotal: 35_000, skills: { "11": 1, "12": 1 } })
+    for (let id = 1; id <= 5; id++) useGame.getState().clearGig(id, true)
+    useGame.setState({ money: 0 })
+  })
+
+  it("opens the Job Board and unlocks with a large pop", () => {
+    const state = useGame.getState()
+    expect(state.phase).toBe("C")
+    expect(state.pop).toMatchObject({ kind: "unlock", size: "large" })
+    expect(state.toast?.text).toBe("Job Board unlocked")
+  })
+
+  it("takes the free internship, then salaried roles that add $/s", () => {
+    expect(useGame.getState().buyJob(1)).toBe(true)
+    expect(useGame.getState().jobs).toEqual([1])
+    expect(idlePerSec(useGame.getState())).toBe(8 + 2)
+    expect(useGame.getState().buyJob(1)).toBe(false)
+
+    expect(useGame.getState().buyJob(2)).toBe(false)
+    useGame.setState({ xpTotal: 45_000, money: 499 })
+    expect(useGame.getState().buyJob(2)).toBe(false)
+    useGame.setState({ money: 500 })
+    expect(useGame.getState().buyJob(2)).toBe(true)
+    expect(useGame.getState().money).toBe(0)
+    expect(idlePerSec(useGame.getState())).toBe(8 + 25 + 2)
+  })
+
+  it("won't sell a job below its XP requirement even when the money is there", () => {
+    useGame.setState({ money: 1e6 })
+    expect(useGame.getState().buyJob(5)).toBe(false)
+    expect(useGame.getState().buyJob(8)).toBe(false)
+  })
+
+  it("equipment is repeatable at 1.15 growth and adds click power and idle", () => {
+    useGame.setState({ money: 1_000_000 })
+    useGame.getState().buyEquipment(1)
+    useGame.getState().buyEquipment(1)
+    expect(useGame.getState().money).toBe(1_000_000 - 20_000 - nextCost(20_000, 1))
+    expect(useGame.getState().click().money).toBe(1 + 2 * 5)
+    useGame.getState().buyEquipment(2)
+    expect(idlePerSec(useGame.getState())).toBe(2 + 3)
+  })
+
+  it("keeps equipment shut until the Job Board is open", () => {
+    useGame.getState().wipe()
+    useGame.setState({ money: 1e6 })
+    useGame.getState().buyEquipment(1)
+    expect(ownedCount(useGame.getState().equipment, 1)).toBe(0)
+  })
+})
+
+describe("phase D: capital", () => {
+  beforeEach(() => useGame.getState().wipe())
+
+  it("refuses capital until a senior job or $500K, then sells it with 1.15 growth", () => {
+    useGame.setState({ money: 499_999, peakMoney: 499_999 })
+    useGame.getState().buy(19)
+    expect(ownedCount(useGame.getState().owned, 19)).toBe(0)
+    expect(useGame.getState().phase).toBe("A")
+
+    useGame.setState({ money: 500_000 })
+    expect(useGame.getState().phase).toBe("D")
+    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large" })
+    useGame.getState().buy(19)
+    useGame.getState().buy(19)
+    const state = useGame.getState()
+    expect(ownedCount(state.owned, 19)).toBe(2)
+    expect(state.money).toBe(500_000 - 180_000 - nextCost(180_000, 1))
+    expect(idlePerSec(state)).toBe(1600)
+  })
+
+  it("a senior job opens capital without the cash", () => {
+    useGame.setState({ money: 0 })
+    useGame.setState({ jobs: [7] })
+    expect(useGame.getState().phase).toBe("D")
+    useGame.setState({ money: 180_000 })
+    useGame.getState().buy(19)
+    expect(ownedCount(useGame.getState().owned, 19)).toBe(1)
+  })
+
+  it("the era (boosts, enemies, accent) stays early until capital is bought", () => {
+    useGame.setState({ money: 600_000 })
+    expect(stageOf(useGame.getState())).toBeNull()
+    useGame.getState().buy(19)
+    expect(stageOf(useGame.getState())).toMatchObject({ era: "mid", artId: 19 })
+  })
+})

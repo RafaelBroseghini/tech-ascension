@@ -14,10 +14,3 @@ export function waterfallCount(boosted: boolean, random: () => number = Math.ran
 export function capDrops<T>(current: readonly T[], born: readonly T[], cap: number = WATERFALL_CAP): T[] {
   return [...current, ...born].slice(-cap)
 }
-
-export function ownedTierIds(owned: Readonly<Record<string, number>>): number[] {
-  return Object.entries(owned)
-    .filter(([, count]) => Number.isFinite(count) && count > 0)
-    .map(([id]) => Number(id))
-    .filter((id) => Number.isInteger(id) && id > 0)
-}

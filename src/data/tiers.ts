@@ -1,7 +1,12 @@
-/** Tech Ascension Clicker — shop tiers v4 (66). Fantasy: ML/LLMs → own products/companies → chips → Mars.
+/** Tech Ascension Clicker — Phase D capital ladder (ids 19–66). Fantasy: ML/LLMs → own products/companies → chips → Mars.
+ * Ids 1–18 were the pre-phase "early" generators; they are retired (see src/game/save.ts v2 → v3) and the
+ * early skill/gig/job/equipment content now lives in src/data/phases.ts. Ids 19+ are unchanged so sprites,
+ * overlays and saved counts keep working.
  * nextCost = floor(baseCost * COST_GROWTH ** owned)
  */
-export const COST_GROWTH = 1.15 as const;
+import { COST_GROWTH } from "./phases.ts"
+
+export { COST_GROWTH }
 
 export type Era = "early" | "mid" | "upper" | "q3" | "end";
 
@@ -15,28 +20,8 @@ export type Tier = {
 };
 
 export const TIERS: readonly Tier[] = [
-  // early — learn to ship
-  { id: 1, era: "early", name: "Used laptop", baseCost: 15, cps: 0.1, clickBonus: 0 },
-  { id: 2, era: "early", name: "Stack Overblow account", baseCost: 50, cps: 0.3, clickBonus: 0 },
-  { id: 3, era: "early", name: "FreeCodeChamp streak", baseCost: 120, cps: 0.8, clickBonus: 0 },
-  { id: 4, era: "early", name: "Raspberry Pie", baseCost: 190, cps: 1.3, clickBonus: 0 },
-  { id: 5, era: "early", name: "YouToob CS / ML intro", baseCost: 300, cps: 2, clickBonus: 0 },
-  { id: 6, era: "early", name: "Terminal rice (dotfiles)", baseCost: 480, cps: 3.2, clickBonus: 0 },
-  { id: 7, era: "early", name: "Personal GitHug", baseCost: 750, cps: 5, clickBonus: 1 },
-  { id: 8, era: "early", name: "Thocky mechanical keyboard", baseCost: 1150, cps: 7.7, clickBonus: 1 },
-  { id: 9, era: "early", name: "Portfolio + Gaggle notebook", baseCost: 1800, cps: 12, clickBonus: 0 },
-  { id: 10, era: "early", name: "Free cloud-notebook GPU", baseCost: 2900, cps: 19, clickBonus: 0 },
-  { id: 11, era: "early", name: "Hackathon weekend", baseCost: 4500, cps: 28, clickBonus: 0 },
-  { id: 12, era: "early", name: "Mac Minnie home server", baseCost: 7000, cps: 42, clickBonus: 0 },
-  { id: 13, era: "early", name: "Open-source ML PR", baseCost: 11000, cps: 65, clickBonus: 2 },
-  { id: 14, era: "early", name: "Basement mining-rig GPUs", baseCost: 17500, cps: 98, clickBonus: 0 },
-  { id: 15, era: "early", name: "Bootcamp / CS + ML electives", baseCost: 28000, cps: 150, clickBonus: 0 },
-  { id: 16, era: "early", name: "Quantized model on a laptop", baseCost: 44000, cps: 230, clickBonus: 0 },
-  { id: 17, era: "early", name: "Internship (SWE / ML)", baseCost: 70000, cps: 350, clickBonus: 0 },
-  { id: 18, era: "early", name: "Hacker Newz front page", baseCost: 110000, cps: 520, clickBonus: 0 },
-
   // mid — engineer + ML craft
-  { id: 19, era: "mid", name: "Junior SWE", baseCost: 180000, cps: 800, clickBonus: 3 },
+  { id: 19, era: "mid", name: "Junior ML engineer", baseCost: 180000, cps: 800, clickBonus: 3 },
   { id: 20, era: "mid", name: "Dockyard containers", baseCost: 280000, cps: 1200, clickBonus: 0 },
   { id: 21, era: "mid", name: "PyTorchy / TensorFlux fluency", baseCost: 450000, cps: 1800, clickBonus: 0 },
   { id: 22, era: "mid", name: "Cubernetes cluster", baseCost: 700000, cps: 2700, clickBonus: 0 },

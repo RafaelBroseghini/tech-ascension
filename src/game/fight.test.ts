@@ -31,7 +31,7 @@ describe("enemy table", () => {
     expect(ENEMY_MEAN_WAIT_MS.early).toBe(90_000)
     expect(ENEMY_MEAN_WAIT_MS.end).toBe(210_000)
     expect(ENEMY_SPAWN_SAME_ERA_ONLY).toBe(true)
-    expect(enemyById(1)).toMatchObject({ hp: 880, reward: 150 })
+    expect(enemyById(1)).toMatchObject({ hp: 88, reward: 150 })
     expect(enemyById(44)).toMatchObject({ hp: 480_000, reward: 200_000_000 })
   })
 

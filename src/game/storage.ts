@@ -1,4 +1,4 @@
-import type { SaveV1 } from "./save.ts"
+import type { SaveData } from "./save.ts"
 
 export const SAVE_KEY = "tech-ascension.save"
 
@@ -10,7 +10,7 @@ export function readSaveText(): string | null {
   }
 }
 
-export function writeSave(save: SaveV1): void {
+export function writeSave(save: SaveData): void {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save))
   } catch {

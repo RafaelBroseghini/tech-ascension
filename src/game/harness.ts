@@ -1,8 +1,10 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import type { Era } from "../data/tiers.ts"
-import { clickPower, highestOwnedTier, idlePerSec, ownedCount, tierById } from "./economy.ts"
+import { clickPower, idlePerSec, ownedCount, xpPerClick, xpPerSec } from "./economy.ts"
 import { remainingMs } from "./fight.ts"
 import type { FightOutcome } from "./fight.ts"
+import { capitalUnlocked, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
+import type { Phase } from "./phase.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import { persistNow, useGame, writeStateAt } from "./store.ts"
 import { readSaveText } from "./storage.ts"
@@ -14,16 +16,34 @@ export type FightSnapshot = {
   remainingMs: number
 }
 
+export type PopSnapshot = { kind: "click" | "gigClear" | "fightWin" | "unlock"; size: "medium" | "large"; amount: number; label: string }
+
 export type GameSnapshot = {
   money: number
+  /** Spendable XP. Skills cost XP. */
   xp: number
+  /** Lifetime XP earned. Phase gates and job requirements read this. */
+  xpTotal: number
+  /** A skill grind, B gigs, C jobs + gear, D capital. */
+  phase: Phase
   /** Idle $/s. Click boosts do not change this. */
   cps: number
-  /** Base money per click, before activeBoost. */
+  /** Base money per click, before activeBoost. Paid once the first gig is cleared. */
   clickPower: number
+  /** Base XP per click (1 + skills). In Phase A this is what a click pays. */
+  xpPerClick: number
+  /** Idle XP/s from skills. */
+  xpPerSec: number
+  /** Phase D capital tiers, keyed by tier id ("26"). */
   owned: Record<string, number>
+  skills: Record<string, number>
+  equipment: Record<string, number>
+  jobs: number[]
+  /** Completed gig ids. */
+  gigs: number[]
+  unlocks: { gigBoard: boolean; jobBoard: boolean; capital: boolean }
   era: Era
-  /** Highest owned tier, or 1 before the first purchase. */
+  /** Art id of the stage sprite: capital tier id, or the art of the furthest skill/gig/job. 1 before the first purchase. */
   spriteTierId: number
   activeBoost: ActiveBoost | null
   savedAt: number
@@ -31,17 +51,29 @@ export type GameSnapshot = {
   fight: FightSnapshot | null
   /** How the most recent fight ended (reward is 0 unless it was a win), or null. */
   lastFight: { kind: FightOutcome["kind"]; enemyId: number; reward: number } | null
+  /** The most recent money pop (medium on a paying click, large on gig clear, fight win, phase unlock), or null. */
+  lastPop: PopSnapshot | null
 }
 
 export type OfflineCatchup = {
   credited: number
+  creditedXp: number
   toast: string | null
 }
 
 export type GameHarness = {
   getState: () => GameSnapshot
   click: () => { money: number; xp: number }
+  /** Buy one Phase D capital tier. False before capital unlocks or when it costs too much. */
   buy: (tierId: number) => boolean
+  buySkill: (skillId: number) => boolean
+  buyJob: (jobId: number) => boolean
+  buyEquipment: (equipId: number) => boolean
+  /** Clear a gig through the normal gates (board open, XP, prior gigs). */
+  completeGig: (gigId: number) => boolean
+  /** Clear a gig now, bypassing every requirement. False for an unknown or already cleared id. */
+  forceGig: (gigId: number) => boolean
+  setXp: (n: number) => void
   tick: (ms: number) => void
   setMoney: (n: number) => void
   forceBoost: (mult: number, ms: number) => void
@@ -74,17 +106,28 @@ export function installGameHarness(): GameHarness {
     getState: () => {
       const state = useGame.getState()
       const now = Date.now()
-      const best = highestOwnedTier(state.owned)
-      const spriteTierId = best?.id ?? 1
-      const era = tierById(spriteTierId)?.era ?? "early"
+      const stage = stageOf(state)
       return {
         money: state.money,
         xp: state.xp,
-        cps: idlePerSec(state.owned),
-        clickPower: clickPower(state.owned),
+        xpTotal: state.xpTotal,
+        phase: state.phase,
+        cps: idlePerSec(state),
+        clickPower: clickPower(state),
+        xpPerClick: xpPerClick(state.skills),
+        xpPerSec: xpPerSec(state.skills),
         owned: { ...state.owned },
-        era,
-        spriteTierId,
+        skills: { ...state.skills },
+        equipment: { ...state.equipment },
+        jobs: [...state.jobs],
+        gigs: [...state.gigs],
+        unlocks: {
+          gigBoard: gigBoardUnlocked(state),
+          jobBoard: jobBoardUnlocked(state),
+          capital: capitalUnlocked(state),
+        },
+        era: eraOf(state),
+        spriteTierId: stage?.artId ?? 1,
         activeBoost: liveBoost(state.activeBoost, now),
         savedAt: readSavedAt(),
         fight: state.fight
@@ -98,6 +141,9 @@ export function installGameHarness(): GameHarness {
         lastFight: state.fightResult
           ? { kind: state.fightResult.kind, enemyId: state.fightResult.enemyId, reward: state.fightResult.reward }
           : null,
+        lastPop: state.pop
+          ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label }
+          : null,
       }
     },
 
@@ -107,6 +153,31 @@ export function installGameHarness(): GameHarness {
       const before = ownedCount(useGame.getState().owned, tierId)
       useGame.getState().buy(tierId, "one")
       return ownedCount(useGame.getState().owned, tierId) > before
+    },
+
+    buySkill: (skillId) => {
+      const before = ownedCount(useGame.getState().skills, skillId)
+      useGame.getState().buySkill(skillId, "one")
+      return ownedCount(useGame.getState().skills, skillId) > before
+    },
+
+    buyJob: (jobId) => useGame.getState().buyJob(jobId),
+
+    buyEquipment: (equipId) => {
+      const before = ownedCount(useGame.getState().equipment, equipId)
+      useGame.getState().buyEquipment(equipId, "one")
+      return ownedCount(useGame.getState().equipment, equipId) > before
+    },
+
+    completeGig: (gigId) => useGame.getState().clearGig(gigId),
+
+    forceGig: (gigId) => useGame.getState().clearGig(gigId, true),
+
+    setXp: (n) => {
+      if (!Number.isFinite(n)) return
+      const xp = Math.max(0, n)
+      useGame.setState((state) => ({ xp, xpTotal: Math.max(state.xpTotal, xp) }))
+      persistNow()
     },
 
     tick: (ms) => {
@@ -132,15 +203,17 @@ export function installGameHarness(): GameHarness {
     },
 
     advanceOffline: (ms) => {
-      if (!(ms > 0) || !Number.isFinite(ms)) return { credited: 0, toast: null }
+      if (!(ms > 0) || !Number.isFinite(ms)) return { credited: 0, creditedXp: 0, toast: null }
       const now = Date.now()
       const before = useGame.getState().money
+      const beforeXp = useGame.getState().xp
       writeStateAt(now - ms)
       const hydrated = hydrate(readSaveText(), now)
       const toastSeq = useGame.getState().toastSeq + 1
       useGame.setState({
         money: hydrated.save.money,
         xp: hydrated.save.xp,
+        xpTotal: hydrated.save.xpTotal,
         owned: hydrated.save.owned,
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
@@ -152,6 +225,7 @@ export function installGameHarness(): GameHarness {
       persistNow()
       return {
         credited: hydrated.save.money - before,
+        creditedXp: hydrated.save.xp - beforeXp,
         toast: hydrated.toast,
       }
     },

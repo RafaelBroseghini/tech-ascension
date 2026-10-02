@@ -1,5 +1,6 @@
 import { expect, test } from "vitest"
 import { ENEMIES, FIGHT_DURATION_MS } from "../data/enemies.ts"
+import { CAPITAL_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { TIERS } from "../data/tiers.ts"
 import { installGameHarness } from "./harness.ts"
 
@@ -11,45 +12,145 @@ function tierByName(name: string) {
   return row
 }
 
-function tier(id: number) {
-  const row = TIERS.find((item) => item.id === id)
-  if (!row) throw new Error(`missing tier ${id}`)
-  return row
-}
-
-test("early loop buys tiers 1–3", () => {
+test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   game.reset()
   const start = game.getState()
-  expect(start.money).toBe(0)
-  expect(start.cps).toBe(0)
-  expect(start.spriteTierId).toBe(1)
+  expect(start).toMatchObject({ phase: "A", money: 0, xp: 0, xpTotal: 0, cps: 0, spriteTierId: 1, era: "early" })
   expect(start.owned).toEqual({})
+  expect(start.skills).toEqual({})
 
-  const cost = tier(1).baseCost + tier(2).baseCost + tier(3).baseCost
+  const first = SKILL_TIERS[0]
+  if (!first) throw new Error("missing skill 1")
   let guard = 0
-  while (game.getState().money < cost) {
-    game.click()
+  while (game.getState().xp < first.baseXpCost) {
+    const gain = game.click()
+    expect(gain.money).toBe(0)
+    expect(gain.xp).toBe(1)
     guard += 1
-    if (guard > 500) throw new Error("clicks did not pay for tiers 1–3")
+    if (guard > 100) throw new Error("clicks did not pay for the first skill")
   }
+  expect(game.getState().money).toBe(0)
+  expect(game.getState().lastPop).toBeNull()
 
   const ready = game.getState()
-  expect(game.buy(1)).toBe(true)
-  const afterFirst = game.getState()
-  expect(afterFirst.money).toBeLessThan(ready.money)
-  expect(afterFirst.cps).toBeGreaterThan(ready.cps)
-  expect(afterFirst.xp).toBeGreaterThan(ready.xp)
-  expect(afterFirst.spriteTierId).toBe(1)
+  expect(game.buy(26)).toBe(false)
+  expect(game.buySkill(1)).toBe(true)
+  const bought = game.getState()
+  expect(bought.xp).toBe(ready.xp - first.baseXpCost)
+  expect(bought.xpTotal).toBe(ready.xpTotal)
+  expect(bought.xpPerClick).toBe(ready.xpPerClick + first.xpPerClick)
+  expect(bought.money).toBe(0)
+  expect(bought.cps).toBe(0)
+  expect(game.click().xp).toBe(bought.xpPerClick)
 
-  expect(game.buy(2)).toBe(true)
-  expect(game.buy(3)).toBe(true)
-  const after = game.getState()
-  expect(after.money).toBeLessThan(afterFirst.money)
-  expect(after.cps).toBeCloseTo(tier(1).cps + tier(2).cps + tier(3).cps)
-  expect(after.xp).toBeGreaterThan(afterFirst.xp)
-  expect(after.spriteTierId).toBe(3)
-  expect(after.era).toBe("early")
-  expect(after.owned).toMatchObject({ "1": 1, "2": 1, "3": 1 })
+  game.setXp(1_000)
+  expect(game.buySkill(2)).toBe(true)
+  expect(game.getState().xpPerSec).toBeCloseTo(0.2)
+  const idleBefore = game.getState()
+  game.tick(10_000)
+  const idleAfter = game.getState()
+  expect(idleAfter.xp - idleBefore.xp).toBeCloseTo(2)
+  expect(idleAfter.money).toBe(0)
+  expect(idleAfter.cps).toBe(0)
+})
+
+test("A → B: Portfolio + React and 12K XP open the Gig Board, the first gig starts the money", () => {
+  game.reset()
+  game.setXp(30_000)
+  expect(game.getState().unlocks.gigBoard).toBe(false)
+  expect(game.getState().phase).toBe("A")
+  expect(game.buySkill(11)).toBe(true)
+  expect(game.getState().phase).toBe("A")
+  expect(game.buySkill(12)).toBe(true)
+
+  const open = game.getState()
+  expect(open.phase).toBe("B")
+  expect(open.unlocks).toEqual({ gigBoard: true, jobBoard: false, capital: false })
+  expect(open.lastPop).toMatchObject({ kind: "unlock", size: "large" })
+  expect(open.money).toBe(0)
+  expect(game.click().money).toBe(0)
+
+  const gig1 = GIGS[0]
+  const gig2 = GIGS[1]
+  if (!gig1 || !gig2) throw new Error("missing gigs")
+  expect(game.completeGig(gig2.id)).toBe(false)
+  expect(game.completeGig(gig1.id)).toBe(true)
+  expect(game.completeGig(gig1.id)).toBe(false)
+  const cleared = game.getState()
+  expect(cleared.money).toBe(gig1.lump)
+  expect(cleared.gigs).toEqual([gig1.id])
+  expect(cleared.cps).toBe(0)
+  expect(cleared.lastPop).toEqual({ kind: "gigClear", size: "large", amount: gig1.lump, label: gig1.name })
+
+  const click = game.click()
+  expect(click.money).toBe(cleared.clickPower)
+  expect(game.getState().money).toBe(gig1.lump + cleared.clickPower)
+  expect(game.getState().lastPop).toMatchObject({ kind: "click", size: "medium" })
+})
+
+test("B: a retainer gig is the first $/s", () => {
+  game.reset()
+  game.setXp(30_000)
+  game.buySkill(11)
+  game.buySkill(12)
+  for (const id of [1, 2, 3]) expect(game.completeGig(id)).toBe(true)
+  expect(game.getState().cps).toBe(0)
+  const retainer = GIGS[4]
+  if (!retainer) throw new Error("missing gig 5")
+  expect(game.completeGig(retainer.id)).toBe(true)
+  expect(game.getState().cps).toBe(retainer.retainerCps)
+  const before = game.getState()
+  game.tick(10_000)
+  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10)
+  expect(game.getState().lastPop?.kind).toBe("gigClear")
+})
+
+test("B → C → D: job board, a salary, then capital through a senior job", () => {
+  game.reset()
+  game.setXp(35_000)
+  for (const id of [1, 2, 3, 4]) expect(game.forceGig(id)).toBe(true)
+  expect(game.getState().unlocks.jobBoard).toBe(false)
+  expect(game.forceGig(5)).toBe(true)
+  const board = game.getState()
+  expect(board.unlocks.jobBoard).toBe(true)
+  expect(board.phase).toBe("C")
+  expect(board.lastPop).toMatchObject({ kind: "unlock", size: "large" })
+
+  const intern = JOB_TIERS[0]
+  const junior = JOB_TIERS[1]
+  const senior = JOB_TIERS[6]
+  if (!intern || !junior || !senior) throw new Error("missing jobs")
+  expect(game.buyJob(intern.id)).toBe(true)
+  expect(game.getState().cps).toBeCloseTo(board.cps + intern.cps)
+  expect(game.buyJob(junior.id)).toBe(false)
+  game.setXp(45_000)
+  game.setMoney(junior.baseCost)
+  expect(game.buyJob(junior.id)).toBe(true)
+  expect(game.getState().jobs).toEqual([intern.id, junior.id])
+  expect(game.getState().phase).toBe("C")
+
+  game.setXp(senior.xpReq)
+  game.setMoney(senior.baseCost)
+  expect(game.getState().unlocks.capital).toBe(false)
+  expect(game.buyJob(senior.id)).toBe(true)
+  const d = game.getState()
+  expect(d.unlocks.capital).toBe(true)
+  expect(d.phase).toBe("D")
+  expect(d.money).toBe(0)
+  expect(d.lastPop).toMatchObject({ kind: "unlock", size: "large" })
+})
+
+test("D: capital waits for $500K held (or a senior job)", () => {
+  game.reset()
+  game.setMoney(CAPITAL_UNLOCK.minMoney - 1)
+  expect(game.getState().phase).toBe("A")
+  expect(game.buy(19)).toBe(false)
+  game.setMoney(CAPITAL_UNLOCK.minMoney)
+  expect(game.getState().phase).toBe("D")
+  expect(game.buy(19)).toBe(true)
+  expect(game.getState().owned).toEqual({ "19": 1 })
+  expect(game.getState().era).toBe("mid")
+  expect(game.getState().spriteTierId).toBe(19)
 })
 
 test("mid jump matches the first-LLM tier and boosts clicks only", () => {
@@ -77,10 +178,12 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 
 test("offline catch-up pays 1h and caps at 8h", () => {
   game.reset()
-  game.setMoney(tier(1).baseCost)
-  expect(game.buy(1)).toBe(true)
+  game.setXp(30_000)
+  game.buySkill(11)
+  game.buySkill(12)
+  for (const id of [1, 2, 3, 5]) game.forceGig(id)
   const cps = game.getState().cps
-  expect(cps).toBeCloseTo(tier(1).cps)
+  expect(cps).toBeCloseTo(GIGS[4]?.retainerCps ?? 0)
 
   const hour = 60 * 60 * 1000
   const oneHour = game.advanceOffline(hour)
@@ -91,6 +194,18 @@ test("offline catch-up pays 1h and caps at 8h", () => {
   expect(tenHours.toast).toMatch(/^welcome back, credited \$/)
   expect(Math.abs(tenHours.credited - cps * 8 * 3600)).toBeLessThan(1)
   expect(tenHours.credited).toBeLessThan(cps * 10 * 3600)
+})
+
+test("offline study credits XP in phase A and keeps money at zero", () => {
+  game.reset()
+  game.setXp(100)
+  expect(game.buySkill(2)).toBe(true)
+  const xpPerSec = game.getState().xpPerSec
+  const away = game.advanceOffline(60 * 60 * 1000)
+  expect(away.credited).toBe(0)
+  expect(Math.abs(away.creditedXp - xpPerSec * 3600)).toBeLessThan(1)
+  expect(away.toast).toMatch(/^welcome back, studied \+/)
+  expect(game.getState().money).toBe(0)
 })
 
 function enemy(id: number) {
@@ -136,8 +251,7 @@ test("fight: force spawn, click damage, win pays the reward once", () => {
 
 test("fight: click damage is click power times the live boost", () => {
   game.reset()
-  game.setMoney(tier(1).baseCost)
-  game.buy(1)
+  game.forceGig(1)
   const row = enemy(44)
   game.forceEnemy(row.id)
   game.forceBoost(5, 10_000)
@@ -151,6 +265,7 @@ test("fight: click damage is click power times the live boost", () => {
 
 test("fight: flee ends clean with no reward and no penalty", () => {
   game.reset()
+  game.forceGig(1)
   const row = enemy(1)
   game.forceEnemy(row.id)
   game.click()
@@ -171,8 +286,8 @@ test("fight: flee ends clean with no reward and no penalty", () => {
 
 test("fight: timeout ends clean with no reward, idle income keeps running", () => {
   game.reset()
-  game.setMoney(tier(1).baseCost)
-  expect(game.buy(1)).toBe(true)
+  expect(game.forceGig(5)).toBe(true)
+  expect(game.getState().cps).toBeGreaterThan(0)
   const row = enemy(3)
   game.forceEnemy(row.id)
   const before = game.getState()
@@ -190,8 +305,12 @@ test("fight: timeout ends clean with no reward, idle income keeps running", () =
   expect(after.owned).toEqual(before.owned)
 })
 
-test("fight: rare spawn comes from idle time, era-gated, one at a time", () => {
+test("fight: rare spawn waits for money, then comes from idle time, era-gated, one at a time", () => {
   game.reset()
+  game.tick(8 * 60 * 60 * 1000)
+  game.tick(8 * 60 * 60 * 1000)
+  expect(game.getState().fight).toBeNull()
+  game.forceGig(1)
   game.tick(8 * 60 * 60 * 1000)
   expect(game.getState().fight).toBeNull()
   game.tick(8 * 60 * 60 * 1000)
@@ -224,9 +343,9 @@ test("fight: spawn pool is the current era only, forceEnemy ignores the gate", (
 
 test("fight: boost rolls wait out the fight, shop stays usable", () => {
   game.reset()
-  game.setMoney(tier(1).baseCost)
+  game.setXp(SKILL_TIERS[0]?.baseXpCost ?? 10)
   game.forceEnemy(1)
-  expect(game.buy(1)).toBe(true)
+  expect(game.buySkill(1)).toBe(true)
   expect(game.getState().fight).not.toBeNull()
 
   for (let i = 0; i < 6; i++) {

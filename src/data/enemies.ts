@@ -1,4 +1,4 @@
-/** Enemies v1.1 — same-era spawn only; HP retuned for clickBonus-scale CP */
+/** Enemies v1.2 — same-era spawn only. Early HP is a tenth of v1.1: Phase B/C players click for $1+, not the old early-tier click bonuses. Rare spawns start once money exists (first gig). */
 import type { Era } from "./tiers.ts"
 
 export type EraGate = Era;
@@ -6,16 +6,16 @@ export type Enemy = { id:number; name:string; eraGate:EraGate; hp:number; reward
 /** Roll only among enemies where eraGate === playerCurrentEra */
 export const ENEMY_SPAWN_SAME_ERA_ONLY = true;
 export const ENEMIES: readonly Enemy[] = [
-  { id: 1, name: "Merge Conflict Hydra", eraGate: "early", hp: 880, reward: 150, weight: 10 },
-  { id: 2, name: "Off-by-One Beetle", eraGate: "early", hp: 660, reward: 80, weight: 12 },
-  { id: 3, name: "Null Pointer Specter", eraGate: "early", hp: 1000, reward: 180, weight: 10 },
-  { id: 4, name: "Stack Overflow Troll", eraGate: "early", hp: 1120, reward: 220, weight: 8 },
-  { id: 5, name: "Imposter Syndrome Shade", eraGate: "early", hp: 1200, reward: 260, weight: 7 },
-  { id: 6, name: "Broken Build Golem", eraGate: "early", hp: 900, reward: 170, weight: 9 },
-  { id: 7, name: "CSS Centipede", eraGate: "early", hp: 700, reward: 90, weight: 11 },
-  { id: 8, name: "Internship Gatekeeper", eraGate: "early", hp: 1300, reward: 300, weight: 6 },
-  { id: 9, name: "Whiteboard Wraith", eraGate: "early", hp: 1400, reward: 350, weight: 5 },
-  { id: 10, name: "Flaky Test Phantom", eraGate: "early", hp: 800, reward: 120, weight: 10 },
+  { id: 1, name: "Merge Conflict Hydra", eraGate: "early", hp: 88, reward: 150, weight: 10 },
+  { id: 2, name: "Off-by-One Beetle", eraGate: "early", hp: 66, reward: 80, weight: 12 },
+  { id: 3, name: "Null Pointer Specter", eraGate: "early", hp: 100, reward: 180, weight: 10 },
+  { id: 4, name: "Stack Overflow Troll", eraGate: "early", hp: 112, reward: 220, weight: 8 },
+  { id: 5, name: "Imposter Syndrome Shade", eraGate: "early", hp: 120, reward: 260, weight: 7 },
+  { id: 6, name: "Broken Build Golem", eraGate: "early", hp: 90, reward: 170, weight: 9 },
+  { id: 7, name: "CSS Centipede", eraGate: "early", hp: 70, reward: 90, weight: 11 },
+  { id: 8, name: "Internship Gatekeeper", eraGate: "early", hp: 130, reward: 300, weight: 6 },
+  { id: 9, name: "Whiteboard Wraith", eraGate: "early", hp: 140, reward: 350, weight: 5 },
+  { id: 10, name: "Flaky Test Phantom", eraGate: "early", hp: 80, reward: 120, weight: 10 },
   { id: 11, name: "On-Call Pager Demon", eraGate: "mid", hp: 9000, reward: 12000, weight: 10 },
   { id: 12, name: "Prod Outage Kraken", eraGate: "mid", hp: 12000, reward: 20000, weight: 7 },
   { id: 13, name: "Tech Debt Titan", eraGate: "mid", hp: 14000, reward: 28000, weight: 6 },
