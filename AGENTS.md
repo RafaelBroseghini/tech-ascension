@@ -48,7 +48,7 @@ reset(): void
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock.
 - `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll.
 - `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours. The toast is the same `welcome back, credited $X` path as a reload.
-- `forceEnemy(id)` starts a rare-enemy fight now (ids 1–44, `src/data/enemies.ts`), bypassing the random spawn. Returns false for an unknown id.
+- `forceEnemy(id)` starts a rare-enemy fight now (ids 1–44, `src/data/enemies.ts`), bypassing the random spawn and the era gate. Returns false for an unknown id. Random spawns roll only among enemies whose `eraGate` equals the current era.
 - During a fight `click()` damages the enemy by `clickPower × activeBoost.mult` and pays no money. A kill pays `reward`. `flee()` and the 30s timeout (`tick`) end the fight with no reward and no penalty. `lastFight` reports how the last one ended.
 - `reset()` wipes the save back to high school.
 

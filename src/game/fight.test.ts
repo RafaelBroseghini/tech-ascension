@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { ENEMIES, ENEMY_MEAN_WAIT_MS, FIGHT_DURATION_MS } from "../data/enemies.ts"
+import { ENEMIES, ENEMY_MEAN_WAIT_MS, ENEMY_SPAWN_SAME_ERA_ONLY, FIGHT_DURATION_MS } from "../data/enemies.ts"
 import type { Era } from "../data/tiers.ts"
 import { BOOST_WAIT_MAX_FACTOR, BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
 import { PALETTE } from "../pixel/palette.ts"
@@ -30,6 +30,9 @@ describe("enemy table", () => {
     expect(FIGHT_DURATION_MS).toBe(30_000)
     expect(ENEMY_MEAN_WAIT_MS.early).toBe(90_000)
     expect(ENEMY_MEAN_WAIT_MS.end).toBe(210_000)
+    expect(ENEMY_SPAWN_SAME_ERA_ONLY).toBe(true)
+    expect(enemyById(1)).toMatchObject({ hp: 880, reward: 150 })
+    expect(enemyById(44)).toMatchObject({ hp: 480_000, reward: 200_000_000 })
   })
 
   it("draws a 96×96 pixel sprite for every enemy inside the shared palette", () => {
@@ -54,22 +57,20 @@ describe("enemy table", () => {
 })
 
 describe("era gating", () => {
-  it("only offers enemies at or below the player's era", () => {
+  it("offers only enemies gated to exactly the player's era", () => {
     expect(eligibleEnemies("early")).toHaveLength(10)
-    expect(eligibleEnemies("mid")).toHaveLength(20)
-    expect(eligibleEnemies("upper")).toHaveLength(29)
-    expect(eligibleEnemies("q3")).toHaveLength(36)
-    expect(eligibleEnemies("end")).toHaveLength(44)
-    for (const enemy of eligibleEnemies("early")) expect(enemy.eraGate).toBe("early")
+    expect(eligibleEnemies("mid")).toHaveLength(10)
+    expect(eligibleEnemies("upper")).toHaveLength(9)
+    expect(eligibleEnemies("q3")).toHaveLength(7)
+    expect(eligibleEnemies("end")).toHaveLength(8)
+    for (const era of ERAS) {
+      for (const enemy of eligibleEnemies(era)) expect(enemy.eraGate).toBe(era)
+    }
   })
 
-  it("never picks above the gate, whatever the roll", () => {
+  it("never picks outside the current era, whatever the roll", () => {
     for (const era of ERAS) {
-      const rank = ERAS.indexOf(era)
-      for (let i = 0; i <= 200; i++) {
-        const enemy = pickEnemy(era, i / 200)
-        expect(ERAS.indexOf(enemy.eraGate)).toBeLessThanOrEqual(rank)
-      }
+      for (let i = 0; i <= 200; i++) expect(pickEnemy(era, i / 200).eraGate).toBe(era)
     }
   })
 
@@ -87,7 +88,7 @@ describe("era gating", () => {
     for (const enemy of pool) {
       expect((counts.get(enemy.id) ?? 0) / n).toBeCloseTo(enemy.weight / total, 2)
     }
-    expect((counts.get(14) ?? 0)).toBeGreaterThan(counts.get(19) ?? 0)
+    expect(counts.get(14) ?? 0).toBeGreaterThan(counts.get(19) ?? 0)
   })
 })
 
@@ -157,7 +158,7 @@ describe("enemy clock", () => {
     expect(spawn.spawned).not.toBeNull()
     expect(spawn.clock.nextEnemyAt).toBeNull()
     const enemy = enemyById(spawn.spawned?.enemyId ?? 0)
-    expect(["early", "mid"]).toContain(enemy?.eraGate)
+    expect(enemy?.eraGate).toBe("mid")
     expect(spawn.spawned?.endsAt).toBe(5_000 + FIGHT_DURATION_MS)
 
     const during = advanceEnemyClock(spawn.clock, "mid", 5_000 + FIGHT_DURATION_MS - 1, never)
