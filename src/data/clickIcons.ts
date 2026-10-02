@@ -2,7 +2,7 @@
  * Logos that fall from a click. A row may list several real marks; soft skills
  * with no logo are absent on purpose. Parody names in the catalogs stay as written.
  * The icons are the real marks those rows stand in for, except skill 27: LinkedOut
- * is a custom "out" badge in the LinkedIn wordmark face, never the LinkedIn mark.
+ * is a custom "Out" badge in the LinkedIn wordmark face, never the LinkedIn mark.
  */
 import type { ComponentType } from "react"
 import { LinkedOutIcon as LinkedOut } from "../components/icons/LinkedOut.tsx"
@@ -178,7 +178,7 @@ export const CLICK_ICONS = {
   WordPress,
   YouTube,
   Zod,
-  LinkedOut, // custom "out" badge — not the LinkedIn mark from developer-icons
+  LinkedOut, // custom "Out" badge — not the LinkedIn mark from developer-icons
 } satisfies Record<string, ComponentType<ClickIconProps>>
 
 export type IconName = keyof typeof CLICK_ICONS
@@ -198,7 +198,7 @@ export const SKILL_ICONS: Readonly<Record<number, readonly IconName[]>> = {
   21: ["Jest", "Vitest", "Playwright"],
   22: ["Docker"],
   25: ["Discord"],
-  27: ["LinkedOut"], // custom "out" badge
+  27: ["LinkedOut"], // custom "Out" badge
   28: ["Git", "GitHubLight"],
   30: ["Jenkins", "CircleCI"],
   31: ["PostgreSQL", "MySQL"],
