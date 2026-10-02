@@ -21,35 +21,35 @@ export function MetricsBar() {
         <h1>Tech Ascension</h1>
       </div>
       <dl className="metrics">
-        <div>
+        <div className="m-money">
           <dt>Money</dt>
           <dd data-testid="money" key={buyStamp} className={buyStamp > 0 ? "tick-up" : undefined}>
             ${formatNumber(money)}
           </dd>
         </div>
-        <div>
-          <dt>XP</dt>
-          <dd data-testid="xp">{formatNumber(xp)}</dd>
-        </div>
-        <div>
-          <dt>$/click</dt>
-          <dd data-testid="per-click">${formatNumber(rates.click)}</dd>
-        </div>
         {rates.idle > 0 ? (
-          <div className="metric-in">
+          <div className="metric-in m-rate">
             <dt>$/s</dt>
             <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
           </div>
         ) : null}
+        <div className="m-rate">
+          <dt>$/click</dt>
+          <dd data-testid="per-click">${formatNumber(rates.click)}</dd>
+        </div>
+        <div className="m-xp">
+          <dt>XP</dt>
+          <dd data-testid="xp">{formatNumber(xp)}</dd>
+        </div>
         {seconds > 0 ? (
-          <div className="metric-in metric-boost">
+          <div className="m-boost">
             <dt>Click boost</dt>
             <dd data-testid="boost">
               ×{formatMultiplier(rates.mult)} · {seconds}s
             </dd>
           </div>
         ) : null}
-        <div>
+        <div className="m-stage">
           <dt>Stage</dt>
           <dd data-testid="stage-name">{stage?.name ?? "High school"}</dd>
         </div>

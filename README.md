@@ -26,12 +26,12 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 
 ## How it plays
 
-- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it tilts away from the click point, squashes and shakes (harder the faster you click), and throws a shockwave ring, sparks and a floating payout. Click power starts at $1 and grows when a generator has a click bonus.
+- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it presses in toward the click point, springs past rest once (about 220ms) and settles, with a flat ring, a few square sparks and a floating payout. Click power starts at $1 and grows when a generator has a click bonus.
 - Generators add idle $/s. Cost of the next copy is `floor(baseCost × 1.15 ^ owned)`.
 - The stage shows the highest tier you own. Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top tier plays a reveal burst.
 - Upgrades are hidden until they are within reach. A row (and its era tab) appears the first time your balance has reached its base price, with a `New` tag. The highest balance you have ever held is saved as `peakMoney`, so a row never hides again. Tab order follows the eras present in `TIERS`. Affordable rows highlight.
 - `$/s` and the click-boost readout stay out of the metrics bar until they apply (first generator, first boost).
-- Click boosts (`×2` / `×5` / `×10`) multiply **click power only**. Idle $/s is unchanged. One boost at a time; the next roll replaces the slot after the current one ends. A toast, a chip over the sprite and the metrics strip show the multiplier while it runs.
+- Click boosts (`×2` / `×5` / `×10`) multiply **click power only**. Idle $/s is unchanged. One boost at a time; the next roll replaces the slot after the current one ends. A toast, a chip over the sprite, a rim light circling the art and the metrics strip show the multiplier while it runs.
 - Coming back credits idle income for up to 8 hours and toasts `welcome back, credited $X`.
 
 ## Where to edit
@@ -41,6 +41,9 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 | Generator table | `src/data/tiers.ts` |
 | Sprite subjects and `SPRITE_BY_TIER` | `src/data/sprites.ts` |
 | Art | `public/sprites/{id}.webp` (512×512; `0.webp` is the opening scene) |
+| Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
+| Keyframes and the `prefers-reduced-motion` kill switch | `src/styles/motion.css` |
+| Before/after screenshots through `__GAME__` | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
 | Boost rates by era | `src/data/boosts.ts` |
 | Cost, click power, idle | `src/game/economy.ts` |
 | Save, migration, offline credit | `src/game/save.ts` |

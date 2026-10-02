@@ -81,9 +81,9 @@ export function subjectForTier(id: number): SpriteSubject | undefined {
 }
 
 export const ERA_ACCENT: Record<Era, { glow: string; tint: string; kicker: string }> = {
-  early: { glow: "#3ddc84", tint: "#163024", kicker: "Early career" },
-  mid: { glow: "#5aa7ff", tint: "#10243a", kicker: "The climb" },
-  upper: { glow: "#f0c14a", tint: "#3a2c10", kicker: "Ownership" },
-  q3: { glow: "#c084fc", tint: "#261433", kicker: "Scale" },
-  end: { glow: "#ff7a59", tint: "#3a1612", kicker: "Off-world" },
+  early: { glow: "#6fe08c", tint: "#11261a", kicker: "Early career" },
+  mid: { glow: "#5aa9ff", tint: "#0e1f36", kicker: "The climb" },
+  upper: { glow: "#f3b94a", tint: "#31230b", kicker: "Ownership" },
+  q3: { glow: "#3fdacb", tint: "#0a2a2b", kicker: "Scale" },
+  end: { glow: "#ff7b4f", tint: "#381508", kicker: "Off-world" },
 }

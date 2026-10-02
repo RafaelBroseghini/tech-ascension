@@ -17,8 +17,8 @@ const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: r
 function burstBits(tierId: number): Bit[] {
   const tier = tierById(tierId)
   const glow = ERA_ACCENT[tier?.era ?? "early"].glow
-  const colors = [glow, "#ffe9a8", "#f4efe4", "#ff7a59", "#8cc4ff"]
-  return Array.from({ length: 28 }, () => {
+  const colors = [glow, glow, "#f7f0df"]
+  return Array.from({ length: 20 }, () => {
     const angle = Math.random() * Math.PI * 2
     const dist = 70 + Math.random() * 130
     return {
@@ -42,8 +42,8 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
       y,
       dx: Math.cos(angle) * dist,
       dy: Math.sin(angle) * dist - 10,
-      size: 3 + Math.random() * 4,
-      color: Math.random() < 0.35 ? "#fff6d8" : color,
+      size: 4 + Math.random() * 4,
+      color: Math.random() < 0.35 ? "#f7f0df" : color,
     }
   })
 }
@@ -63,7 +63,6 @@ export function Stage() {
   const tiltRef = useRef<HTMLSpanElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const heat = useRef(0)
-  const lastSide = useRef(1)
 
   const ownedTier = highestOwnedTier(owned)
   const artId = ownedTier?.id ?? 0
@@ -108,34 +107,22 @@ export function Stage() {
       tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
       return
     }
-    const power = 1 + heat.current * 0.9 + (boosted ? 0.35 : 0)
-    const side = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
-    const frame = (scale: string, rx: number, ry: number, rz: number, tx: number, ty: number) =>
-      `perspective(700px) translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${scale})`
+    // Press in toward the click, spring past rest exactly once, settle. No wobble.
+    const power = 1 + heat.current * 0.5 + (boosted ? 0.2 : 0)
+    const frame = (scale: string, rx: number, ry: number) =>
+      `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`
     tilt.animate(
       [
-        { transform: frame("1", 0, 0, 0, 0, 0), offset: 0 },
-        {
-          transform: frame("0.9", -ny * 14 * power, nx * 14 * power, -side * 2 * power, -nx * 5, -ny * 5),
-          offset: 0.14,
-        },
-        {
-          transform: frame("1.09, 0.95", ny * 5, -nx * 6, side * 4 * power, side * 9 * power, 0),
-          offset: 0.34,
-        },
-        { transform: frame("0.98, 1.02", 0, 0, -side * 3 * power, -side * 7 * power, 0), offset: 0.52 },
-        { transform: frame("1.02", 0, 0, side * 1.6 * power, side * 4 * power, 0), offset: 0.7 },
-        { transform: frame("1", 0, 0, -side * 0.7, -side * 1.6, 0), offset: 0.86 },
-        { transform: frame("1", 0, 0, 0, 0, 0), offset: 1 },
+        { transform: frame("1", 0, 0), offset: 0, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+        { transform: frame("0.91, 0.93", -ny * 9 * power, nx * 9 * power), offset: 0.3, easing: "cubic-bezier(0.34, 1.2, 0.5, 1)" },
+        { transform: frame("1.045, 1.04", ny * 2, -nx * 2), offset: 0.68, easing: "cubic-bezier(0.65, 0, 0.35, 1)" },
+        { transform: frame("1", 0, 0), offset: 1 },
       ],
-      { duration: 380, easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
+      { duration: 220 },
     )
     img?.animate(
-      [
-        { filter: `brightness(${1.35 + heat.current * 0.4}) saturate(1.3)` },
-        { filter: "brightness(1) saturate(1)" },
-      ],
-      { duration: 260, easing: "ease-out" },
+      [{ filter: "brightness(1.25)" }, { filter: "brightness(1)" }],
+      { duration: 160, easing: "ease-out" },
     )
   }
 
@@ -190,11 +177,8 @@ export function Stage() {
   const mult = activeBoost?.mult ?? 1
 
   return (
-    <section
-      className={boosted ? "stage-panel is-boosted" : "stage-panel"}
-      aria-label="Click stage"
-      style={{ ["--glow" as string]: accent.glow, ["--tint" as string]: accent.tint }}
-    >
+    <section className={boosted ? "stage-panel is-boosted" : "stage-panel"} aria-label="Click stage">
+      <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
         {boosted ? (
           <div className="boost-chip">
@@ -217,12 +201,7 @@ export function Stage() {
         onKeyDown={onKeyDown}
         aria-label={`Click to earn. Current stage ${stageName}. ${subject ?? ""}`}
       >
-        <span className="aura" aria-hidden="true" />
-        <span className="motes" aria-hidden="true">
-          {Array.from({ length: 9 }, (_, index) => (
-            <i key={index} style={{ ["--i" as string]: index }} />
-          ))}
-        </span>
+        {boosted ? <span className="rim" aria-hidden="true" /> : null}
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">
@@ -236,7 +215,6 @@ export function Stage() {
                 height={256}
                 draggable={false}
               />
-              <i className="sheen" aria-hidden="true" />
             </span>
           </span>
         </span>
@@ -258,7 +236,6 @@ export function Stage() {
               width: spark.size,
               height: spark.size,
               background: spark.color,
-              boxShadow: `0 0 8px 2px ${spark.color}`,
               ["--dx" as string]: `${spark.dx}px`,
               ["--dy" as string]: `${spark.dy}px`,
             }}
@@ -291,9 +268,11 @@ export function Stage() {
           />
         ))}
       </button>
-      <p className="eyebrow">{ownedTier ? accent.kicker : "Before the offer"}</p>
-      <h2>{stageName}</h2>
-      <p className="subject">{subject}</p>
+      <div className="plate">
+        <p className="era-tag">{ownedTier ? accent.kicker : "Before the offer"}</p>
+        <h2>{stageName}</h2>
+        <p className="subject">{subject}</p>
+      </div>
     </section>
   )
 }
