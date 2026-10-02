@@ -3,8 +3,9 @@
  * `era` drives boosts, rare enemies and the stage accent; rows 1-5 are mid, 6-11 upper, 12-14 q3, 15-25 end.
  * `artId` is the drawing (src/pixel/art.ts) and code snippet (src/data/overlays.ts) a row uses, from the band
  * of its own era and rising with id, so a new row needs no new art. Ids are unique; costs need not rise with id.
- * nextCost = floor(baseCost * COST_GROWTH ** owned)
+ * nextCost = floor(baseCost * COST_GROWTH ** owned). `baseCost` below is unscaled; the export doubles it.
  */
+import { scalePurchaseCost } from "./costs.ts"
 import { COST_GROWTH } from "./phases.ts"
 
 export { COST_GROWTH }
@@ -21,7 +22,7 @@ export type Capital = {
   clickBonus: number
 }
 
-export const CAPITAL: readonly Capital[] = [
+const CAPITAL_ROWS: readonly Capital[] = [
   { id: 1, era: "mid", artId: 25, name: "Angel syndicate seat", baseCost: 100000, cps: 50, clickBonus: 0 },
   { id: 2, era: "mid", artId: 27, name: "Seed fund SPV", baseCost: 500000, cps: 200, clickBonus: 0 },
   { id: 3, era: "mid", artId: 28, name: "WhyCombinator batch investment", baseCost: 2000000, cps: 800, clickBonus: 10 },
@@ -48,3 +49,8 @@ export const CAPITAL: readonly Capital[] = [
   { id: 24, era: "end", artId: 65, name: "Mars data center REIT", baseCost: 1000000000000000, cps: 50000000000, clickBonus: 200 },
   { id: 25, era: "end", artId: 66, name: "Mars megacampus Holdings", baseCost: 50000000000000000, cps: 500000000000, clickBonus: 0 },
 ] as const
+
+export const CAPITAL: readonly Capital[] = CAPITAL_ROWS.map((row) => ({
+  ...row,
+  baseCost: scalePurchaseCost(row.baseCost),
+}))
