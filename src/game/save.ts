@@ -262,7 +262,10 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   }
 
   let toast: string | null = null
-  if (elapsed >= OFFLINE_TOAST_MIN_MS) {
+  const fromVersion = isRecord(parsed) && typeof parsed.version === "number" ? parsed.version : 0
+  if (fromVersion < 3 && migrated.xp > 0) {
+    toast = `phase economy: early gear retired, refunded ${formatNumber(migrated.xp)} XP`
+  } else if (elapsed >= OFFLINE_TOAST_MIN_MS) {
     if (credit > 0 && xpCredit > 0) toast = `welcome back, credited $${formatNumber(credit)} and ${formatNumber(xpCredit)} XP`
     else if (credit > 0) toast = `welcome back, credited $${formatNumber(credit)}`
     else if (xpCredit > 0) toast = `welcome back, studied +${formatNumber(xpCredit)} XP`
