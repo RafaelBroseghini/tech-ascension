@@ -4,6 +4,12 @@ import { installGameHarness } from "./harness.ts"
 
 const game = installGameHarness()
 
+function tierByName(name: string) {
+  const row = TIERS.find((item) => item.name === name)
+  if (!row) throw new Error(`missing tier ${name}`)
+  return row
+}
+
 function tier(id: number) {
   const row = TIERS.find((item) => item.id === id)
   if (!row) throw new Error(`missing tier ${id}`)
@@ -45,16 +51,16 @@ test("early loop buys tiers 1–3", () => {
   expect(after.owned).toMatchObject({ "1": 1, "2": 1, "3": 1 })
 })
 
-test("mid jump matches tier 15 and boosts clicks only", () => {
+test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   game.reset()
-  const row = tier(15)
+  const row = tierByName("Fine-tune your first LLM")
   game.setMoney(row.baseCost)
   const before = game.getState()
-  expect(game.buy(15)).toBe(true)
+  expect(game.buy(row.id)).toBe(true)
   const after = game.getState()
   expect(after.cps - before.cps).toBe(row.cps)
   expect(after.clickPower - before.clickPower).toBe(row.clickBonus)
-  expect(after.spriteTierId).toBe(15)
+  expect(after.spriteTierId).toBe(row.id)
   expect(after.era).toBe("mid")
 
   const cps = after.cps

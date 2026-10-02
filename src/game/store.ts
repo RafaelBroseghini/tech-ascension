@@ -47,7 +47,7 @@ type GameState = {
 
 function toSave(state: GameState, now: number): SaveV1 {
   const save: SaveV1 = {
-    version: 1,
+    version: 2,
     money: state.money,
     xp: state.xp,
     owned: state.owned,

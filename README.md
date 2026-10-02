@@ -53,11 +53,11 @@ Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `
 
 ## Save
 
-`localStorage` key `tech-ascension.save`, schema version 1:
+`localStorage` key `tech-ascension.save`, schema version 2:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "money": 0,
   "xp": 0,
   "owned": { "1": 2 },
@@ -67,7 +67,7 @@ Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `
 }
 ```
 
-`peakMoney` is optional; older saves without it start from their current balance. `src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to version 1. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
+`peakMoney` is optional; older saves without it start from their current balance. `src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to the current version. Version 2 added 18 dev-culture stages (Raspberry Pie, Mac Minnie, OpenKlaw and others), which shifted most tier ids, so loading a version 1 save re-keys `owned` through `V1_TO_V2_TIER_IDS`. That table is frozen history: never edit it. When you add a stage, bump `SAVE_VERSION`, add a migration that remaps ids, and keep the sprite files named by the new ids. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
 
 The next-boost timer is session state. Reloading keeps a boost that is still running and schedules a fresh wait afterward.
 
@@ -97,7 +97,7 @@ Clicks register on pointer-down. The sprite bumps up, tips slightly away from th
 
 ## Art
 
-All 49 sprites are painterly fantasy illustrations (one per tier plus the opening scene), generated as 1024px images and stored as 512px WebP. To swap one, drop a square image in as `public/sprites/{id}.webp`, for example:
+All 67 sprites are painterly fantasy illustrations (one per tier plus the opening scene; 66 tiers), generated as 1024px images and stored as 512px WebP. To swap one, drop a square image in as `public/sprites/{id}.webp`, for example:
 
 ```bash
 ffmpeg -i new.png -vf scale=512:512 -c:v libwebp -quality 82 public/sprites/12.webp
