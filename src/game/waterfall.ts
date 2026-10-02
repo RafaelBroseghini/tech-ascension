@@ -1,9 +1,9 @@
-/** Click waterfall: pixel thumbs of owned tiers that fall from the cursor. */
+/** Click waterfall: a developer-icon from the owned pool, falling from the cursor. */
 
 export const WATERFALL_CAP = 14
 export const FALL_MS = 300
 
-export type Drop = { id: number; x: number; y: number; dx: number; dy: number; rot: number; size: number; src: string }
+export type Drop = { id: number; x: number; y: number; dx: number; dy: number; rot: number; size: number; icon: string }
 
 /** One thumb per click; a boost adds one or two more. */
 export function waterfallCount(boosted: boolean, random: () => number = Math.random): number {

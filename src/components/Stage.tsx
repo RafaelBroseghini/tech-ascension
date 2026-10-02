@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
-import { ERA_ACCENT, spriteForTier, thumbForTier } from "../data/sprites.ts"
-import { eraOf, ownedArtIds, stageOf } from "../game/phase.ts"
+import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
+import type { IconName } from "../data/clickIcons.ts"
+import { ERA_ACCENT, spriteForTier } from "../data/sprites.ts"
+import { eraOf, stageOf } from "../game/phase.ts"
 import type { Era } from "../data/capital.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
@@ -14,7 +16,7 @@ import { IdeChrome } from "./IdeChrome.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { ScorePop } from "./ScorePop.tsx"
 
-type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" }
+type Pop = { id: number; x: number; y: number; drift: number; drop: number; text: string; kind: "money" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
 type Ring = { id: number; x: number; y: number; big: boolean }
@@ -56,13 +58,13 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
   })
 }
 
-const THUMB_PX = 48
+const ICON_PX = 48
 
-/** Pixel thumbs of random owned tiers, dropped from the cursor. */
-function waterfall(x: number, y: number, tierIds: readonly number[], count: number): Drop[] {
-  if (tierIds.length === 0) return []
+/** One random owned logo per spray, dropped from the cursor. */
+function waterfall(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {
+  if (icons.length === 0) return []
   return Array.from({ length: count }, () => {
-    const tierId = tierIds[Math.floor(Math.random() * tierIds.length)] ?? 1
+    const icon = pickClickIcon(icons) ?? icons[0] ?? "Git"
     return {
       id: seq++,
       x: x + (Math.random() - 0.5) * 14,
@@ -70,8 +72,8 @@ function waterfall(x: number, y: number, tierIds: readonly number[], count: numb
       dx: (Math.random() - 0.5) * 80,
       dy: 150 + Math.random() * 100,
       rot: (Math.random() - 0.5) * 70,
-      size: THUMB_PX,
-      src: thumbForTier(tierId),
+      size: ICON_PX,
+      icon,
     }
   })
 }
@@ -195,17 +197,18 @@ export function Stage() {
     playImpact((x - 50) / 50, (y - 50) / 50)
 
     if (prefersReducedMotion()) {
-      setPops((current) => [...current, { id: seq++, x, y, drift: 0, text, kind: "money" as const }].slice(-12))
+      setPops((current) => [...current, { id: seq++, x, y, drift: 0, drop: 0, text, kind: "money" as const }].slice(-12))
       return
     }
     const drift = (Math.random() - 0.5) * 46
+    const drop = 22 + Math.random() * 52
     setPops((current) =>
-      [...current, { id: seq++, x, y, drift, text, kind: "money" as const }].slice(-30),
+      [...current, { id: seq++, x, y, drift, drop, text, kind: "money" as const }].slice(-30),
     )
     setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
     const dropX = hasPoint ? clientX : rect.left + rect.width / 2
     const dropY = hasPoint ? clientY : rect.top + rect.height * 0.45
-    const born = waterfall(dropX, dropY, ownedArtIds({ skills, equipment, owned, jobs, gigs }), waterfallCount(boosted))
+    const born = waterfall(dropX, dropY, iconPool({ skills, equipment, jobs, gigs }), waterfallCount(boosted))
     if (born.length > 0) {
       setDrops((current) => capDrops(current, born))
       window.setTimeout(() => {
@@ -310,7 +313,12 @@ export function Stage() {
           <span
             key={pop.id}
             className={`pop pop-${pop.kind}${boosted ? " pop-boosted" : ""}`}
-            style={{ left: `${pop.x}%`, top: `${pop.y}%`, ["--drift" as string]: `${pop.drift}px` }}
+            style={{
+              left: `${pop.x}%`,
+              top: `${pop.y}%`,
+              ["--drift" as string]: `${pop.drift}px`,
+              ["--drop" as string]: `${pop.drop}px`,
+            }}
             onAnimationEnd={() => setPops((current) => current.filter((item) => item.id !== pop.id))}
           >
             {pop.text}
@@ -334,24 +342,28 @@ export function Stage() {
       </button>
       {createPortal(
         <div className="drops" aria-hidden="true">
-          {drops.map((drop) => (
-            <img
-              key={drop.id}
-              className="drop"
-              src={drop.src}
-              alt=""
-              draggable={false}
-              style={{
-                left: drop.x - drop.size / 2,
-                top: drop.y - drop.size / 2,
-                width: drop.size,
-                height: drop.size,
-                ["--dx" as string]: `${drop.dx}px`,
-                ["--dy" as string]: `${drop.dy}px`,
-                ["--rot" as string]: `${drop.rot}deg`,
-              }}
-            />
-          ))}
+          {drops.map((drop) => {
+            const Icon = CLICK_ICONS[drop.icon as IconName]
+            if (!Icon) return null
+            return (
+              <span
+                key={drop.id}
+                className="drop"
+                data-icon={drop.icon}
+                style={{
+                  left: drop.x - drop.size / 2,
+                  top: drop.y - drop.size / 2,
+                  width: drop.size,
+                  height: drop.size,
+                  ["--dx" as string]: `${drop.dx}px`,
+                  ["--dy" as string]: `${drop.dy}px`,
+                  ["--rot" as string]: `${drop.rot}deg`,
+                }}
+              >
+                <Icon size={drop.size} />
+              </span>
+            )
+          })}
         </div>,
         document.body,
       )}

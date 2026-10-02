@@ -10,7 +10,8 @@
  * at the pointer; its keyframes live there.
  */
 
-/* Waterfall thumb: x drifts linearly, y follows t² (gravity), gone by 300ms. */
+/* Waterfall icon: x drifts linearly, y follows t² (gravity), gone by 300ms.
+   The mark itself sits at ~50% opacity; this fade takes it the rest of the way out. */
 @keyframes drop-fall {
   0% { transform: translate(0, 0) rotate(0deg) scale(0.7); opacity: 1; }
   25% { transform: translate(calc(var(--dx) * 0.25), calc(var(--dy) * 0.0625)) rotate(calc(var(--rot) * 0.25)) scale(1); opacity: 1; }
@@ -46,10 +47,11 @@
   100% { transform: translate(calc(var(--i) * 3px - 12px), -300px) rotate(225deg) scale(1.1); opacity: 0; }
 }
 
+/* Payout pops up a hair, then drops so the next click does not land on the same pixels. */
 @keyframes pop-rise {
   0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
-  14% { transform: translate(-50%, -62%) scale(1.08); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--drift, 0px)), -190%) scale(1); opacity: 0; }
+  16% { transform: translate(calc(-50% + var(--drift, 0px) * 0.2), calc(-50% - 12px)) scale(1.06); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--drift, 0px)), calc(-50% + var(--drop, 36px))) scale(0.98); opacity: 0; }
 }
 
 @keyframes ring-out {
