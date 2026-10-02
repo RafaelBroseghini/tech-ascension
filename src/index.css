@@ -139,15 +139,6 @@ img { -webkit-user-drag: none; user-select: none; }
   white-space: nowrap;
 }
 
-.metrics .m-money { padding-left: 0; border-left: 0; flex: 1 1 220px; }
-
-.metrics .m-money dd {
-  font-size: var(--fs-hero);
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--accent-hi);
-}
-
 .metrics .m-rate dd { color: var(--accent); }
 
 .metrics .m-stage { flex: 1 1 180px; }
@@ -186,9 +177,9 @@ img { -webkit-user-drag: none; user-select: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--sp-4);
-  padding: var(--sp-5) var(--sp-4);
+  justify-content: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
   overflow: hidden;
   background-color: var(--accent-deep);
   background-image: var(--era-pattern, none);
@@ -224,14 +215,46 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .boost-chip-slot {
   position: absolute;
-  top: var(--sp-4);
-  left: 0;
-  right: 0;
+  top: var(--sp-3);
+  right: var(--sp-3);
   z-index: 3;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   pointer-events: none;
   min-height: 34px;
+}
+
+/* Hero balance: sits above the art, mono, big. */
+.hero-money {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: var(--sp-3);
+  max-width: 100%;
+}
+
+.hero-money-label {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.hero-money-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 1.2rem + 3.6vw, 3.8rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--accent-hi);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-shadow: 0 4px 0 var(--ink);
 }
 
 .boost-chip {
@@ -266,7 +289,7 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 .hitbox {
-  --size: clamp(220px, 36vh, 320px);
+  --size: clamp(190px, 28vh, 280px);
   --heat: 0;
   position: relative;
   width: var(--size);
@@ -276,7 +299,7 @@ img { -webkit-user-drag: none; user-select: none; }
   background: transparent;
   cursor: pointer;
   flex: none;
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-2);
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
@@ -341,7 +364,7 @@ img { -webkit-user-drag: none; user-select: none; }
   display: block;
   width: 100%;
   height: 100%;
-  animation: float 3.2s var(--ease-in-out) infinite;
+  animation: sway 3.6s var(--ease-in-out) infinite;
 }
 
 .sprite-tilt {
@@ -446,15 +469,18 @@ img { -webkit-user-drag: none; user-select: none; }
   pointer-events: none;
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: clamp(1.9rem, 1.3rem + 1.6vw, 2.5rem);
+  line-height: 1;
   white-space: nowrap;
   color: var(--accent-hi);
-  text-shadow: 0 2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink);
+  text-shadow:
+    0 3px 0 var(--ink), 3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 -3px 0 var(--ink),
+    2px 2px 0 var(--ink), -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink);
   animation: pop-rise 720ms var(--ease-out) forwards;
 }
 
-.pop-boosted { color: var(--text); font-size: 1.5rem; }
-.pop-xp { color: var(--text); font-size: 0.8rem; }
+.pop-boosted { color: var(--text); font-size: clamp(2.4rem, 1.6rem + 2.2vw, 3.2rem); }
+.pop-xp { color: var(--text); font-size: clamp(1.15rem, 0.95rem + 0.6vw, 1.45rem); }
 
 /* Mini copies of the current stage art, rendered at the cursor and dropped down the screen. */
 .drops {
@@ -493,6 +519,73 @@ img { -webkit-user-drag: none; user-select: none; }
   max-width: 34rem;
   margin-top: var(--sp-3);
   text-align: center;
+}
+
+/* ---------- owned strip (under the stage) ---------- */
+
+.owned-strip {
+  --row: 40px;
+  flex: 0 1 auto;
+  min-height: 0;
+  width: min(100%, 34rem);
+  max-height: calc(var(--row) * 8);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-lo) transparent;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+}
+
+.owned-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-3);
+  height: var(--row);
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.owned-row:last-child { border-bottom: 0; }
+
+.owned-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--accent-deep);
+}
+
+.owned-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.owned-count,
+.owned-rate {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.owned-count { color: var(--text-dim); }
+.owned-rate { min-width: 5.5em; text-align: right; color: var(--accent); }
+
+/* Short viewports: drop the flavor line so the owned strip keeps ~8 rows. */
+@media (max-height: 900px) {
+  .plate .subject { display: none; }
 }
 
 .era-tag {
@@ -850,8 +943,6 @@ img { -webkit-user-drag: none; user-select: none; }
   .brand h1::after { display: none; }
   .metrics { flex: 1 1 100%; }
   .metrics > div { padding: var(--sp-2) var(--sp-3); }
-  .metrics .m-money { flex: 1 1 auto; padding-left: 0; }
-  .metrics .m-money dd { font-size: var(--fs-xl); }
   .metrics .m-stage, .metrics .m-xp { display: none; }
   .metrics dd { font-size: var(--fs-md); }
 

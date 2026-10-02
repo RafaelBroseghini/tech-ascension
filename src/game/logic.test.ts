@@ -9,9 +9,11 @@ import {
   canAfford,
   clickPower,
   highestRevealedId,
+  idlePerSec,
   isRevealed,
   nextCost,
   ownedCount,
+  ownedSources,
   production,
   quotePurchase,
 } from "./economy.ts"
@@ -41,6 +43,15 @@ describe("economy", () => {
     expect(expired.mult).toBe(1)
   })
 
+  it("lists only owned sources, biggest $/s first, summing to idle", () => {
+    expect(ownedSources({})).toEqual([])
+    const owned = { "1": 10, "2": 1, "5": 3, "7": 0 }
+    const rows = ownedSources(owned)
+    expect(rows.map((row) => row.tier.id)).toEqual([5, 1, 2])
+    for (const row of rows) expect(row.idle).toBeCloseTo(row.count * row.tier.cps)
+    expect(rows.reduce((sum, row) => sum + row.idle, 0)).toBeCloseTo(idlePerSec(owned))
+  })
+
   it("quotes a max buy that stops when the next copy is too expensive", () => {
     const quote = quotePurchase(100, 15, 0, "max")
     expect(quote.count).toBe(5)
@@ -50,7 +61,7 @@ describe("economy", () => {
 })
 
 describe("format", () => {
-  it("uses suffix then scientific notation", () => {
+  it("uses Cookie-style suffixes and no scientific notation in the tier range", () => {
     expect(formatNumber(0.1)).toBe("0.1")
     expect(formatNumber(12.4)).toBe("12.4")
     expect(formatNumber(1500)).toBe("1.5K")
@@ -59,7 +70,11 @@ describe("format", () => {
     expect(formatNumber(1e12)).toBe("1T")
     expect(formatNumber(1e15)).toBe("1Qa")
     expect(formatNumber(1e18)).toBe("1Qi")
-    expect(formatNumber(1e21)).toBe("1.00e21")
+    expect(formatNumber(1e21)).toBe("1Sx")
+    expect(formatNumber(5e22)).toBe("50Sx")
+    expect(formatNumber(1.5e24)).toBe("1.5Sp")
+    expect(formatNumber(1e33)).toBe("1Dc")
+    expect(formatNumber(1e40)).toBe("1.00e40")
   })
 })
 

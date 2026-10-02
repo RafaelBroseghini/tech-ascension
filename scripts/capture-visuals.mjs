@@ -52,14 +52,19 @@ await game(() => {
   g.buy(1)
   g.buy(2)
   g.buy(3)
+  g.buy(3)
   g.setMoney(120)
 })
 await settle()
-await shot("01-early-desk")
+await shot("01-early-owned-strip")
 
-await page.getByTestId("stage").click({ position: { x: 90, y: 110 } })
-await page.waitForTimeout(90)
-await shot("02-click-pop")
+const stage = page.getByTestId("stage")
+for (let i = 0; i < 9; i++) {
+  await stage.click({ position: { x: 60 + ((i * 37) % 150), y: 70 + ((i * 53) % 130) }, delay: 0 })
+  await page.waitForTimeout(40)
+}
+await page.waitForTimeout(120)
+await shot("02-spam-click-pops")
 
 await game(() => {
   const g = window.__GAME__
@@ -68,35 +73,29 @@ await game(() => {
   g.forceBoost(5, 60_000)
 })
 await tab("Mid")
-await shot("03-mid-boost")
+for (let i = 0; i < 5; i++) {
+  await stage.click({ position: { x: 80 + i * 30, y: 90 + ((i * 41) % 100) } })
+  await page.waitForTimeout(40)
+}
+await page.waitForTimeout(120)
+await shot("03-mid-boost-pops")
 
 await game(() => {
   const g = window.__GAME__
-  g.setMoney(5e10)
-  g.buy(25)
+  g.reset()
+  g.setMoney(1e28)
+  for (let id = 1; id <= 66; id++) g.buy(id)
+  for (let id = 1; id <= 66; id += 3) g.buy(id)
 })
-await tab("Upper")
-await shot("04-upper")
-
-await game(() => {
-  const g = window.__GAME__
-  g.setMoney(5e16)
-  g.buy(36)
-})
-await tab("Scale")
-await shot("05-q3")
-
-await game(() => {
-  const g = window.__GAME__
-  g.setMoney(5e24)
-  g.buy(48)
-})
-await tab("Endgame")
-await shot("06-end-mars")
+await settle()
+await shot("04-end-many-owned-scroll")
+await page.getByTestId("owned-strip").evaluate((el) => (el.scrollTop = el.scrollHeight))
+await settle(200)
+await shot("05-owned-scrolled")
 
 await page.setViewportSize({ width: 390, height: 800 })
 await settle()
-await shot("07-mobile-end")
+await shot("06-mobile")
 
 await browser.close()
 if (vite?.pid) process.kill(-vite.pid)

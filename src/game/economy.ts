@@ -57,6 +57,23 @@ export function idlePerSec(owned: OwnedMap): number {
   return cps
 }
 
+/** One tier's share of idle $/s: owned × cps. Sums to idlePerSec across tiers. */
+export function tierIdlePerSec(tier: Tier, owned: OwnedMap): number {
+  return ownedCount(owned, tier.id) * tier.cps
+}
+
+export type OwnedSource = { tier: Tier; count: number; idle: number }
+
+/** Every generator with owned > 0, biggest $/s contributor first (ties: later tier first). */
+export function ownedSources(owned: OwnedMap): OwnedSource[] {
+  const rows: OwnedSource[] = []
+  for (const tier of TIERS) {
+    const count = ownedCount(owned, tier.id)
+    if (count > 0) rows.push({ tier, count, idle: tierIdlePerSec(tier, owned) })
+  }
+  return rows.sort((a, b) => b.idle - a.idle || b.tier.id - a.tier.id)
+}
+
 export function highestOwnedTier(owned: OwnedMap): Tier | null {
   let best: Tier | null = null
   for (const tier of TIERS) {

@@ -5,6 +5,8 @@ import { ERA_ACCENT, spriteForTier, START_SUBJECT, subjectForTier } from "../dat
 import { highestOwnedTier, tierById } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
+import { HeroMoney } from "./HeroMoney.tsx"
+import { OwnedStrip } from "./OwnedStrip.tsx"
 
 type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
@@ -180,7 +182,7 @@ export function Stage() {
       [
         ...current,
         { id: seq++, x, y, drift, text: `+$${formatNumber(gain.money)}`, kind: "money" as const },
-        { id: seq++, x: x + 10, y: y + 12, drift: drift * 0.5, text: `+${gain.xp} XP`, kind: "xp" as const },
+        { id: seq++, x: x + 16, y: y + 18, drift: drift * 0.5, text: `+${formatNumber(gain.xp)} XP`, kind: "xp" as const },
       ].slice(-30),
     )
     setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
@@ -226,6 +228,7 @@ export function Stage() {
           </div>
         ) : null}
       </div>
+      <HeroMoney />
       <button
         ref={hitboxRef}
         type="button"
@@ -338,6 +341,7 @@ export function Stage() {
         <h2>{stageName}</h2>
         <p className="subject">{subject}</p>
       </div>
+      <OwnedStrip />
     </section>
   )
 }
