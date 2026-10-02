@@ -1,6 +1,6 @@
 import { ENEMIES, ENEMY_MEAN_WAIT_MS, ENEMY_SPAWN_SAME_ERA_ONLY, FIGHT_DURATION_MS } from "../data/enemies.ts"
 import type { Enemy } from "../data/enemies.ts"
-import type { Era } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 import { sampleWaitMs } from "./boosts.ts"
 
 export { ENEMIES, ENEMY_SPAWN_SAME_ERA_ONLY, FIGHT_DURATION_MS }

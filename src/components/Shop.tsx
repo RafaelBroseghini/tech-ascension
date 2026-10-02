@@ -1,34 +1,38 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
-import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
-import { eraSections, tiersInEra } from "../data/eras.ts"
+import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import { eraSections, capitalInEra } from "../data/eras.ts"
+import { GEAR_KINDS } from "../data/gear.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { ERA_ACCENT, thumbForTier } from "../data/sprites.ts"
-import type { Era } from "../data/tiers.ts"
-import { canAfford, isRevealed, isSkillRevealed, nextCost, ownedCount } from "../game/economy.ts"
+import type { Era } from "../data/capital.ts"
+import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, nextCost, ownedCount } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
+import { nextUnlock } from "../game/nextUnlock.ts"
 import {
   capitalRequirements,
   capitalUnlocked,
   equipmentOpen,
   gigBoardRequirements,
+  gearRequirements,
   gigBoardUnlocked,
   gigState,
   jobBoardRequirements,
   jobBoardUnlocked,
   jobState,
   PHASE_NAME,
-  PHASES,
   phaseRank,
+  SHOP_TABS,
 } from "../game/phase.ts"
-import type { Phase, Requirement } from "../game/phase.ts"
+import type { Requirement, ShopTab } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
-const PHASE_TAB: Record<Phase, { label: string; title: string; hint: string; glow: string }> = {
+const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string }> = {
   A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "#6fe08c" },
   B: { label: "Gigs", title: "Take on a gig", hint: "First dollars", glow: "#5aa9ff" },
-  C: { label: "Jobs", title: "Climb the ladder", hint: "Salary and gear", glow: "#f3b94a" },
-  D: { label: "Capital", title: "Deploy capital", hint: "Own the company", glow: "#ff7b4f" },
+  C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "#f3b94a" },
+  G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "#4fd1c5" },
+  D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "#ff7b4f" },
 }
 
 function OwnedCount({ value }: { value: number }) {
@@ -110,7 +114,7 @@ export function Shop() {
   const clearGig = useGame((s) => s.clearGig)
   const wipe = useGame((s) => s.wipe)
 
-  const [picked, setPicked] = useState<Phase | null>(null)
+  const [picked, setPicked] = useState<ShopTab | null>(null)
   const [lastPhase, setLastPhase] = useState(phase)
   const [pickedEra, setPickedEra] = useState<Era | null>(null)
   const [flashKey, setFlashKey] = useState<string | null>(null)
@@ -126,20 +130,24 @@ export function Shop() {
   const tab = picked ?? phase
 
   const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
-  const unlocked: Record<Phase, boolean> = {
+  const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
     C: jobBoardUnlocked(gates),
+    G: equipmentOpen({ xpTotal, equipment }),
     D: capitalUnlocked(gates),
   }
 
   const skillRows = SKILL_TIERS.filter((row) => isSkillRevealed(row, skills, xpTotal))
-  const equipRows = EQUIPMENT.filter((row) => ownedCount(equipment, row.id) > 0 || canAfford(peakMoney, row.baseCost))
+  const equipRows = EQUIPMENT.filter((row) => isGearRevealed(row, equipment, peakMoney, jobs))
+  const next = nextUnlock({ ...gates, equipment })
 
   const revealedByEra = useMemo(() => {
-    const map = new Map<Era, ReturnType<typeof tiersInEra>>()
+    const map = new Map<Era, ReturnType<typeof capitalInEra>>()
     for (const section of eraSections()) {
-      const rows = tiersInEra(section.id).filter((tier) => isRevealed(tier, owned, peakMoney))
+      const rows = capitalInEra(section.id)
+        .filter((tier) => isRevealed(tier, owned, peakMoney))
+        .sort((a, b) => a.baseCost - b.baseCost)
       if (rows.length > 0) map.set(section.id, rows)
     }
     return map
@@ -149,7 +157,7 @@ export function Shop() {
   const era = pickedEra && revealedByEra.has(pickedEra) ? pickedEra : (topEra?.id ?? eraTabs[0]?.id ?? "mid")
   const capitalRows = revealedByEra.get(era) ?? []
 
-  const rowCount = tab === "A" ? skillRows.length : tab === "C" ? equipRows.length : tab === "D" ? capitalRows.length : 0
+  const rowCount = tab === "A" ? skillRows.length : tab === "G" ? equipRows.length : tab === "D" ? capitalRows.length : 0
   const rowScope = tab === "D" ? `D:${era}` : tab
   useLayoutEffect(() => {
     const list = listRef.current
@@ -194,22 +202,21 @@ export function Shop() {
       <div className="shop-head">
         <div>
           <p className="eyebrow">
-            Phase {tab} · {PHASE_NAME[tab]}
+            {tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
           </p>
           <h2>{unlocked[tab] ? PHASE_TAB[tab].title : `${PHASE_TAB[tab].label} locked`}</h2>
         </div>
         <p className="era-hint">{PHASE_TAB[tab].hint}</p>
       </div>
       <div className="era-tabs" role="tablist" aria-label="Career phases">
-        {PHASES.map((id) => {
+        {SHOP_TABS.map((id) => {
           const locked = !unlocked[id]
           const affordable =
             !locked &&
             ((id === "A" && skillRows.some((row) => canAfford(xp, nextCost(row.baseXpCost, ownedCount(skills, row.id))))) ||
               (id === "B" && GIGS.some((gig) => gigState(gates, gig) === "ready")) ||
-              (id === "C" &&
-                (JOB_TIERS.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost)) ||
-                  equipRows.some((row) => canAfford(money, nextCost(row.baseCost, ownedCount(equipment, row.id)))))) ||
+              (id === "C" && JOB_TIERS.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost))) ||
+              (id === "G" && equipRows.some((row) => canAfford(money, nextCost(row.baseCost, ownedCount(equipment, row.id))))) ||
               (id === "D" &&
                 [...revealedByEra.values()].flat().some((tier) => canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))))))
           return (
@@ -230,6 +237,25 @@ export function Shop() {
           )
         })}
       </div>
+
+      <button
+        type="button"
+        className="next-unlock"
+        data-testid="next-unlock"
+        data-next={next?.key ?? "none"}
+        disabled={!next}
+        onClick={() => next && setPicked(next.tab)}
+      >
+        <span className="next-kicker">Next</span>
+        {next ? (
+          <>
+            <strong className="next-name">{next.name}</strong>
+            <span className="next-needs">need {next.needs.join(next.either ? " or " : " · ")}</span>
+          </>
+        ) : (
+          <span className="next-needs">Everything is open</span>
+        )}
+      </button>
 
       {tab === "D" && unlocked.D && eraTabs.length > 1 ? (
         <div className="era-tabs era-sub" role="tablist" aria-label="Capital eras">
@@ -260,7 +286,7 @@ export function Shop() {
               return (
                 <Offer
                   key={row.id}
-                  artId={SKILL_ART[row.id - 1] ?? 1}
+                  artId={artFor(SKILL_ART, row.id)}
                   glow={tabGlow}
                   index={index}
                   afford={afford}
@@ -304,7 +330,7 @@ export function Shop() {
               return (
                 <Offer
                   key={gig.id}
-                  artId={GIG_ART[gig.id - 1] ?? 1}
+                  artId={artFor(GIG_ART, gig.id)}
                   glow={tabGlow}
                   index={index}
                   afford={status === "ready"}
@@ -331,80 +357,94 @@ export function Shop() {
 
         {tab === "C" ? (
           unlocked.C ? (
+            JOB_TIERS.map((job, index) => {
+              const status = jobState(gates, job)
+              const afford = status === "ready" && canAfford(money, job.baseCost)
+              const key = `job:${job.id}`
+              return (
+                <Offer
+                  key={job.id}
+                  artId={artFor(JOB_ART, job.id)}
+                  glow={tabGlow}
+                  index={index}
+                  afford={afford}
+                  flash={flashKey === key}
+                  locked={status === "locked"}
+                  done={status === "owned"}
+                  title={job.name}
+                  actions={
+                    <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.baseCost > 0 ? `Take $${formatNumber(job.baseCost)}` : "Accept"}
+                    </button>
+                  }
+                >
+                  {`salary +$${formatNumber(job.cps)}/s`}
+                  {status === "locked" ? ` · needs ${formatNumber(job.xpReq)} XP` : ""}
+                </Offer>
+              )
+            })
+          ) : (
+            <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />
+          )
+        ) : null}
+
+        {tab === "G" ? (
+          unlocked.G ? (
             <>
-              <h3 className="shop-section">Roles</h3>
-              {JOB_TIERS.map((job, index) => {
-                const status = jobState(gates, job)
-                const afford = status === "ready" && canAfford(money, job.baseCost)
-                const key = `job:${job.id}`
-                return (
-                  <Offer
-                    key={job.id}
-                    artId={JOB_ART[job.id - 1] ?? 1}
-                    glow={tabGlow}
-                    index={index}
-                    afford={afford}
-                    flash={flashKey === key}
-                    locked={status === "locked"}
-                    done={status === "owned"}
-                    title={job.name}
-                    actions={
-                      <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                        {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.baseCost > 0 ? `Take $${formatNumber(job.baseCost)}` : "Accept"}
-                      </button>
-                    }
-                  >
-                    {`salary +$${formatNumber(job.cps)}/s`}
-                    {status === "locked" ? ` · needs ${formatNumber(job.xpReq)} XP` : ""}
-                  </Offer>
-                )
-              })}
-              <h3 className="shop-section">Equipment</h3>
               {equipRows.length === 0 ? <p className="shop-empty">Gear shows up once you have held its price.</p> : null}
-              {equipRows.map((row, index) => {
-                const have = ownedCount(equipment, row.id)
-                const cost = nextCost(row.baseCost, have)
-                const afford = equipmentOpen(gates) && canAfford(money, cost)
-                const key = `equip:${row.id}`
+              {GEAR_KINDS.map((group) => {
+                const rows = equipRows.filter((row) => row.kind === group.id).sort((a, b) => a.baseCost - b.baseCost)
+                if (rows.length === 0) return null
                 return (
-                  <Offer
-                    key={row.id}
-                    artId={EQUIP_ART[row.id - 1] ?? 1}
-                    glow={tabGlow}
-                    index={index}
-                    afford={afford}
-                    flash={flashKey === key}
-                    fresh={fresh.has(key)}
-                    title={row.name}
-                    actions={
-                      <>
-                        <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "one"))}>
-                          Buy ${formatNumber(cost)}
-                        </button>
-                        <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "max"))}>
-                          Max
-                        </button>
-                      </>
-                    }
-                  >
-                    {[row.cps > 0 ? `+$${formatNumber(row.cps)}/s` : "", row.clickBonus > 0 ? `+$${formatNumber(row.clickBonus)} click` : ""]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    {" · owned "}
-                    <OwnedCount value={have} />
-                  </Offer>
+                  <Fragment key={group.id}>
+                    <h3 className="shop-section">{group.label}</h3>
+                    {rows.map((row, index) => {
+                      const have = ownedCount(equipment, row.id)
+                      const cost = nextCost(row.baseCost, have)
+                      const afford = canAfford(money, cost)
+                      const key = `equip:${row.id}`
+                      return (
+                        <Offer
+                          key={row.id}
+                          artId={artFor(EQUIP_ART, row.id)}
+                          glow={tabGlow}
+                          index={index}
+                          afford={afford}
+                          flash={flashKey === key}
+                          fresh={fresh.has(key)}
+                          title={row.name}
+                          actions={
+                            <>
+                              <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "one"))}>
+                                Buy ${formatNumber(cost)}
+                              </button>
+                              <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "max"))}>
+                                Max
+                              </button>
+                            </>
+                          }
+                        >
+                          {[row.cps > 0 ? `+$${formatNumber(row.cps)}/s` : "", row.clickBonus > 0 ? `+$${formatNumber(row.clickBonus)} click` : ""]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {" · owned "}
+                          <OwnedCount value={have} />
+                        </Offer>
+                      )
+                    })}
+                  </Fragment>
                 )
               })}
             </>
           ) : (
-            <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />
+            <LockPanel title="Gear" lines={gearRequirements({ xpTotal })} />
           )
         ) : null}
 
         {tab === "D" ? (
           unlocked.D ? (
             <>
-              {capitalRows.length === 0 ? <p className="shop-empty">Nothing within reach yet. Keep earning.</p> : null}
+              {capitalRows.length === 0 ? <p className="shop-empty">No fund or firm within reach yet. Keep earning.</p> : null}
               {capitalRows.map((tier, index) => {
                 const have = ownedCount(owned, tier.id)
                 const cost = nextCost(tier.baseCost, have)
@@ -413,7 +453,7 @@ export function Shop() {
                 return (
                   <Offer
                     key={tier.id}
-                    artId={tier.id}
+                    artId={tier.artId}
                     glow={ERA_ACCENT[tier.era].glow}
                     index={index}
                     afford={afford}

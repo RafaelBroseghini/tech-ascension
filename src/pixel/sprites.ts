@@ -1,4 +1,4 @@
-import { TIERS } from "../data/tiers.ts"
+import type { Era } from "../data/capital.ts"
 import { DRAW } from "./art.ts"
 import { C, ERA_RAMP, PALETTE, R } from "./palette.ts"
 import { pngDataUrl } from "./png.ts"
@@ -7,7 +7,10 @@ import { Pix } from "./pix.ts"
 export const MAIN_SIZE = 64
 export const THUMB_SIZE = 32
 
-const ERA_BY_ID = new Map(TIERS.map((tier) => [tier.id, tier.era]))
+/** Colour ramp bands of the drawing sheet: art 1-18 early, 19-33 mid, 34-44 upper, 45-53 q3, 54+ end. */
+function artEra(id: number): Era {
+  return id >= 54 ? "end" : id >= 45 ? "q3" : id >= 34 ? "upper" : id >= 19 ? "mid" : "early"
+}
 
 const gridCache = new Map<string, Pix>()
 const urlCache = new Map<string, string>()
@@ -19,7 +22,7 @@ export function spriteGrid(id: number, size: typeof MAIN_SIZE | typeof THUMB_SIZ
   if (hit) return hit
   const draw = DRAW[id] ?? DRAW[1]
   let grid = new Pix(MAIN_SIZE, MAIN_SIZE)
-  const era = ERA_BY_ID.get(id) ?? "early"
+  const era = artEra(id)
   draw?.(grid, ERA_RAMP[era] ?? R.blue)
   if (size === THUMB_SIZE) grid = grid.halve()
   grid.outline(C.ink)

@@ -3,14 +3,14 @@ import { MetricsBar } from "./components/MetricsBar.tsx"
 import { Shop } from "./components/Shop.tsx"
 import { Stage } from "./components/Stage.tsx"
 import { Toast } from "./components/Toast.tsx"
-import { highestOwnedTier } from "./game/economy.ts"
+import { highestOwnedCapital } from "./game/economy.ts"
 import { useGame } from "./game/store.ts"
 import { useGameLoop } from "./game/useGameLoop.ts"
 
 export default function App() {
   useGameLoop()
   const owned = useGame((state) => state.owned)
-  const era = highestOwnedTier(owned)?.era ?? "early"
+  const era = highestOwnedCapital(owned)?.era ?? "early"
   const lastEra = useRef(era)
   const [shifting, setShifting] = useState(false)
 

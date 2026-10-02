@@ -4,7 +4,7 @@ import type { BoostClock } from "./boosts.ts"
 import {
   gigById,
   highestOwnedSkill,
-  highestOwnedTier,
+  highestOwnedCapital,
   idlePerSec,
   jobById,
   ownedCount,
@@ -12,7 +12,7 @@ import {
   quotePurchase,
   skillById,
   equipById,
-  tierById,
+  capitalById,
   xpPerSec,
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
@@ -21,7 +21,7 @@ import type { Fight, FightOutcome } from "./fight.ts"
 import { formatMultiplier } from "./format.ts"
 import { canBuyJob, capitalUnlocked, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
-import { freshSave, hydrate, OFFLINE_CAP_MS } from "./save.ts"
+import { freshSave, hydrate, OFFLINE_CAP_MS, SAVE_VERSION } from "./save.ts"
 import type { SaveData } from "./save.ts"
 import { readSaveText, writeSave } from "./storage.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
@@ -60,7 +60,7 @@ type GameState = {
   peakMoney: number
   skills: OwnedMap
   equipment: OwnedMap
-  /** Phase D capital tiers. */
+  /** Phase D capital rows. */
   owned: OwnedMap
   jobs: number[]
   gigs: number[]
@@ -80,7 +80,7 @@ type GameState = {
   buyStamp: number
   celebrationNonce: number
   click: () => { money: number; xp: number }
-  /** Buy a Phase D capital tier. */
+  /** Buy a Phase D capital row. */
   buy: (tierId: number, mode?: BuyMode) => void
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
@@ -98,7 +98,7 @@ type GameState = {
 
 function toSave(state: GameState, now: number): SaveData {
   const save: SaveData = {
-    version: 3,
+    version: SAVE_VERSION,
     money: state.money,
     xp: state.xp,
     xpTotal: state.xpTotal,
@@ -117,7 +117,7 @@ function toSave(state: GameState, now: number): SaveData {
 }
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
-  return Object.keys(owned).some((key) => tierById(Number(key))?.era === era && ownedCount(owned, Number(key)) > 0)
+  return Object.keys(owned).some((key) => capitalById(Number(key))?.era === era && ownedCount(owned, Number(key)) > 0)
 }
 
 let lastSaveAt = 0
@@ -156,16 +156,13 @@ export const useGame = create<GameState>((set, get) => ({
   money: booted.hydrated.save.money,
   xp: booted.hydrated.save.xp,
   xpTotal: booted.hydrated.save.xpTotal,
-  peakMoney: booted.hydrated.save.peakMoney ?? booted.hydrated.save.money,
+  peakMoney: booted.hydrated.save.peakMoney,
   skills: booted.hydrated.save.skills,
   equipment: booted.hydrated.save.equipment,
   owned: booted.hydrated.save.owned,
   jobs: booted.hydrated.save.jobs,
   gigs: booted.hydrated.save.gigs,
-  phase: phaseOf({
-    ...booted.hydrated.save,
-    peakMoney: Math.max(booted.hydrated.save.peakMoney ?? 0, booted.hydrated.save.money),
-  }),
+  phase: phaseOf(booted.hydrated.save),
   activeBoost: booted.hydrated.save.activeBoost ?? null,
   nextBoostAt: null,
   idleSince: booted.now,
@@ -241,7 +238,7 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   buy: (tierId, mode = "one") => {
-    const tier = tierById(tierId)
+    const tier = capitalById(tierId)
     if (!tier) return
     const state = get()
     if (!capitalUnlocked(state)) return
@@ -250,8 +247,8 @@ export const useGame = create<GameState>((set, get) => ({
     if (quote.count <= 0) return
 
     const owned: OwnedMap = { ...state.owned, [String(tier.id)]: have + quote.count }
-    const prevBest = highestOwnedTier(state.owned)
-    const nextBest = highestOwnedTier(owned)
+    const prevBest = highestOwnedCapital(state.owned)
+    const nextBest = highestOwnedCapital(owned)
     const newHighest = Boolean(nextBest && (!prevBest || nextBest.id > prevBest.id))
     const newEra = !eraAlreadyOwned(state.owned, tier.era)
     const celebrate = have === 0 && (newHighest || newEra)

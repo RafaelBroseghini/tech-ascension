@@ -63,8 +63,8 @@ await shot("02-gig-board-locked")
 await game(() => {
   const g = window.__GAME__
   g.setXp(30_000)
-  g.buySkill(11)
-  g.buySkill(12)
+  g.buySkill(15)
+  g.buySkill(16)
 })
 await settle(1800)
 await page.getByRole("tab", { name: "Gigs" }).click()
@@ -106,8 +106,8 @@ await shot("06-phase-c-jobs")
 await game(() => {
   const g = window.__GAME__
   g.setMoney(2_500_000)
-  g.buy(19)
-  g.buy(20)
+  g.buy(1)
+  g.buy(3)
 })
 await settle(1800)
 await page.getByRole("tab", { name: "Capital" }).click()
