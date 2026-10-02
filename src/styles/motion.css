@@ -10,14 +10,20 @@
  * at the pointer; its keyframes live there.
  */
 
-/* Waterfall icon: x drifts linearly, y follows t² (gravity), gone by 300ms.
-   The mark itself sits at ~50% opacity; this fade takes it the rest of the way out. */
+/* Waterfall icon: smaller than the old 48px mark, still readable, fading as it falls. */
 @keyframes drop-fall {
-  0% { transform: translate(0, 0) rotate(0deg) scale(0.7); opacity: 1; }
-  25% { transform: translate(calc(var(--dx) * 0.25), calc(var(--dy) * 0.0625)) rotate(calc(var(--rot) * 0.25)) scale(1); opacity: 1; }
-  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.25)) rotate(calc(var(--rot) * 0.5)) scale(1); opacity: 0.9; }
-  75% { transform: translate(calc(var(--dx) * 0.75), calc(var(--dy) * 0.5625)) rotate(calc(var(--rot) * 0.75)) scale(0.95); opacity: 0.45; }
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.85); opacity: 0.82; }
+  25% { transform: translate(calc(var(--dx) * 0.25), calc(var(--dy) * 0.0625)) rotate(calc(var(--rot) * 0.25)) scale(1); opacity: 0.72; }
+  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.25)) rotate(calc(var(--rot) * 0.5)) scale(1); opacity: 0.55; }
+  75% { transform: translate(calc(var(--dx) * 0.75), calc(var(--dy) * 0.5625)) rotate(calc(var(--rot) * 0.75)) scale(0.95); opacity: 0.28; }
   100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
+}
+
+/* Payout text falls from the cursor with the same gravity curve. */
+@keyframes loot-fall {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  12% { transform: translate(-50%, -58%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.96); opacity: 0; }
 }
 
 /* Editor buffer swap: old snippet fades out as the new one fades in. */
@@ -196,10 +202,16 @@
   .ring,
   .spark,
   .motes,
-  .drops,
   .era-sweep,
   .rim::before {
     display: none !important;
+  }
+
+  /* Click loot still falls. The global 0.01ms duration would erase it. */
+  .drop,
+  .loot {
+    animation-duration: 900ms !important;
+    animation-iteration-count: 1 !important;
   }
 
   /* Opacity-only readout so pops still clear themselves. */

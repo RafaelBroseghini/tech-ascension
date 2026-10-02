@@ -14,9 +14,11 @@ import { FightOverlay } from "./FightOverlay.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
+import { ResumeButton } from "./CornerActions.tsx"
+import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
 
-type Pop = { id: number; x: number; y: number; drift: number; drop: number; text: string; kind: "money" }
+type Loot = { id: number; x: number; y: number; dx: number; dy: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
 type Ring = { id: number; x: number; y: number; big: boolean }
@@ -58,7 +60,7 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
   })
 }
 
-const ICON_PX = 48
+const ICON_PX = 28
 
 /** One random owned logo per spray, dropped from the cursor. */
 function waterfall(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {
@@ -67,8 +69,8 @@ function waterfall(x: number, y: number, icons: readonly IconName[], count: numb
     const icon = pickClickIcon(icons) ?? icons[0] ?? "Git"
     return {
       id: seq++,
-      x: x + (Math.random() - 0.5) * 14,
-      y: y + (Math.random() - 0.5) * 10,
+      x: x + (Math.random() - 0.5) * 36,
+      y: y + 18 + Math.random() * 10,
       dx: (Math.random() - 0.5) * 80,
       dy: 150 + Math.random() * 100,
       rot: (Math.random() - 0.5) * 70,
@@ -87,7 +89,7 @@ export function Stage() {
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const click = useGame((state) => state.click)
-  const [pops, setPops] = useState<Pop[]>([])
+  const [loot, setLoot] = useState<Loot[]>([])
   const [bits, setBits] = useState<Bit[]>([])
   const [sparks, setSparks] = useState<Spark[]>([])
   const [rings, setRings] = useState<Ring[]>([])
@@ -184,7 +186,6 @@ export function Stage() {
     const box = hitboxRef.current
     if (!box || useGame.getState().fight) return
     const gain = click()
-    const text = gain.money > 0 ? `+$${formatNumber(gain.money)}` : `+${formatNumber(gain.xp)} XP`
     heat.current = Math.min(1, heat.current + 0.14)
     box.style.setProperty("--heat", heat.current.toFixed(3))
 
@@ -196,25 +197,42 @@ export function Stage() {
     const y = Math.min(96, Math.max(4, py))
     playImpact((x - 50) / 50, (y - 50) / 50)
 
-    if (prefersReducedMotion()) {
-      setPops((current) => [...current, { id: seq++, x, y, drift: 0, drop: 0, text, kind: "money" as const }].slice(-12))
-      return
+    const textLabels: { kind: Loot["kind"]; text: string }[] = [
+      { kind: "money", text: `+$${formatNumber(gain.money)}` },
+      { kind: "xp", text: `+${formatNumber(gain.xp)} XP` },
+    ]
+
+    const originX = hasPoint && clientX !== null ? clientX : rect.left + rect.width / 2
+    const originY = hasPoint && clientY !== null ? clientY : rect.top + rect.height * 0.45
+    if (textLabels.length > 0) {
+      const bornLoot = textLabels.map((label) => {
+        const side = label.kind === "xp" ? 1 : -1
+        return {
+          id: seq++,
+          x: originX + (textLabels.length > 1 ? side * 16 : 0),
+          y: originY + (label.kind === "xp" ? -18 : 6),
+          dx: side * (12 + Math.random() * 26),
+          dy: 120 + Math.random() * 80,
+          text: label.text,
+          kind: label.kind,
+        }
+      })
+      const lootIds = new Set(bornLoot.map((item) => item.id))
+      setLoot((current) => [...current, ...bornLoot].slice(-24))
+      window.setTimeout(() => {
+        setLoot((current) => current.filter((item) => !lootIds.has(item.id)))
+      }, FALL_MS + 60)
     }
-    const drift = (Math.random() - 0.5) * 46
-    const drop = 22 + Math.random() * 52
-    setPops((current) =>
-      [...current, { id: seq++, x, y, drift, drop, text, kind: "money" as const }].slice(-30),
-    )
-    setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
-    const dropX = hasPoint ? clientX : rect.left + rect.width / 2
-    const dropY = hasPoint ? clientY : rect.top + rect.height * 0.45
-    const born = waterfall(dropX, dropY, iconPool({ skills, equipment, jobs, gigs }), waterfallCount(boosted))
+
+    const born = waterfall(originX, originY, iconPool({ skills, equipment, jobs, gigs }), waterfallCount(boosted))
     if (born.length > 0) {
       setDrops((current) => capDrops(current, born))
       window.setTimeout(() => {
         setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
       }, FALL_MS + 60)
     }
+    if (prefersReducedMotion()) return
+    setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
     setSparks((current) =>
       [...current, ...clickSparks(x, y, accent.glow, boosted ? 14 : 9)].slice(-90),
     )
@@ -309,21 +327,6 @@ export function Stage() {
             onAnimationEnd={() => setSparks((current) => current.filter((item) => item.id !== spark.id))}
           />
         ))}
-        {pops.map((pop) => (
-          <span
-            key={pop.id}
-            className={`pop pop-${pop.kind}${boosted ? " pop-boosted" : ""}`}
-            style={{
-              left: `${pop.x}%`,
-              top: `${pop.y}%`,
-              ["--drift" as string]: `${pop.drift}px`,
-              ["--drop" as string]: `${pop.drop}px`,
-            }}
-            onAnimationEnd={() => setPops((current) => current.filter((item) => item.id !== pop.id))}
-          >
-            {pop.text}
-          </span>
-        ))}
         {bits.map((bit) => (
           <i
             key={bit.id}
@@ -364,14 +367,34 @@ export function Stage() {
               </span>
             )
           })}
+          {loot.map((item) => (
+            <span
+              key={item.id}
+              className={item.kind === "xp" ? "loot loot-xp" : "loot loot-money"}
+              style={{
+                left: item.x,
+                top: item.y,
+                ["--dx" as string]: `${item.dx}px`,
+                ["--dy" as string]: `${item.dy}px`,
+              }}
+            >
+              {item.text}
+            </span>
+          ))}
         </div>,
         document.body,
       )}
       <div className="plate">
         <p className="era-tag">{stage ? accent.kicker : "Before the offer"}</p>
-        <h2>{stageName}</h2>
+        <h2>
+          {stageName}
+          <ResumeButton />
+        </h2>
       </div>
-      <OwnedStrip />
+      <div className="career-dock">
+        <OwnedStrip />
+        <Skills />
+      </div>
       <FightOverlay />
       <ScorePop />
     </section>
