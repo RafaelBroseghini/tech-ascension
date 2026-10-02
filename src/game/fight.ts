@@ -1,9 +1,9 @@
-import { ENEMIES, ENEMY_MEAN_WAIT_MS, FIGHT_DURATION_MS } from "../data/enemies.ts"
+import { ENEMIES, ENEMY_MEAN_WAIT_MS, ENEMY_SPAWN_SAME_ERA_ONLY, FIGHT_DURATION_MS } from "../data/enemies.ts"
 import type { Enemy } from "../data/enemies.ts"
 import type { Era } from "../data/tiers.ts"
 import { sampleWaitMs } from "./boosts.ts"
 
-export { ENEMIES, FIGHT_DURATION_MS }
+export { ENEMIES, ENEMY_SPAWN_SAME_ERA_ONLY, FIGHT_DURATION_MS }
 
 const ERA_RANK: Record<Era, number> = { early: 0, mid: 1, upper: 2, q3: 3, end: 4 }
 
@@ -33,8 +33,9 @@ export function enemyById(id: number): Enemy | undefined {
   return ENEMY_BY_ID.get(id)
 }
 
-/** Enemies whose gate is at or below the player's highest owned era. */
+/** Spawn pool: enemies gated to exactly the player's current era (`ENEMY_SPAWN_SAME_ERA_ONLY`). */
 export function eligibleEnemies(era: Era): Enemy[] {
+  if (ENEMY_SPAWN_SAME_ERA_ONLY) return ENEMIES.filter((enemy) => enemy.eraGate === era)
   const rank = ERA_RANK[era] ?? 0
   return ENEMIES.filter((enemy) => (ERA_RANK[enemy.eraGate] ?? 0) <= rank)
 }

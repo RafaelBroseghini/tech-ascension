@@ -206,6 +206,22 @@ test("fight: rare spawn comes from idle time, era-gated, one at a time", () => {
   expect(game.getState().fight?.remainingMs).toBe(FIGHT_DURATION_MS - 10_000)
 })
 
+test("fight: spawn pool is the current era only, forceEnemy ignores the gate", () => {
+  game.reset()
+  game.setMoney(tierByName("Fine-tune your first LLM").baseCost)
+  expect(game.buy(tierByName("Fine-tune your first LLM").id)).toBe(true)
+  expect(game.getState().era).toBe("mid")
+  game.tick(8 * 60 * 60 * 1000)
+  game.tick(8 * 60 * 60 * 1000)
+  const spawned = game.getState().fight
+  expect(spawned).not.toBeNull()
+  expect(enemy(spawned?.enemyId ?? 0).eraGate).toBe("mid")
+
+  game.flee()
+  expect(game.forceEnemy(1)).toBe(true)
+  expect(game.getState().fight?.enemyId).toBe(1)
+})
+
 test("fight: boost rolls wait out the fight, shop stays usable", () => {
   game.reset()
   game.setMoney(tier(1).baseCost)
