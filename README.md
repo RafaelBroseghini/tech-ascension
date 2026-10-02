@@ -16,13 +16,22 @@ npm run smoke:play
 npm run build
 ```
 
+### Preview as GitHub Pages would serve it
+
+```bash
+npm run preview:pages
+```
+
+Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43124/tech-ascension/](http://127.0.0.1:43124/tech-ascension/), the same sub-path a project Pages site uses. Asset URLs must go through `import.meta.env.BASE_URL` (or Vite-processed HTML) so they work under that prefix.
+
 ## How it plays
 
-- Click the 256×256 stage sprite for money and 1 XP. Click power starts at $1 and grows when a generator has a click bonus.
+- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it tilts away from the click point, squashes and shakes (harder the faster you click), and throws a shockwave ring, sparks and a floating payout. Click power starts at $1 and grows when a generator has a click bonus.
 - Generators add idle $/s. Cost of the next copy is `floor(baseCost × 1.15 ^ owned)`.
-- The stage shows the highest tier you own. Before the first purchase it shows tier 1 (the used laptop) and the stage name stays High school.
-- Shop tabs follow the eras present in `TIERS` (early, mid, upper, q3, end). Affordable rows highlight.
-- Click boosts (`×2` / `×5` / `×10`) multiply **click power only**. Idle $/s is unchanged. One boost at a time; the next roll replaces the slot after the current one ends. A toast and the metrics strip show the multiplier.
+- The stage shows the highest tier you own. Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top tier plays a reveal burst.
+- Upgrades are hidden until they are within reach. A row (and its era tab) appears the first time your balance has reached its base price, with a `New` tag. The highest balance you have ever held is saved as `peakMoney`, so a row never hides again. Tab order follows the eras present in `TIERS`. Affordable rows highlight.
+- `$/s` and the click-boost readout stay out of the metrics bar until they apply (first generator, first boost).
+- Click boosts (`×2` / `×5` / `×10`) multiply **click power only**. Idle $/s is unchanged. One boost at a time; the next roll replaces the slot after the current one ends. A toast, a chip over the sprite and the metrics strip show the multiplier while it runs.
 - Coming back credits idle income for up to 8 hours and toasts `welcome back, credited $X`.
 
 ## Where to edit
@@ -31,14 +40,13 @@ npm run build
 | --- | --- |
 | Generator table | `src/data/tiers.ts` |
 | Sprite subjects and `SPRITE_BY_TIER` | `src/data/sprites.ts` |
-| Placeholder art | `public/sprites/{id}.svg` |
-| Regenerate placeholders | `node scripts/generate-sprites.mjs` |
+| Art | `public/sprites/{id}.webp` (512×512; `0.webp` is the opening scene) |
 | Boost rates by era | `src/data/boosts.ts` |
 | Cost, click power, idle | `src/game/economy.ts` |
 | Save, migration, offline credit | `src/game/save.ts` |
 | Loop and purchases | `src/game/store.ts` |
 
-Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `name`, `baseCost`, `cps`, and `clickBonus`. Add a matching subject in `src/data/sprites.ts` and a file at `public/sprites/{id}.svg` when you want new art. Owned counts are stored by tier id, so new ids do not need a save migration.
+Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `name`, `baseCost`, `cps`, and `clickBonus`. Add a matching subject in `src/data/sprites.ts` and a file at `public/sprites/{id}.webp` when you want new art. Owned counts are stored by tier id, so new ids do not need a save migration.
 
 ## Save
 
@@ -51,11 +59,12 @@ Replacing `TIERS` is enough for the shop, as long as each row has `id`, `era`, `
   "xp": 0,
   "owned": { "1": 2 },
   "savedAt": 0,
-  "activeBoost": { "mult": 5, "endsAt": 0 }
+  "activeBoost": { "mult": 5, "endsAt": 0 },
+  "peakMoney": 0
 }
 ```
 
-`src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to version 1. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
+`peakMoney` is optional; older saves without it start from their current balance. `src/game/save.ts` migrates an unversioned blob (including a legacy owned array) up to version 1. On load, `activeBoost` is dropped when `endsAt <= Date.now()`. Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours.
 
 The next-boost timer is session state. Reloading keeps a boost that is still running and schedules a fresh wait afterward.
 
@@ -81,4 +90,14 @@ That starts the dev server if needed and leaves Chrome open on port 9222 so anot
 
 ## Motion
 
-Clicks squash the sprite (~180ms) and float `$` / XP particles (~280ms). The sprite bobs while idle. An active click boost pulses the sprite and shimmers the screen edge. Buying flashes the row and ticks the money and owned figures. The first copy of a tier that opens a new era, or that becomes your highest tier, fires one short confetti burst. `prefers-reduced-motion` drops the bob, confetti, and shimmer and keeps a short click flash.
+Clicks register on pointer-down. The sprite tilts away from the click point, squashes, and wobbles side to side (~380ms, restarted instantly on every click), flashes brighter, and sends out a shockwave ring, sparks, and a drifting `$` / XP payout. Fast clicking builds "heat", which strengthens the shake and the glow around the sprite. Idle, the sprite floats, an aura breathes, motes rise, and a sheen sweeps the art. An active click boost adds a chip over the sprite, a faster pulse, bigger payouts, and the screen-edge shimmer. Buying flashes the row and ticks the money and owned figures. A new highest tier remounts the art with a reveal burst and confetti. New shop rows slide in with a `New` tag and a pulsing glow. `prefers-reduced-motion` drops the float, particles, shake and shimmer and keeps a short click flash.
+
+## Art
+
+All 49 sprites are painterly fantasy illustrations (one per tier plus the opening scene), generated as 1024px images and stored as 512px WebP. To swap one, drop a square image in as `public/sprites/{id}.webp`, for example:
+
+```bash
+ffmpeg -i new.png -vf scale=512:512 -c:v libwebp -quality 82 public/sprites/12.webp
+```
+
+Update the matching caption in `src/data/sprites.ts` as well.

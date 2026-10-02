@@ -38,7 +38,8 @@ reset(): void
 - `cps` is idle $/s. Click boosts do not change it.
 - `clickPower` is the base payout. A click pays `clickPower × activeBoost.mult` (mult is 1 when no boost is active).
 - `owned` is keyed by tier id (`"1"`, `"15"`, …).
-- `spriteTierId` is the highest owned tier. It is `1` before the first purchase, and `era` follows that tier.
+- `spriteTierId` is the highest owned tier. It is `1` before the first purchase, and `era` follows that tier. (The UI shows a separate opening scene at that point.)
+- The shop UI hides tiers until your balance has reached their price once (`peakMoney`). `buy(tierId)` ignores this, so agents can still buy any tier directly.
 - `buy` purchases one copy and returns false when the id is unknown or the cost is too high.
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock.
 - `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll.
