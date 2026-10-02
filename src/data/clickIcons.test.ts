@@ -13,8 +13,9 @@ describe("click icon pool", () => {
     expect("LinkedIn" in CLICK_ICONS).toBe(false)
     const mark = renderToStaticMarkup(createElement(CLICK_ICONS.LinkedOut, { size: 24 }))
     expect(mark).toContain("LinkedOut")
+    expect(mark).not.toContain(">LinkedOut<")
     expect(mark.toLowerCase()).not.toContain("linkedin")
-    expect(mark).toContain("#0B5CAB")
+    expect(mark).toContain("#0A66C2")
     const names = new Set<IconName>()
     for (const table of [SKILL_ICONS, GEAR_ICONS, GIG_ICONS, JOB_ICONS]) {
       for (const icons of Object.values(table)) for (const name of icons) names.add(name)

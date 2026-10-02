@@ -193,12 +193,13 @@ img { -webkit-user-drag: none; user-select: none; }
   height: auto;
   padding: 0;
   border: 0;
-  border-radius: 14px;
+  border-radius: 4px;
   background: transparent;
+  line-height: 0;
   cursor: pointer;
 }
 
-.view-resume:hover { background: #eef1f4; }
+.view-resume:hover { filter: brightness(1.12); }
 .view-resume:active { transform: translateY(1px); }
 
 .gh-star {
