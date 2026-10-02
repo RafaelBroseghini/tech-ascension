@@ -22,17 +22,19 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   expect(start.skills).toEqual({})
 
   const first = SKILL_TIERS[0]
-  if (!first) throw new Error("missing skill 1")
+  const second = SKILL_TIERS[1]
+  if (!first || !second) throw new Error("missing skills")
   let guard = 0
   while (game.getState().xp < first.baseXpCost) {
     const gain = game.click()
-    expect(gain.money).toBe(0)
+    expect(gain.money).toBe(start.clickPower)
     expect(gain.xp).toBe(1)
     guard += 1
-    if (guard > 100) throw new Error("clicks did not pay for the first skill")
+    if (guard > 5_000) throw new Error("clicks did not pay for the first skill")
   }
-  expect(game.getState().money).toBe(0)
-  expect(game.getState().lastPop).toBeNull()
+  expect(guard).toBeGreaterThan(100)
+  expect(game.getState().money).toBe(first.baseXpCost)
+  expect(game.getState().lastPop).toMatchObject({ kind: "click", size: "medium" })
 
   const ready = game.getState()
   expect(game.buy(26)).toBe(false)
@@ -41,25 +43,29 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   expect(bought.xp).toBe(ready.xp - first.baseXpCost)
   expect(bought.xpTotal).toBe(ready.xpTotal)
   expect(bought.xpPerClick).toBe(ready.xpPerClick + first.xpPerClick)
-  expect(bought.money).toBe(0)
+  expect(bought.money).toBe(ready.money)
   expect(bought.cps).toBe(0)
-  expect(game.click().xp).toBe(bought.xpPerClick)
+  const paid = game.click()
+  expect(paid.xp).toBe(bought.xpPerClick)
+  expect(paid.money).toBe(bought.clickPower)
 
-  game.setXp(1_000)
+  game.setXp(Math.max(second.baseXpCost, second.unlockAtXp))
   expect(game.buySkill(2)).toBe(true)
-  expect(game.getState().xpPerSec).toBeCloseTo(0.1)
+  expect(game.getState().xpPerSec).toBeCloseTo(second.xpPerSec)
   const idleBefore = game.getState()
   game.tick(10_000)
   const idleAfter = game.getState()
-  expect(idleAfter.xp - idleBefore.xp).toBeCloseTo(1)
-  expect(idleAfter.money).toBe(0)
+  expect(idleAfter.xp - idleBefore.xp).toBeCloseTo(second.xpPerSec * 10)
+  expect(idleAfter.money).toBe(idleBefore.money)
   expect(idleAfter.cps).toBe(0)
 })
 
-test("A → B: Portfolio + React and 12K XP open the Gig Board, the first gig starts the money", () => {
+test("A → B: Portfolio + React and 12K XP open the Gig Board, and the first gig still needs its skills", () => {
   game.reset()
-  game.setXp(30_000)
+  game.setXp(1_000_000)
   expect(game.getState().unlocks.gigBoard).toBe(false)
+  expect(game.getState().phase).toBe("A")
+  for (let id = 1; id <= 14; id++) expect(game.buySkill(id)).toBe(true)
   expect(game.getState().phase).toBe("A")
   expect(game.buySkill(15)).toBe(true)
   expect(game.getState().phase).toBe("A")
@@ -69,36 +75,38 @@ test("A → B: Portfolio + React and 12K XP open the Gig Board, the first gig st
   expect(open.phase).toBe("B")
   expect(open.unlocks).toEqual({ gigBoard: true, jobBoard: false, gear: true, capital: false })
   expect(open.lastPop).toMatchObject({ kind: "unlock", size: "large" })
-  expect(open.money).toBe(0)
-  expect(game.click().money).toBe(0)
 
   const gig1 = GIGS[0]
   const gig2 = GIGS[1]
   if (!gig1 || !gig2) throw new Error("missing gigs")
+  const primed = game.click()
+  expect(primed.money).toBe(open.clickPower)
+  expect(primed.xp).toBeGreaterThan(0)
   expect(game.completeGig(gig2.id)).toBe(false)
   expect(game.completeGig(gig1.id)).toBe(true)
   expect(game.completeGig(gig1.id)).toBe(false)
   const cleared = game.getState()
-  expect(cleared.money).toBe(gig1.lump)
+  expect(cleared.money).toBe(open.money + primed.money + gig1.lump)
   expect(cleared.gigs).toEqual([gig1.id])
   expect(cleared.cps).toBe(0)
   expect(cleared.lastPop).toEqual({ kind: "gigClear", size: "large", amount: gig1.lump, label: gig1.name })
 
   const click = game.click()
   expect(click.money).toBe(cleared.clickPower)
-  expect(game.getState().money).toBe(gig1.lump + cleared.clickPower)
+  expect(click.xp).toBeGreaterThan(0)
+  expect(game.getState().money).toBe(cleared.money + cleared.clickPower)
   expect(game.getState().lastPop).toMatchObject({ kind: "click", size: "medium" })
 })
 
 test("B: a retainer gig is the first $/s", () => {
   game.reset()
-  game.setXp(30_000)
-  game.buySkill(15)
-  game.buySkill(16)
-  for (const id of [1, 2, 3]) expect(game.completeGig(id)).toBe(true)
-  expect(game.getState().cps).toBe(0)
   const retainer = GIGS.find((gig) => gig.retainerCps > 0)
   if (!retainer) throw new Error("missing retainer gig")
+  game.setXp(1_000_000)
+  const furthest = Math.max(16, ...retainer.skillIds)
+  for (let id = 1; id <= furthest; id++) expect(game.buySkill(id)).toBe(true)
+  for (let id = 1; id < retainer.id; id++) expect(game.completeGig(id)).toBe(true)
+  expect(game.getState().cps).toBe(0)
   expect(game.completeGig(retainer.id)).toBe(true)
   expect(game.getState().cps).toBe(retainer.retainerCps)
   const before = game.getState()
@@ -156,7 +164,7 @@ test("Gear opens at 8K XP, and the next-unlock target follows the gates", () => 
   expect(game.getState().clickPower).toBe(1 + 2)
 
   game.reset()
-  game.setXp(35_000)
+  game.setXp(1_000_000)
   expect(game.buySkill(15)).toBe(true)
   expect(game.buySkill(16)).toBe(true)
   for (const id of [1, 2, 3, 4]) expect(game.forceGig(id)).toBe(true)
@@ -203,7 +211,7 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 
 test("offline catch-up pays 1h and caps at 8h", () => {
   game.reset()
-  game.setXp(30_000)
+  game.setXp(1_000_000)
   game.buySkill(15)
   game.buySkill(16)
   const retainer = GIGS.find((gig) => gig.retainerCps > 0)
@@ -223,9 +231,11 @@ test("offline catch-up pays 1h and caps at 8h", () => {
   expect(tenHours.credited).toBeLessThan(cps * 10 * 3600)
 })
 
-test("offline study credits XP in phase A and keeps money at zero", () => {
+test("offline study credits XP in phase A and adds no idle money", () => {
   game.reset()
-  game.setXp(100)
+  const second = SKILL_TIERS[1]
+  if (!second) throw new Error("missing skill 2")
+  game.setXp(Math.max(second.baseXpCost, second.unlockAtXp))
   expect(game.buySkill(2)).toBe(true)
   const xpPerSec = game.getState().xpPerSec
   const away = game.advanceOffline(60 * 60 * 1000)

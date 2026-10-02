@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
-import { eraSections, capitalInEra } from "../data/eras.ts"
+import { eraSections } from "../data/eras.ts"
 import { GEAR_KINDS } from "../data/gear.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { ERA_ACCENT, thumbForTier } from "../data/sprites.ts"
+import { CAPITAL } from "../data/capital.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, nextCost, ownedCount } from "../game/economy.ts"
+import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, visibleShopRows } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
 import { nextUnlock } from "../game/nextUnlock.ts"
 import type { NextUnlock } from "../game/nextUnlock.ts"
@@ -17,6 +18,7 @@ import {
   gigBoardRequirements,
   gearRequirements,
   gigBoardUnlocked,
+  gigSkillGap,
   gigState,
   jobBoardRequirements,
   jobBoardUnlocked,
@@ -148,26 +150,30 @@ export function Shop() {
     D: capitalUnlocked(gates),
   }
 
-  const skillRows = SKILL_TIERS.filter((row) => isSkillRevealed(row, skills, xpTotal))
-  const equipRows = EQUIPMENT.filter((row) => isGearRevealed(row, equipment, peakMoney, jobs))
+  const skillRows = visibleShopRows(SKILL_TIERS, (row) => ownedCount(skills, row.id) > 0)
+  const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id))
+  const jobRows = visibleShopRows(JOB_TIERS, (job) => jobs.includes(job.id))
+  const equipRows = visibleShopRows(EQUIPMENT, (row) => ownedCount(equipment, row.id) > 0)
   const next = nextUnlock({ ...gates, equipment, money, xp })
 
   const revealedByEra = useMemo(() => {
-    const map = new Map<Era, ReturnType<typeof capitalInEra>>()
-    for (const section of eraSections()) {
-      const rows = capitalInEra(section.id)
-        .filter((tier) => isRevealed(tier, owned, peakMoney))
-        .sort((a, b) => a.baseCost - b.baseCost)
-      if (rows.length > 0) map.set(section.id, rows)
+    const visible = visibleShopRows(CAPITAL, (tier) => ownedCount(owned, tier.id) > 0)
+    const map = new Map<Era, typeof visible>()
+    for (const tier of visible) {
+      const rows = map.get(tier.era)
+      if (rows) rows.push(tier)
+      else map.set(tier.era, [tier])
     }
+    for (const rows of map.values()) rows.sort((a, b) => a.baseCost - b.baseCost)
     return map
-  }, [owned, peakMoney])
+  }, [owned])
   const eraTabs = eraSections().filter((section) => revealedByEra.has(section.id))
   const topEra = [...eraTabs].reverse().find((section) => (revealedByEra.get(section.id) ?? []).some((tier) => ownedCount(owned, tier.id) > 0))
   const era = pickedEra && revealedByEra.has(pickedEra) ? pickedEra : (topEra?.id ?? eraTabs[0]?.id ?? "mid")
   const capitalRows = revealedByEra.get(era) ?? []
 
-  const rowCount = tab === "A" ? skillRows.length : tab === "G" ? equipRows.length : tab === "D" ? capitalRows.length : 0
+  const rowCount =
+    tab === "A" ? skillRows.length : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tab
   useLayoutEffect(() => {
     const list = listRef.current
@@ -228,8 +234,8 @@ export function Shop() {
           const affordable =
             !locked &&
             ((id === "A" && skillRows.some((row) => canAfford(xp, nextCost(row.baseXpCost, ownedCount(skills, row.id))))) ||
-              (id === "B" && GIGS.some((gig) => gigState(gates, gig) === "ready")) ||
-              (id === "C" && JOB_TIERS.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost))) ||
+              (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
+              (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost))) ||
               (id === "G" && equipRows.some((row) => canAfford(money, nextCost(row.baseCost, ownedCount(equipment, row.id))))) ||
               (id === "D" &&
                 [...revealedByEra.values()].flat().some((tier) => canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))))))
@@ -295,7 +301,8 @@ export function Shop() {
             {skillRows.map((row, index) => {
               const have = ownedCount(skills, row.id)
               const cost = nextCost(row.baseXpCost, have)
-              const afford = canAfford(xp, cost)
+              const revealed = isSkillRevealed(row, skills, xpTotal)
+              const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
               return (
                 <Offer
@@ -306,11 +313,12 @@ export function Shop() {
                   afford={afford}
                   flash={flashKey === key}
                   fresh={fresh.has(key)}
+                  locked={!revealed && have === 0}
                   title={row.name}
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, "one"))}>
-                        Learn {formatNumber(cost)} XP
+                        {revealed || have > 0 ? `Learn ${formatNumber(cost)} XP` : "Locked"}
                       </button>
                       <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, "max"))}>
                         Max
@@ -321,25 +329,27 @@ export function Shop() {
                   {[row.xpPerClick > 0 ? `+${formatNumber(row.xpPerClick)} XP/click` : "", row.xpPerSec > 0 ? `+${formatNumber(row.xpPerSec)} XP/s` : ""]
                     .filter(Boolean)
                     .join(" · ")}
+                  {revealed || have > 0 ? "" : ` · needs ${formatNumber(row.unlockAtXp)} lifetime XP`}
                   {" · owned "}
                   <OwnedCount value={have} />
                 </Offer>
               )
             })}
-            <p className="shop-empty">
-              {xpTotal >= 12000 && !unlocked.B ? "Gig Board is waiting on Portfolio and React." : "More skills appear as your lifetime XP grows."}
-            </p>
+            {xpTotal >= 12000 && !unlocked.B ? (
+              <p className="shop-empty">Gig Board is waiting on Portfolio and React.</p>
+            ) : null}
           </>
         ) : null}
 
         {tab === "B" ? (
           unlocked.B ? (
-            GIGS.map((gig, index) => {
+            gigRows.map((gig, index) => {
               const status = gigState(gates, gig)
               const key = `gig:${gig.id}`
               const gap = [
                 xpTotal < gig.xpReq ? `${formatNumber(gig.xpReq)} XP` : "",
                 gigs.length < gig.priorGigs ? `${gig.priorGigs} gigs cleared` : "",
+                gigSkillGap(gates, gig) ?? "",
               ].filter(Boolean)
               return (
                 <Offer
@@ -371,7 +381,7 @@ export function Shop() {
 
         {tab === "C" ? (
           unlocked.C ? (
-            JOB_TIERS.map((job, index) => {
+            jobRows.map((job, index) => {
               const status = jobState(gates, job)
               const afford = status === "ready" && canAfford(money, job.baseCost)
               const key = `job:${job.id}`
@@ -405,7 +415,6 @@ export function Shop() {
         {tab === "G" ? (
           unlocked.G ? (
             <>
-              {equipRows.length === 0 ? <p className="shop-empty">Gear shows up once you have held its price.</p> : null}
               {GEAR_KINDS.map((group) => {
                 const rows = equipRows.filter((row) => row.kind === group.id).sort((a, b) => a.baseCost - b.baseCost)
                 if (rows.length === 0) return null
@@ -415,8 +424,15 @@ export function Shop() {
                     {rows.map((row, index) => {
                       const have = ownedCount(equipment, row.id)
                       const cost = nextCost(row.baseCost, have)
-                      const afford = canAfford(money, cost)
+                      const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
+                      const afford = revealed && canAfford(money, cost)
                       const key = `equip:${row.id}`
+                      const gearGap = [
+                        !revealed && peakMoney < row.unlockMoney ? `hold $${formatNumber(row.unlockMoney)}` : "",
+                        !revealed && row.unlockJobId > 0 && !jobs.includes(row.unlockJobId)
+                          ? (jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`)
+                          : "",
+                      ].filter(Boolean)
                       return (
                         <Offer
                           key={row.id}
@@ -426,11 +442,12 @@ export function Shop() {
                           afford={afford}
                           flash={flashKey === key}
                           fresh={fresh.has(key)}
+                          locked={!revealed && have === 0}
                           title={row.name}
                           actions={
                             <>
                               <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "one"))}>
-                                Buy ${formatNumber(cost)}
+                                {revealed || have > 0 ? `Buy $${formatNumber(cost)}` : "Locked"}
                               </button>
                               <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "max"))}>
                                 Max
@@ -441,6 +458,7 @@ export function Shop() {
                           {[row.cps > 0 ? `+$${formatNumber(row.cps)}/s` : "", row.clickBonus > 0 ? `+$${formatNumber(row.clickBonus)} click` : ""]
                             .filter(Boolean)
                             .join(" · ")}
+                          {gearGap.length > 0 ? ` · needs ${gearGap.join(" + ")}` : ""}
                           {" · owned "}
                           <OwnedCount value={have} />
                         </Offer>
@@ -458,11 +476,11 @@ export function Shop() {
         {tab === "D" ? (
           unlocked.D ? (
             <>
-              {capitalRows.length === 0 ? <p className="shop-empty">No fund or firm within reach yet. Keep earning.</p> : null}
               {capitalRows.map((tier, index) => {
                 const have = ownedCount(owned, tier.id)
                 const cost = nextCost(tier.baseCost, have)
-                const afford = canAfford(money, cost)
+                const revealed = isRevealed(tier, owned, peakMoney)
+                const afford = revealed && canAfford(money, cost)
                 const key = `capital:${tier.id}`
                 return (
                   <Offer
@@ -473,11 +491,12 @@ export function Shop() {
                     afford={afford}
                     flash={flashKey === key}
                     fresh={fresh.has(key)}
+                    locked={!revealed && have === 0}
                     title={tier.name}
                     actions={
                       <>
                         <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, "one"))}>
-                          Buy ${formatNumber(cost)}
+                          {revealed || have > 0 ? `Buy $${formatNumber(cost)}` : "Locked"}
                         </button>
                         <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buy(tier.id, "max"))}>
                           Max
@@ -487,6 +506,7 @@ export function Shop() {
                   >
                     +${formatNumber(tier.cps)}/s
                     {tier.clickBonus > 0 ? ` · +$${formatNumber(tier.clickBonus)} click` : ""}
+                    {!revealed && have === 0 ? ` · hold $${formatNumber(tier.baseCost)}` : ""}
                     {" · owned "}
                     <OwnedCount value={have} />
                   </Offer>

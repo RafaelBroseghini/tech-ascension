@@ -1,9 +1,10 @@
+import { CornerActions } from "./CornerActions.tsx"
 import { production } from "../game/economy.ts"
 import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { TEMP_TARGETS } from "../game/mods.ts"
 import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
-import { moneyMode, PHASE_NAME, stageOf } from "../game/phase.ts"
+import { PHASE_NAME, stageOf } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
 export function MetricsBar() {
@@ -14,14 +15,12 @@ export function MetricsBar() {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
-  const peakMoney = useGame((state) => state.peakMoney)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
   const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
   const stage = stageOf({ skills, owned, jobs, gigs })
-  const paying = moneyMode({ peakMoney, gigs, jobs })
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
 
@@ -42,17 +41,14 @@ export function MetricsBar() {
             <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
           </div>
         ) : null}
-        {paying ? (
-          <div className="m-rate">
-            <dt>$/click</dt>
-            <dd data-testid="per-click">${formatNumber(rates.click)}</dd>
-          </div>
-        ) : (
-          <div className="m-xp-rate">
-            <dt>XP/click</dt>
-            <dd data-testid="xp-per-click">{formatNumber(rates.xpClick * rates.mult)}</dd>
-          </div>
-        )}
+        <div className="m-rate">
+          <dt>$/click</dt>
+          <dd data-testid="per-click">${formatNumber(rates.click)}</dd>
+        </div>
+        <div className="m-xp-rate">
+          <dt>XP/click</dt>
+          <dd data-testid="xp-per-click">{formatNumber(rates.xpClick * rates.mult)}</dd>
+        </div>
         {rates.xpIdle > 0 ? (
           <div className="metric-in m-xp-rate">
             <dt>XP/s</dt>
@@ -94,6 +90,7 @@ export function MetricsBar() {
           <dd data-testid="stage-name">{stage?.name ?? "High school"}</dd>
         </div>
       </dl>
+      <CornerActions />
     </header>
   )
 }

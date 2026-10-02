@@ -62,16 +62,33 @@ describe("phase gates", () => {
     expect(moneyMode({ peakMoney: 1, gigs: [], jobs: [] })).toBe(true)
   })
 
-  it("gates each gig on XP and on how many gigs are already cleared", () => {
+  it("gates each gig on XP, earlier gigs, and a skill set that grows with the gig", () => {
     const gig = gigById(4)
     if (!gig) throw new Error("missing gig 4")
-    const open = { ...EMPTY, xpTotal: gig.xpReq, skills: { "15": 1, "16": 1 } }
+    const skills = { "15": 1, "16": 1, ...Object.fromEntries(gig.skillIds.map((id) => [String(id), 1])) }
+    const open = { ...EMPTY, xpTotal: gig.xpReq, skills }
+    const cleared = [1, 2, 3]
     expect(gigState(EMPTY, gig)).toBe("board-locked")
     expect(gigState(open, gig)).toBe("locked")
-    expect(gigState({ ...open, gigs: [1] }, gig)).toBe("locked")
-    expect(gigState({ ...open, gigs: [1, 2] }, gig)).toBe("ready")
-    expect(gigState({ ...open, xpTotal: gig.xpReq - 1, gigs: [1, 2] }, gig)).toBe("locked")
-    expect(gigState({ ...open, gigs: [1, 2, 4] }, gig)).toBe("done")
+    expect(gigState({ ...open, gigs: [1, 2] }, gig)).toBe("locked")
+    expect(gigState({ ...open, gigs: cleared }, gig)).toBe("ready")
+    expect(gigState({ ...open, xpTotal: gig.xpReq - 1, gigs: cleared }, gig)).toBe("locked")
+    expect(gigState({ ...open, skills: { "15": 1, "16": 1 }, gigs: cleared }, gig)).toBe("locked")
+    expect(gigState({ ...open, gigs: [...cleared, 4] }, gig)).toBe("done")
+  })
+
+  it("makes each gig strictly harder than the one before it", () => {
+    for (let index = 1; index < GIGS.length; index++) {
+      const prev = GIGS[index - 1]
+      const gig = GIGS[index]
+      if (!prev || !gig) throw new Error("missing gig")
+      expect(gig.xpReq).toBeGreaterThan(prev.xpReq)
+      expect(gig.priorGigs).toBe(gig.id - 1)
+      expect(gig.skillIds.length).toBeGreaterThanOrEqual(prev.skillIds.length)
+      for (const id of prev.skillIds) expect(gig.skillIds).toContain(id)
+      if (prev.skillIds.length < 50) expect(gig.skillIds.length).toBe(prev.skillIds.length + 1)
+    }
+    expect(GIGS[0]?.skillIds.length).toBeGreaterThanOrEqual(6)
   })
 
   it("gates jobs on the board, lifetime XP and the price", () => {
@@ -122,16 +139,16 @@ describe("phase tables", () => {
 describe("phase A: XP only", () => {
   beforeEach(() => useGame.getState().wipe())
 
-  it("pays clicks in XP, never in money, and has no $/s", () => {
+  it("pays every click in both money and XP, and has no $/s yet", () => {
     const game = useGame.getState()
     const gain = game.click()
-    expect(gain).toEqual({ money: 0, xp: 1 })
+    expect(gain).toEqual({ money: 1, xp: 1 })
     for (let i = 0; i < 9; i++) useGame.getState().click()
     const state = useGame.getState()
     expect(state.xp).toBe(10)
     expect(state.xpTotal).toBe(10)
-    expect(state.money).toBe(0)
-    expect(state.pop).toBeNull()
+    expect(state.money).toBe(10)
+    expect(state.pop).toMatchObject({ kind: "click", size: "medium", amount: 1 })
     expect(idlePerSec(state)).toBe(0)
   })
 
@@ -145,12 +162,14 @@ describe("phase A: XP only", () => {
     expect(state.xpTotal).toBe(skillCost)
     expect(state.money).toBe(0)
 
-    expect(useGame.getState().click().xp).toBe(2)
+    const paid = useGame.getState().click()
+    expect(paid.xp).toBe(2)
+    expect(paid.money).toBe(1)
     useGame.getState().buySkill(1)
     state = useGame.getState()
     expect(ownedCount(state.skills, 1)).toBe(1)
 
-    useGame.setState({ xp: 1000 })
+    useGame.setState({ xp: 10_000 })
     useGame.getState().buySkill(1, "max")
     expect(ownedCount(useGame.getState().skills, 1)).toBeGreaterThan(5)
     expect(nextCost(10, 2)).toBe(13)
@@ -167,15 +186,28 @@ describe("phase A: XP only", () => {
     const before = useGame.getState()
     useGame.getState().tick(before.now + 10_000)
     const after = useGame.getState()
-    expect(after.xp - before.xp).toBeCloseTo(5)
-    expect(after.xpTotal - before.xpTotal).toBeCloseTo(5)
+    const studied = 5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) * 10
+    expect(after.xp - before.xp).toBeCloseTo(studied)
+    expect(after.xpTotal - before.xpTotal).toBeCloseTo(studied)
     expect(after.money).toBe(0)
   })
 
-  it("a boost multiplies the XP a click pays", () => {
+  it("a boost multiplies both the XP and the money a click pays", () => {
     useGame.setState({ activeBoost: { mult: 5, endsAt: Date.now() + 10_000 } })
-    expect(useGame.getState().click().xp).toBe(5)
-    expect(useGame.getState().money).toBe(0)
+    const gain = useGame.getState().click()
+    expect(gain.xp).toBe(5)
+    expect(gain.money).toBe(5)
+  })
+
+  it("will not sell the next skill until lifetime XP reaches it", () => {
+    const second = SKILL_TIERS[1]
+    if (!second) throw new Error("missing skill 2")
+    useGame.setState({ xp: second.baseXpCost, xpTotal: Math.max(0, second.unlockAtXp - 1) })
+    useGame.getState().buySkill(second.id)
+    expect(ownedCount(useGame.getState().skills, second.id)).toBe(0)
+    useGame.setState({ xpTotal: second.unlockAtXp })
+    useGame.getState().buySkill(second.id)
+    expect(ownedCount(useGame.getState().skills, second.id)).toBe(1)
   })
 
   it("opens the Gig Board with a large unlock pop exactly once", () => {
@@ -203,23 +235,29 @@ describe("phase A: XP only", () => {
 describe("phase B: gigs", () => {
   beforeEach(() => {
     useGame.getState().wipe()
-    useGame.setState({ xp: 12_000, xpTotal: 12_000, skills: { "15": 1, "16": 1 } })
+    useGame.setState({
+      xp: 12_000,
+      xpTotal: 12_000,
+      skills: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [String(index + 1), 1])),
+    })
   })
 
   it("pays the lump on clear with a large pop, and clicks start paying money", () => {
     expect(useGame.getState().phase).toBe("B")
-    expect(useGame.getState().click().money).toBe(0)
+    const primed = useGame.getState().click()
+    expect(primed.money).toBe(1)
+    expect(primed.xp).toBeGreaterThan(0)
     expect(useGame.getState().clearGig(1)).toBe(true)
     const state = useGame.getState()
-    expect(state.money).toBe(40)
+    expect(state.money).toBe(41)
     expect(state.gigs).toEqual([1])
     expect(state.pop).toMatchObject({ kind: "gigClear", size: "large", amount: 40, label: "Fix broken login / blog-engine bug" })
     expect(idlePerSec(state)).toBe(0)
 
     const gain = useGame.getState().click()
     expect(gain.money).toBe(1)
-    expect(gain.xp).toBeCloseTo(1.5)
-    expect(useGame.getState().money).toBe(41)
+    expect(gain.xp).toBeGreaterThan(0)
+    expect(useGame.getState().money).toBe(42)
     expect(useGame.getState().pop).toMatchObject({ kind: "click", size: "medium", amount: 1 })
   })
 
@@ -242,12 +280,12 @@ describe("phase B: gigs", () => {
 
   it("a retainer is the first idle money, paid per second", () => {
     useGame.setState({ xpTotal: 25_000 })
-    for (const id of [1, 2, 3]) expect(useGame.getState().clearGig(id, true)).toBe(true)
+    for (let id = 1; id < 8; id++) expect(useGame.getState().clearGig(id, true)).toBe(true)
     expect(idlePerSec(useGame.getState())).toBe(0)
     expect(useGame.getState().clearGig(8)).toBe(true)
     const before = useGame.getState()
     expect(idlePerSec(before)).toBe(2)
-    expect(before.money).toBe(40 + 120 + 90 + 100)
+    expect(before.money).toBe(GIGS.filter((gig) => gig.id <= 8).reduce((sum, gig) => sum + gig.lump, 0))
     useGame.getState().tick(before.now + 10_000)
     expect(useGame.getState().money - before.money).toBeCloseTo(20)
   })

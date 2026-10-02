@@ -75,19 +75,19 @@ reset(): void
 
 The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/gear.ts`, capital in `src/data/capital.ts`):
 
-- **A Skill grind.** 50 skills, bought with XP only. Clicks pay XP only (`xpPerClick`), money stays 0, there is no $/s.
-- **B Gigs.** Gig Board opens at 12,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned. 50 gigs, each cleared once for a lump $ and an optional `retainerCps`. The first cleared gig turns clicks into money.
+- **A Skill grind.** 50 skills, bought with XP only. The first skills cost a lot of clicks, and the next one stays locked until lifetime XP climbs past the last purchase. There is no $/s.
+- **B Gigs.** Gig Board opens at 12,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned. 50 gigs, each cleared once for a lump $ and an optional `retainerCps`. Each gig requires every earlier gig plus a skill set that grows by one skill each time (gig 1 needs skills 1–6).
 - **C Jobs.** Job Board opens at 35,000 lifetime XP and 5 cleared gigs. 31 jobs (each held once, salary $/s).
 - **Gear** (its own shop tab, between Jobs and Capital; table in `src/data/gear.ts`). Opens at 8,000 lifetime XP. 30 repeatable items bought with `buyEquipment`.
 - **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point.
 
 - `cps` is idle $/s (retainers + salaries + equipment + capital). Click boosts do not change it.
-- `clickPower` is the base $ payout. In money mode a click pays `clickPower × activeBoost.mult` and drips 25% of `xpPerClick` as XP. In phase A a click pays `xpPerClick × activeBoost.mult` XP and no money.
+- `clickPower` is the base $ payout. Every click pays both `clickPower × activeBoost.mult` dollars and `xpPerClick × activeBoost.mult` XP. The floating text shows both. Idle $/s still starts at the first retainer.
 - Money mode starts at the first cleared gig (or whenever money already exists, as with a forced balance).
 - Skills cost XP and spending never lowers `xpTotal`. Jobs, equipment and capital cost money. Repeatable items cost `floor(base × 1.15 ^ owned)`.
 - `nextUnlock` is what the shop banner under the tabs shows. Closed gates come first: Gear (8K XP), Gig Board, Job Board, then Capital. With every gate open it walks Skills, Gigs, Jobs, Gear, then Capital and stops at the first row that has not been bought yet. An earlier unlocked row that was never bought wins over a later row. The first copy is enough for repeatable gear, skills and capital. `needs` is never empty.
 - `spriteTierId` is the art id of the stage sprite: the highest owned capital tier, else the art of the furthest job, gig or skill. It is `1` before the first purchase. `era` is `early` until a capital tier is owned.
-- The shop UI hides skills until `xpTotal` reaches their `unlockAtXp`, and capital until `peakMoney` has reached the price. `buy(tierId)` ignores that reveal but still enforces the capital gate. The other `buy*` calls enforce their gates too.
+- The shop lists owned rows plus the next unowned row, even while that row is still locked. Skills cannot be bought until `xpTotal` reaches `unlockAtXp`. Gear and capital first copies wait until their reveal gate (held money, and a job for some gear). `buy(tierId)` still enforces the capital gate.
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock. Skills keep studying (XP/s) in every phase.
 - `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll.
 - `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours, for both $ and XP. The toast is the same `welcome back, credited $X` path as a reload (`welcome back, studied +X XP` when only XP was earned).
@@ -147,7 +147,7 @@ Phase A, then the Gig Board:
 ```js
 const game = window.__GAME__
 game.reset()
-while (game.getState().xp < 10) game.click() // XP only, money stays 0
+while (game.getState().xp < 240) game.click() // each click pays $ and XP; the first skill is a long grind
 game.buySkill(1)
 game.setXp(30_000)
 game.buySkill(11) // Portfolio

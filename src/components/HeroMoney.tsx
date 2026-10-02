@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import { xpPerClick } from "../game/economy.ts"
-import { modFactors, modsOf } from "../game/mods.ts"
+import { production } from "../game/economy.ts"
+import { modsOf } from "../game/mods.ts"
 import { formatNumber, HERO_RAW_DIGITS_BELOW } from "../game/format.ts"
-import { moneyMode } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
 const COUNT_UP_MS = 720
@@ -48,17 +47,21 @@ function useScore(target: number): number {
 
 export function HeroMoney() {
   const money = useGame((state) => state.money)
-  const xp = useGame((state) => state.xp)
   const skills = useGame((state) => state.skills)
+  const equipment = useGame((state) => state.equipment)
+  const owned = useGame((state) => state.owned)
+  const jobs = useGame((state) => state.jobs)
+  const gigs = useGame((state) => state.gigs)
+  const activeBoost = useGame((state) => state.activeBoost)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
   const now = useGame((state) => state.now)
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
-  const paying = useGame((state) => moneyMode(state))
   const valueRef = useRef<HTMLSpanElement>(null)
   const shown = useScore(money)
   const text = formatNumber(shown, HERO_RAW_DIGITS_BELOW)
+  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
 
   useEffect(() => {
     const el = valueRef.current
@@ -96,18 +99,6 @@ export function HeroMoney() {
     )
   }, [pop])
 
-  if (!paying) {
-    return (
-      <div className="hero-money" aria-live="off">
-        <span className="hero-money-label">Study XP</span>
-        <span data-testid="hero-xp" className="hero-money-value is-xp">
-          {formatNumber(Math.floor(xp))}
-        </span>
-        <span className="hero-money-sub">+{formatNumber(xpPerClick(skills) * modFactors(modsOf({ foreverMult, tempMults }), now, now).click)} per click · money starts with your first gig</span>
-      </div>
-    )
-  }
-
   return (
     <div className="hero-money" aria-live="off">
       <span className="hero-money-label">Money</span>
@@ -118,6 +109,9 @@ export function HeroMoney() {
         className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", text.length > 11 ? "is-long" : ""].filter(Boolean).join(" ")}
       >
         ${text}
+      </span>
+      <span className="hero-money-sub">
+        +${formatNumber(rates.click)} · +{formatNumber(rates.xpClick * rates.mult)} XP
       </span>
     </div>
   )

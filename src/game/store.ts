@@ -3,6 +3,8 @@ import { advanceBoostClock } from "./boosts.ts"
 import type { BoostClock } from "./boosts.ts"
 import {
   gigById,
+  isGearRevealed,
+  isRevealed,
   highestOwnedSkill,
   highestOwnedCapital,
   idlePerSec,
@@ -32,7 +34,7 @@ import { freshSave, hydrate, OFFLINE_CAP_MS, SAVE_VERSION } from "./save.ts"
 import type { SaveData } from "./save.ts"
 import { clearSave, readSaveText, writeSave } from "./storage.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
-import { MONEY_POP, XP_DRIP_FRACTION } from "../data/phases.ts"
+import { MONEY_POP } from "../data/phases.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -230,21 +232,15 @@ export const useGame = create<GameState>((set, get) => ({
     if (state.fight) return get().hit()
     const now = Date.now()
     const rates = production(state, state.activeBoost, now, modsOf(state))
-    if (!moneyMode(state)) {
-      // Phase A: clicks are study time. The boost multiplies the XP, money stays at zero.
-      const gain = rates.xpClick * rates.mult
-      set({ xp: state.xp + gain, xpTotal: state.xpTotal + gain, now })
-      return { money: 0, xp: gain }
-    }
-    const drip = rates.xpClick * XP_DRIP_FRACTION
+    const xpGain = rates.xpClick * rates.mult
     set({
       money: state.money + rates.click,
-      xp: state.xp + drip,
-      xpTotal: state.xpTotal + drip,
+      xp: state.xp + xpGain,
+      xpTotal: state.xpTotal + xpGain,
       now,
       ...makePop(state, "click", rates.click, ""),
     })
-    return { money: rates.click, xp: drip }
+    return { money: rates.click, xp: xpGain }
   },
 
   hit: () => {
@@ -290,6 +286,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     if (!capitalUnlocked(state)) return
     const have = ownedCount(state.owned, tier.id)
+    if (have === 0 && !isRevealed(tier, state.owned, state.peakMoney)) return
     const quote = quotePurchase(state.money, tier.baseCost, have, mode)
     if (quote.count <= 0) return
 
@@ -317,6 +314,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!skill) return
     const state = get()
     const have = ownedCount(state.skills, skill.id)
+    if (have === 0 && state.xpTotal < skill.unlockAtXp) return
     const quote = quotePurchase(state.xp, skill.baseXpCost, have, mode)
     if (quote.count <= 0) return
 
@@ -339,6 +337,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     if (!equipmentOpen(state)) return
     const have = ownedCount(state.equipment, equip.id)
+    if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs)) return
     const quote = quotePurchase(state.money, equip.baseCost, have, mode)
     if (quote.count <= 0) return
     set({
