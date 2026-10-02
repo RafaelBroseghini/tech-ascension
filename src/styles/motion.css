@@ -3,19 +3,31 @@
  *  - click is a ~260ms bump: the sprite pops up, tips away from the pointer and
  *    settles with a tiny jitter; it restarts on every click and is a little
  *    bigger when hot. No side-to-side shaking.
- *  - idle life (side-to-side sway, aura, motes, sheen) is slow and never covers the UI
+ *  - idle life (side-to-side sway, aura, motes) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
  * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
  * at the pointer; its keyframes live there.
  */
 
-/* Gravity: slow start, fast end. Fully gone by 500ms. */
+/* Waterfall thumb: x drifts linearly, y follows t² (gravity), gone by 300ms. */
 @keyframes drop-fall {
-  0% { transform: translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
-  15% { transform: translate(calc(var(--dx) * 0.1), -14px) rotate(calc(var(--rot) * 0.2)) scale(1); opacity: 1; }
-  70% { opacity: 1; }
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.7); opacity: 1; }
+  25% { transform: translate(calc(var(--dx) * 0.25), calc(var(--dy) * 0.0625)) rotate(calc(var(--rot) * 0.25)) scale(1); opacity: 1; }
+  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.25)) rotate(calc(var(--rot) * 0.5)) scale(1); opacity: 0.9; }
+  75% { transform: translate(calc(var(--dx) * 0.75), calc(var(--dy) * 0.5625)) rotate(calc(var(--rot) * 0.75)) scale(0.95); opacity: 0.45; }
   100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
+}
+
+@keyframes bg-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Cursor and LED overlay on the backdrop: hard on/off, no fade. */
+@keyframes bg-blink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0; }
 }
 
 /* Idle sway: left to right and back over 3.6s, 6px each way. */
@@ -33,11 +45,6 @@
   0% { transform: translate(0, 0) rotate(45deg) scale(0.6); opacity: 0; }
   15% { opacity: 0.95; }
   100% { transform: translate(calc(var(--i) * 3px - 12px), -300px) rotate(225deg) scale(1.1); opacity: 0; }
-}
-
-@keyframes sheen {
-  0%, 62% { transform: translateX(-120%); }
-  86%, 100% { transform: translateX(120%); }
 }
 
 @keyframes pop-rise {
@@ -169,7 +176,6 @@
   .ring,
   .spark,
   .motes,
-  .sheen,
   .drops,
   .era-sweep,
   .rim::before {
