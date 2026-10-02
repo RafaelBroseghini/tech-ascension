@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { eraSections, tiersInEra } from "../data/eras.ts"
 import { ERA_ACCENT, thumbForTier } from "../data/sprites.ts"
 import type { Era } from "../data/tiers.ts"
@@ -24,6 +24,8 @@ export function Shop() {
   const [pickedEra, setPickedEra] = useState<Era | null>(null)
   const [flashId, setFlashId] = useState<number | null>(null)
   const [fresh, setFresh] = useState<ReadonlySet<number>>(new Set())
+  const listRef = useRef<HTMLDivElement>(null)
+  const seenInEra = useRef(new Map<Era, number>())
 
   const revealedByEra = useMemo(() => {
     const map = new Map<Era, ReturnType<typeof tiersInEra>>()
@@ -39,6 +41,18 @@ export function Shop() {
   const era = pickedEra && revealedByEra.has(pickedEra) ? pickedEra : fallbackEra
   const rows = revealedByEra.get(era) ?? []
   const current = sections.find((section) => section.id === era)
+
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const previous = seenInEra.current.get(era)
+    seenInEra.current.set(era, rows.length)
+    if (previous === undefined || rows.length <= previous) return
+    const row = list.querySelector<HTMLElement>(".offer:last-child")
+    if (!row) return
+    const overflow = row.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom
+    if (overflow > 0) list.scrollTop += overflow
+  }, [era, rows.length])
 
   const revealedIds = [...revealedByEra.values()].flat().map((tier) => tier.id)
   const [known, setKnown] = useState<ReadonlySet<number>>(() => new Set(revealedIds))
@@ -102,7 +116,7 @@ export function Shop() {
           })}
         </div>
       ) : null}
-      <div className="shop-list" key={era}>
+      <div className="shop-list" key={era} ref={listRef}>
         {rows.length === 0 ? (
           <p className="shop-empty">Nothing within reach yet. Keep clicking.</p>
         ) : null}
