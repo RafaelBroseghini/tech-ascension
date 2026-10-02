@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { eraSections, tiersInEra } from "../data/eras.ts"
-import { ERA_ACCENT, spriteForTier } from "../data/sprites.ts"
+import { spriteForTier } from "../data/sprites.ts"
 import type { Era } from "../data/tiers.ts"
 import { canAfford, highestOwnedTier, isRevealed, nextCost, ownedCount } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
@@ -9,7 +9,7 @@ import { useGame } from "../game/store.ts"
 function OwnedCount({ value }: { value: number }) {
   const [initial] = useState(value)
   return (
-    <span key={value} className={value !== initial ? "tick-up" : undefined}>
+    <span key={value} className={value !== initial ? "own tick-up" : "own"}>
       {formatNumber(value)}
     </span>
   )
@@ -59,7 +59,7 @@ export function Shop() {
     })
     window.setTimeout(() => {
       setFlashId((currentId) => (currentId === id ? null : currentId))
-    }, 240)
+    }, 440)
   }
 
   return (
@@ -92,7 +92,7 @@ export function Shop() {
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                style={{ ["--tab-glow" as string]: ERA_ACCENT[section.id].glow }}
+                data-era={section.id}
                 onClick={() => setPickedEra(section.id)}
               >
                 {section.label}
@@ -102,11 +102,11 @@ export function Shop() {
           })}
         </div>
       ) : null}
-      <div className="shop-list">
+      <div className="shop-list" key={era}>
         {rows.length === 0 ? (
           <p className="shop-empty">Nothing within reach yet. Keep clicking.</p>
         ) : null}
-        {rows.map((tier) => {
+        {rows.map((tier, index) => {
           const have = ownedCount(owned, tier.id)
           const cost = nextCost(tier.baseCost, have)
           const afford = canAfford(money, cost)
@@ -122,7 +122,7 @@ export function Shop() {
               ]
                 .filter(Boolean)
                 .join(" ")}
-              style={{ ["--offer-glow" as string]: ERA_ACCENT[tier.era].glow }}
+              style={{ ["--i" as string]: index }}
             >
               <img src={spriteForTier(tier.id)} alt="" width={48} height={48} />
               <div className="offer-copy">

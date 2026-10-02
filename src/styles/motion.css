@@ -1,0 +1,167 @@
+/*
+ * Motion. Rules of the room:
+ *  - the sprite is the toy: clicks tilt, squash and shake it via the Web
+ *    Animations API in Stage.tsx (restarted on every click, harder when hot)
+ *  - boost is a rim light on the sprite, never a screen flood
+ *  - prefers-reduced-motion is a hard kill switch (bottom of file)
+ */
+
+@keyframes shard {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.4); opacity: 0; }
+}
+
+@keyframes rim-spin {
+  to { --rim-angle: 360deg; }
+}
+
+@keyframes rim-breathe {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes tag-in {
+  from { transform: translateY(6px) scale(0.8); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Number tick: new digits roll up from below and flash the accent. */
+@keyframes tick-up {
+  0% { transform: translateY(45%); opacity: 0.2; color: var(--accent); }
+  60% { color: var(--accent); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes buy-sweep {
+  from { transform: translateX(-120%) skewX(-18deg); opacity: 0.9; }
+  to { transform: translateX(120%) skewX(-18deg); opacity: 0; }
+}
+
+@keyframes row-in {
+  from { transform: translateX(14px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes panel-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toast-in {
+  from { transform: translate(-50%, 24px) scale(0.96); opacity: 0; }
+  to { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+@keyframes era-sweep {
+  0% { transform: translateX(-105%); opacity: 0.85; }
+  100% { transform: translateX(105%); opacity: 0; }
+}
+
+@keyframes era-title {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes boost-pulse {
+  0%, 100% { box-shadow: inset 0 -3px 0 var(--accent); }
+  50% { box-shadow: inset 0 -3px 0 var(--accent-hi); }
+}
+
+@keyframes pop-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-0.4deg); }
+  50% { transform: translateY(-6px) rotate(0.4deg); }
+}
+
+@keyframes aura-breathe {
+  0%, 100% { filter: brightness(0.9); }
+  50% { filter: brightness(1.25); }
+}
+
+@keyframes frame-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.14) saturate(1.15); }
+}
+
+@keyframes mote-rise {
+  0% { transform: translate(0, 0) rotate(45deg) scale(0.6); opacity: 0; }
+  15% { opacity: 0.95; }
+  100% { transform: translate(calc(var(--i) * 3px - 12px), -300px) rotate(225deg) scale(1.1); opacity: 0; }
+}
+
+@keyframes sheen {
+  0%, 62% { transform: translateX(-120%); }
+  86%, 100% { transform: translateX(120%); }
+}
+
+@keyframes ring-out {
+  from { transform: scale(0.4); opacity: 0.95; }
+  to { transform: scale(5.5); opacity: 0; }
+}
+
+@keyframes ring-big {
+  from { transform: scale(0.3); opacity: 1; }
+  to { transform: scale(9); opacity: 0; }
+}
+
+@keyframes spark-out {
+  to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+@keyframes rise {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  14% { transform: translate(-50%, -70%) scale(1.25); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--drift, 0px)), -170%) scale(1); opacity: 0; }
+}
+
+@keyframes art-reveal {
+  0% { transform: scale(0.55) rotate(-6deg); filter: brightness(3) blur(10px); opacity: 0; }
+  45% { transform: scale(1.14) rotate(2deg); filter: brightness(1.7) blur(0); opacity: 1; }
+  100% { transform: scale(1) rotate(0); filter: brightness(1) blur(0); }
+}
+
+@keyframes fresh-pulse {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: var(--accent-deep); }
+}
+
+@keyframes fresh-blink {
+  50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  .confetti,
+  .era-sweep,
+  .ring,
+  .spark,
+  .motes,
+  .sheen,
+  .rim::before {
+    display: none !important;
+  }
+
+  /* Opacity-only readout so pops still clear themselves. */
+  .pop {
+    animation: pop-fade 700ms linear forwards !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .rim {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}

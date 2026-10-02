@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
 import { ERA_ACCENT, spriteForTier, START_SUBJECT, subjectForTier } from "../data/sprites.ts"
 import { highestOwnedTier, tierById } from "../game/economy.ts"
-import { formatNumber } from "../game/format.ts"
+import { formatMultiplier, formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 
 type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" | "xp" }
@@ -72,7 +72,6 @@ export function Stage() {
   const accent = ERA_ACCENT[artTier?.era ?? "early"]
   const boosted = Boolean(activeBoost && activeBoost.endsAt > now)
   const stageName = ownedTier?.name ?? "High school"
-  const boostLeft = activeBoost && boosted ? Math.max(0, activeBoost.endsAt - now) : 0
 
   const lastArt = useRef(artId)
   useEffect(() => {
@@ -187,26 +186,9 @@ export function Stage() {
     if (event.repeat && (event.key === " " || event.key === "Enter")) event.preventDefault()
   }
 
-  const mult = activeBoost?.mult ?? 1
-
   return (
-    <section
-      className={boosted ? "stage-panel is-boosted" : "stage-panel"}
-      aria-label="Click stage"
-      style={{ ["--glow" as string]: accent.glow, ["--tint" as string]: accent.tint }}
-    >
-      <div className="boost-chip-slot" aria-live="polite">
-        {boosted ? (
-          <div className="boost-chip">
-            <span className="boost-chip-mult">×{mult}</span>
-            <span>click boost</span>
-            <i
-              className="boost-chip-bar"
-              style={{ ["--left" as string]: `${Math.min(100, (boostLeft / 12000) * 100)}%` }}
-            />
-          </div>
-        ) : null}
-      </div>
+    <section className={boosted ? "stage-panel is-boosted" : "stage-panel"} aria-label="Click stage">
+      <span className="era-sweep" aria-hidden="true" />
       <button
         ref={hitboxRef}
         type="button"
@@ -217,6 +199,10 @@ export function Stage() {
         onKeyDown={onKeyDown}
         aria-label={`Click to earn. Current stage ${stageName}. ${subject ?? ""}`}
       >
+        {boosted ? <span className="rim" aria-hidden="true" /> : null}
+        {boosted && activeBoost ? (
+          <span className="boost-tag">×{formatMultiplier(activeBoost.mult)}</span>
+        ) : null}
         <span className="aura" aria-hidden="true" />
         <span className="motes" aria-hidden="true">
           {Array.from({ length: 9 }, (_, index) => (
@@ -291,9 +277,11 @@ export function Stage() {
           />
         ))}
       </button>
-      <p className="eyebrow">{ownedTier ? accent.kicker : "Before the offer"}</p>
-      <h2>{stageName}</h2>
-      <p className="subject">{subject}</p>
+      <div className="plate">
+        <p className="era-tag">{ownedTier ? accent.kicker : "Before the offer"}</p>
+        <h2>{stageName}</h2>
+        <p className="subject">{subject}</p>
+      </div>
     </section>
   )
 }

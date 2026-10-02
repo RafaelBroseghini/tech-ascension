@@ -41,6 +41,9 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 | Generator table | `src/data/tiers.ts` |
 | Sprite subjects and `SPRITE_BY_TIER` | `src/data/sprites.ts` |
 | Art | `public/sprites/{id}.webp` (512×512; `0.webp` is the opening scene) |
+| Design tokens (type, space, era palettes, easing) | `src/styles/tokens.css` |
+| Keyframes and the reduced-motion kill switch | `src/styles/motion.css` |
+| Before/after screenshots | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
 | Boost rates by era | `src/data/boosts.ts` |
 | Cost, click power, idle | `src/game/economy.ts` |
 | Save, migration, offline credit | `src/game/save.ts` |
