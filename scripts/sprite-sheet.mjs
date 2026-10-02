@@ -14,7 +14,7 @@ if (!chrome) throw new Error("No Chrome found. Set CHROME_PATH.")
 const ids = Array.from({ length: last - first + 1 }, (_, i) => first + i)
 const cols = 6
 const html = `<body style="margin:0;background:#14110d;display:grid;grid-template-columns:repeat(${cols},256px);gap:8px;padding:8px">${ids
-  .map((id) => `<img src="file://${root}/public/sprites/${id}.svg" width="256" height="256">`)
+  .map((id) => `<img src="file://${root}/public/sprites/${id}.webp" width="256" height="256">`)
   .join("")}</body>`
 
 mkdirSync(path.dirname(out), { recursive: true })
