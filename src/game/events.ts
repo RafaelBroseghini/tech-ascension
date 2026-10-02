@@ -1,5 +1,5 @@
 import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
-import type { EventEffect, GameEvent } from "../data/events.ts"
+import type { EventEffect, EventRequires, GameEvent } from "../data/events.ts"
 import type { Era } from "../data/capital.ts"
 import { sampleWaitMs } from "./boosts.ts"
 import { formatNumber } from "./format.ts"
@@ -7,6 +7,51 @@ import { clampForever } from "./mods.ts"
 import type { EventMods, TempMults, TempTarget } from "./mods.ts"
 
 export { EVENT_MEAN_WAIT_MS, EVENTS }
+
+/** Jobs held, gigs cleared, and gear owned. Missing lists count as empty. */
+export type EventOwned = {
+  jobs?: readonly number[]
+  gigs?: readonly number[]
+  equipment?: Readonly<Record<string, number>>
+}
+
+function numberList(value: unknown): readonly number[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((id): id is number => typeof id === "number" && Number.isFinite(id))
+}
+
+function gearCopies(equipment: Readonly<Record<string, number>> | undefined): number {
+  if (!equipment) return 0
+  let total = 0
+  for (const count of Object.values(equipment)) if (count > 0) total += count
+  return total
+}
+
+/**
+ * True when every filled `requires` field holds. No `requires` is always eligible.
+ * Fields AND together. A list matches if the player has any one of its ids.
+ * A missing or empty field does not block the row.
+ */
+export function eventRequiresMet(event: { requires?: EventRequires }, owned: EventOwned = {}): boolean {
+  const req = event.requires
+  if (!req) return true
+  const jobs = owned.jobs ?? []
+  const gigs = owned.gigs ?? []
+  const equipment = owned.equipment ?? {}
+  if (typeof req.minJobId === "number" && Number.isFinite(req.minJobId)) {
+    const highest = jobs.reduce((max, id) => (id > max ? id : max), 0)
+    if (highest < req.minJobId) return false
+  }
+  const jobIds = numberList(req.jobIds)
+  if (jobIds.length > 0 && !jobIds.some((id) => jobs.includes(id))) return false
+  if (typeof req.minGigs === "number" && Number.isFinite(req.minGigs) && gigs.length < req.minGigs) return false
+  const gigIds = numberList(req.gigIds)
+  if (gigIds.length > 0 && !gigIds.some((id) => gigs.includes(id))) return false
+  if (typeof req.minGearOwned === "number" && Number.isFinite(req.minGearOwned) && gearCopies(equipment) < req.minGearOwned) return false
+  const gearIds = numberList(req.gearIds)
+  if (gearIds.length > 0 && !gearIds.some((id) => (equipment[String(id)] ?? 0) > 0)) return false
+  return true
+}
 
 /** The table row type. `data/events.ts` is a drop-in file: swap it and nothing here changes. */
 export type EventDef = GameEvent
@@ -25,11 +70,12 @@ function touchesMoney(event: EventDef): boolean {
 }
 
 /**
- * Roll pool: `any` or the player's era, minus events that move money before any money exists.
- * Clicks pay dollars from the first one, so cash events can roll once that balance is above zero.
+ * Roll pool: `any` or the player's era, minus events the player does not qualify for, minus events
+ * that move money before any money exists. Ownership defaults to empty, so a required row never
+ * fires unless the caller passes jobs, gigs, and gear.
  */
-export function eligibleEvents(era: Era, paying: boolean): EventDef[] {
-  const pool = eventsForEra(era)
+export function eligibleEvents(era: Era, paying: boolean, owned: EventOwned = {}): EventDef[] {
+  const pool = eventsForEra(era).filter((event) => eventRequiresMet(event, owned))
   return paying ? pool : pool.filter((event) => !touchesMoney(event))
 }
 
@@ -131,7 +177,7 @@ export function applyEvent(state: EventState, event: EventDef, now: number): Eve
   return { patch: { money, xp, xpTotal, foreverMult, temp }, lines }
 }
 
-export type EventContext = { era: Era; paying: boolean; blocked: boolean }
+export type EventContext = { era: Era; paying: boolean; blocked: boolean; owned?: EventOwned }
 
 export type EventAdvance = {
   nextEventAt: number | null
@@ -152,7 +198,7 @@ export function advanceEventClock(nextEventAt: number | null, ctx: EventContext,
   }
   const dueAt = nextEventAt ?? now + sampleWaitMs(EVENT_MEAN_WAIT_MS, rng())
   if (now < dueAt) return { nextEventAt: dueAt, fire: null }
-  const fire = pickEvent(eligibleEvents(ctx.era, ctx.paying), rng())
+  const fire = pickEvent(eligibleEvents(ctx.era, ctx.paying, ctx.owned), rng())
   if (!fire) return { nextEventAt: now + sampleWaitMs(EVENT_MEAN_WAIT_MS, rng()), fire: null }
   return { nextEventAt: null, fire }
 }

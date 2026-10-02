@@ -453,7 +453,12 @@ export const useGame = create<GameState>((set, get) => ({
     // Events wait out fights and each other: one slot, never stacked.
     const eventAdvance = advanceEventClock(
       state.nextEventAt,
-      { era, paying: moneyMode(state), blocked: fighting || state.fight !== null || state.event !== null },
+      {
+        era,
+        paying: moneyMode(state),
+        blocked: fighting || state.fight !== null || state.event !== null,
+        owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
+      },
       now,
       Math.random,
     )

@@ -221,7 +221,7 @@ describe("click boosts", () => {
   it("clamps the exponential wait and rolls the era weights", () => {
     expect(sampleWaitMs(45_000, 0)).toBe(18_000)
     expect(sampleWaitMs(45_000, 0.999999)).toBe(112_500)
-    expect(pickMultiplier(BOOST_BY_ERA.early.weights, 0)).toBe(2)
+    expect(pickMultiplier(BOOST_BY_ERA.early.weights, 0)).toBe(3)
     expect(pickMultiplier(BOOST_BY_ERA.early.weights, 0.7)).toBe(5)
     expect(pickMultiplier(BOOST_BY_ERA.early.weights, 0.95)).toBe(10)
     expect(pickMultiplier(BOOST_BY_ERA.end.weights, 0.6)).toBe(10)
@@ -240,28 +240,28 @@ describe("click boosts", () => {
       rng,
     )
     expect(first.spawned).toBeNull()
-    expect(first.clock.nextBoostAt).toBe(18_000)
+    expect(first.clock.nextBoostAt).toBe(30_000)
 
-    const spawned = advanceBoostClock(first.clock, "early", 18_000, rng)
-    expect(spawned.spawned).toEqual({ mult: 2, endsAt: 26_000 })
+    const spawned = advanceBoostClock(first.clock, "early", 30_000, rng)
+    expect(spawned.spawned).toEqual({ mult: 3, endsAt: 38_000 })
     expect(spawned.clock.nextBoostAt).toBeNull()
 
-    const still = advanceBoostClock(spawned.clock, "early", 20_000, rng)
+    const still = advanceBoostClock(spawned.clock, "early", 32_000, rng)
     expect(still.spawned).toBeNull()
-    expect(still.clock.activeBoost?.mult).toBe(2)
+    expect(still.clock.activeBoost?.mult).toBe(3)
 
-    const ended = advanceBoostClock(still.clock, "early", 26_000, rng)
+    const ended = advanceBoostClock(still.clock, "early", 38_000, rng)
     expect(ended.spawned).toBeNull()
     expect(ended.clock.activeBoost).toBeNull()
-    expect(ended.clock.nextBoostAt).toBe(26_000 + 1_000 + 18_000)
+    expect(ended.clock.nextBoostAt).toBe(38_000 + 1_000 + 30_000)
 
     const pity = advanceBoostClock(
       { activeBoost: null, nextBoostAt: 999_999, idleSince: 0 },
       "early",
-      112_500,
+      187_500,
       rng,
     )
-    expect(pity.spawned?.mult).toBe(2)
+    expect(pity.spawned?.mult).toBe(3)
     expect(pity.clock.activeBoost).toEqual(pity.spawned)
   })
 })
@@ -269,12 +269,12 @@ describe("click boosts", () => {
 describe("catalog tables", () => {
   const contiguous = (rows: readonly { id: number }[]) => rows.every((row, index) => row.id === index + 1)
 
-  it("ships Catalogs v3: 50 skills, 50 gigs, 31 jobs, 30 gear, 25 capital, ids 1..n", () => {
-    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([50, 50, 31, 30, 25])
+  it("ships Catalogs v4: 105 skills, 65 gigs, 31 jobs, 110 gear, 25 capital, ids 1..n", () => {
+    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([105, 65, 31, 110, 25])
     for (const rows of [SKILL_TIERS, GIGS, JOB_TIERS, EQUIPMENT, CAPITAL]) expect(contiguous(rows)).toBe(true)
   })
 
-  it("doubles purchase prices and leaves payouts, gig lumps and gates alone", () => {
+  it("doubles purchase prices and leaves payouts and gig lumps alone", () => {
     expect(PURCHASE_COST_SCALE).toBe(2)
     expect(SKILL_TIERS[0]?.baseXpCost).toBe(240)
     expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
@@ -286,7 +286,7 @@ describe("catalog tables", () => {
     expect(CAPITAL[0]?.baseCost).toBe(200_000)
     expect(CAPITAL[0]?.cps).toBe(50)
     expect(GIGS[0]?.lump).toBe(40)
-    expect(GEAR_TAB_UNLOCK.minXp).toBe(8_000)
+    expect(GEAR_TAB_UNLOCK.minXp).toBe(10_000)
   })
 
   it("keeps every row paid for: positive costs, and an income or click bonus", () => {

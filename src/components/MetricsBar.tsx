@@ -1,3 +1,4 @@
+import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CornerActions } from "./CornerActions.tsx"
 import { production } from "../game/economy.ts"
 import { formatMult, TARGET_LABEL } from "../game/events.ts"
@@ -60,7 +61,7 @@ export function MetricsBar() {
           <dd data-testid="xp">{formatNumber(Math.floor(xp))}</dd>
         </div>
         {seconds > 0 ? (
-          <div className="m-boost">
+          <div className={rates.mult >= GOLD_MULT_THRESHOLD ? "m-boost m-click-boost is-gold" : "m-boost m-click-boost"}>
             <dt>Click boost</dt>
             <dd data-testid="boost">
               ×{formatMultiplier(rates.mult)} · {seconds}s

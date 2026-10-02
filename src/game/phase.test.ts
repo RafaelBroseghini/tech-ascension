@@ -19,22 +19,22 @@ import { useGame } from "./store.ts"
 const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
 
 describe("phase gates", () => {
-  it("opens the Gig Board at 12K lifetime XP with Portfolio (#15) and React (#16) owned", () => {
-    expect(GIG_BOARD_UNLOCK).toEqual({ minXp: 12000, requireOwnedSkills: [15, 16] })
+  it("opens the Gig Board at 14K lifetime XP with Portfolio (#15) and React (#16) owned", () => {
+    expect(GIG_BOARD_UNLOCK).toEqual({ minXp: 14000, requireOwnedSkills: [15, 16] })
     const skills = { "15": 1, "16": 1 }
     expect(gigBoardUnlocked(EMPTY)).toBe(false)
-    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000 })).toBe(false)
-    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000, skills: { "15": 1 } })).toBe(false)
-    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000, skills: { "16": 1 } })).toBe(false)
-    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 11_999, skills })).toBe(false)
-    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 12_000, skills })).toBe(true)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 14_000 })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 14_000, skills: { "15": 1 } })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 14_000, skills: { "16": 1 } })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 13_999, skills })).toBe(false)
+    expect(gigBoardUnlocked({ ...EMPTY, xpTotal: 14_000, skills })).toBe(true)
   })
 
-  it("opens the Job Board at 35K lifetime XP and 5 completed gigs", () => {
-    expect(JOB_BOARD_UNLOCK).toEqual({ minXp: 35000, minGigsCompleted: 5 })
-    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4] })).toBe(false)
-    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 34_999, gigs: [1, 2, 3, 4, 5] })).toBe(false)
-    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4, 5] })).toBe(true)
+  it("opens the Job Board at 40K lifetime XP and 6 completed gigs", () => {
+    expect(JOB_BOARD_UNLOCK).toEqual({ minXp: 40000, minGigsCompleted: 6 })
+    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5] })).toBe(false)
+    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 39_999, gigs: [1, 2, 3, 4, 5, 6] })).toBe(false)
+    expect(jobBoardUnlocked({ ...EMPTY, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5, 6] })).toBe(true)
   })
 
   it("opens capital on the Senior job (id >= 14) OR $500K held, and stays open once you own capital", () => {
@@ -50,9 +50,9 @@ describe("phase gates", () => {
 
   it("reports the furthest phase and never skips the gates", () => {
     expect(phaseOf(EMPTY)).toBe("A")
-    expect(phaseOf({ ...EMPTY, xpTotal: 12_000, skills: { "15": 1, "16": 1 } })).toBe("B")
-    expect(phaseOf({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4, 5] })).toBe("C")
-    expect(phaseOf({ ...EMPTY, xpTotal: 35_000, gigs: [1, 2, 3, 4, 5], jobs: [14] })).toBe("D")
+    expect(phaseOf({ ...EMPTY, xpTotal: 14_000, skills: { "15": 1, "16": 1 } })).toBe("B")
+    expect(phaseOf({ ...EMPTY, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5, 6] })).toBe("C")
+    expect(phaseOf({ ...EMPTY, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [14] })).toBe("D")
     expect(phaseOf({ ...EMPTY, peakMoney: 600_000 })).toBe("D")
   })
 
@@ -82,11 +82,12 @@ describe("phase gates", () => {
       const prev = GIGS[index - 1]
       const gig = GIGS[index]
       if (!prev || !gig) throw new Error("missing gig")
-      expect(gig.xpReq).toBeGreaterThan(prev.xpReq)
+      if (gig.id <= 50) expect(gig.xpReq).toBeGreaterThan(prev.xpReq)
+      expect(gig.xpReq).toBeGreaterThan(0)
       expect(gig.priorGigs).toBe(gig.id - 1)
       expect(gig.skillIds.length).toBeGreaterThanOrEqual(prev.skillIds.length)
       for (const id of prev.skillIds) expect(gig.skillIds).toContain(id)
-      if (prev.skillIds.length < 50) expect(gig.skillIds.length).toBe(prev.skillIds.length + 1)
+      if (prev.skillIds.length < SKILL_TIERS.length) expect(gig.skillIds.length).toBe(prev.skillIds.length + 1)
     }
     expect(GIGS[0]?.skillIds.length).toBeGreaterThanOrEqual(6)
   })
@@ -94,7 +95,7 @@ describe("phase gates", () => {
   it("gates jobs on the board, lifetime XP and the price", () => {
     const junior = jobById(2)
     if (!junior) throw new Error("missing job 2")
-    const board = { ...EMPTY, xpTotal: 45_000, gigs: [1, 2, 3, 4, 5] }
+    const board = { ...EMPTY, xpTotal: 45_000, gigs: [1, 2, 3, 4, 5, 6] }
     expect(jobState(EMPTY, junior)).toBe("board-locked")
     expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
     expect(jobState(board, junior)).toBe("ready")
@@ -114,13 +115,13 @@ describe("phase gates", () => {
 })
 
 describe("phase tables", () => {
-  it("ships 50 skills, 50 gigs and 31 jobs with contiguous ids", () => {
-    expect(SKILL_TIERS).toHaveLength(50)
-    expect(GIGS).toHaveLength(50)
+  it("ships 105 skills, 65 gigs and 31 jobs with contiguous ids", () => {
+    expect(SKILL_TIERS).toHaveLength(105)
+    expect(GIGS).toHaveLength(65)
     expect(JOB_TIERS).toHaveLength(31)
     SKILL_TIERS.forEach((row, index) => {
       expect(row.id).toBe(index + 1)
-      if (index > 0) expect(row.baseXpCost).toBeGreaterThan(SKILL_TIERS[index - 1]?.baseXpCost ?? 0)
+      if (index > 0 && index < 50) expect(row.baseXpCost).toBeGreaterThan(SKILL_TIERS[index - 1]?.baseXpCost ?? 0)
     })
     JOB_TIERS.forEach((row, index) => expect(row.id).toBe(index + 1))
   })
@@ -236,8 +237,8 @@ describe("phase B: gigs", () => {
   beforeEach(() => {
     useGame.getState().wipe()
     useGame.setState({
-      xp: 12_000,
-      xpTotal: 12_000,
+      xp: 14_000,
+      xpTotal: 14_000,
       skills: Object.fromEntries(Array.from({ length: 20 }, (_, index) => [String(index + 1), 1])),
     })
   })
@@ -265,10 +266,11 @@ describe("phase B: gigs", () => {
     expect(useGame.getState().clearGig(1)).toBe(true)
     expect(useGame.getState().clearGig(1)).toBe(false)
     expect(useGame.getState().clearGig(3)).toBe(false)
-    expect(useGame.getState().clearGig(2)).toBe(false)
-    useGame.setState({ xpTotal: 14_000 })
     expect(useGame.getState().clearGig(2)).toBe(true)
-    expect(useGame.getState().money).toBe(40 + 120)
+    expect(useGame.getState().clearGig(3)).toBe(false)
+    useGame.setState({ xpTotal: 14_500 })
+    expect(useGame.getState().clearGig(3)).toBe(true)
+    expect(useGame.getState().money).toBe(40 + 120 + 90)
     expect(useGame.getState().clearGig(9999)).toBe(false)
   })
 
@@ -313,8 +315,8 @@ describe("phase B: gigs", () => {
 describe("phase C: jobs and equipment", () => {
   beforeEach(() => {
     useGame.getState().wipe()
-    useGame.setState({ xp: 35_000, xpTotal: 35_000, skills: { "15": 1, "16": 1 } })
-    for (let id = 1; id <= 5; id++) useGame.getState().clearGig(id, true)
+    useGame.setState({ xp: 40_000, xpTotal: 40_000, skills: { "15": 1, "16": 1 } })
+    for (let id = 1; id <= 6; id++) useGame.getState().clearGig(id, true)
     useGame.setState({ money: 0 })
   })
 
@@ -358,12 +360,12 @@ describe("phase C: jobs and equipment", () => {
     expect(idlePerSec(useGame.getState())).toBe(2)
   })
 
-  it("keeps gear shut until 8,000 lifetime XP", () => {
+  it("keeps gear shut until 10,000 lifetime XP", () => {
     useGame.getState().wipe()
-    useGame.setState({ money: 1e6, xpTotal: 7_999 })
+    useGame.setState({ money: 1e6, xpTotal: 9_999 })
     useGame.getState().buyEquipment(1)
     expect(ownedCount(useGame.getState().equipment, 1)).toBe(0)
-    useGame.setState({ xpTotal: 8_000 })
+    useGame.setState({ xpTotal: 10_000 })
     useGame.getState().buyEquipment(1)
     expect(ownedCount(useGame.getState().equipment, 1)).toBe(1)
   })
