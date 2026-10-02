@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
 import { ERA_ACCENT, spriteForTier, START_SUBJECT, subjectForTier } from "../data/sprites.ts"
 import { highestOwnedTier, tierById } from "../game/economy.ts"
@@ -8,6 +9,7 @@ import { useGame } from "../game/store.ts"
 type Pop = { id: number; x: number; y: number; drift: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
+type Drop = { id: number; x: number; y: number; dx: number; dy: number; rot: number; size: number; src: string }
 type Ring = { id: number; x: number; y: number; big: boolean }
 
 let seq = 1
@@ -48,6 +50,21 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
   })
 }
 
+const DROP_MS = 500
+
+function stageDrops(x: number, y: number, src: string, count: number): Drop[] {
+  return Array.from({ length: count }, () => ({
+    id: seq++,
+    x: x + (Math.random() - 0.5) * 18,
+    y: y + (Math.random() - 0.5) * 12,
+    dx: (Math.random() - 0.5) * 90,
+    dy: 220 + Math.random() * 140,
+    rot: (Math.random() - 0.5) * 80,
+    size: 26 + Math.random() * 18,
+    src,
+  }))
+}
+
 export function Stage() {
   const owned = useGame((state) => state.owned)
   const activeBoost = useGame((state) => state.activeBoost)
@@ -57,6 +74,7 @@ export function Stage() {
   const [bits, setBits] = useState<Bit[]>([])
   const [sparks, setSparks] = useState<Spark[]>([])
   const [rings, setRings] = useState<Ring[]>([])
+  const [drops, setDrops] = useState<Drop[]>([])
   const [entered, setEntered] = useState(false)
 
   const hitboxRef = useRef<HTMLButtonElement>(null)
@@ -166,6 +184,13 @@ export function Stage() {
       ].slice(-30),
     )
     setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
+    const dropX = hasPoint ? clientX : rect.left + rect.width / 2
+    const dropY = hasPoint ? clientY : rect.top + rect.height * 0.45
+    const born = stageDrops(dropX, dropY, spriteForTier(artId), boosted ? 3 : 2)
+    setDrops((current) => [...current, ...born].slice(-36))
+    window.setTimeout(() => {
+      setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
+    }, DROP_MS + 120)
     setSparks((current) =>
       [...current, ...clickSparks(x, y, accent.glow, boosted ? 14 : 9)].slice(-90),
     )
@@ -285,6 +310,29 @@ export function Stage() {
           />
         ))}
       </button>
+      {createPortal(
+        <div className="drops" aria-hidden="true">
+          {drops.map((drop) => (
+            <img
+              key={drop.id}
+              className="drop"
+              src={drop.src}
+              alt=""
+              draggable={false}
+              style={{
+                left: drop.x - drop.size / 2,
+                top: drop.y - drop.size / 2,
+                width: drop.size,
+                height: drop.size,
+                ["--dx" as string]: `${drop.dx}px`,
+                ["--dy" as string]: `${drop.dy}px`,
+                ["--rot" as string]: `${drop.rot}deg`,
+              }}
+            />
+          ))}
+        </div>,
+        document.body,
+      )}
       <div className="plate">
         <p className="era-tag">{ownedTier ? accent.kicker : "Before the offer"}</p>
         <h2>{stageName}</h2>

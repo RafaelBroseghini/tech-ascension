@@ -10,6 +10,14 @@
  * at the pointer; its keyframes live there.
  */
 
+/* Gravity: slow start, fast end. Fully gone by 500ms. */
+@keyframes drop-fall {
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
+  15% { transform: translate(calc(var(--dx) * 0.1), -14px) rotate(calc(var(--rot) * 0.2)) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(-0.4deg); }
   50% { transform: translateY(-6px) rotate(0.4deg); }
@@ -156,6 +164,7 @@
   .spark,
   .motes,
   .sheen,
+  .drops,
   .era-sweep,
   .rim::before {
     display: none !important;
