@@ -108,36 +108,31 @@ export function Stage() {
       tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
       return
     }
-    // Press in away from the click, then shake side to side with a decaying wobble.
-    // Fast clicking (heat) and boosts push the shake harder.
-    const power = 1 + heat.current * 0.9 + (boosted ? 0.35 : 0)
-    const side = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
-    const frame = (scale: string, rx: number, ry: number, rz: number, tx: number, ty: number) =>
+    // A bump: the sprite pops up and tips slightly away from the click, then settles
+    // with a tiny jitter. Fast clicking (heat) and boosts make it a little bigger.
+    const power = 1 + heat.current * 0.5 + (boosted ? 0.25 : 0)
+    const dir = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
+    const frame = (scale: number, rx: number, ry: number, rz: number, tx: number, ty: number) =>
       `perspective(700px) translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${scale})`
     tilt.animate(
       [
-        { transform: frame("1", 0, 0, 0, 0, 0), offset: 0 },
+        { transform: frame(1, 0, 0, 0, 0, 0), offset: 0 },
         {
-          transform: frame("0.9", -ny * 14 * power, nx * 14 * power, -side * 2 * power, -nx * 5, -ny * 5),
-          offset: 0.14,
+          transform: frame(1 + 0.06 * power, -ny * 5 * power, nx * 5 * power, dir * 1.2 * power, 0, -5 * power),
+          offset: 0.22,
         },
-        {
-          transform: frame("1.09, 0.95", ny * 5, -nx * 6, side * 4 * power, side * 9 * power, 0),
-          offset: 0.34,
-        },
-        { transform: frame("0.98, 1.02", 0, 0, -side * 3 * power, -side * 7 * power, 0), offset: 0.52 },
-        { transform: frame("1.02", 0, 0, side * 1.6 * power, side * 4 * power, 0), offset: 0.7 },
-        { transform: frame("1", 0, 0, -side * 0.7, -side * 1.6, 0), offset: 0.86 },
-        { transform: frame("1", 0, 0, 0, 0, 0), offset: 1 },
+        { transform: frame(0.985, 0, 0, -dir * 0.8, 1.5 * power, 1), offset: 0.45 },
+        { transform: frame(1.01, 0, 0, dir * 0.4, -1 * power, 0), offset: 0.68 },
+        { transform: frame(1, 0, 0, 0, 0, 0), offset: 1 },
       ],
-      { duration: 380, easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
+      { duration: 260, easing: "cubic-bezier(0.25, 0.9, 0.3, 1)" },
     )
     img?.animate(
       [
-        { filter: `brightness(${1.35 + heat.current * 0.4}) saturate(1.3)` },
+        { filter: `brightness(${1.3 + heat.current * 0.3}) saturate(1.2)` },
         { filter: "brightness(1) saturate(1)" },
       ],
-      { duration: 260, easing: "ease-out" },
+      { duration: 220, easing: "ease-out" },
     )
   }
 

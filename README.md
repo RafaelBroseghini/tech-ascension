@@ -26,7 +26,7 @@ Builds with `--base=/tech-ascension/` and serves `dist/` at [http://127.0.0.1:43
 
 ## How it plays
 
-- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it presses in away from the click point and shakes side to side (about 380ms, harder the faster you click), with a flat ring, square sparks and a floating payout. Click power starts at $1 and grows when a generator has a click bonus.
+- Click the stage sprite for money and 1 XP. It reacts on pointer-down: it bumps up, tips slightly away from the click point and settles with a tiny jitter (about 260ms, a little bigger the faster you click), with a flat ring, square sparks and a floating payout. Click power starts at $1 and grows when a generator has a click bonus.
 - Generators add idle $/s. Cost of the next copy is `floor(baseCost × 1.15 ^ owned)`.
 - The stage shows the highest tier you own. Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top tier plays a reveal burst.
 - Upgrades are hidden until they are within reach. A row (and its era tab) appears the first time your balance has reached its base price, with a `New` tag. The highest balance you have ever held is saved as `peakMoney`, so a row never hides again. Tab order follows the eras present in `TIERS`. Affordable rows highlight.
@@ -93,7 +93,7 @@ That starts the dev server if needed and leaves Chrome open on port 9222 so anot
 
 ## Motion
 
-Clicks register on pointer-down. The sprite presses in away from the click point, squashes, and wobbles side to side (~380ms, restarted instantly on every click), flashes brighter, and sends out a flat ring, square sparks, and a drifting `$` / XP payout. Fast clicking builds "heat", which strengthens the shake and the glow around the sprite. Idle, the sprite floats, an aura breathes, motes rise, and a sheen sweeps the art. An active click boost adds a chip over the sprite, a rotating rim light, bigger payouts, and a lit metrics cell. Buying sweeps the row and ticks the money and owned figures. A new highest tier remounts the art with a reveal burst. New shop rows slide in with a `New` tag. Moving to a new era cross-fades the accent and wipes it across the stage. `prefers-reduced-motion` kills CSS animation globally, hides the particles and skips the shake, keeping a short click flash.
+Clicks register on pointer-down. The sprite bumps up, tips slightly away from the click point and settles with a tiny jitter (~260ms, restarted instantly on every click), flashes brighter, and sends out a flat ring, square sparks, and a drifting `$` / XP payout. Fast clicking builds "heat", which makes the bump a little bigger and strengthens the glow around the sprite. Idle, the sprite floats, an aura breathes, motes rise, and a sheen sweeps the art. An active click boost adds a chip over the sprite, a rotating rim light, bigger payouts, and a lit metrics cell. Buying sweeps the row and ticks the money and owned figures. A new highest tier remounts the art with a reveal burst. New shop rows slide in with a `New` tag. Moving to a new era cross-fades the accent and wipes it across the stage. `prefers-reduced-motion` kills CSS animation globally, hides the particles and skips the bump, keeping a short click flash.
 
 ## Art
 

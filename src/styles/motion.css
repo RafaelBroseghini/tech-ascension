@@ -1,11 +1,12 @@
 /*
  * Motion. Rules of the room:
- *  - click is a ~380ms shake: press in away from the pointer, then a decaying
- *    side-to-side wobble that restarts on every click and hits harder when hot
+ *  - click is a ~260ms bump: the sprite pops up, tips away from the pointer and
+ *    settles with a tiny jitter; it restarts on every click and is a little
+ *    bigger when hot. No side-to-side shaking.
  *  - idle life (float, aura, motes, sheen) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
- * The click shake itself is driven from Stage.tsx via WAAPI so it can aim
+ * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
  * at the pointer; its keyframes live there.
  */
 
