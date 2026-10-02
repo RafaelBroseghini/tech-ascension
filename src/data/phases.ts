@@ -71,5 +71,3 @@ export const MONEY_POP = { click: "medium", gigClear: "large", fightWin: "large"
 export const BASE_XP_PER_CLICK = 1;
 /** Share of the XP-per-click stat a click still drips once clicks pay money (Phase B+). */
 export const XP_DRIP_FRACTION = 0.25;
-/** Old (save v2) early-tier spend is refunded as XP at this rate. See src/game/save.ts. */
-export const LEGACY_EARLY_XP_PER_DOLLAR = 0.25;

@@ -30,7 +30,7 @@ import { canBuyJob, capitalUnlocked, equipmentOpen, eraOf, gigState, moneyMode, 
 import type { Phase } from "./phase.ts"
 import { freshSave, hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import type { SaveData } from "./save.ts"
-import { readSaveText, writeSave } from "./storage.ts"
+import { clearSave, readSaveText, writeSave } from "./storage.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { MONEY_POP, XP_DRIP_FRACTION } from "../data/phases.ts"
 
@@ -169,6 +169,7 @@ function boot() {
       text: `click boost ×${formatMultiplier(hydrated.save.activeBoost.mult)}`,
     }
   }
+  if (hydrated.reset) clearSave()
   writeSave(hydrated.save)
   lastSaveAt = now
   return { hydrated, toast, toastSeq: toast ? 1 : 0, now }

@@ -5,7 +5,7 @@ import { IDE_PACKS } from "../data/idePacks.ts"
 import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, LEGACY_EARLY_XP_PER_DOLLAR, SKILL_TIERS } from "../data/phases.ts"
+import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { COST_GROWTH, TIERS } from "../data/tiers.ts"
 import { advanceBoostClock, pickMultiplier, sampleDurationMs, sampleWaitMs } from "./boosts.ts"
 import {
@@ -24,8 +24,8 @@ import {
   xpPerSec,
 } from "./economy.ts"
 import { formatCompact, formatNumber, RAW_DIGITS_BELOW } from "./format.ts"
-import { capitalUnlocked, ownedArtIds } from "./phase.ts"
-import { freshSave, hydrate, legacyEarlySpend, migrate, OFFLINE_CAP_MS, offlineCredit, SAVE_VERSION } from "./save.ts"
+import { ownedArtIds } from "./phase.ts"
+import { freshSave, hydrate, OFFLINE_CAP_MS, offlineCredit, parseSave, SAVE_VERSION } from "./save.ts"
 import { C } from "../pixel/palette.ts"
 import { MAIN_SIZE, spriteGrid, THUMB_SIZE } from "../pixel/sprites.ts"
 import { capDrops, WATERFALL_CAP, waterfallCount } from "./waterfall.ts"
@@ -178,7 +178,7 @@ describe("save", () => {
     expect(live.save.activeBoost).toEqual({ mult: 2, endsAt: now + 5_000 })
   })
 
-  it("round-trips a v3 save and normalises junk in the new fields", () => {
+  it("round-trips a current save and normalises junk in the fields", () => {
     const save = freshSave(5)
     save.xp = 40
     save.xpTotal = 900
@@ -186,83 +186,51 @@ describe("save", () => {
     save.equipment = { "1": 1 }
     save.jobs = [2, 1]
     save.gigs = [3, 1]
-    const again = migrate(JSON.parse(JSON.stringify(save)))
-    expect(again).toMatchObject({ version: 3, xp: 40, xpTotal: 900, skills: { "3": 2 }, equipment: { "1": 1 }, jobs: [1, 2], gigs: [1, 3] })
+    const again = parseSave(JSON.parse(JSON.stringify(save)))
+    expect(again).toMatchObject({ version: SAVE_VERSION, xp: 40, xpTotal: 900, skills: { "3": 2 }, equipment: { "1": 1 }, jobs: [1, 2], gigs: [1, 3] })
 
-    const messy = migrate({ version: 3, xp: 50, xpTotal: 10, jobs: [1, 1, 99, "x", -2], gigs: [2, 2, 0.5, 404], skills: { "1": -3, a: 2 } })
+    const messy = parseSave({ version: 3, xp: 50, xpTotal: 10, jobs: [1, 1, 99, "x", -2], gigs: [2, 2, 0.5, 404], skills: { "1": -3, a: 2 }, owned: { "99": 4, nope: 8 } })
     expect(messy?.xpTotal).toBe(50)
     expect(messy?.jobs).toEqual([1])
     expect(messy?.gigs).toEqual([2])
     expect(messy?.skills).toEqual({})
+    expect(messy?.owned).toEqual({ "99": 4 })
   })
 
-  describe("v2 → v3 phase migration", () => {
-    const v2 = { version: 2, money: 1234, xp: 99_999, savedAt: 1, peakMoney: 5000, owned: { "1": 2, "5": 1, "17": 1, "26": 3, "66": 1 } }
+  describe("schema mismatch wipes the save", () => {
+    const v2 = JSON.stringify({ version: 2, money: 1234, xp: 99_999, savedAt: 1, peakMoney: 5000, owned: { "1": 2, "26": 3 } })
 
-    it("soft-resets the retired early generators and refunds their spend as XP", () => {
-      const migrated = migrate(v2)
-      const spend = legacyEarlySpend(1, 2) + legacyEarlySpend(5, 1) + legacyEarlySpend(17, 1)
-      expect(legacyEarlySpend(1, 2)).toBe(15 + 17)
-      expect(spend).toBe(32 + 300 + 70_000)
-      const refund = Math.floor(spend * LEGACY_EARLY_XP_PER_DOLLAR)
-      expect(migrated?.version).toBe(SAVE_VERSION)
-      expect(migrated?.xp).toBe(refund)
-      expect(migrated?.xpTotal).toBe(refund)
-      expect(migrated?.owned).toEqual({ "26": 3, "66": 1 })
-      expect(migrated?.skills).toEqual({})
-      expect(migrated?.jobs).toEqual([])
-      expect(migrated?.gigs).toEqual([])
+    it("starts a fresh career for any other version, with no refund, carry-over or toast", () => {
+      const texts = [
+        v2,
+        JSON.stringify({ version: 1, money: 5, owned: { "1": 2 }, savedAt: 1 }),
+        JSON.stringify({ money: 9, owned: [2, 0, 3], savedAt: 50 }),
+        JSON.stringify({ version: SAVE_VERSION + 1, money: 9, xp: 9, savedAt: 1 }),
+      ]
+      for (const text of texts) {
+        const hydrated = hydrate(text, 7_200_000)
+        expect(hydrated.reset).toBe(true)
+        expect(hydrated.toast).toBeNull()
+        expect(hydrated.save).toEqual(freshSave(7_200_000))
+      }
     })
 
-    it("keeps money, peak balance and capital counts untouched", () => {
-      const migrated = migrate(v2)
-      expect(migrated?.money).toBe(1234)
-      expect(migrated?.peakMoney).toBe(5000)
-      expect(migrated?.owned["26"]).toBe(3)
+    it("does not parse an old schema at all", () => {
+      expect(parseSave(JSON.parse(v2))).toBeNull()
+      expect(parseSave(null)).toBeNull()
+      expect(parseSave([])).toBeNull()
     })
 
-    it("leaves a migrated early player a way forward: XP buys skills, and capital stays open for owners", () => {
-      const early = migrate({ version: 2, money: 40, xp: 5, savedAt: 1, owned: { "1": 1, "2": 1, "3": 1, "4": 1, "5": 1, "6": 1, "7": 1, "8": 1 } })
-      expect(early?.xp).toBeGreaterThan(300)
-      expect(early?.owned).toEqual({})
-      const first = SKILL_TIERS[0]
-      expect(early?.xp ?? 0).toBeGreaterThanOrEqual(first?.baseXpCost ?? Infinity)
-
-      const late = migrate(v2)
-      expect(late && capitalUnlocked({ ...late, peakMoney: late.peakMoney ?? 0 })).toBe(true)
-    })
-
-    it("chains from v1 and from an unversioned blob through the id re-key", () => {
-      const v1 = migrate({ version: 1, money: 5, xp: 0, savedAt: 1, owned: { "1": 2, "4": 1, "15": 3, "48": 1 } })
-      const byName = (name: string) => TIERS.find((tier) => tier.name === name)?.id
-      expect(v1?.version).toBe(3)
-      expect(v1?.owned[String(byName("Fine-tune your first LLM"))]).toBe(3)
-      expect(v1?.owned[String(byName("Mars megacampus"))]).toBe(1)
-      expect(Object.keys(v1?.owned ?? {})).toHaveLength(2)
-      expect(v1?.xp).toBe(Math.floor((legacyEarlySpend(1, 2) + legacyEarlySpend(5, 1)) * LEGACY_EARLY_XP_PER_DOLLAR))
-
-      const legacy = migrate({ money: 9, owned: [2, 0, 3], savedAt: 50 })
-      expect(legacy?.version).toBe(3)
-      expect(legacy?.owned).toEqual({})
-      expect(legacy?.xp).toBeGreaterThan(0)
-    })
-
-    it("keeps unknown high ids and drops garbage keys", () => {
-      const future = migrate({ version: 2, money: 1, xp: 0, owned: { "99": 4, nope: 8 }, savedAt: 1 })
-      expect(future?.owned["99"]).toBe(4)
-      expect(future?.owned.nope).toBeUndefined()
-    })
-
-    it("is idempotent: a migrated save loads again unchanged", () => {
-      const once = migrate(v2)
-      const twice = migrate(JSON.parse(JSON.stringify(once)))
-      expect(twice).toEqual(once)
+    it("keeps a current save and reports no reset", () => {
+      const hydrated = hydrate(JSON.stringify(freshSave(0)), 0)
+      expect(hydrated.reset).toBe(false)
     })
   })
 
   it("starts over when the payload is unreadable", () => {
     const hydrated = hydrate("{", 20)
     expect(hydrated.save.money).toBe(0)
+    expect(hydrated.reset).toBe(true)
     expect(hydrated.toast).toMatch(/unreadable/)
   })
 })
@@ -449,7 +417,7 @@ describe("hidden upgrades", () => {
     expect(fresh.peakMoney).toBe(0)
     const loaded = hydrate(JSON.stringify({ ...fresh, money: 20, peakMoney: 500, savedAt: 1_000 }), 1_000)
     expect(loaded.save.peakMoney).toBe(500)
-    const legacy = hydrate(JSON.stringify({ version: 1, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
-    expect(legacy.save.peakMoney).toBe(90)
+    const noPeak = hydrate(JSON.stringify({ version: SAVE_VERSION, money: 90, xp: 0, owned: {}, savedAt: 1_000 }), 1_000)
+    expect(noPeak.save.peakMoney).toBe(90)
   })
 })

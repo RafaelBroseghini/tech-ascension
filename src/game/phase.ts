@@ -22,7 +22,7 @@ type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs
 
 /**
  * Gates latch: each one also opens when the player already holds what it leads to (a gig done,
- * a job taken, a capital tier owned), so forced or migrated progress never sits behind a closed board.
+ * a job taken, a capital tier owned), so forced progress never sits behind a closed board.
  */
 export function gigBoardUnlocked(p: Gates): boolean {
   if (p.gigs.length > 0) return true

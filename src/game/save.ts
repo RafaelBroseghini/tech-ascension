@@ -1,5 +1,4 @@
 import type { ActiveBoost } from "../data/boosts.ts"
-import { COST_GROWTH, LEGACY_EARLY_XP_PER_DOLLAR } from "../data/phases.ts"
 import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { formatNumber } from "./format.ts"
@@ -41,79 +40,11 @@ export type SaveData = {
 export type Hydrated = {
   save: SaveData
   toast: string | null
+  /** True when a stored save was thrown away (corrupt, or a different schema version) and a fresh one returned. */
+  reset: boolean
 }
 
-/**
- * Version 1 saves keyed owned counts by the original 48 tier ids. Stages added in
- * version 2 shifted most ids, so v1 -> v2 re-keys owned counts through this table.
- * Never edit it: it describes a frozen past layout.
- */
-export const V1_TO_V2_TIER_IDS: Readonly<Record<string, number>> = {
-  1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 9, 7: 11, 8: 13, 9: 15, 10: 17, 11: 19, 12: 21, 13: 23, 14: 24, 15: 26, 16: 28, 17: 29, 18: 31, 19: 32, 20: 33, 21: 34, 22: 36, 23: 37, 24: 39, 25: 40, 26: 41, 27: 42, 28: 43, 29: 44, 30: 45, 31: 46, 32: 48, 33: 49, 34: 50, 35: 51, 36: 52, 37: 53, 38: 54, 39: 56, 40: 57, 41: 58, 42: 60, 43: 61, 44: 62, 45: 63, 46: 64, 47: 65, 48: 66,
-}
-
-/**
- * Base prices of the retired save-v2 early generators (ids 1–18). Used only to price the XP refund
- * in the v2 → v3 migration. Never edit it: it describes a frozen past layout.
- */
-export const V2_EARLY_BASE_COSTS: readonly number[] = [
-  15, 50, 120, 190, 300, 480, 750, 1150, 1800, 2900, 4500, 7000, 11000, 17500, 28000, 44000, 70000, 110000,
-]
-
-/** What `count` copies of a retired early generator cost in total (geometric, floor per copy, as the shop charged). */
-export function legacyEarlySpend(id: number, count: number): number {
-  const base = V2_EARLY_BASE_COSTS[id - 1]
-  if (base === undefined || !(count > 0)) return 0
-  let total = 0
-  for (let owned = 0; owned < Math.min(count, 5000); owned++) {
-    total += owned === 0 ? base : Math.floor(base * COST_GROWTH ** owned)
-  }
-  return total
-}
-
-type Migration = (raw: Record<string, unknown>) => Record<string, unknown>
-
-/**
- * migrations[n] upgrades a version-n document to version n+1.
- * Version 0 is an unversioned blob (or a legacy owned array).
- */
-const MIGRATIONS: Migration[] = [
-  (raw) => ({
-    version: 1,
-    money: raw.money,
-    xp: raw.xp,
-    owned: Array.isArray(raw.owned) ? legacyArrayToMap(raw.owned) : raw.owned,
-    savedAt: raw.savedAt,
-    activeBoost: raw.activeBoost,
-  }),
-  (raw) => ({
-    ...raw,
-    version: 2,
-    owned: remapOwned(raw.owned, V1_TO_V2_TIER_IDS),
-  }),
-  /**
-   * v2 → v3 (phase economy). Capital tiers (ids 19+) carry over untouched, money and peakMoney are kept.
-   * The retired early generators (ids 1–18) are removed and their total spend is refunded as XP at
-   * LEGACY_EARLY_XP_PER_DOLLAR, so no one is left without a path: XP buys skills, skills open the boards.
-   * The old vanity XP counter is replaced by the refund.
-   */
-  (raw) => {
-    const kept: Record<string, unknown> = {}
-    let spent = 0
-    if (isRecord(raw.owned)) {
-      for (const [key, value] of Object.entries(raw.owned)) {
-        const id = Number(key)
-        if (/^\d+$/.test(key) && id >= 1 && id <= V2_EARLY_BASE_COSTS.length) {
-          spent += legacyEarlySpend(id, Math.floor(finite(value)))
-        } else {
-          kept[key] = value
-        }
-      }
-    }
-    const refund = Math.floor(spent * LEGACY_EARLY_XP_PER_DOLLAR)
-    return { ...raw, version: 3, owned: kept, xp: refund, xpTotal: refund, skills: {}, equipment: {}, jobs: [], gigs: [] }
-  },
-]
+const UNREADABLE_TOAST = "save was unreadable — new career started"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -121,24 +52,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function finite(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
-}
-
-/** The unversioned format stored counts by position in the original 48-tier list (id = index + 1). */
-function legacyArrayToMap(values: unknown[]): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  values.forEach((value, index) => {
-    out[String(index + 1)] = value
-  })
-  return out
-}
-
-function remapOwned(raw: unknown, table: Readonly<Record<string, number>>): unknown {
-  if (!isRecord(raw)) return raw
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(raw)) {
-    out[String(table[key] ?? key)] = value
-  }
-  return out
 }
 
 function normalizeOwned(raw: unknown): OwnedMap {
@@ -206,28 +119,14 @@ export function offlineCredit(cps: number, savedAt: number, now: number): number
   return cps * (elapsed / 1000)
 }
 
-/** Returns null when the payload cannot be salvaged. */
-export function migrate(input: unknown): SaveData | null {
-  if (!isRecord(input)) return null
-
-  let version = typeof input.version === "number" && Number.isFinite(input.version) ? input.version : 0
-  if (version < 0) return null
-
-  let current: Record<string, unknown> = input
-  if (version > SAVE_VERSION) {
-    current = { ...input, version: SAVE_VERSION }
-    version = SAVE_VERSION
-  }
-
-  while (version < SAVE_VERSION) {
-    const step = MIGRATIONS[version]
-    if (!step) return null
-    const next = step(current)
-    const nextVersion = typeof next.version === "number" ? next.version : version + 1
-    if (nextVersion <= version) return null
-    current = next
-    version = nextVersion
-  }
+/**
+ * Returns null unless the payload is a save of exactly this version. There is no migration:
+ * a save from any other schema is not carried over, the caller starts a fresh career.
+ * Fields are still sanitised so a hand-edited or damaged save of this version cannot poison the economy.
+ */
+export function parseSave(input: unknown): SaveData | null {
+  if (!isRecord(input) || input.version !== SAVE_VERSION) return null
+  const current = input
 
   const boost = normalizeBoost(current.activeBoost)
   const xp = Math.max(0, finite(current.xp))
@@ -254,31 +153,32 @@ export function migrate(input: unknown): SaveData | null {
 
 export function hydrate(rawText: string | null, now: number): Hydrated {
   if (rawText == null) {
-    return { save: freshSave(now), toast: null }
+    return { save: freshSave(now), toast: null, reset: false }
   }
 
   let parsed: unknown
   try {
     parsed = JSON.parse(rawText)
   } catch {
-    return { save: freshSave(now), toast: "save was unreadable — new career started" }
+    return { save: freshSave(now), toast: UNREADABLE_TOAST, reset: true }
   }
 
-  const migrated = migrate(parsed)
-  if (!migrated) {
-    return { save: freshSave(now), toast: "save was unreadable — new career started" }
+  // A different schema version is wiped without a word: there are no old saves to carry over.
+  const loaded = parseSave(parsed)
+  if (!loaded) {
+    return { save: freshSave(now), toast: isRecord(parsed) ? null : UNREADABLE_TOAST, reset: true }
   }
 
-  const away = Math.min(Math.max(0, now - migrated.savedAt), OFFLINE_CAP_MS)
-  const fx = modFactors({ foreverMult: migrated.foreverMult ?? 1, temp: migrated.tempMults ?? {} }, migrated.savedAt, migrated.savedAt + away)
-  const credit = offlineCredit(idlePerSec(migrated) * fx.cps, migrated.savedAt, now)
-  const xpCredit = offlineCredit(xpPerSec(migrated.skills) * fx.xpIdle, migrated.savedAt, now)
-  const elapsed = now - migrated.savedAt
+  const away = Math.min(Math.max(0, now - loaded.savedAt), OFFLINE_CAP_MS)
+  const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
+  const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now)
+  const xpCredit = offlineCredit(xpPerSec(loaded.skills) * fx.xpIdle, loaded.savedAt, now)
+  const elapsed = now - loaded.savedAt
   const save: SaveData = {
-    ...migrated,
-    money: migrated.money + credit,
-    xp: migrated.xp + xpCredit,
-    xpTotal: migrated.xpTotal + xpCredit,
+    ...loaded,
+    money: loaded.money + credit,
+    xp: loaded.xp + xpCredit,
+    xpTotal: loaded.xpTotal + xpCredit,
     savedAt: now,
   }
   save.peakMoney = Math.max(save.peakMoney ?? 0, save.money)
@@ -298,5 +198,5 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     else if (xpCredit > 0) toast = `welcome back, studied +${formatNumber(xpCredit)} XP`
   }
 
-  return { save, toast }
+  return { save, toast, reset: false }
 }
