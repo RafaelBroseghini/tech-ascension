@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img">
+  <title>angel wings over startup logo chips</title>
+  <rect width="256" height="256" fill="#3a2c10"/>
+  <rect x="6" y="6" width="244" height="186" rx="22" fill="#07080c" stroke="#f0c14a" stroke-width="5"/>
+  <clipPath id="frame"><rect x="12" y="12" width="232" height="174" rx="16"/></clipPath>
+  <g clip-path="url(#frame)"><rect x="10" y="10" width="236" height="176" rx="16" fill="#241808"/><polygon points="128,70 40,110 128,96 216,110" fill="#f4efe4"/><polygon points="128,70 70,40 120,78" fill="#fff6d8"/><polygon points="128,70 186,40 136,78" fill="#fff6d8"/><rect x="46" y="120" width="44" height="28" rx="6" fill="#5aa7ff"/><rect x="106" y="124" width="44" height="28" rx="6" fill="#3ddc84"/><rect x="166" y="120" width="44" height="28" rx="6" fill="#f0c14a"/></g>
+  <rect x="6" y="198" width="244" height="52" rx="14" fill="#07080c"/>
+  <text x="128" y="224" font-size="13" font-family="Arial Black, Arial, sans-serif" fill="#f4efe4" text-anchor="middle">Angel stake in AI</text><text x="128" y="242" font-size="13" font-family="Arial Black, Arial, sans-serif" fill="#f4efe4" text-anchor="middle">startups</text>
+</svg>

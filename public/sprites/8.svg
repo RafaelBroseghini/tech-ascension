@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img">
+  <title>merged PR check + tiny tensor diagram</title>
+  <rect width="256" height="256" fill="#143226"/>
+  <rect x="6" y="6" width="244" height="186" rx="22" fill="#07080c" stroke="#3ddc84" stroke-width="5"/>
+  <clipPath id="frame"><rect x="12" y="12" width="232" height="174" rx="16"/></clipPath>
+  <g clip-path="url(#frame)"><rect x="10" y="10" width="236" height="176" rx="16" fill="#161326"/><rect x="24" y="40" width="130" height="120" rx="10" fill="#2a2444"/><circle cx="58" cy="78" r="18" fill="#3ddc84"/><polygon points="50,78 56,86 70,68" fill="#10281c"/><text x="110" y="84" font-size="12" font-family="Arial Black, Arial, sans-serif" fill="#d6f25c" text-anchor="middle">MERGED</text><rect x="168" y="56" width="16" height="16" rx="3" fill="#c084fc"/><rect x="168" y="78" width="16" height="16" rx="3" fill="#5a4a78"/><rect x="168" y="100" width="16" height="16" rx="3" fill="#5a4a78"/><rect x="190" y="56" width="16" height="16" rx="3" fill="#5a4a78"/><rect x="190" y="78" width="16" height="16" rx="3" fill="#c084fc"/><rect x="190" y="100" width="16" height="16" rx="3" fill="#5a4a78"/><rect x="212" y="56" width="16" height="16" rx="3" fill="#5a4a78"/><rect x="212" y="78" width="16" height="16" rx="3" fill="#5a4a78"/><rect x="212" y="100" width="16" height="16" rx="3" fill="#c084fc"/></g>
+  <rect x="6" y="198" width="244" height="52" rx="14" fill="#07080c"/>
+  <text x="128" y="234" font-size="15" font-family="Arial Black, Arial, sans-serif" fill="#f4efe4" text-anchor="middle">Open-source ML PR</text>
+</svg>

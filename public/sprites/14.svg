@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img">
+  <title>engineer at ROC-curve dashboard</title>
+  <rect width="256" height="256" fill="#10243a"/>
+  <rect x="6" y="6" width="244" height="186" rx="22" fill="#07080c" stroke="#5aa7ff" stroke-width="5"/>
+  <clipPath id="frame"><rect x="12" y="12" width="232" height="174" rx="16"/></clipPath>
+  <g clip-path="url(#frame)"><rect x="10" y="10" width="236" height="176" rx="16" fill="#102033"/><circle cx="62" cy="70" r="16" fill="#f0c7a4"/><rect x="42" y="88" width="40" height="64" rx="10" fill="#3d6bff"/><rect x="110" y="40" width="116" height="116" rx="8" fill="#0c121c"/><polygon points="124,130 150,110 176,118 206,70 206,140 124,140" fill="#123524"/><line x1="124" y1="140" x2="210" y2="70" stroke="#3ddc84" stroke-width="4" stroke-linecap="round"/><line x1="124" y1="78" x2="210" y2="78" stroke="#5aa7ff" stroke-width="2" stroke-linecap="round"/></g>
+  <rect x="6" y="198" width="244" height="52" rx="14" fill="#07080c"/>
+  <text x="128" y="234" font-size="15" font-family="Arial Black, Arial, sans-serif" fill="#f4efe4" text-anchor="middle">Mid-level ML engineer</text>
+</svg>
