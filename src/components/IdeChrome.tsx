@@ -9,8 +9,16 @@ import {
   Play,
   Presentation,
   Search,
+  Terminal,
 } from "lucide-react"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import {
+  closeIdePythonConsole,
+  getIdePythonConsole,
+  openIdePythonConsole,
+  queueIdePythonRun,
+  subscribeIdePythonConsole,
+} from "../game/idePythonConsole.ts"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import { itemsOf } from "../data/idePacks.ts"
 import type { IdePack } from "../data/idePacks.ts"
@@ -26,6 +34,7 @@ import {
 } from "../game/ideSecrets.ts"
 import { readCollapsedFolders, writeCollapsedFolders } from "../game/ideTreePrefs.ts"
 import { useGame } from "../game/store.ts"
+import { IdeStatusDock } from "./IdeStatusDock.tsx"
 
 const FADE_MS = 260
 const KIND_TITLE = { files: "Explorer", inbox: "Inbox", deck: "Slides" } as const
@@ -35,8 +44,12 @@ const IDE_ACTIVITY = [
   { id: "files", Icon: Files },
   { id: "search", Icon: Search },
   { id: "git", Icon: GitBranch },
-  { id: "run", Icon: Play },
 ] as const
+
+function runPythonFile(file: { path: string; code: string; lang: Lang }) {
+  if (file.lang !== "python") return
+  queueIdePythonRun({ path: file.path, code: file.code })
+}
 
 function listIcon(kind: IdePack["kind"]) {
   if (kind === "inbox") return Mail
@@ -145,6 +158,9 @@ export function IdeChrome() {
   const items = useMemo(() => itemsOf(pack), [pack])
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedFolders())
+  const consoleSnap = useSyncExternalStore(subscribeIdePythonConsole, getIdePythonConsole, getIdePythonConsole)
+  const consoleOpen = consoleSnap.open
+  const consoleBusy = consoleSnap.busy
 
   const [layers, setLayers] = useState<Layer[]>(() => [{ pack, index, uid: layerSeq++ }])
   const top = layers[layers.length - 1] as Layer
@@ -158,12 +174,13 @@ export function IdeChrome() {
     return () => window.clearTimeout(id)
   }, [layers])
 
-  const pick = (packId: string, next: number, shiftKey = false) => {
+  const pick = (packId: string, next: number, shiftKey = false, keepConsole = false) => {
     const folder = folders.find((row) => row.id === packId)
     if (shiftKey && folder) tryUnlockIdeLoreFromFolder(folder.pack.fromTier, true)
     const max = (folder ? itemsOf(folder.pack).length : count) - 1
     const clamped = Math.min(Math.max(0, next), max)
     tryUnlockIdeLoreFromTab(packId, clamped)
+    if (!keepConsole) closeIdePythonConsole()
     selectIde(packId, clamped)
     if (previewEra && packId !== pack.id) setPreviewEra(null)
   }
@@ -180,6 +197,21 @@ export function IdeChrome() {
 
   const active = items[index]
   const lang = pack.kind === "files" ? (pack.files[index]?.lang ?? pack.files[0]?.lang) : undefined
+  const activeFile = pack.kind === "files" ? (pack.files[index] ?? pack.files[0]) : undefined
+  const canRunActive = activeFile?.lang === "python" && !consoleBusy
+
+  const runActiveFile = useCallback(() => {
+    if (!activeFile || activeFile.lang !== "python" || consoleBusy) return
+    runPythonFile(activeFile)
+  }, [activeFile, consoleBusy])
+
+  const showPythonConsole = useCallback(() => {
+    if (getIdePythonConsole().open) {
+      closeIdePythonConsole()
+      return
+    }
+    openIdePythonConsole(activeFile?.lang === "python" ? { path: activeFile.path, code: activeFile.code } : null)
+  }, [activeFile])
 
   return (
     <div
@@ -195,10 +227,36 @@ export function IdeChrome() {
       onPointerEnter={holdPreview}
       onPointerMove={holdPreview}
     >
-      <nav className="ide-activity" aria-hidden="true">
+      <nav className="ide-activity" aria-label="Activity bar">
         {IDE_ACTIVITY.map(({ id, Icon }) => (
-          <Icon key={id} className={`ide-activity-icon ide-activity-icon-${id}`} {...UI_ICON} />
+          <span key={id} className="ide-activity-icon-wrap" aria-hidden="true">
+            <Icon className={`ide-activity-icon ide-activity-icon-${id}`} {...UI_ICON} />
+          </span>
         ))}
+        <div className="ide-activity-pair ide-activity-bottom">
+          <button
+            type="button"
+            className={consoleBusy ? "ide-activity-btn is-busy" : "ide-activity-btn"}
+            data-testid="ide-run-active"
+            aria-label="Run Python file"
+            title="Run Python file"
+            disabled={!canRunActive}
+            onClick={runActiveFile}
+          >
+            <Play className="ide-activity-icon ide-activity-icon-run" {...UI_ICON} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={consoleOpen ? "ide-activity-btn ide-activity-console is-active" : "ide-activity-btn ide-activity-console"}
+            data-testid="ide-console-open"
+            aria-label="Show Python console"
+            title="Python console"
+            aria-pressed={consoleOpen}
+            onClick={showPythonConsole}
+          >
+            <Terminal className="ide-activity-icon ide-activity-icon-console" {...UI_ICON} aria-hidden />
+          </button>
+        </div>
       </nav>
       <aside className="ide-tree" aria-label="Explorer">
         <p className="ide-tree-title">Explorer</p>
@@ -239,28 +297,60 @@ export function IdeChrome() {
                     {folderItems.map((item, row) => {
                       const ListIcon = listIcon(folder.kind)
                       const selected = isActiveFolder && row === index
+                      const file =
+                        folder.kind === "files" && folder.pack.kind === "files" ? folder.pack.files[row] : undefined
+                      const isPython = file?.lang === "python"
+                      const wrapClass = [
+                        "ide-item-wrap",
+                        `is-${folder.kind}`,
+                        isPython ? "is-runnable" : "",
+                        selected ? "is-active" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
                       return (
-                        <button
-                          key={item.key}
-                          type="button"
-                          role="treeitem"
-                          aria-selected={selected}
-                          className={
-                            selected ? `ide-item is-active is-${folder.kind}` : `ide-item is-${folder.kind}`
-                          }
-                          data-testid="ide-item"
-                          title={item.detail}
-                          onClick={(event) => pick(folder.id, row, event.shiftKey)}
-                        >
-                          <ListIcon className="ide-list-icon" {...UI_ICON_SM} aria-hidden />
-                          <span className="ide-item-text">
-                            <span className="ide-item-main">{item.label}</span>
-                            {folder.kind === "inbox" ? <span className="ide-item-sub">{item.detail}</span> : null}
-                            {folder.kind === "files" && item.detail !== item.label ? (
-                              <span className="ide-item-sub">{item.detail}</span>
-                            ) : null}
-                          </span>
-                        </button>
+                        <div key={item.key} className={wrapClass} role="treeitem" aria-selected={selected}>
+                          <button
+                            type="button"
+                            className="ide-item"
+                            data-testid="ide-item"
+                            title={item.detail}
+                            onClick={(event) => pick(folder.id, row, event.shiftKey)}
+                            onDoubleClick={(event) => {
+                              event.preventDefault()
+                              if (folder.kind !== "files") return
+                              if (!file) return
+                              pick(folder.id, row, event.shiftKey, true)
+                              runPythonFile(file)
+                            }}
+                          >
+                            <ListIcon className="ide-list-icon" {...UI_ICON_SM} aria-hidden />
+                            <span className="ide-item-text">
+                              <span className="ide-item-main">{item.label}</span>
+                              {folder.kind === "inbox" ? <span className="ide-item-sub">{item.detail}</span> : null}
+                              {folder.kind === "files" && item.detail !== item.label ? (
+                                <span className="ide-item-sub">{item.detail}</span>
+                              ) : null}
+                            </span>
+                          </button>
+                          {isPython && file ? (
+                            <button
+                              type="button"
+                              className="ide-item-run"
+                              data-testid="ide-item-run"
+                              aria-label={`Run ${item.label}`}
+                              title="Run Python file"
+                              disabled={consoleBusy}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                pick(folder.id, row, event.shiftKey, true)
+                                runPythonFile(file)
+                              }}
+                            >
+                              <Play className="ide-item-run-icon" {...UI_ICON_SM} aria-hidden />
+                            </button>
+                          ) : null}
+                        </div>
                       )
                     })}
                   </div>
@@ -281,6 +371,12 @@ export function IdeChrome() {
             data-testid="ide-tab"
             title={item.detail}
             onClick={() => pick(pack.id, row)}
+            onDoubleClick={() => {
+              if (pack.kind !== "files") return
+              const file = pack.files[row]
+              if (!file) return
+              runPythonFile(file)
+            }}
           >
             <i className="ide-tab-dot" data-lang={pack.kind === "files" ? pack.files[row]?.lang : pack.kind} />
             <span>{pack.kind === "deck" ? `${row + 1} ${item.label}` : item.label}</span>
@@ -310,6 +406,7 @@ export function IdeChrome() {
         <span className={view.previewing ? "ide-mode is-preview" : "ide-mode"}>{view.previewing ? "PREVIEW" : KIND_MODE[pack.kind]}</span>
         <span>{pack.label}</span>
         <span className="ide-status-gap" />
+        <IdeStatusDock />
         {pack.kind === "deck" ? (
           <span className="ide-deck-nav">
             <button type="button" data-testid="ide-slide-prev" aria-label="Previous slide" disabled={index <= 0} onClick={() => pick(pack.id, index - 1)}>
