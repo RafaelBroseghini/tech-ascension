@@ -558,7 +558,7 @@ test("ide: the pack follows the owned era, tabs navigate, the shop era previews 
   top("Angel syndicate seat")
   const searchIde = game.getState().ide
   expect(searchIde).toMatchObject({ era: "mid", packId: "search", kind: "files", index: 0 })
-  expect(searchIde.items[0]).toBe("BinarySearch.java")
+  expect(searchIde.items[0]).toBe("binary_search.py")
   expect(searchIde.items.length).toBeGreaterThan(2)
   expect(searchIde.folders).toEqual(["fizzbuzz", "two_sum", "reverse_list", "debounce", "search"])
   expect(game.ideSelect(0, "fizzbuzz")).toBe(true)

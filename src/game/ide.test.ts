@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { IDE_PACKS, itemsOf, packForTier, packsInEra, previewPackForEra } from "../data/idePacks.ts"
 import type { DeckPack, FilePack, InboxPack } from "../data/idePacks.ts"
 import { MAX_IDE_TABS, visibleTabCount } from "../data/ideProblems.ts"
+import { maxLinesForFile } from "../data/ideScriptStyle.ts"
 import { PROBLEM_POOLS } from "../data/ideProblemPools.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { ideView, PREVIEW_HOLD_MS } from "./ide.ts"
@@ -15,13 +16,13 @@ describe("IDE content v2", () => {
     expect(packForTier(0).files.map((f) => f.path)).toEqual(["hello.py"])
     expect(packForTier(6).files.length).toBeGreaterThan(1)
     expect(packForTier(12).files[0]?.path).toBe("two_sum.py")
-    expect(packForTier(18).files.some((f) => f.path === "reverse_list.go")).toBe(true)
+    expect(packForTier(18).files.some((f) => f.path === "reverse_list.py")).toBe(true)
   })
 
   it("resolves mid and upper packs from problem pools with short snippets", () => {
     expect(packForTier(33).files[0]?.path).toBe("train.py")
-    expect(packForTier(19).files.some((f) => f.path === "src/debounce.ts")).toBe(true)
-    expect(packForTier(23).files[0]?.path).toBe("BinarySearch.java")
+    expect(packForTier(19).files.some((f) => f.path === "debounce.py")).toBe(true)
+    expect(packForTier(23).files[0]?.path).toBe("binary_search.py")
     for (const meta of IDE_PACKS) {
       if (meta.kind !== "files") continue
       const next = IDE_PACKS.find((p) => p.fromTier > meta.fromTier)
@@ -31,8 +32,10 @@ describe("IDE content v2", () => {
       expect(pack.files.length).toBeLessThanOrEqual(MAX_IDE_TABS)
       expect(pack.files.length).toBe(Math.min(PROBLEM_POOLS[meta.id]?.length ?? 0, MAX_IDE_TABS))
       for (const file of pack.files) {
-        expect(file.code.split("\n").length).toBeLessThanOrEqual(18)
+        expect(file.lang).toBe("python")
+        expect(file.code.split("\n").length).toBeLessThanOrEqual(maxLinesForFile(meta.id, file.path))
         expect(file.code.trim()).not.toBe("")
+        expect(file.code).toMatch(/^# .+\n# .+\n# .+\n# docs: https:\/\//m)
       }
     }
   })
@@ -87,7 +90,7 @@ describe("IDE content v2", () => {
 
   it("lists the items a player can navigate, in tab order", () => {
     const debounce = packForTier(22)
-    expect(itemsOf(debounce).map((item) => item.label)).toContain("debounce.ts")
+    expect(itemsOf(debounce).map((item) => item.label)).toContain("debounce.py")
     expect(itemsOf(packsInEra("q3")[0] as InboxPack)).toHaveLength(7)
     expect(itemsOf(packsInEra("end")[1] as DeckPack).map((item) => item.detail)).toEqual(["1", "2", "3"])
   })
@@ -142,7 +145,7 @@ describe("IDE explorer folders", () => {
     const debounce = view.folders.find((f) => f.id === "debounce")?.pack as FilePack
     expect(fizz.files.length).toBeGreaterThan(10)
     expect(debounce.files.some((f) => f.path.includes("debounce"))).toBe(true)
-    expect(view.folders.find((f) => f.id === "search")?.pack.files[0]?.path).toBe("BinarySearch.java")
+    expect(view.folders.find((f) => f.id === "search")?.pack.files[0]?.path).toBe("binary_search.py")
   })
 
   it("adds a preview-only folder while browsing an unowned era", () => {
