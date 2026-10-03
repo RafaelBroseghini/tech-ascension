@@ -29,6 +29,7 @@ import { ownedArtIds } from "./phase.ts"
 import { hasEmoji } from "../data/emojiAssets.ts"
 import {
   DESK_CAT_EMOJI,
+  DESK_CAT_CLICK_POOL,
   DESK_CAT_TITLE,
   EMOJI_CAPITAL,
   EMOJI_GEAR,
@@ -374,6 +375,12 @@ describe("emoji.gg art", () => {
     expect(DESK_CAT_EMOJI).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
     expect(DESK_CAT_TITLE).not.toMatch(DISALLOWED_EMOJI_TITLE)
     expect(DESK_CAT_EMOJI).not.toBe(EMOJI_SKILLS[0].idle)
+    expect(DESK_CAT_CLICK_POOL.length).toBeGreaterThanOrEqual(100)
+    expect(DESK_CAT_CLICK_POOL.length).toBeLessThanOrEqual(300)
+    for (const url of DESK_CAT_CLICK_POOL) {
+      expect(url).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
+      expect(url).not.toBe(DESK_CAT_EMOJI)
+    }
   })
 })
 

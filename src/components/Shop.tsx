@@ -1,4 +1,4 @@
-import { Check, Circle } from "lucide-react"
+import { Check, ChevronRight, Circle } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -124,7 +124,7 @@ function LockPanel({ title, lines, either }: { title: string; lines: Requirement
   )
 }
 
-export function Shop() {
+export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const money = useGame((s) => s.money)
   const xp = useGame((s) => s.xp)
   const xpTotal = useGame((s) => s.xpTotal)
@@ -306,13 +306,24 @@ export function Shop() {
   return (
     <aside className="shop" data-testid="shop" data-phase={tab} onPointerMove={holdPreview}>
       <div className="shop-head">
-        <div>
+        <div className="shop-head-top">
           <p className="eyebrow">
             {tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
           </p>
-          <h2>{unlocked[tab] ? PHASE_TAB[tab].title : `${PHASE_TAB[tab].label} locked`}</h2>
+          <button
+            type="button"
+            className="shop-panel-toggle shop-panel-hide"
+            data-testid="shop-panel-hide"
+            aria-label="Hide shop"
+            onClick={onCollapse}
+          >
+            <ChevronRight {...UI_ICON} aria-hidden />
+          </button>
         </div>
-        <p className="era-hint">{PHASE_TAB[tab].hint}</p>
+        <div className="shop-head-row">
+          <h2>{unlocked[tab] ? PHASE_TAB[tab].title : `${PHASE_TAB[tab].label} locked`}</h2>
+          <p className="era-hint">{PHASE_TAB[tab].hint}</p>
+        </div>
       </div>
       <div className="era-tabs" role="tablist" aria-label="Career phases">
         {SHOP_TABS.map((id) => {

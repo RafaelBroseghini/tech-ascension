@@ -21,6 +21,7 @@ import { HeroMoney } from "./HeroMoney.tsx"
 import { DeskCat } from "./DeskCat.tsx"
 import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
+import { IdePythonConsole } from "./IdePythonConsole.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
@@ -104,10 +105,12 @@ export function Stage() {
   const [drops, setDrops] = useState<Drop[]>([])
   const [emojiPulse, setEmojiPulse] = useState(0)
 
+  const stagePanelRef = useRef<HTMLElement>(null)
   const hitboxRef = useRef<HTMLButtonElement>(null)
   const tiltRef = useRef<HTMLSpanElement>(null)
   const heat = useRef(0)
   const lastSide = useRef(1)
+
   const hoverRef = useRef(false)
   const pointRef = useRef<{ x: number; y: number } | null>(null)
   const hoverClickOn = useSyncExternalStore(subscribeDeskPrefs, hoverClickPref, hoverClickPref)
@@ -288,7 +291,11 @@ export function Stage() {
   const gold = boosted && mult >= GOLD_MULT_THRESHOLD
 
   return (
-    <section className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : ""].filter(Boolean).join(" ")} aria-label="Click stage">
+    <section
+      ref={stagePanelRef}
+      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : ""].filter(Boolean).join(" ")}
+      aria-label="Click stage"
+    >
       <IdeChrome />
       <StickyNote />
       <DeskCat />
@@ -305,7 +312,7 @@ export function Stage() {
           </div>
         ) : null}
       </div>
-      <HeroMoney />
+      <HeroMoney stagePanelRef={stagePanelRef} />
       <button
         ref={hitboxRef}
         type="button"
@@ -423,6 +430,20 @@ export function Stage() {
               {item.text}
             </span>
           ))}
+          {loot.map((item) => (
+            <span
+              key={item.id}
+              className={item.kind === "xp" ? "loot loot-xp" : "loot loot-money"}
+              style={{
+                left: item.x,
+                top: item.y,
+                ["--dx" as string]: `${item.dx}px`,
+                ["--dy" as string]: `${item.dy}px`,
+              }}
+            >
+              {item.text}
+            </span>
+          ))}
         </div>,
         document.body,
       )}
@@ -434,6 +455,7 @@ export function Stage() {
         <OwnedStrip />
         <Skills />
       </div>
+      <IdePythonConsole />
       <FightOverlay />
       <ScorePop />
     </section>

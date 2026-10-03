@@ -1,6 +1,6 @@
-export type MusicStyleId = "cozy" | "japanese" | "synth" | "edm" | "lofi"
+export type MusicStyleId = "cozy" | "synth" | "edm" | "lofi"
 
-export const MUSIC_STYLE_IDS: readonly MusicStyleId[] = ["cozy", "japanese", "synth", "edm", "lofi"]
+export const MUSIC_STYLE_IDS: readonly MusicStyleId[] = ["cozy", "synth", "edm", "lofi"]
 
 export type MusicStyle = {
   id: MusicStyleId
@@ -70,39 +70,6 @@ const COZY_HOME: readonly Note[] = [
   9, 5, 2, null, 5, 9, 12, null,
   7, 4, 0, null, 4, null, 7, null,
   4, 0, null, null, null, null, null, null,
-]
-
-const JAPANESE_HEAD: readonly Note[] = [
-  7, 9, 11, 9, 7, null, 5, null,
-  4, 5, 7, null, 9, 7, 5, null,
-  2, 4, 5, 4, 2, null, 0, null,
-  4, 5, 7, 9, 11, 9, 7, null,
-  12, 11, 9, 7, 5, null, 4, null,
-  2, 0, 2, 4, 5, 7, null, null,
-  9, 11, 12, 11, 9, 7, 5, null,
-  4, 2, 0, null, null, null, null, null,
-]
-
-const JAPANESE_MORE: readonly Note[] = [
-  12, 14, 16, 14, 12, null, 9, null,
-  7, 9, 11, null, 12, 11, 9, null,
-  5, 7, 9, 7, 5, null, 4, null,
-  2, 4, 5, 7, 9, 7, 5, null,
-  16, 14, 12, 11, 9, null, 7, null,
-  5, 4, 2, 0, null, null, 4, null,
-  7, 9, 12, 9, 7, 5, 4, null,
-  2, 0, null, null, null, null, null, null,
-  12, 11, 9, 11, 12, null, 16, null,
-  14, 12, 11, 9, 7, null, 5, null,
-  4, 5, 7, 9, 7, 5, 4, 2,
-  0, 2, 4, null, 7, 4, 2, null,
-  9, 7, 5, 4, 2, 0, null, null,
-  4, 7, 9, 7, 4, null, 2, null,
-  0, 4, 7, 9, 7, 4, 0, null,
-  0, null, null, null, null, null, null, null,
-  7, 9, 11, 9, 7, 5, 4, null,
-  2, 4, 0, null, 4, 7, 9, null,
-  12, 9, 7, 4, 2, 0, null, null,
 ]
 
 const SYNTH_HEAD: readonly Note[] = [
@@ -246,24 +213,6 @@ export const MUSIC_STYLES: Record<MusicStyleId, MusicStyle> = {
     melody: join(COZY_HEAD, COZY_LIFT, COZY_HIGH, COZY_HOME),
     lead: { type: "sine", peak: 0.04, attack: 0.02, release: 0.32 },
     pad: { type: "triangle", peak: 0.016, attack: 0.4, holdSteps: 7.2 },
-  },
-  japanese: {
-    id: "japanese",
-    label: "Japanese cozy",
-    step: 0.58,
-    chordEvery: 12,
-    humanize: 0.02,
-    chords: [
-      [0, 4, 7],
-      [2, 5, 9],
-      [4, 7, 11],
-      [7, 11, 14],
-      [5, 9, 12],
-      [0, 3, 7],
-    ],
-    melody: join(JAPANESE_HEAD, JAPANESE_MORE),
-    lead: { type: "triangle", peak: 0.035, attack: 0.03, release: 0.45 },
-    pad: { type: "sine", peak: 0.012, attack: 0.55, holdSteps: 10 },
   },
   synth: {
     id: "synth",

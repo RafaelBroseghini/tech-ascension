@@ -7,7 +7,6 @@ import {
   MonoSynth,
   NoiseSynth,
   Part,
-  PluckSynth,
   PolySynth,
   Synth,
   getContext,
@@ -27,7 +26,6 @@ type Graph = {
   soundGain: Gain
   lead: Synth
   mono: MonoSynth
-  pluck: PluckSynth
   am: AMSynth
   pad: PolySynth
   kick: MembraneSynth
@@ -100,8 +98,6 @@ function build(): Graph | null {
       filter: { Q: 1, type: "lowpass", rolloff: -12 },
       filterEnvelope: { attack: 0.01, decay: 0.18, sustain: 0.2, baseFrequency: 220, octaves: 2.6, release: 0.2 },
     }).connect(warmth)
-    const pluck = new PluckSynth({ attackNoise: 0.4, dampening: 1800, resonance: 0.66, release: 0.45 }).connect(warmth)
-    pluck.volume.value = -20
     const am = new AMSynth({
       harmonicity: 1.4,
       oscillator: { type: "sine" },
@@ -145,7 +141,7 @@ function build(): Graph | null {
       noise: { type: "pink" },
       envelope: { attack: 0.04, decay: 0.2, sustain: 0, release: 0.12 },
     }).connect(sipFilter)
-    graph = { musicGain, soundGain, lead, mono, pluck, am, pad, kick, wood, woodHigh, blip, clink, noise, noiseFilter, sip, sipFilter }
+    graph = { musicGain, soundGain, lead, mono, am, pad, kick, wood, woodHigh, blip, clink, noise, noiseFilter, sip, sipFilter }
     if (!watching) {
       watching = true
       document.addEventListener("visibilitychange", () => syncDeskAudio())
@@ -179,7 +175,6 @@ function tune(style: MusicStyle, g: Graph): void {
   g.mono.envelope.release = style.lead.release
   g.am.envelope.attack = style.lead.attack
   g.am.envelope.release = style.lead.release
-  g.pluck.release = style.lead.release
   const padRelease = Math.max(0.2, style.step * style.pad.holdSteps)
   g.pad.set({
     oscillator: { type: style.pad.type },
@@ -190,10 +185,6 @@ function tune(style: MusicStyle, g: Graph): void {
 function playLead(g: Graph, style: MusicStyle, semi: number, time: number): void {
   const note = freq(semi)
   const dur = Math.max(0.03, Math.min(style.step * 0.85, style.lead.attack + style.lead.release))
-  if (style.id === "japanese") {
-    g.pluck.triggerAttack(note, time)
-    return
-  }
   if (style.id === "synth") {
     g.mono.triggerAttackRelease(note, dur, time, style.lead.peak)
     return
@@ -228,7 +219,6 @@ function createPart(style: MusicStyle, g: Graph): Part<MusicEvent> {
 
 function silenceVoices(g: Graph): void {
   g.pad.releaseAll()
-  g.pluck.triggerRelease()
 }
 
 function stopMusic(): void {

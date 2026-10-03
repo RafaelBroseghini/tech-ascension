@@ -14,9 +14,31 @@ export type DeskPrefs = {
   enemies: boolean
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
+  /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
+  heroOffsetX: number
+  heroOffsetY: number
+  /** Dismissed the small-screen “best on desktop” notice. */
+  mobilePlayAck: boolean
 }
 
-const DEFAULTS: DeskPrefs = { music: false, musicStyle: "cozy", sounds: true, cat: true, enemies: true, hoverClick: false }
+const DEFAULTS: DeskPrefs = {
+  music: false,
+  musicStyle: "cozy",
+  sounds: true,
+  cat: true,
+  enemies: true,
+  hoverClick: false,
+  heroOffsetX: 0,
+  heroOffsetY: 0,
+  mobilePlayAck: false,
+}
+
+const HERO_OFFSET_CLAMP = 280
+
+function parseHeroOffset(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0
+  return Math.round(Math.max(-HERO_OFFSET_CLAMP, Math.min(HERO_OFFSET_CLAMP, value)))
+}
 
 const prefListeners = new Set<() => void>()
 const activityListeners = new Set<() => void>()
@@ -35,11 +57,13 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ...DEFAULTS }
-  for (const key of ["music", "sounds", "cat", "enemies", "hoverClick"] as const) {
+  for (const key of ["music", "sounds", "cat", "enemies", "hoverClick", "mobilePlayAck"] as const) {
     const value = (body as Record<string, unknown>)[key]
     if (typeof value === "boolean") next[key] = value
   }
   next.musicStyle = parseMusicStyleId((body as Record<string, unknown>).musicStyle)
+  next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
+  next.heroOffsetY = parseHeroOffset((body as Record<string, unknown>).heroOffsetY)
   return next
 }
 
@@ -64,6 +88,16 @@ export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[
   for (const listener of prefListeners) listener()
   syncDeskAudio()
   if (key === "sounds" && value) playCozyClick()
+}
+
+export function setDeskHeroOffset(x: number, y: number): void {
+  const heroOffsetX = parseHeroOffset(x)
+  const heroOffsetY = parseHeroOffset(y)
+  const current = getDeskPrefs()
+  if (current.heroOffsetX === heroOffsetX && current.heroOffsetY === heroOffsetY) return
+  prefs = { ...current, heroOffsetX, heroOffsetY }
+  writePrefs(prefs)
+  for (const listener of prefListeners) listener()
 }
 
 export function subscribeDeskPrefs(listener: () => void): () => void {
