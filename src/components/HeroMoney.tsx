@@ -1,11 +1,12 @@
 import { MousePointerClick } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type RefObject } from "react"
 import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
 import { formatFullNumber, formatNumber, RAW_DIGITS_BELOW } from "../game/format.ts"
 import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
+import { useDeskMoneyHeroDrag } from "./useDeskMoneyHeroDrag.ts"
 
 const COUNT_UP_MS = 720
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -48,7 +49,35 @@ function useScore(target: number): number {
   return tween ? Math.max(0, Math.floor(tween.value)) : target
 }
 
-export function HeroMoney() {
+type HeroMoneyProps = {
+  stagePanelRef: RefObject<HTMLElement | null>
+}
+
+export function HeroMoney({ stagePanelRef }: HeroMoneyProps) {
+  const drag = useDeskMoneyHeroDrag(stagePanelRef)
+  const dragStyle = drag.dragging
+    ? undefined
+    : { ["--hero-x" as string]: `${drag.offsetX}px`, ["--hero-y" as string]: `${drag.offsetY}px` }
+
+  return (
+    <div
+      ref={drag.boxRef}
+      className={["hero-money", drag.dragging ? "is-dragging" : ""].filter(Boolean).join(" ")}
+      style={dragStyle}
+      aria-live="off"
+      aria-label="Money and XP. Drag to reposition."
+      draggable={false}
+      onPointerDown={drag.onPointerDown}
+      onPointerMove={drag.onPointerMove}
+      onPointerUp={drag.onPointerUp}
+      onPointerCancel={drag.onPointerCancel}
+    >
+      <HeroMoneyBody />
+    </div>
+  )
+}
+
+function HeroMoneyBody() {
   const money = useGame((state) => state.money)
   const xp = useGame((state) => state.xp)
   const skills = useGame((state) => state.skills)
@@ -112,7 +141,7 @@ export function HeroMoney() {
   }, [pop])
 
   return (
-    <div className="hero-money" aria-live="off" aria-label="Money">
+    <>
       <span
         key={buyStamp}
         ref={valueRef}
@@ -141,6 +170,6 @@ export function HeroMoney() {
           <>+{formatNumber(rates.xpClick * rates.mult)} XP per click</>
         )}
       </span>
-    </div>
+    </>
   )
 }

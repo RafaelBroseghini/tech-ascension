@@ -12,8 +12,28 @@ describe("desk", () => {
   })
 
   it("starts with music off, desk sounds on, the cat out, and enemies on", () => {
-    expect(parseDeskPrefs(null)).toEqual({ music: false, musicStyle: "cozy", sounds: true, cat: true, enemies: true, hoverClick: false })
-    expect(parseDeskPrefs("nope")).toEqual({ music: false, musicStyle: "cozy", sounds: true, cat: true, enemies: true, hoverClick: false })
+    expect(parseDeskPrefs(null)).toEqual({
+      music: false,
+      musicStyle: "cozy",
+      sounds: true,
+      cat: true,
+      enemies: true,
+      hoverClick: false,
+      heroOffsetX: 0,
+      heroOffsetY: 0,
+      mobilePlayAck: false,
+    })
+    expect(parseDeskPrefs("nope")).toEqual({
+      music: false,
+      musicStyle: "cozy",
+      sounds: true,
+      cat: true,
+      enemies: true,
+      hoverClick: false,
+      heroOffsetX: 0,
+      heroOffsetY: 0,
+      mobilePlayAck: false,
+    })
     expect(parseDeskPrefs(JSON.stringify({ music: true, musicStyle: "edm", hoverClick: "yes" }))).toEqual({
       music: true,
       musicStyle: "edm",
@@ -21,6 +41,9 @@ describe("desk", () => {
       cat: true,
       enemies: true,
       hoverClick: false,
+      heroOffsetX: 0,
+      heroOffsetY: 0,
+      mobilePlayAck: false,
     })
   })
 
@@ -53,6 +76,16 @@ describe("desk", () => {
     const ledger = await import("./ledger.ts")
     ledger.writePref("desk", { music: true, sounds: false, cat: false })
     const fresh = await import("./desk.ts")
-    expect(fresh.getDeskPrefs()).toEqual({ music: true, musicStyle: "cozy", sounds: false, cat: false, enemies: true, hoverClick: false })
+    expect(fresh.getDeskPrefs()).toEqual({
+      music: true,
+      musicStyle: "cozy",
+      sounds: false,
+      cat: false,
+      enemies: true,
+      hoverClick: false,
+      heroOffsetX: 0,
+      heroOffsetY: 0,
+      mobilePlayAck: false,
+    })
   })
 })

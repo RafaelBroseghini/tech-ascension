@@ -1,9 +1,14 @@
 import { X } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
+import { SKILL_TIERS } from "../data/phases.ts"
+import { ownedCount } from "../game/economy.ts"
+import { linkedOutProfile } from "../game/linkedout.ts"
+import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { createPortal } from "react-dom"
 import type { ResumeDoc, ResumeEntry, ResumeGroup } from "../game/resumeDoc.ts"
 import { LINKEDOUT_TAGLINE } from "./icons/LinkedOut.tsx"
+import { LinkedOut } from "./LinkedOut.tsx"
 
 function Entry({ entry, heading }: { entry: ResumeEntry; heading: "h3" | "h4" }) {
   const Title = heading
@@ -36,7 +41,14 @@ function Group({ group }: { group: ResumeGroup }) {
 }
 
 export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: () => void }) {
+  const jobs = useGame((state) => state.jobs)
+  const gigs = useGame((state) => state.gigs)
+  const skills = useGame((state) => state.skills)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const linkedOut = useMemo(() => {
+    const names = SKILL_TIERS.filter((row) => ownedCount(skills, row.id) > 0).map((row) => row.name)
+    return linkedOutProfile({ jobs, gigs, skills: names })
+  }, [jobs, gigs, skills])
   const where = doc
     ? [doc.location, doc.openToWork && !doc.openToWorkBanner ? "Open to work" : ""]
         .filter((part) => part.length > 0)
@@ -84,7 +96,8 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
           </button>
         </header>
         <div className="resume-sheet">
-          {empty ? <p className="resume-meta">Earn a skill to start a resume.</p> : null}
+          <LinkedOut />
+          {empty && !linkedOut ? <p className="resume-meta">Earn a skill to start a resume.</p> : null}
           {doc && doc.experience.length > 0 ? (
             <section>
               <h3 className="resume-section">Experience</h3>
