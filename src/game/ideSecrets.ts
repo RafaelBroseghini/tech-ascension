@@ -35,7 +35,7 @@ export function readIdeLoreUnlocked(): boolean {
 
 export function unlockIdeLore(): boolean {
   if (readIdeLoreUnlocked()) return false
-  writePref("ideLore", { lore: true })
+  writePref("ideLore", { ...readPrefBody(), lore: true })
   notify()
   return true
 }

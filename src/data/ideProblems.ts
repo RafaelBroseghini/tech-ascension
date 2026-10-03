@@ -1,5 +1,6 @@
 import type { FilePack, IdeFile, IdePack } from "./idePacks.ts"
 import { PROBLEM_POOLS } from "./ideProblemPools.ts"
+import { styleIdeFile } from "./ideScriptStyle.ts"
 
 export const MAX_IDE_TABS = 20
 
@@ -20,7 +21,7 @@ export function resolveFilePack(pack: FilePack, artId: number, bandEndTier: numb
   const pool = PROBLEM_POOLS[pack.id]
   if (!pool?.length) return pack
   const n = visibleTabCount(pack.fromTier, bandEndTier, artId, pool.length)
-  return { ...pack, files: pool.slice(0, n) }
+  return { ...pack, files: pool.slice(0, n).map((file) => styleIdeFile(pack.id, file)) }
 }
 
 /** File-era packs become a LeetCode-style tab strip; inbox and deck stay as authored. */

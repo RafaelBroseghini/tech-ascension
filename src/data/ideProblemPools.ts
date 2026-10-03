@@ -3,7 +3,24 @@ import type { IdeFile } from "./idePacks.ts"
 /** LeetCode-style and classroom problems by career band (see pack ids in idePacks.ts). */
 export const PROBLEM_POOLS: Readonly<Record<string, readonly IdeFile[]>> = {
   fizzbuzz: [
-    { path: "hello.py", lang: "python", code: `print("Hello, world!")` },
+    {
+      path: "hello.py",
+      lang: "python",
+      code: `# scratch before turning in lab 1
+my_name = "me"  # TODO spell check??
+
+def hello():
+    print("starting hello")  # dad says print debug
+    msg = "Hello, world!"
+    print(msg)
+    return msg`,
+    },
+    {
+      path: "gradebook_cli.py",
+      lang: "python",
+      code: `def run_app() -> bool:
+    return True`,
+    },
     {
       path: "fizzbuzz.py",
       lang: "python",
@@ -190,6 +207,7 @@ export const PROBLEM_POOLS: Readonly<Record<string, readonly IdeFile[]>> = {
             return [seen[target - n], i]
         seen[n] = i`,
     },
+    { path: "course_registry.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "valid_anagram.py",
       lang: "python",
@@ -425,6 +443,7 @@ export const PROBLEM_POOLS: Readonly<Record<string, readonly IdeFile[]>> = {
     return prev
 }`,
     },
+    { path: "gig_board_backend.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "merge_two_lists.py",
       lang: "python",
@@ -704,6 +723,7 @@ def kth_largest(nums, k):
   };
 }`,
     },
+    { path: "typeahead_service.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "src/debounce.test.ts",
       lang: "ts",
@@ -973,6 +993,7 @@ test("fires once after quiet", () => {
   }
 }`,
     },
+    { path: "log_inspector.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "SearchInsert.java",
       lang: "java",
@@ -1275,6 +1296,7 @@ class Solution:
     },
   ],
   workers: [
+    { path: "batch_runner.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "main.go",
       lang: "go",
@@ -1537,6 +1559,7 @@ for step, batch in enumerate(loader(cfg.batch)):
     if step % 100 == 0:
         log(eval_loss(model))`,
     },
+    { path: "experiment_lab.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "data.py",
       lang: "python",
@@ -1712,6 +1735,7 @@ warmup_steps: 100`,
     },
   ],
   ratelimit: [
+    { path: "edge_gateway.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "tokenBucket.ts",
       lang: "ts",
@@ -1959,6 +1983,7 @@ export function once(key: string, ttlMs: number, fn: () => void) {
     },
   ],
   lru: [
+    { path: "cache_service.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "lib.rs",
       lang: "rust",
@@ -2232,6 +2257,7 @@ edition = "2021"`,
     },
   ],
   attention: [
+    { path: "model_lab.py", lang: "python", code: "def run_app() -> bool:\n    return True" },
     {
       path: "attention.py",
       lang: "python",
