@@ -12,9 +12,9 @@ export function thumbForTier(id: number): string {
 }
 
 export const ERA_ACCENT: Record<Era, { glow: string; tint: string; kicker: string }> = {
-  early: { glow: "#6fe08c", tint: "#11261a", kicker: "Early career" },
-  mid: { glow: "#5aa9ff", tint: "#0e1f36", kicker: "The climb" },
-  upper: { glow: "#f3b94a", tint: "#31230b", kicker: "Ownership" },
-  q3: { glow: "#3fdacb", tint: "#0a2a2b", kicker: "Scale" },
-  end: { glow: "#ff7b4f", tint: "#381508", kicker: "Off-world" },
+  early: { glow: "var(--ide-green)", tint: "var(--accent-deep)", kicker: "Early career" },
+  mid: { glow: "var(--ide-blue)", tint: "var(--accent-deep)", kicker: "The climb" },
+  upper: { glow: "var(--ide-peach)", tint: "var(--accent-deep)", kicker: "Ownership" },
+  q3: { glow: "var(--ide-sky)", tint: "var(--accent-deep)", kicker: "Scale" },
+  end: { glow: "var(--ide-rosewater)", tint: "var(--accent-deep)", kicker: "Off-world" },
 }
