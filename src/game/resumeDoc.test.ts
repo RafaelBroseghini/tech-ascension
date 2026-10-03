@@ -8,6 +8,13 @@ describe("resume document", () => {
     expect(resumeDocument(none)).toBeNull()
   })
 
+  it("builds a LinkedOut doc from gigs alone so the resume control can appear", () => {
+    const doc = resumeDocument({ ...none, gigs: [1] })
+    expect(doc).not.toBeNull()
+    expect(doc?.projects.length).toBeGreaterThan(0)
+    expect(doc?.openToWorkBanner).toBeNull()
+  })
+
   it("lists skills and tools before any job", () => {
     const doc = resumeDocument({ ...none, skills: { "1": 1 }, equipment: { "1": 1 } })
     expect(doc?.headline).toBe("Self-taught")
@@ -22,6 +29,7 @@ describe("resume document", () => {
     const doc = resumeDocument({ ...none, jobs: [1, 2] })
     expect(doc?.headline).toBe("Junior SWE at Byte & Mortar")
     expect(doc?.openToWork).toBe(true)
+    expect(doc?.openToWorkBanner).toContain("Open to work")
     expect(doc?.experience[0]?.title).toBe("Byte & Mortar")
     expect(doc?.experience[0]?.entries.map((entry) => entry.title)).toEqual(["Junior SWE", "Internship offer"])
     const text = resumeMarkdown(doc!)

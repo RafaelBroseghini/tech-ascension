@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { CAPITAL } from "../data/capital.ts"
-import { GEAR, GEAR_KINDS } from "../data/gear.ts"
+import { GEAR, GEAR_KINDS, gearSections } from "../data/gear.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { formatNumber, HERO_RAW_DIGITS_BELOW } from "./format.ts"
-import { nextUnlock } from "./nextUnlock.ts"
+import { visibleShopRows } from "./economy.ts"
+import { nextUnlock, ownsEverything, shopFocus } from "./nextUnlock.ts"
 import { equipmentOpen, SHOP_TABS } from "./phase.ts"
 import { parseSave, SAVE_VERSION } from "./save.ts"
 
@@ -77,13 +78,55 @@ describe("next unlock teaser", () => {
     expect(tier).toMatchObject({ key: "capital:1", name: CAPITAL[0]?.name, tab: "D", needs: [`$${formatNumber(CAPITAL[0]?.baseCost ?? 0)}`] })
 
     const ownedCapital = Object.fromEntries(CAPITAL.map((row) => [String(row.id), 1]))
-    expect(nextUnlock({ ...done, equipment: ownedGear, owned: ownedCapital, peakMoney: 1e30 })).toBeNull()
+    const complete = { ...done, equipment: ownedGear, owned: ownedCapital, peakMoney: 1e30 }
+    expect(nextUnlock(complete)).toBeNull()
+    expect(ownsEverything(complete)).toBe(true)
+    const lastCapital = String(CAPITAL.at(-1)?.id)
+    const missingCapital = { ...ownedCapital }
+    delete missingCapital[lastCapital]
+    expect(ownsEverything({ ...complete, owned: missingCapital })).toBe(false)
+    expect(ownsEverything(EMPTY)).toBe(false)
   })
 
   it("keeps a later gear row behind one that is revealed and still unbought", () => {
     const done = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, jobs: ALL_JOBS, gigs: ALL_GIGS, peakMoney: 1e9, money: 1e9 }
     expect(nextUnlock(done)?.key).toBe("gear:1")
     expect(nextUnlock({ ...done, equipment: { "1": 1 } })).toMatchObject({ key: "gear:2", name: GEAR[1]?.name, needs: ["to buy it"] })
+  })
+})
+
+describe("next click focus", () => {
+  it("lands on the catalog row the suggestion names", () => {
+    const open = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, gigs: ALL_GIGS, jobs: ALL_JOBS, peakMoney: 1e9 }
+    const gear = nextUnlock(open)
+    expect(gear && shopFocus(open, gear)).toEqual({ tab: "G", row: "gear:1" })
+
+    const ownedGear = Object.fromEntries(GEAR.map((row) => [String(row.id), 1]))
+    const capital = nextUnlock({ ...open, equipment: ownedGear })
+    expect(capital && shopFocus({ ...open, equipment: ownedGear }, capital)).toEqual({ tab: "D", row: "capital:1", era: "mid" })
+  })
+
+  it("opens the skill, gig, or job you still have to clear for a locked board", () => {
+    const gigBoard = { ...EMPTY, xpTotal: 14_000, skills: { "15": 1 } }
+    const gigNext = nextUnlock(gigBoard)
+    expect(gigNext && shopFocus(gigBoard, gigNext)).toEqual({ tab: "A", row: "skill:16" })
+
+    const jobBoard = { ...EMPTY, xpTotal: 40_000, skills: { "15": 1, "16": 1 }, gigs: [1, 2, 3, 4, 5] }
+    const jobNext = nextUnlock(jobBoard)
+    expect(jobNext && shopFocus(jobBoard, jobNext)).toEqual({ tab: "B", row: "gig:6" })
+
+    const capital = { ...EMPTY, xpTotal: 100_000, skills: { "15": 1, "16": 1 }, gigs: [1, 2, 3, 4, 5, 6], peakMoney: 120_000 }
+    const capitalNext = nextUnlock(capital)
+    expect(capitalNext && shopFocus(capital, capitalNext)).toEqual({ tab: "C", row: "job:14" })
+  })
+
+  it("stays on the lock panel when the only gap is XP", () => {
+    const gear = nextUnlock(EMPTY)
+    expect(gear && shopFocus(EMPTY, gear)).toBeNull()
+    const jobs = { ...EMPTY, xpTotal: 20_000, skills: { "15": 1, "16": 1 }, gigs: [1, 2, 3, 4, 5, 6] }
+    const jobNext = nextUnlock(jobs)
+    expect(jobNext?.key).toBe("board:job")
+    expect(jobNext && shopFocus(jobs, jobNext)).toBeNull()
   })
 })
 
@@ -102,6 +145,12 @@ describe("gear tab", () => {
     expect(GEAR.map((row) => row.name)).toContain("Raspberry Pie lab")
     const kinds = new Set(GEAR_KINDS.map((kind) => kind.id))
     for (const row of GEAR) expect(kinds.has(row.kind)).toBe(true)
+  })
+
+  it("appends the next gear row in catalog order instead of sorting it in by price", () => {
+    const visible = visibleShopRows(GEAR, (row) => row.id === 1)
+    const desk = gearSections(visible).find((group) => group.id === "desk")
+    expect(desk?.rows.map((row) => row.name)).toEqual(["Thocky keyboard", "Cable management kit"])
   })
 })
 

@@ -1,9 +1,12 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
-import { formatNumber } from "./format.ts"
+import { offlineToastText } from "./offlineNote.ts"
 import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
+import { normalizeSeenMilestones } from "./milestones.ts"
+import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
+import type { GameStats } from "./stats.ts"
 
 /** Catalog ids grew in v4. Any other version wipes; there is no migration. */
 export const SAVE_VERSION = 5
@@ -36,6 +39,10 @@ export type SaveData = {
   foreverMult?: number
   /** Timed event multipliers still running. Dropped on load once ended. */
   tempMults?: TempMults
+  /** Lifetime fun metrics. Omitted on a brand-new save. */
+  stats?: GameStats
+  /** One-time balance / XP joke pops already shown. */
+  seenMilestones?: string[]
 }
 
 export type Hydrated = {
@@ -110,6 +117,7 @@ export function freshSave(now: number): SaveData {
     gigs: [],
     savedAt: now,
     peakMoney: 0,
+    stats: emptyStats(),
   }
 }
 
@@ -149,6 +157,9 @@ export function parseSave(input: unknown): SaveData | null {
   if (foreverMult !== 1) save.foreverMult = foreverMult
   const temp = normalizeTemp(input.tempMults)
   if (Object.keys(temp).length > 0) save.tempMults = temp
+  save.stats = normalizeStats(input.stats)
+  const seen = normalizeSeenMilestones(input.seenMilestones)
+  if (seen.length > 0) save.seenMilestones = seen
   return save
 }
 
@@ -178,6 +189,9 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     savedAt: now,
   }
   save.peakMoney = Math.max(save.peakMoney, save.money)
+  if (credit > 0) {
+    save.stats = creditMoney(save.stats ?? emptyStats(), credit, "idle")
+  }
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
   }
@@ -189,9 +203,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
 
   let toast: string | null = null
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
-    if (credit > 0 && xpCredit > 0) toast = `welcome back, credited $${formatNumber(credit)} and ${formatNumber(xpCredit)} XP`
-    else if (credit > 0) toast = `welcome back, credited $${formatNumber(credit)}`
-    else if (xpCredit > 0) toast = `welcome back, studied +${formatNumber(xpCredit)} XP`
+    toast = offlineToastText({ credit, xpCredit, jobs: save.jobs, elapsed })
   }
 
   return { save, toast, reset: false }

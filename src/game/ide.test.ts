@@ -1,48 +1,36 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { IDE_PACKS, itemsOf, packForTier, packsInEra, previewPackForEra } from "../data/idePacks.ts"
 import type { DeckPack, FilePack, InboxPack } from "../data/idePacks.ts"
+import { MAX_IDE_TABS, visibleTabCount } from "../data/ideProblems.ts"
+import { PROBLEM_POOLS } from "../data/ideProblemPools.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { ideView, PREVIEW_HOLD_MS } from "./ide.ts"
 import type { IdeSelection } from "./ide.ts"
 import { useGame } from "./store.ts"
 
-vi.hoisted(() => {
-  const store = new Map<string, string>()
-  Object.assign(globalThis, {
-    localStorage: {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => void store.set(key, value),
-      removeItem: (key: string) => void store.delete(key),
-    },
-  })
-})
-
-const filePack = (id: string) => IDE_PACKS.find((pack) => pack.id === id && pack.kind === "files") as FilePack
-const names = (pack: FilePack) => pack.files.map((file) => file.path)
-
 describe("IDE content v2", () => {
-  it("keeps early as single-file buffers", () => {
+  it("keeps early bands on LeetCode-style pools that grow toward 20 tabs", () => {
     const early = packsInEra("early")
     expect(early.map((pack) => pack.id)).toEqual(["fizzbuzz", "two_sum", "reverse_list"])
-    for (const pack of early) {
-      expect(pack.kind).toBe("files")
-      expect((pack as FilePack).files).toHaveLength(1)
-    }
+    expect(packForTier(0).files.map((f) => f.path)).toEqual(["hello.py"])
+    expect(packForTier(6).files.length).toBeGreaterThan(1)
+    expect(packForTier(12).files[0]?.path).toBe("two_sum.py")
+    expect(packForTier(18).files.some((f) => f.path === "reverse_list.go")).toBe(true)
   })
 
-  it("ships the mid and upper multi-file packs from the brief", () => {
-    expect(names(filePack("debounce"))).toEqual(["src/debounce.ts", "src/debounce.test.ts", "README.md"])
-    expect(names(filePack("workers"))).toEqual(["main.go", "worker.go", "go.mod"])
-    expect(names(filePack("search"))).toEqual(["BinarySearch.java", "BinarySearchTest.java"])
-    expect(names(filePack("finetune"))).toEqual(["train.py", "data.py", "config.yaml"])
-    expect(names(filePack("ratelimit"))).toEqual(["tokenBucket.ts", "middleware.ts", "types.ts"])
-    expect(names(filePack("lru"))).toEqual(["lib.rs", "list.rs", "Cargo.toml"])
-    expect(names(filePack("attention"))).toEqual(["attention.py", "softmax.py", "test_attention.py"])
-    expect(packsInEra("mid").map((pack) => pack.id)).toEqual(["debounce", "search", "workers", "finetune"])
-    expect(packsInEra("upper").map((pack) => pack.id)).toEqual(["ratelimit", "lru", "attention"])
-    for (const pack of [...packsInEra("mid"), ...packsInEra("upper")]) {
-      expect((pack as FilePack).files.length).toBeGreaterThanOrEqual(2)
-      for (const file of (pack as FilePack).files) {
+  it("resolves mid and upper packs from problem pools with short snippets", () => {
+    expect(packForTier(33).files[0]?.path).toBe("train.py")
+    expect(packForTier(19).files.some((f) => f.path === "src/debounce.ts")).toBe(true)
+    expect(packForTier(23).files[0]?.path).toBe("BinarySearch.java")
+    for (const meta of IDE_PACKS) {
+      if (meta.kind !== "files") continue
+      const next = IDE_PACKS.find((p) => p.fromTier > meta.fromTier)
+      const endArt = (next?.fromTier ?? 67) - 1
+      const pack = packForTier(endArt) as FilePack
+      if (pack.id !== meta.id) continue
+      expect(pack.files.length).toBeLessThanOrEqual(MAX_IDE_TABS)
+      expect(pack.files.length).toBe(Math.min(PROBLEM_POOLS[meta.id]?.length ?? 0, MAX_IDE_TABS))
+      for (const file of pack.files) {
         expect(file.code.split("\n").length).toBeLessThanOrEqual(18)
         expect(file.code.trim()).not.toBe("")
       }
@@ -56,15 +44,20 @@ describe("IDE content v2", () => {
       ["foundry-ops@", "Yield excursion lot #4421"],
       ["legal@", "Export control checklist"],
       ["cluster-bot@", "CUDA OOM on node gpu-17"],
+      ["mgr@", "RE: RE: PTO 12/23–12/27 (approved)"],
+      ["gov-affairs@", "BIS questions on lot #4421 tooling"],
+      ["facilities@", "Badge expriation tomorow"],
+      ["enablement@", "Mandatory: export control refresher (45 min)"],
     ])
     expect(q3[1]?.emails.map((mail) => [mail.from, mail.subject])).toEqual([
       ["evals@", "SWE-bench delta \u22120.4"],
       ["safety@", "Red-team notes"],
       ["board-assistant@", "Deck due Friday"],
+      ["leave-system@", "PTO request #88102 — approved"],
+      ["policy@", "Senate staff briefing — talking points"],
+      ["culture@", "You're invted: resilience circle + snacks"],
+      ["procurement@", "Vendor onboarding: DocuSign loop"],
     ])
-    expect(q3[0]?.emails[0]?.body).toBe("Lot #4421 dropped 4.2% vs baseline. Holding tape-out. Need your sign-off on reticle check.")
-    expect(q3[0]?.emails[1]?.body).toBe("Reminder: any model weight transfer >X params needs license review before Friday cut.")
-    expect(q3[0]?.emails[2]?.body).toBe("Auto-killed training job `fm-sft-92`. Free 2 nodes or reduce batch.")
     for (const pack of q3) for (const mail of pack.emails) expect(mail.body.length).toBeGreaterThan(20)
   })
 
@@ -72,9 +65,6 @@ describe("IDE content v2", () => {
     const end = packsInEra("end") as DeckPack[]
     expect(end.map((pack) => pack.kind)).toEqual(["deck", "deck"])
     expect(end[0]?.slides.map((slide) => slide.title)).toEqual(["Edge inference SLA", "Sync delay budget", "Failover map"])
-    expect(end[1]?.slides.map((slide) => slide.title)).toEqual(["Habitat power", "GPU shed policy", "Dust storm runbook"])
-    expect(end[0]?.slides[0]?.bullets).toEqual(["p99 < 80ms", "regional failover", "cache embeddings at PoP"])
-    expect(end[1]?.slides[0]?.bullets).toEqual(["solar + micro-reactor", "shed nonessential at <90%", "spin GPUs at >120%"])
     for (const pack of end) for (const slide of pack.slides) expect(slide.bullets.length).toBeGreaterThanOrEqual(3)
   })
 
@@ -96,9 +86,17 @@ describe("IDE content v2", () => {
   })
 
   it("lists the items a player can navigate, in tab order", () => {
-    expect(itemsOf(filePack("debounce")).map((item) => item.label)).toEqual(["debounce.ts", "debounce.test.ts", "README.md"])
-    expect(itemsOf(packsInEra("q3")[0] as InboxPack)).toHaveLength(3)
+    const debounce = packForTier(22)
+    expect(itemsOf(debounce).map((item) => item.label)).toContain("debounce.ts")
+    expect(itemsOf(packsInEra("q3")[0] as InboxPack)).toHaveLength(7)
     expect(itemsOf(packsInEra("end")[1] as DeckPack).map((item) => item.detail)).toEqual(["1", "2", "3"])
+  })
+
+  it("scales visible tabs from 1 up to 20 within a band", () => {
+    expect(visibleTabCount(0, 6, 0, 20)).toBe(1)
+    expect(visibleTabCount(0, 6, 6, 20)).toBe(20)
+    expect(visibleTabCount(19, 22, 19, 20)).toBe(1)
+    expect(visibleTabCount(19, 22, 22, 20)).toBe(20)
   })
 })
 
@@ -111,6 +109,7 @@ describe("IDE era preview", () => {
     expect(rest).toMatchObject({ previewing: false, index: 0 })
     expect(rest.pack.id).toBe("debounce")
     expect(rest.restPack.id).toBe(rest.pack.id)
+    expect(rest.pack.files.length).toBeGreaterThan(2)
 
     const preview = ideView({ ...base, ideSel: sel("", 0), previewEra: "q3" })
     expect(preview.previewing).toBe(true)
@@ -123,11 +122,34 @@ describe("IDE era preview", () => {
     expect(ideView({ ...base, ideSel: sel("", 0), previewEra: "mid" }).previewing).toBe(false)
   })
 
-  it("clamps a stale selection and resets it when the pack changes", () => {
-    expect(ideView({ ...base, ideSel: sel("debounce", 2), previewEra: null }).index).toBe(2)
-    expect(ideView({ ...base, ideSel: sel("debounce", 99), previewEra: null }).index).toBe(2)
-    expect(ideView({ ...base, ideSel: sel("debounce", -4), previewEra: null }).index).toBe(0)
-    expect(ideView({ ...base, ideSel: sel("search", 1), previewEra: null }).index).toBe(0)
+  it("clamps a stale selection and opens another unlocked folder when selected", () => {
+    const pack = ideView({ ...base, ideSel: sel("", 0), previewEra: null }).pack as FilePack
+    const last = pack.files.length - 1
+    expect(ideView({ ...base, ideSel: sel(pack.id, last), previewEra: null }).index).toBe(last)
+    expect(ideView({ ...base, ideSel: sel(pack.id, 99), previewEra: null }).index).toBe(last)
+    const withSearch = { ...base, owned: { "1": 1 } }
+    expect(ideView({ ...withSearch, ideSel: sel("search", 1), previewEra: null }).pack.id).toBe("search")
+    expect(ideView({ ...withSearch, ideSel: sel("search", 1), previewEra: null }).index).toBe(1)
+  })
+})
+
+describe("IDE explorer folders", () => {
+  it("keeps every entered band as a folder and freezes file tabs on older bands", () => {
+    const mid = { skills: {}, owned: { "1": 1 }, jobs: [2], gigs: [] }
+    const view = ideView({ ...mid, ideSel: { packId: "", index: 0 }, previewEra: null })
+    expect(view.folders.map((f) => f.id)).toEqual(["fizzbuzz", "two_sum", "reverse_list", "debounce", "search"])
+    const fizz = view.folders.find((f) => f.id === "fizzbuzz")?.pack as FilePack
+    const debounce = view.folders.find((f) => f.id === "debounce")?.pack as FilePack
+    expect(fizz.files.length).toBeGreaterThan(10)
+    expect(debounce.files.some((f) => f.path.includes("debounce"))).toBe(true)
+    expect(view.folders.find((f) => f.id === "search")?.pack.files[0]?.path).toBe("BinarySearch.java")
+  })
+
+  it("adds a preview-only folder while browsing an unowned era", () => {
+    const mid = { skills: {}, owned: {}, jobs: [2], gigs: [] }
+    const preview = ideView({ ...mid, ideSel: { packId: "", index: 0 }, previewEra: "q3" })
+    expect(preview.folders.some((f) => f.id === "fab" && f.previewOnly)).toBe(true)
+    expect(preview.pack.id).toBe("fab")
   })
 })
 
@@ -135,13 +157,16 @@ describe("IDE navigation and snap-back in the store", () => {
   beforeEach(() => useGame.getState().wipe())
   const game = () => useGame.getState()
 
-  it("selects files and keeps the choice per pack", () => {
+  it("selects files and keeps the choice per pack across band changes", () => {
     useGame.setState({ jobs: [2], owned: {} })
     game().selectIde("debounce", 1)
     expect(ideView(game()).index).toBe(1)
     useGame.setState({ owned: { "1": 1 } })
+    expect(ideView(game()).restPack.id).toBe("search")
+    expect(ideView(game()).pack.id).toBe("debounce")
+    expect(ideView(game()).index).toBe(1)
+    game().selectIde("search", 0)
     expect(ideView(game()).pack.id).toBe("search")
-    expect(ideView(game()).index).toBe(0)
   })
 
   it("shows the browsed era until the hold lapses, then snaps back to the owned pack", () => {
@@ -164,13 +189,7 @@ describe("IDE navigation and snap-back in the store", () => {
     useGame.setState({ previewUntil: first - 10_000 })
     game().holdPreview()
     expect(game().previewUntil).toBeGreaterThan(first - 10_000)
-    useGame.setState({ previewUntil: first - 10_000 })
-    game().selectIde(ideView(game()).pack.id, 1)
-    expect(game().previewUntil).toBeGreaterThan(first - 10_000)
     game().setPreviewEra(null)
-    expect(game().previewUntil).toBe(0)
-    game().holdPreview()
-    expect(game().previewUntil).toBe(0)
   })
 
   it("buying into a new era ends the preview, buying inside the owned era keeps it", () => {

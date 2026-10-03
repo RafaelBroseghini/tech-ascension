@@ -1,6 +1,9 @@
+import { X } from "lucide-react"
 import { useEffect, useRef } from "react"
+import { UI_ICON } from "./icons/ui.tsx"
 import { createPortal } from "react-dom"
 import type { ResumeDoc, ResumeEntry, ResumeGroup } from "../game/resumeDoc.ts"
+import { LINKEDOUT_TAGLINE } from "./icons/LinkedOut.tsx"
 
 function Entry({ entry, heading }: { entry: ResumeEntry; heading: "h3" | "h4" }) {
   const Title = heading
@@ -35,7 +38,9 @@ function Group({ group }: { group: ResumeGroup }) {
 export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const where = doc
-    ? [doc.location, doc.openToWork ? "Open to work" : ""].filter((part) => part.length > 0).join(" · ")
+    ? [doc.location, doc.openToWork && !doc.openToWorkBanner ? "Open to work" : ""]
+        .filter((part) => part.length > 0)
+        .join(" · ")
     : ""
   const empty =
     !doc ||
@@ -57,18 +62,25 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
         className="resume-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="resume-doc-title"
+        aria-labelledby="resume-linkedout-kicker resume-doc-title"
+        aria-describedby="resume-linkedout-tagline"
         tabIndex={-1}
         data-testid="resume-modal"
         onClick={(click) => click.stopPropagation()}
       >
         <header className="resume-doc-head">
-          <p className="event-kicker">Resume</p>
+          <p className="event-kicker" id="resume-linkedout-kicker">
+            LinkedOut
+          </p>
+          <p className="resume-linkedout-tagline" id="resume-linkedout-tagline">
+            {LINKEDOUT_TAGLINE}
+          </p>
           <h2 id="resume-doc-title">{doc?.name ?? "You"}</h2>
           <p className="resume-headline">{doc?.headline ?? "Nothing earned yet"}</p>
           {where ? <p className="resume-meta">{where}</p> : null}
+          {doc?.openToWorkBanner ? <p className="resume-otw-banner">{doc.openToWorkBanner}</p> : null}
           <button type="button" className="resume-x" aria-label="Close resume" onClick={onClose}>
-            ×
+            <X {...UI_ICON} aria-hidden />
           </button>
         </header>
         <div className="resume-sheet">
@@ -109,7 +121,25 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
               </ul>
             </section>
           ) : null}
+          {doc && doc.thoughtLeadership.length > 0 ? (
+            <section>
+              <h3 className="resume-section">Activity</h3>
+              {doc.thoughtLeadership.map((post) => (
+                <article key={post.text} className="resume-entry resume-post">
+                  <p className="resume-summary">{post.text}</p>
+                  <p className="resume-meta">{post.reactions}</p>
+                </article>
+              ))}
+            </section>
+          ) : null}
         </div>
+        {doc?.recruiterInMail ? (
+          <footer className="resume-inmail" data-testid="resume-inmail">
+            <p className="resume-inmail-kicker">InMail</p>
+            <p className="resume-inmail-from">{doc.recruiterInMail.from}</p>
+            <p className="resume-inmail-preview">{doc.recruiterInMail.preview}</p>
+          </footer>
+        ) : null}
       </div>
     </div>,
     document.body,

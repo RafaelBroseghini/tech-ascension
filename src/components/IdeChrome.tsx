@@ -1,23 +1,48 @@
-import { useEffect, useMemo, useState } from "react"
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  File,
+  Files,
+  GitBranch,
+  Mail,
+  Play,
+  Presentation,
+  Search,
+} from "lucide-react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import { itemsOf } from "../data/idePacks.ts"
 import type { IdePack } from "../data/idePacks.ts"
 import { LANG_LABEL, tokenize } from "../data/overlays.ts"
 import type { Lang } from "../data/overlays.ts"
-import { ideView } from "../game/ide.ts"
+import { ideView, packWithHiddenLore } from "../game/ide.ts"
+import {
+  readIdeLoreUnlocked,
+  subscribeIdeLore,
+  tryUnlockIdeLoreFromFolder,
+  tryUnlockIdeLoreFromStatusBar,
+  tryUnlockIdeLoreFromTab,
+} from "../game/ideSecrets.ts"
+import { readCollapsedFolders, writeCollapsedFolders } from "../game/ideTreePrefs.ts"
 import { useGame } from "../game/store.ts"
-
-const GHOST_TREE: ReadonlyArray<readonly [depth: number, name: string, dir: boolean]> = [
-  [0, "tech-ascension", true],
-  [1, "src", true],
-  [2, "main", false],
-  [1, "tests", true],
-  [1, "docs", true],
-  [1, "notes", false],
-]
 
 const FADE_MS = 260
 const KIND_TITLE = { files: "Explorer", inbox: "Inbox", deck: "Slides" } as const
 const KIND_MODE = { files: "NORMAL", inbox: "MAIL", deck: "SLIDES" } as const
+
+const IDE_ACTIVITY = [
+  { id: "files", Icon: Files },
+  { id: "search", Icon: Search },
+  { id: "git", Icon: GitBranch },
+  { id: "run", Icon: Play },
+] as const
+
+function listIcon(kind: IdePack["kind"]) {
+  if (kind === "inbox") return Mail
+  if (kind === "deck") return Presentation
+  return File
+}
 
 type Layer = { pack: IdePack; index: number; uid: number }
 
@@ -96,9 +121,8 @@ function Content({ pack, index, leaving }: { pack: IdePack; index: number; leavi
 }
 
 /**
- * One fixed Catppuccin Mocha IDE shell behind the stage. The pane follows progress: single buffers
- * early, multi-file packs mid and upper, an inbox in q3, a slide deck at the end. The tab bar, the
- * explorer list and the deck controls are clickable; the editor itself stays a backdrop.
+ * IDE shell behind the stage. The palette is the saved editor theme. Unlocked problem bands stay
+ * in the explorer as folders; the tab bar follows whichever folder is open.
  */
 export function IdeChrome() {
   const skills = useGame((state) => state.skills)
@@ -108,11 +132,19 @@ export function IdeChrome() {
   const ideSel = useGame((state) => state.ideSel)
   const previewEra = useGame((state) => state.previewEra)
   const selectIde = useGame((state) => state.selectIde)
+  const setPreviewEra = useGame((state) => state.setPreviewEra)
   const holdPreview = useGame((state) => state.holdPreview)
 
-  const view = ideView({ skills, owned, jobs, gigs, ideSel, previewEra })
-  const { pack, index, count } = view
+  const loreUnlocked = useSyncExternalStore(subscribeIdeLore, readIdeLoreUnlocked, readIdeLoreUnlocked)
+  const view = ideView({ skills, owned, jobs, gigs, ideSel, previewEra, loreUnlocked })
+  const { pack, index, count, folders: rawFolders } = view
+  const folders = useMemo(
+    () => rawFolders.map((folder) => ({ ...folder, pack: packWithHiddenLore(folder.pack, loreUnlocked) })),
+    [rawFolders, loreUnlocked],
+  )
   const items = useMemo(() => itemsOf(pack), [pack])
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedFolders())
 
   const [layers, setLayers] = useState<Layer[]>(() => [{ pack, index, uid: layerSeq++ }])
   const top = layers[layers.length - 1] as Layer
@@ -126,7 +158,26 @@ export function IdeChrome() {
     return () => window.clearTimeout(id)
   }, [layers])
 
-  const pick = (next: number) => selectIde(pack.id, Math.min(Math.max(0, next), count - 1))
+  const pick = (packId: string, next: number, shiftKey = false) => {
+    const folder = folders.find((row) => row.id === packId)
+    if (shiftKey && folder) tryUnlockIdeLoreFromFolder(folder.pack.fromTier, true)
+    const max = (folder ? itemsOf(folder.pack).length : count) - 1
+    const clamped = Math.min(Math.max(0, next), max)
+    tryUnlockIdeLoreFromTab(packId, clamped)
+    selectIde(packId, clamped)
+    if (previewEra && packId !== pack.id) setPreviewEra(null)
+  }
+
+  const toggleFolder = (packId: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current)
+      if (next.has(packId)) next.delete(packId)
+      else next.add(packId)
+      writeCollapsedFolders(next)
+      return next
+    })
+  }
+
   const active = items[index]
   const lang = pack.kind === "files" ? (pack.files[index]?.lang ?? pack.files[0]?.lang) : undefined
 
@@ -145,41 +196,79 @@ export function IdeChrome() {
       onPointerMove={holdPreview}
     >
       <nav className="ide-activity" aria-hidden="true">
-        {["files", "search", "git", "run"].map((icon) => (
-          <i key={icon} className={`ide-icon ide-icon-${icon}`} />
+        {IDE_ACTIVITY.map(({ id, Icon }) => (
+          <Icon key={id} className={`ide-activity-icon ide-activity-icon-${id}`} {...UI_ICON} />
         ))}
       </nav>
-      <aside className="ide-tree" aria-label={KIND_TITLE[pack.kind]}>
-        <p className="ide-tree-title">
-          {KIND_TITLE[pack.kind]} · {pack.label}
-        </p>
-        <div className="ide-list" role="listbox" aria-label={`${pack.label} ${KIND_TITLE[pack.kind].toLowerCase()}`}>
-          {items.map((item, row) => (
-            <button
-              key={item.key}
-              type="button"
-              role="option"
-              aria-selected={row === index}
-              className={row === index ? `ide-item is-active is-${pack.kind}` : `ide-item is-${pack.kind}`}
-              data-testid="ide-item"
-              title={item.detail}
-              onClick={() => pick(row)}
-            >
-              <i className={pack.kind === "files" ? "ide-file" : pack.kind === "inbox" ? "ide-mail-dot" : "ide-slide-dot"} />
-              <span className="ide-item-text">
-                <span className="ide-item-main">{item.label}</span>
-                {pack.kind === "inbox" ? <span className="ide-item-sub">{item.detail}</span> : null}
-                {pack.kind === "files" && item.detail !== item.label ? <span className="ide-item-sub">{item.detail}</span> : null}
-              </span>
-            </button>
-          ))}
+      <aside className="ide-tree" aria-label="Explorer">
+        <p className="ide-tree-title">Explorer</p>
+        <div className="ide-folder-tree" role="tree" aria-label="Project folders">
+          {folders.map((folder) => {
+            const folderItems = itemsOf(folder.pack)
+            const isOpen = !collapsed.has(folder.id)
+            const isActiveFolder = pack.id === folder.id
+            const FolderIcon = listIcon(folder.kind)
+            return (
+              <div
+                key={folder.id}
+                className={folder.previewOnly ? "ide-folder is-preview-folder" : "ide-folder"}
+                role="treeitem"
+                aria-expanded={isOpen}
+                data-testid="ide-folder"
+                data-pack={folder.id}
+              >
+                <button
+                  type="button"
+                  className={isActiveFolder ? "ide-folder-head is-active" : "ide-folder-head"}
+                  aria-label={`${isOpen ? "Collapse" : "Expand"} ${folder.label}`}
+                  onClick={(event) => {
+                    if (event.shiftKey) tryUnlockIdeLoreFromFolder(folder.pack.fromTier, true)
+                    toggleFolder(folder.id)
+                  }}
+                >
+                  {isOpen ? (
+                    <ChevronDown className="ide-tree-chevron" {...UI_ICON_SM} aria-hidden />
+                  ) : (
+                    <ChevronRight className="ide-tree-chevron" {...UI_ICON_SM} aria-hidden />
+                  )}
+                  <FolderIcon className="ide-list-icon" {...UI_ICON_SM} aria-hidden />
+                  <span className="ide-folder-name">{folder.label}</span>
+                </button>
+                {isOpen ? (
+                  <div className="ide-list" role="group">
+                    {folderItems.map((item, row) => {
+                      const ListIcon = listIcon(folder.kind)
+                      const selected = isActiveFolder && row === index
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          role="treeitem"
+                          aria-selected={selected}
+                          className={
+                            selected ? `ide-item is-active is-${folder.kind}` : `ide-item is-${folder.kind}`
+                          }
+                          data-testid="ide-item"
+                          title={item.detail}
+                          onClick={(event) => pick(folder.id, row, event.shiftKey)}
+                        >
+                          <ListIcon className="ide-list-icon" {...UI_ICON_SM} aria-hidden />
+                          <span className="ide-item-text">
+                            <span className="ide-item-main">{item.label}</span>
+                            {folder.kind === "inbox" ? <span className="ide-item-sub">{item.detail}</span> : null}
+                            {folder.kind === "files" && item.detail !== item.label ? (
+                              <span className="ide-item-sub">{item.detail}</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
         </div>
-        {GHOST_TREE.map(([depth, name, dir]) => (
-          <p key={name} className="ide-tree-row" aria-hidden="true" style={{ ["--depth" as string]: depth }}>
-            <i className={dir ? "ide-caret" : "ide-file"} />
-            <span className="ghost-bar" style={{ width: `${name.length * 0.62}em` }} />
-          </p>
-        ))}
       </aside>
       <header className="ide-tabs" role="tablist" aria-label={`${pack.label} ${pack.kind === "files" ? "files" : pack.kind === "inbox" ? "emails" : "slides"}`}>
         {items.map((item, row) => (
@@ -191,7 +280,7 @@ export function IdeChrome() {
             className={row === index ? "ide-tab is-active" : "ide-tab"}
             data-testid="ide-tab"
             title={item.detail}
-            onClick={() => pick(row)}
+            onClick={() => pick(pack.id, row)}
           >
             <i className="ide-tab-dot" data-lang={pack.kind === "files" ? pack.files[row]?.lang : pack.kind} />
             <span>{pack.kind === "deck" ? `${row + 1} ${item.label}` : item.label}</span>
@@ -202,26 +291,35 @@ export function IdeChrome() {
         {layers.map((layer, position) => (
           <Content
             key={layer.uid}
-            pack={layer.pack}
+            pack={layer === top ? pack : layer.pack}
             index={layer === top ? index : layer.index}
             leaving={layers.length > 1 && position === 0}
           />
         ))}
       </div>
-      <footer className="ide-status">
+      <footer className="ide-status" onClick={() => tryUnlockIdeLoreFromStatusBar()}>
+        <a
+          className="ide-status-powered"
+          href="https://emoji.gg/"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          powered by emoji.gg
+        </a>
         <span className={view.previewing ? "ide-mode is-preview" : "ide-mode"}>{view.previewing ? "PREVIEW" : KIND_MODE[pack.kind]}</span>
-        <span>main</span>
+        <span>{pack.label}</span>
         <span className="ide-status-gap" />
         {pack.kind === "deck" ? (
           <span className="ide-deck-nav">
-            <button type="button" data-testid="ide-slide-prev" aria-label="Previous slide" disabled={index <= 0} onClick={() => pick(index - 1)}>
-              ‹
+            <button type="button" data-testid="ide-slide-prev" aria-label="Previous slide" disabled={index <= 0} onClick={() => pick(pack.id, index - 1)}>
+              <ChevronLeft {...UI_ICON} aria-hidden />
             </button>
             <span data-testid="ide-slide-pos">
               {index + 1} / {count}
             </span>
-            <button type="button" data-testid="ide-slide-next" aria-label="Next slide" disabled={index >= count - 1} onClick={() => pick(index + 1)}>
-              ›
+            <button type="button" data-testid="ide-slide-next" aria-label="Next slide" disabled={index >= count - 1} onClick={() => pick(pack.id, index + 1)}>
+              <ChevronRight {...UI_ICON} aria-hidden />
             </button>
           </span>
         ) : null}

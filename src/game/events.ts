@@ -1,10 +1,9 @@
 import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
-import type { EventEffect, EventRequires, GameEvent } from "../data/events.ts"
+import type { EventOffer, EventRequires, EventResource, GameEvent } from "../data/events.ts"
 import type { Era } from "../data/capital.ts"
 import { sampleWaitMs } from "./boosts.ts"
 import { formatNumber } from "./format.ts"
-import { clampForever } from "./mods.ts"
-import type { EventMods, TempMults, TempTarget } from "./mods.ts"
+import type { TempTarget } from "./mods.ts"
 
 export { EVENT_MEAN_WAIT_MS, EVENTS }
 
@@ -65,8 +64,12 @@ export function eventById(id: number): EventDef | undefined {
   return EVENT_BY_ID.get(id)
 }
 
+export function offerTouchesMoney(offer: EventOffer): boolean {
+  return offer.kind === "trade" || offer.resource === "money"
+}
+
 function touchesMoney(event: EventDef): boolean {
-  return event.effects.some((effect) => effect.kind === "money" || effect.kind === "moneyPct")
+  return offerTouchesMoney(event.offer)
 }
 
 /**
@@ -92,16 +95,19 @@ export function pickEvent(pool: readonly EventDef[], rand: number): EventDef | n
 
 export type EventLine = { text: string; tone: "good" | "bad" }
 
-/** The slice of game state an event reads and writes. */
-export type EventState = EventMods & {
-  money: number
-  xp: number
-  xpTotal: number
+/** What the player is earning right now. Idle wins when it beats a steady click rate. */
+export type EarningRates = {
+  cps: number
+  click: number
+  xpPerSec: number
+  xpPerClick: number
 }
 
-export type EventPatch = Pick<EventState, "money" | "xp" | "xpTotal" | "foreverMult" | "temp">
+/** Clicks per second used when that beats idle income. */
+export const EVENT_CLICKS_PER_SEC = 0.5
 
-export type EventApplied = { patch: EventPatch; lines: EventLine[] }
+/** A stake is at least this share of the balance you hold, so a large pile is never a rounding error. */
+export const EVENT_PILE_SHARE = 0.01
 
 export const TARGET_LABEL: Record<TempTarget, string> = {
   click: "Click income",
@@ -114,67 +120,90 @@ export function formatMult(value: number): string {
   return String(Number(value.toFixed(3)))
 }
 
-function formatDuration(ms: number): string {
-  const seconds = Math.round(ms / 1000)
-  return seconds >= 120 ? `${Math.round(seconds / 60)} min` : `${seconds}s`
+export function earningPerSec(resource: EventResource, rates: EarningRates): number {
+  const idle = resource === "money" ? rates.cps : rates.xpPerSec
+  const click = resource === "money" ? rates.click : rates.xpPerClick
+  return Math.max(0, idle, click * EVENT_CLICKS_PER_SEC)
+}
+
+/** Minutes of current income, or 1% of what you hold, whichever is larger. */
+export function eventStake(resource: EventResource, minutes: number, rates: EarningRates, balance: number): number {
+  if (!(minutes > 0) || !Number.isFinite(minutes)) return 0
+  const fromRate = minutes * 60 * earningPerSec(resource, rates)
+  const fromPile = Math.max(0, balance) * EVENT_PILE_SHARE
+  const raw = Math.max(fromRate, fromPile)
+  if (!(raw > 0) || !Number.isFinite(raw)) return 0
+  return Math.max(1, Math.floor(raw))
+}
+
+export type EventPreview = {
+  lines: EventLine[]
+  gain: number
+  loss: number
+  canAccept: boolean
+}
+
+function otherResource(resource: EventResource): EventResource {
+  return resource === "money" ? "xp" : "money"
+}
+
+function held(resource: EventResource, money: number, xp: number): number {
+  return resource === "money" ? money : xp
+}
+
+function stakeLine(resource: EventResource, amount: number, tone: "good" | "bad"): EventLine {
+  const sign = tone === "good" ? "+" : "-"
+  const text = resource === "money" ? `${sign}$${formatNumber(amount)}` : `${sign}${formatNumber(amount)} XP`
+  return { text, tone }
 }
 
 /**
- * Applies every effect of one event. Safe by construction: the balance and spendable XP floor at 0
- * (a penalty can never put the player in debt), lifetime XP only ever rises (phase gates latch),
- * the permanent multiplier is clamped, and a timed multiplier replaces the one on its target.
- * Lines report what actually changed, so a penalty that bit nothing is left out.
+ * The numbers Yes would apply right now. A gift only gains. A trade gains one resource and
+ * spends the other, capped at what you hold. Yes is refused when the gain is nothing, or when
+ * a trade's cost rounds to nothing, so a choice can never be a pure deduction.
  */
-export function applyEvent(state: EventState, event: EventDef, now: number): EventApplied {
-  let { money, xp, xpTotal, foreverMult } = state
-  let temp: TempMults = { ...state.temp }
+export function previewOffer(offer: EventOffer, rates: EarningRates, money: number, xp: number): EventPreview {
+  const gainResource = offer.kind === "gift" ? offer.resource : offer.gain
+  const gain = eventStake(gainResource, offer.minutes, rates, held(gainResource, money, xp))
   const lines: EventLine[] = []
-
-  const apply = (effect: EventEffect) => {
-    switch (effect.kind) {
-      case "money": {
-        const next = Math.max(0, money + effect.delta)
-        const change = next - money
-        money = next
-        if (change !== 0) lines.push({ text: `${change > 0 ? "+" : "-"}$${formatNumber(Math.abs(change))}`, tone: change > 0 ? "good" : "bad" })
-        return
-      }
-      case "moneyPct": {
-        const next = Math.max(0, money * (1 + effect.pct))
-        const change = next - money
-        money = next
-        if (Math.abs(change) >= 0.005)
-          lines.push({
-            text: `${change > 0 ? "+" : "-"}$${formatNumber(Math.abs(change))} (${effect.pct > 0 ? "+" : "-"}${formatNumber(Math.abs(effect.pct) * 100)}% of your cash)`,
-            tone: change > 0 ? "good" : "bad",
-          })
-        return
-      }
-      case "xp": {
-        const next = Math.max(0, xp + effect.delta)
-        const change = next - xp
-        xp = next
-        if (change > 0) xpTotal += change
-        if (change !== 0) lines.push({ text: `${change > 0 ? "+" : "-"}${formatNumber(Math.abs(change))} XP`, tone: change > 0 ? "good" : "bad" })
-        return
-      }
-      case "foreverMult": {
-        const next = clampForever(foreverMult * effect.mult)
-        if (next === foreverMult) return
-        foreverMult = next
-        lines.push({ text: `All income x${formatMult(effect.mult)} for good`, tone: effect.mult >= 1 ? "good" : "bad" })
-        return
-      }
-      case "tempMult": {
-        temp = { ...temp, [effect.target]: { mult: effect.mult, endsAt: now + effect.ms } }
-        lines.push({ text: `${TARGET_LABEL[effect.target]} x${formatMult(effect.mult)} for ${formatDuration(effect.ms)}`, tone: effect.mult >= 1 ? "good" : "bad" })
-        return
-      }
-    }
+  if (gain > 0) lines.push(stakeLine(gainResource, gain, "good"))
+  let loss = 0
+  if (offer.kind === "trade") {
+    const loseResource = otherResource(offer.gain)
+    const priced = eventStake(loseResource, offer.minutes, rates, held(loseResource, money, xp))
+    loss = Math.min(priced, Math.max(0, held(loseResource, money, xp)))
+    if (loss > 0) lines.push(stakeLine(loseResource, loss, "bad"))
   }
-  for (const effect of event.effects) apply(effect)
+  const canAccept = gain > 0 && (offer.kind === "gift" || loss > 0)
+  return { lines, gain, loss, canAccept }
+}
 
-  return { patch: { money, xp, xpTotal, foreverMult, temp }, lines }
+export type EventResolution = {
+  money: number
+  xp: number
+  xpTotal: number
+  lines: EventLine[]
+  applied: boolean
+}
+
+/** Applies Yes. Lifetime XP only rises. Spendable XP and money floor at 0. A refused choice changes nothing. */
+export function resolveOffer(money: number, xp: number, xpTotal: number, offer: EventOffer, rates: EarningRates): EventResolution {
+  const preview = previewOffer(offer, rates, money, xp)
+  if (!preview.canAccept) return { money, xp, xpTotal, lines: preview.lines, applied: false }
+  let nextMoney = money
+  let nextXp = xp
+  let nextTotal = xpTotal
+  const gainResource = offer.kind === "gift" ? offer.resource : offer.gain
+  if (gainResource === "money") nextMoney += preview.gain
+  else {
+    nextXp += preview.gain
+    nextTotal += preview.gain
+  }
+  if (offer.kind === "trade") {
+    if (offer.gain === "money") nextXp = Math.max(0, nextXp - preview.loss)
+    else nextMoney = Math.max(0, nextMoney - preview.loss)
+  }
+  return { money: nextMoney, xp: nextXp, xpTotal: nextTotal, lines: preview.lines, applied: true }
 }
 
 export type EventContext = { era: Era; paying: boolean; blocked: boolean; owned?: EventOwned }

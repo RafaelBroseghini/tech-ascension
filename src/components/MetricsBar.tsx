@@ -38,7 +38,7 @@ export function MetricsBar() {
         </div>
         {rates.idle > 0 ? (
           <div className="metric-in m-rate">
-            <dt>$/s</dt>
+            <dt>$ / Second</dt>
             <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
           </div>
         ) : null}

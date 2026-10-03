@@ -1,8 +1,8 @@
 /*
  * Design tokens for Tech Ascension.
- * One display face (Chakra Petch), one mono for metrics (JetBrains Mono).
- * Era palettes are single solid accents on a warm near-black base. No blur
- * shadows: elevation is a hard offset in ink, Balatro-style.
+ * One display face (Chakra Petch). Metrics use GitHub's system mono stack.
+ * The saved editor theme paints every color: surfaces, type, accent, and the
+ * IDE. No blur shadows: elevation is a hard offset in ink, Balatro-style.
  */
 
 @property --accent {
@@ -32,21 +32,37 @@
 }
 
 :root {
-  /* Surfaces: warm ink, stepped. */
-  --ink: #0e0c09;
-  --surface-0: #14110d;
-  --surface-1: #1c1812;
-  --surface-2: #26201a;
-  --line: #3d3427;
-  --line-strong: #5a4d3a;
+  /* Catppuccin Mocha until a saved theme overwrites these on the root. */
+  --ide-rosewater: #f5e0dc;
+  --ide-mauve: #cba6f7;
+  --ide-green: #a6e3a1;
+  --ide-peach: #fab387;
+  --ide-sky: #89dceb;
+  --ide-blue: #89b4fa;
+  --ide-red: #f38ba8;
+  --ide-text: #cdd6f4;
+  --ide-overlay: #6c7086;
+  --ide-surface: #313244;
+  --ide-base: #1e1e2e;
+  --ide-mantle: #181825;
+  --ide-crust: #11111b;
+  --ide-on-accent: #11111b;
 
-  --text: #f7f0df;
-  --text-dim: #c4b79d;
-  --text-faint: #8f8470;
+  /* App chrome follows the editor palette. */
+  --ink: color-mix(in srgb, var(--ide-crust) 70%, black);
+  --surface-0: var(--ide-mantle);
+  --surface-1: var(--ide-base);
+  --surface-2: var(--ide-surface);
+  --line: color-mix(in srgb, var(--ide-surface) 55%, var(--ide-overlay));
+  --line-strong: var(--ide-overlay);
+
+  --text: var(--ide-text);
+  --text-dim: color-mix(in srgb, var(--ide-text) 68%, var(--ide-overlay));
+  --text-faint: var(--ide-overlay);
 
   /* Type */
   --font-display: "Chakra Petch", "Eurostile", "Bahnschrift", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   --fs-2xs: 0.68rem;
   --fs-xs: 0.76rem;
@@ -91,19 +107,19 @@
 
   --sprite: 256px;
 
-  /* Catppuccin Mocha: the fixed IDE chrome. Never follows the era accent. */
-  --mocha-rosewater: #f5e0dc;
-  --mocha-mauve: #cba6f7;
-  --mocha-green: #a6e3a1;
-  --mocha-peach: #fab387;
-  --mocha-sky: #89dceb;
-  --mocha-blue: #89b4fa;
-  --mocha-text: #cdd6f4;
-  --mocha-overlay: #6c7086;
-  --mocha-surface: #313244;
-  --mocha-base: #1e1e2e;
-  --mocha-mantle: #181825;
-  --mocha-crust: #11111b;
+  /* Names kept for the XP readout and score pops. They track the editor palette. */
+  --mocha-rosewater: var(--ide-rosewater);
+  --mocha-mauve: var(--ide-mauve);
+  --mocha-green: var(--ide-green);
+  --mocha-peach: var(--ide-peach);
+  --mocha-sky: var(--ide-sky);
+  --mocha-blue: var(--ide-blue);
+  --mocha-text: var(--ide-text);
+  --mocha-overlay: var(--ide-overlay);
+  --mocha-surface: var(--ide-surface);
+  --mocha-base: var(--ide-base);
+  --mocha-mantle: var(--ide-mantle);
+  --mocha-crust: var(--ide-crust);
 
   --ide-activity: 44px;
   --ide-tree: 168px;
@@ -111,54 +127,28 @@
   --ide-tabs: 34px;
   --ide-status: 24px;
 
-  /* Click-boost gold, independent of the era accent. Used at mult >= 8. */
-  --boost-gold: #f3b94a;
-  --boost-gold-hi: #ffe2a3;
-  --boost-gold-lo: #a8741a;
-  --boost-gold-ink: #1d1304;
+  /* Hot click boost. Peach, so it stays distinct from the mauve accent. */
+  --boost-gold: var(--ide-peach);
+  --boost-gold-hi: color-mix(in srgb, var(--ide-peach) 55%, white);
+  --boost-gold-lo: color-mix(in srgb, var(--ide-peach) 70%, black);
+  --boost-gold-ink: var(--ide-on-accent);
 
-  --accent: #6fe08c;
-  --accent-hi: #bff7cb;
-  --accent-lo: #2f8f4a;
-  --accent-deep: #11261a;
-  --accent-ink: #07130b;
+  --accent: var(--ide-mauve);
+  --accent-hi: color-mix(in srgb, var(--ide-mauve) 58%, white);
+  --accent-lo: color-mix(in srgb, var(--ide-mauve) 68%, black);
+  --accent-deep: color-mix(in srgb, var(--ide-mauve) 24%, var(--ide-crust));
+  --accent-ink: var(--ide-on-accent);
 
   color-scheme: dark;
 }
 
-/* Era palettes: one solid accent each, plus a lit and a shaded step. */
-[data-era="early"] {
-  --accent: #6fe08c;
-  --accent-hi: #bff7cb;
-  --accent-lo: #2f8f4a;
-  --accent-deep: #11261a;
-  --accent-ink: #07130b;
-}
-[data-era="mid"] {
-  --accent: #5aa9ff;
-  --accent-hi: #b9dbff;
-  --accent-lo: #2765b8;
-  --accent-deep: #0e1f36;
-  --accent-ink: #06101f;
-}
-[data-era="upper"] {
-  --accent: #f3b94a;
-  --accent-hi: #ffe2a3;
-  --accent-lo: #a8741a;
-  --accent-deep: #31230b;
-  --accent-ink: #1d1304;
-}
-[data-era="q3"] {
-  --accent: #3fdacb;
-  --accent-hi: #b0f4ec;
-  --accent-lo: #1b8c86;
-  --accent-deep: #0a2a2b;
-  --accent-ink: #031615;
-}
-[data-era="end"] {
-  --accent: #ff7b4f;
-  --accent-hi: #ffc0a6;
-  --accent-lo: #b8421f;
-  --accent-deep: #381508;
-  --accent-ink: #1f0903;
+/* Light palettes keep dark ink so the hard offsets still read. */
+:root[data-ide-scheme="light"] {
+  --ink: color-mix(in srgb, var(--ide-text) 78%, black);
+  --surface-2: color-mix(in srgb, var(--ide-base) 70%, var(--ide-surface));
+  --line: color-mix(in srgb, var(--ide-text) 22%, var(--ide-surface));
+  --line-strong: color-mix(in srgb, var(--ide-text) 48%, var(--ide-overlay));
+  --accent-hi: var(--ide-mauve);
+  --accent-deep: color-mix(in srgb, var(--ide-mauve) 16%, var(--ide-base));
+  color-scheme: light;
 }

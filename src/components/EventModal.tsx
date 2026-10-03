@@ -1,32 +1,73 @@
-import { useEffect, useRef } from "react"
-import { eventById } from "../game/events.ts"
+import { useEffect, useMemo, useRef } from "react"
+import { eventById, previewOffer } from "../game/events.ts"
+import { production } from "../game/economy.ts"
+import { modsOf } from "../game/mods.ts"
 import { useGame } from "../game/store.ts"
+import type { ActiveEvent } from "../game/store.ts"
 
 /**
- * One random event at a time. The effects are already applied when this opens, so closing it
- * (button, backdrop or Escape) can never undo or skip anything, and a player who walks away is
- * not penalised. Focus lands on the dialog, not the button, so a held Space from clicking the
- * stage cannot dismiss it before it is read.
+ * One random event at a time. Nothing is applied until Yes. No, the backdrop, and Escape
+ * decline. Focus stays on the dialog so a held Space from the stage cannot accept it.
+ *
+ * The offer is derived in render. A Zustand selector must not return a fresh object:
+ * React 19 compares getSnapshot with Object.is, and a new object every read is an infinite loop.
  */
 export function EventModal() {
   const event = useGame((state) => state.event)
+  if (!event) return null
+  return <EventDialog event={event} />
+}
+
+function EventDialog({ event }: { event: ActiveEvent }) {
+  const money = useGame((state) => state.money)
+  const xp = useGame((state) => state.xp)
+  const skills = useGame((state) => state.skills)
+  const equipment = useGame((state) => state.equipment)
+  const owned = useGame((state) => state.owned)
+  const jobs = useGame((state) => state.jobs)
+  const gigs = useGame((state) => state.gigs)
+  const activeBoost = useGame((state) => state.activeBoost)
+  const foreverMult = useGame((state) => state.foreverMult)
+  const tempMults = useGame((state) => state.tempMults)
+  const now = useGame((state) => state.now)
+  const accept = useGame((state) => state.acceptEvent)
   const dismiss = useGame((state) => state.dismissEvent)
+  const view = useMemo(() => {
+    const def = eventById(event.eventId)
+    if (!def) return null
+    const at = Math.max(Date.now(), now)
+    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, at, modsOf({ foreverMult, tempMults }))
+    return {
+      name: def.name,
+      flavor: def.flavor,
+      ask: def.offer.kind === "gift" ? "Take it?" : "Take the deal?",
+      preview: previewOffer(
+        def.offer,
+        {
+          cps: rates.idle,
+          click: rates.click,
+          xpPerSec: rates.xpIdle,
+          xpPerClick: rates.xpClick * rates.mult,
+        },
+        money,
+        xp,
+      ),
+    }
+  }, [event, money, xp, skills, equipment, owned, jobs, gigs, activeBoost, foreverMult, tempMults, now])
   const dialogRef = useRef<HTMLDivElement>(null)
-  const eventId = event?.id
+  const eventId = event.id
 
   useEffect(() => {
-    if (eventId === undefined) return
     dialogRef.current?.focus({ preventScroll: true })
     const onKey = (key: KeyboardEvent) => {
       if (key.key === "Escape") dismiss()
+      if (key.key === "Enter" && view?.preview.canAccept) accept()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [eventId, dismiss])
+  }, [eventId, dismiss, accept, view?.preview.canAccept])
 
-  if (!event) return null
-  const def = eventById(event.eventId)
-  if (!def) return null
+  if (!view) return null
 
   return (
     <div className="event-backdrop" data-testid="event-backdrop" onClick={dismiss}>
@@ -39,25 +80,37 @@ export function EventModal() {
         aria-labelledby="event-title"
         tabIndex={-1}
         data-testid="event-modal"
-        data-event={def.id}
+        data-event={event.eventId}
         onClick={(click) => click.stopPropagation()}
       >
         <p className="event-kicker">Random event</p>
         <h2 id="event-title" className="event-title">
-          {def.name}
+          {view.name}
         </h2>
-        <p className="event-flavor">{def.flavor}</p>
+        <p className="event-flavor">{view.flavor}</p>
+        <p className="event-ask">{view.ask}</p>
         <ul className="event-lines" data-testid="event-lines">
-          {event.lines.length === 0 ? <li className="event-line is-neutral">Nothing to lose this time.</li> : null}
-          {event.lines.map((line) => (
+          {view.preview.lines.map((line) => (
             <li key={line.text} className={`event-line is-${line.tone}`}>
               {line.text}
             </li>
           ))}
+          {view.preview.canAccept ? null : <li className="event-line is-neutral">You can't cover the cost.</li>}
         </ul>
-        <button type="button" className="event-dismiss" data-testid="event-dismiss" onClick={dismiss}>
-          Continue
-        </button>
+        <div className="event-actions">
+          <button
+            type="button"
+            className="event-choice event-yes"
+            data-testid="event-yes"
+            disabled={!view.preview.canAccept}
+            onClick={accept}
+          >
+            Yes
+          </button>
+          <button type="button" className="event-choice event-no" data-testid="event-no" onClick={dismiss}>
+            No
+          </button>
+        </div>
       </div>
     </div>
   )
