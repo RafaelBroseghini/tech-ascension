@@ -8,10 +8,15 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { loadCatalog } from "./emojigg.mjs"
+import { isDisallowedTitle, loadCatalog } from "./emojigg.mjs"
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const MANIFEST = join(ROOT, "src/data/emojiManifest.json")
+const DESK_CAT_POOL = join(ROOT, "src/data/deskCatClickPool.json")
+
+const DESK_CAT_CLICK_RE = /cat|kitty|meow|kitten|neko|nyan/i
+const DESK_CAT_POOL_MIN = 100
+const DESK_CAT_POOL_MAX = 300
 const PHASES = join(ROOT, "src/data/phases.ts")
 const GEAR = join(ROOT, "src/data/gear.ts")
 const CAPITAL = join(ROOT, "src/data/capital.ts")
@@ -229,6 +234,25 @@ function pickDeskCat(pool) {
   return cats[0]
 }
 
+/** Still and GIF cats for the desk-cat tap roulette (main idle cat stays separate). */
+function collectDeskCatClickPool(pool, deskCatImage) {
+  const seen = new Set()
+  const rows = []
+  for (const emoji of pool) {
+    if (!DESK_CAT_CLICK_RE.test(emoji.title)) continue
+    if (isDisallowedTitle(emoji.title)) continue
+    if (!emoji.image?.includes("emoji.gg")) continue
+    if (emoji.image === deskCatImage || seen.has(emoji.image)) continue
+    seen.add(emoji.image)
+    rows.push(emoji)
+  }
+  rows.sort((a, b) => b.faves - a.faves || a.title.localeCompare(b.title))
+  if (rows.length < DESK_CAT_POOL_MIN) {
+    throw new Error(`Only ${rows.length} desk cat click emojis in the emoji.gg catalog (need ${DESK_CAT_POOL_MIN}+)`)
+  }
+  return rows.slice(0, DESK_CAT_POOL_MAX).map((emoji) => emoji.image)
+}
+
 async function catalogRows() {
   const skills = await loadNamedRows(
     PHASES,
@@ -262,8 +286,10 @@ async function main() {
   const refresh = process.argv.includes("--refresh")
   const emojis = await loadCatalog(refresh)
   const deskCat = pickDeskCat(emojis)
-  const unique = new Set([deskCat.image])
+  const deskCatClickPool = collectDeskCatClickPool(emojis, deskCat.image)
+  const unique = new Set([deskCat.image, ...deskCatClickPool])
   const useCount = new Map([[deskCat.image, 1]])
+  for (const url of deskCatClickPool) useCount.set(url, (useCount.get(url) ?? 0) + 1)
 
   /**
    * @param {{ primary: string[], aliases: string[] }} words
@@ -288,7 +314,11 @@ async function main() {
 
   /** @type {Record<string, Record<string, unknown>>} */
   const manifest = {
-    ui: { deskCat: deskCat.image, deskCatTitle: deskCat.title },
+    ui: {
+      deskCat: deskCat.image,
+      deskCatTitle: deskCat.title,
+      deskCatClickPoolCount: deskCatClickPool.length,
+    },
     skill: {},
     gig: {},
     job: {},
@@ -362,10 +392,12 @@ async function main() {
   }
 
   await writeFile(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`)
+  await writeFile(DESK_CAT_POOL, `${JSON.stringify(deskCatClickPool, null, 2)}\n`)
   const counts = ["skill", "gig", "job", "gear", "capital"].map((kind) => `${kind}:${Object.keys(manifest[kind]).length}`).join(", ")
   const heaviest = [...useCount.entries()].sort((a, b) => b[1] - a[1])[0]
   console.log(`Wrote ${MANIFEST} (${counts}; ${unique.size} unique topical URLs, max reuse ${heaviest?.[1] ?? 0})`)
   console.log(`desk cat: ${deskCat.title} ${deskCat.image}`)
+  console.log(`desk cat click pool: ${deskCatClickPool.length} URLs → ${DESK_CAT_POOL}`)
   console.log(`keyword matches: ${matched}, filler: ${filled}`)
   const preview = ["0", "1", "2"].map((id) => `skill ${id}: ${manifest.skill[id].label}`)
   const mars = manifest.capital["25"]
