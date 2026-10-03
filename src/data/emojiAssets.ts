@@ -1,6 +1,7 @@
 /** A catalog row with emoji.gg art, hotlinked from their CDN. */
 import type { EmojiArt } from "./emojiCdn.ts"
 import {
+  DESK_CAT_CLICK_POOL,
   DESK_CAT_EMOJI,
   EMOJI_CLICK_MS,
   EMOJI_CAPITAL,
@@ -18,6 +19,13 @@ export const STAGE_START_EMOJI = { kind: "skill", id: 0 } as const
 /** Cat sleeping on a computer, from emoji.gg, for the desk cat settings toggle. */
 export function deskCatEmojiUrl(): string {
   return DESK_CAT_EMOJI
+}
+
+/** Random cat from emoji.gg when you tap the desk cat (idle art unchanged). */
+export function randomDeskCatReactionUrl(): string {
+  const pool = DESK_CAT_CLICK_POOL
+  if (pool.length === 0) return DESK_CAT_EMOJI
+  return pool[Math.floor(Math.random() * pool.length)]!
 }
 
 const TABLE: Readonly<Record<EmojiKind, Readonly<Record<number, EmojiArt>>>> = {

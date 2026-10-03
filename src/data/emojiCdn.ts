@@ -6,6 +6,7 @@
  * `node scripts/generate-emoji-manifest.mjs` to rebuild the assignment.
  */
 import manifest from "./emojiManifest.json"
+import deskCatClickPool from "./deskCatClickPool.json"
 
 /** How long click-reaction art stays visible after a tap (all catalog rows). */
 export const EMOJI_CLICK_MS = 500
@@ -28,3 +29,4 @@ export const EMOJI_CAPITAL = table(manifest.capital as Record<string, EmojiArt>)
 
 export const DESK_CAT_EMOJI = manifest.ui.deskCat
 export const DESK_CAT_TITLE = manifest.ui.deskCatTitle
+export const DESK_CAT_CLICK_POOL: readonly string[] = deskCatClickPool
