@@ -20,11 +20,22 @@ describe("LinkedOut profile", () => {
     expect(linkedOutProfile({ jobs: [], gigs: [] })).toBeNull()
   })
 
+  it("shows the open to work banner for any held job below Senior", () => {
+    const intern = linkedOutProfile({ jobs: [1], gigs: [] })
+    const junior = linkedOutProfile({ jobs: [1, 2], gigs: [] })
+    expect(intern?.openToWorkBanner).toContain("Open to work")
+    expect(junior?.openToWorkBanner).toContain("Open to work")
+    expect(linkedOutProfile({ jobs: [14], gigs: [] })?.openToWorkBanner).toBeNull()
+  })
+
   it("puts the internship at Byte & Mortar and leaves the door open", () => {
     const profile = linkedOutProfile({ jobs: [1], gigs: [] })
     expect(profile?.headline).toBe("Internship offer at Byte & Mortar")
     expect(profile?.location).toBe("Columbus, OH")
     expect(profile?.openToWork).toBe(true)
+    expect(profile?.openToWorkBanner).toContain("Open to work")
+    expect(profile?.thoughtLeadership).toEqual([])
+    expect(profile?.recruiterInMail?.from).toContain("Alex")
     expect(profile?.experience).toHaveLength(1)
     expect(profile?.experience[0]?.roles[0]).toMatchObject({
       title: "Internship offer",
@@ -39,6 +50,8 @@ describe("LinkedOut profile", () => {
   it("groups a stay at one company, newest role first, and closes the door at senior", () => {
     const profile = linkedOutProfile({ jobs: [1, 2, 14], gigs: [] })
     expect(profile?.openToWork).toBe(false)
+    expect(profile?.openToWorkBanner).toBeNull()
+    expect(profile?.recruiterInMail?.from).toContain("Jordan")
     expect(profile?.headline).toBe("Senior SWE at Northwind")
     expect(profile?.experience.map((stint) => stint.org)).toEqual(["Northwind", "Byte & Mortar"])
     const shop = profile?.experience[1]
@@ -61,6 +74,12 @@ describe("LinkedOut profile", () => {
     const hired = linkedOutProfile({ jobs: [1], gigs: [1] })
     expect(hired?.projects[0]?.present).toBe(false)
     expect(hired?.projects[0]?.endLabel).toBe(hired?.experience[0]?.roles[0]?.startLabel)
+  })
+
+  it("adds thought leadership posts at Staff and above", () => {
+    const profile = linkedOutProfile({ jobs: [16], gigs: [] })
+    expect(profile?.thoughtLeadership.length).toBeGreaterThan(0)
+    expect(profile?.recruiterInMail?.from).toContain("Priya")
   })
 
   it("sends every job to a fake company", () => {

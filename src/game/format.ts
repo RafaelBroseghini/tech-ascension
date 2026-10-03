@@ -27,6 +27,11 @@ export const RAW_DIGITS_BELOW = 1e7
 /** The hero balance has the room for more digits: it stays fully comma-separated up to $999,999,999,999. */
 export const HERO_RAW_DIGITS_BELOW = 1e12
 
+/** Comma-separated whole dollars (no K/M/B) for as long as the value stays finite. */
+export function formatFullNumber(value: number): string {
+  return formatNumber(value, Number.POSITIVE_INFINITY)
+}
+
 function groupDigits(whole: number): string {
   return String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }

@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { IDE_PACKS } from "../data/idePacks.ts"
+import { allProblemFiles } from "../data/ideProblems.ts"
 import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
@@ -26,6 +26,20 @@ import {
 } from "./economy.ts"
 import { formatCompact, formatNumber, RAW_DIGITS_BELOW } from "./format.ts"
 import { ownedArtIds } from "./phase.ts"
+import { hasEmoji } from "../data/emojiAssets.ts"
+import {
+  DESK_CAT_EMOJI,
+  DESK_CAT_TITLE,
+  EMOJI_CAPITAL,
+  EMOJI_GEAR,
+  EMOJI_GIGS,
+  EMOJI_JOBS,
+  EMOJI_SKILLS,
+} from "../data/emojiCdn.ts"
+
+/** Keep in step with DISALLOWED_TITLE in scripts/emojigg.mjs. */
+const DISALLOWED_EMOJI_TITLE =
+  /\b(nsfw|porn|hentai|rule34|nude|naked|boob|titty|penis|vagina|xxx|fuck|asshole|decap|naughty|gasm)\b|highway|interstate/i
 import { freshSave, hydrate, OFFLINE_CAP_MS, offlineCredit, parseSave, SAVE_VERSION } from "./save.ts"
 import { C } from "../pixel/palette.ts"
 import { MAIN_SIZE, spriteGrid, THUMB_SIZE } from "../pixel/sprites.ts"
@@ -61,13 +75,13 @@ describe("economy", () => {
   it("adds XP per click from skills on top of the base 1, and XP per second", () => {
     expect(xpPerClick({})).toBe(1)
     expect(xpPerSec({})).toBe(0)
-    const skills = { "1": 2, "2": 5, "11": 1 }
+    const skills = { "1": 2, "2": 5, "14": 1 }
     expect(xpPerClick(skills)).toBe(1 + 2 * 1 + 1 * 3)
-    expect(xpPerSec(skills)).toBeCloseTo(5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[10]?.xpPerSec ?? 0))
+    expect(xpPerSec(skills)).toBeCloseTo(5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[13]?.xpPerSec ?? 0))
   })
 
   it("sums idle $/s from retainers, salaries, equipment and capital", () => {
-    const p = { ...NONE, gigs: [1, 8, 17], jobs: [2, 14], equipment: { "4": 2, "7": 1 }, owned: { "3": 1 } }
+    const p = { ...NONE, gigs: [1, 8, 17], jobs: [2, 14], equipment: { "17": 2, "44": 1 }, owned: { "3": 1 } }
     const parts = idleParts(p)
     expect(parts.retainers).toBeCloseTo(0 + 2 + 3)
     expect(parts.jobs).toBe(25 + 200)
@@ -78,12 +92,12 @@ describe("economy", () => {
 
   it("lists every owned source, biggest $/s first, summing to idle", () => {
     expect(ownedSources(NONE)).toEqual([])
-    const p = { ...NONE, skills: { "1": 3, "5": 1 }, equipment: { "2": 2 }, gigs: [1, 8], jobs: [1, 2], owned: { "3": 1 } }
+    const p = { ...NONE, skills: { "1": 3, "5": 1 }, equipment: { "6": 2 }, gigs: [1, 8], jobs: [1, 2], owned: { "3": 1 } }
     const rows = ownedSources(p)
-    expect(rows.map((row) => row.key)).toEqual(["capital:3", "job:2", "job:1", "gig:8", "equipment:2", "skill:5", "skill:1"])
+    expect(rows.map((row) => row.key)).toEqual(["capital:3", "job:2", "job:1", "gig:8", "equipment:6", "skill:5", "skill:1"])
     expect(rows.reduce((sum, row) => sum + row.idle, 0)).toBeCloseTo(idlePerSec(p))
     expect(rows.find((row) => row.key === "skill:1")?.click).toBe(3)
-    expect(rows.find((row) => row.key === "equipment:2")?.click).toBe(6)
+    expect(rows.find((row) => row.key === "equipment:6")?.click).toBe(6)
   })
 
   it("quotes a max buy that stops when the next copy is too expensive", () => {
@@ -150,7 +164,9 @@ describe("save", () => {
     const hydrated = hydrate(JSON.stringify(save), now)
     const credit = offlineCredit(cps, savedAt, now)
     expect(hydrated.save.money).toBe(4 + credit)
-    expect(hydrated.toast).toBe(`welcome back, credited $${formatNumber(credit)}`)
+    const [sentence, creditLine] = (hydrated.toast ?? "").split("\n")
+    expect(sentence?.endsWith(".")).toBe(true)
+    expect(creditLine).toBe(`credited $${formatNumber(credit)}`)
   })
 
   it("credits idle study XP offline and says so", () => {
@@ -161,7 +177,9 @@ describe("save", () => {
     expect(hydrated.save.money).toBe(0)
     expect(hydrated.save.xp).toBeCloseTo(studied)
     expect(hydrated.save.xpTotal).toBeCloseTo(studied)
-    expect(hydrated.toast).toBe(`welcome back, studied +${formatNumber(studied)} XP`)
+    const [sentence, creditLine] = (hydrated.toast ?? "").split("\n")
+    expect(sentence?.endsWith(".")).toBe(true)
+    expect(creditLine).toBe(`studied +${formatNumber(studied)} XP`)
   })
 
   it("drops an expired click boost and keeps a live one", () => {
@@ -269,8 +287,8 @@ describe("click boosts", () => {
 describe("catalog tables", () => {
   const contiguous = (rows: readonly { id: number }[]) => rows.every((row, index) => row.id === index + 1)
 
-  it("ships Catalogs v4: 105 skills, 65 gigs, 31 jobs, 110 gear, 25 capital, ids 1..n", () => {
-    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([105, 65, 31, 110, 25])
+  it("ships Catalogs v4: 104 skills, 65 gigs, 31 jobs, 110 gear, 25 capital, ids 1..n", () => {
+    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([104, 65, 31, 110, 25])
     for (const rows of [SKILL_TIERS, GIGS, JOB_TIERS, EQUIPMENT, CAPITAL]) expect(contiguous(rows)).toBe(true)
   })
 
@@ -314,6 +332,48 @@ describe("catalog tables", () => {
       /\b(stack ?overflow|freecodecamp|youtube|github|kaggle|pytorch|tensorflow|y combinator|yc|raspberry pi|mac mini|openclaw|docker|kubernetes|hacker news|blackwell|leetcode|upwork|discord|linkedin|wordpress|figma|shopify|stripe|auth0|clerk|cs50|mdn|redis|graphql|trpc|postgres|chrome)\b/i
     const names = [...CAPITAL, ...SKILL_TIERS, ...GIGS, ...JOB_TIERS, ...EQUIPMENT].map((row) => row.name)
     for (const name of names) expect(name).not.toMatch(banned)
+  })
+})
+
+describe("emoji.gg art", () => {
+  const tables = [
+    ["skill", EMOJI_SKILLS],
+    ["gig", EMOJI_GIGS],
+    ["job", EMOJI_JOBS],
+    ["gear", EMOJI_GEAR],
+    ["capital", EMOJI_CAPITAL],
+  ] as const
+
+  it("assigns an idle and a click image for every catalog row", () => {
+    expect(Object.keys(EMOJI_SKILLS).length).toBe(SKILL_TIERS.length + 1)
+    expect(hasEmoji("skill", 0)).toBe(true)
+    expect(Object.keys(EMOJI_GIGS).length).toBe(GIGS.length)
+    expect(Object.keys(EMOJI_JOBS).length).toBe(JOB_TIERS.length)
+    expect(Object.keys(EMOJI_GEAR).length).toBe(EQUIPMENT.length)
+    expect(Object.keys(EMOJI_CAPITAL).length).toBe(CAPITAL.length)
+    for (const row of SKILL_TIERS) expect(hasEmoji("skill", row.id)).toBe(true)
+    for (const row of GIGS) expect(hasEmoji("gig", row.id)).toBe(true)
+    for (const row of JOB_TIERS) expect(hasEmoji("job", row.id)).toBe(true)
+    for (const row of EQUIPMENT) expect(hasEmoji("equipment", row.id)).toBe(true)
+    for (const row of CAPITAL) expect(hasEmoji("capital", row.id)).toBe(true)
+  })
+
+  it("hotlinks emoji.gg and does not stamp one image everywhere", () => {
+    const seen = new Map<string, number>()
+    for (const [, table] of tables) {
+      for (const art of Object.values(table)) {
+        expect(art.idle).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
+        expect(art.click).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
+        expect(art.idle).not.toBe(art.click)
+        expect(art.label).not.toMatch(DISALLOWED_EMOJI_TITLE)
+        for (const url of [art.idle, art.click]) seen.set(url, (seen.get(url) ?? 0) + 1)
+      }
+    }
+    for (const count of seen.values()) expect(count).toBeLessThanOrEqual(4)
+    expect(EMOJI_CAPITAL[25].label.toLowerCase()).toMatch(/building|rocket/)
+    expect(DESK_CAT_EMOJI).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
+    expect(DESK_CAT_TITLE).not.toMatch(DISALLOWED_EMOJI_TITLE)
+    expect(DESK_CAT_EMOJI).not.toBe(EMOJI_SKILLS[0].idle)
   })
 })
 
@@ -368,11 +428,8 @@ describe("pixel sprites", () => {
 
 describe("IDE lexer", () => {
   it("tokenizes every pack file without losing or adding a character", () => {
-    for (const pack of IDE_PACKS) {
-      if (pack.kind !== "files") continue
-      for (const file of pack.files) {
-        expect(tokenize(file.code, file.lang).map((token) => token.text).join("")).toBe(file.code)
-      }
+    for (const file of allProblemFiles()) {
+      expect(tokenize(file.code, file.lang).map((token) => token.text).join("")).toBe(file.code)
     }
     const kinds = tokenize('for i in range(1, 101): print("Fizz")', "python")
     expect(kinds.find((t) => t.text === "for")?.kind).toBe("kw")
@@ -435,6 +492,17 @@ describe("hidden upgrades", () => {
       (row) => row.owned,
     )
     expect(waiting.map((row) => row.id)).toEqual([1, 2, 4])
+    const pinned = visibleShopRows(
+      [
+        { id: 1, owned: true },
+        { id: 2, owned: false },
+        { id: 3, owned: false },
+        { id: 4, owned: true },
+      ],
+      (row) => row.owned,
+      (row) => row.id === 3,
+    )
+    expect(pinned.map((row) => row.id)).toEqual([1, 2, 3, 4])
   })
 
   it("reveals a skill by lifetime XP, or when owned", () => {

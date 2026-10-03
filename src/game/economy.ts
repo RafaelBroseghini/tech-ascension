@@ -51,6 +51,13 @@ export const capitalById = (id: number): Capital | undefined => CAPITAL_BY_ID.ge
 export const skillById = (id: number): SkillTier | undefined => SKILL_BY_ID.get(id)
 export const gigById = (id: number): Gig | undefined => GIG_BY_ID.get(id)
 export const jobById = (id: number): JobTier | undefined => JOB_BY_ID.get(id)
+
+/** Highest held job, or null when the career has none. */
+export function highestJobId(jobs: readonly number[]): number | null {
+  let highest = 0
+  for (const id of jobs) if (id > highest) highest = id
+  return highest > 0 ? highest : null
+}
 export const equipById = (id: number): Equip | undefined => EQUIP_BY_ID.get(id)
 
 export function ownedCount(owned: OwnedMap, id: number): number {
@@ -235,9 +242,10 @@ export function isGearRevealed(row: Equip, equipment: OwnedMap, peakMoney: numbe
 /**
  * Rows to put in the shop. Owned rows stay so they can be bought again.
  * The first unowned row is always shown, even while its own gate is still shut,
- * so the next purchase is never a blank. Later unowned rows stay hidden.
+ * so the next purchase is never a blank. Later unowned rows stay hidden,
+ * unless `include` asks for one (the Next button's jump target).
  */
-export function visibleShopRows<T>(rows: readonly T[], owned: (row: T) => boolean): T[] {
+export function visibleShopRows<T>(rows: readonly T[], owned: (row: T) => boolean, include?: (row: T) => boolean): T[] {
   const visible: T[] = []
   let heldNext = false
   for (const row of rows) {
@@ -245,7 +253,7 @@ export function visibleShopRows<T>(rows: readonly T[], owned: (row: T) => boolea
       visible.push(row)
       continue
     }
-    if (heldNext) continue
+    if (heldNext && !include?.(row)) continue
     heldNext = true
     visible.push(row)
   }

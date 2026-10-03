@@ -5,6 +5,7 @@ import { FIGHT_DURATION_MS, enemyById } from "../game/fight.ts"
 import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
 import { formatNumber } from "../game/format.ts"
+import { pokeDesk } from "../game/desk.ts"
 import { useGame } from "../game/store.ts"
 
 const RESULT_MS = 2600
@@ -61,6 +62,7 @@ export function FightOverlay() {
   const urgent = left <= 8_000
 
   function strike(clientX: number | null, clientY: number | null) {
+    pokeDesk()
     const box = targetRef.current
     const rect = box?.getBoundingClientRect()
     hit()
@@ -71,7 +73,10 @@ export function FightOverlay() {
     setHits((current) => [...current, { id: hitSeq++, x, y, text: `-${formatNumber(damage)}` }].slice(-12))
     const img = spriteRef.current
     if (img && typeof img.animate === "function") {
-      for (const animation of img.getAnimations()) animation.cancel()
+      for (const animation of img.getAnimations()) {
+        animation.finished.catch(() => {})
+        animation.cancel()
+      }
       img.animate(
         [
           { transform: "translateX(0) scale(1)", filter: "brightness(1.7)" },

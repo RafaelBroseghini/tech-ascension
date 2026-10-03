@@ -2,6 +2,7 @@ import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } f
 import type { Gig, JobTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import type { Era } from "../data/capital.ts"
+import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
@@ -60,9 +61,14 @@ export function phaseRank(phase: Phase): number {
   return PHASES.indexOf(phase)
 }
 
-/** Fights and cash events start once a gig is cleared, a job is held, or money already exists. Clicks themselves always pay both. */
+/** Fights and cash events start once a gig is cleared, a job is held, or money already exists. */
 export function moneyMode(p: Pick<Progress, "peakMoney" | "gigs" | "jobs">): boolean {
   return p.gigs.length > 0 || p.jobs.length > 0 || p.peakMoney > 0
+}
+
+/** Click payouts in dollars wait until the first job is taken; gigs and salaries still pay without this. */
+export function clickPaysMoney(p: Pick<Progress, "jobs">): boolean {
+  return p.jobs.length > 0
 }
 
 /** Skills still missing for a gig. One or two are named; a longer set is a count. */
@@ -101,23 +107,25 @@ export function equipmentOpen(p: Pick<Progress, "xpTotal" | "equipment">): boole
 }
 
 export type Stage = {
-  /** Sprite and code-overlay id (see src/data/art.ts). 0 is the opening scene. */
+  /** Code-overlay id (see src/data/art.ts). The picture on screen comes from `source`, not this id. */
   artId: number
   name: string
   /** Era for boosts, fights and the stage accent. Only owned capital rows move it past "early". */
   era: Era
+  /** Catalog row whose sprite file, if one exists, is the stage picture. */
+  source: { kind: EmojiKind; id: number }
 }
 
 /** The stage shows the furthest thing the player holds: capital, then job, then gig, then skill. */
 export function stageOf(p: Pick<Progress, "skills" | "owned" | "jobs" | "gigs">): Stage | null {
   const tier = highestOwnedCapital(p.owned)
-  if (tier) return { artId: tier.artId, name: tier.name, era: tier.era }
+  if (tier) return { artId: tier.artId, name: tier.name, era: tier.era, source: { kind: "capital", id: tier.id } }
   const jobId = Math.max(0, ...p.jobs)
-  if (jobId > 0) return { artId: artFor(JOB_ART, jobId), name: jobById(jobId)?.name ?? "Engineer", era: "early" }
+  if (jobId > 0) return { artId: artFor(JOB_ART, jobId), name: jobById(jobId)?.name ?? "Engineer", era: "early", source: { kind: "job", id: jobId } }
   const gigId = Math.max(0, ...p.gigs)
-  if (gigId > 0) return { artId: artFor(GIG_ART, gigId), name: "Freelancer", era: "early" }
+  if (gigId > 0) return { artId: artFor(GIG_ART, gigId), name: "Freelancer", era: "early", source: { kind: "gig", id: gigId } }
   const skill = highestOwnedSkill(p.skills)
-  if (skill) return { artId: artFor(SKILL_ART, skill.id), name: skill.name, era: "early" }
+  if (skill) return { artId: artFor(SKILL_ART, skill.id), name: skill.name, era: "early", source: { kind: "skill", id: skill.id } }
   return null
 }
 

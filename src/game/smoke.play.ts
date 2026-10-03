@@ -27,14 +27,14 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   let guard = 0
   while (game.getState().xp < first.baseXpCost) {
     const gain = game.click()
-    expect(gain.money).toBe(start.clickPower)
+    expect(gain.money).toBe(0)
     expect(gain.xp).toBe(1)
     guard += 1
     if (guard > 5_000) throw new Error("clicks did not pay for the first skill")
   }
   expect(guard).toBeGreaterThan(100)
-  expect(game.getState().money).toBe(first.baseXpCost)
-  expect(game.getState().lastPop).toMatchObject({ kind: "click", size: "medium" })
+  expect(game.getState().money).toBe(0)
+  expect(game.getState().lastPop).toBeNull()
 
   const ready = game.getState()
   expect(game.buy(26)).toBe(false)
@@ -47,7 +47,7 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   expect(bought.cps).toBe(0)
   const paid = game.click()
   expect(paid.xp).toBe(bought.xpPerClick)
-  expect(paid.money).toBe(bought.clickPower)
+  expect(paid.money).toBe(0)
 
   game.setXp(Math.max(second.baseXpCost, second.unlockAtXp))
   expect(game.buySkill(2)).toBe(true)
@@ -80,21 +80,26 @@ test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gi
   const gig2 = GIGS[1]
   if (!gig1 || !gig2) throw new Error("missing gigs")
   const primed = game.click()
-  expect(primed.money).toBe(open.clickPower)
+  expect(primed.money).toBe(0)
   expect(primed.xp).toBeGreaterThan(0)
   expect(game.completeGig(gig2.id)).toBe(false)
   expect(game.completeGig(gig1.id)).toBe(true)
   expect(game.completeGig(gig1.id)).toBe(false)
   const cleared = game.getState()
-  expect(cleared.money).toBe(open.money + primed.money + gig1.lump)
+  expect(cleared.money).toBe(open.money + gig1.lump)
   expect(cleared.gigs).toEqual([gig1.id])
   expect(cleared.cps).toBe(0)
   expect(cleared.lastPop).toEqual({ kind: "gigClear", size: "large", amount: gig1.lump, label: gig1.name })
 
-  const click = game.click()
-  expect(click.money).toBe(cleared.clickPower)
-  expect(click.xp).toBeGreaterThan(0)
-  expect(game.getState().money).toBe(cleared.money + cleared.clickPower)
+  expect(game.click().money).toBe(0)
+  expect(game.getState().money).toBe(cleared.money)
+
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.buyJob(1)).toBe(true)
+  const paid = game.click()
+  expect(paid.money).toBe(game.getState().clickPower)
+  expect(paid.xp).toBeGreaterThan(0)
   expect(game.getState().lastPop).toMatchObject({ kind: "click", size: "medium" })
 })
 
@@ -190,6 +195,9 @@ test("D: capital waits for $500K held (or a senior job)", () => {
 
 test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   game.reset()
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.buyJob(1)).toBe(true)
   const row = tierByName("WhyCombinator batch investment")
   game.setMoney(row.baseCost)
   const before = game.getState()
@@ -224,11 +232,12 @@ test("offline catch-up pays 1h and caps at 8h", () => {
 
   const hour = 60 * 60 * 1000
   const oneHour = game.advanceOffline(hour)
-  expect(oneHour.toast).toMatch(/^welcome back, credited \$/)
+  expect(oneHour.toast?.split("\n")[0]?.endsWith(".")).toBe(true)
+  expect(oneHour.toast?.split("\n")[1]).toMatch(/^credited \$/)
   expect(Math.abs(oneHour.credited - cps * 3600)).toBeLessThan(1)
 
   const tenHours = game.advanceOffline(10 * hour)
-  expect(tenHours.toast).toMatch(/^welcome back, credited \$/)
+  expect(tenHours.toast?.split("\n")[1]).toMatch(/^credited \$/)
   expect(Math.abs(tenHours.credited - cps * 8 * 3600)).toBeLessThan(1)
   expect(tenHours.credited).toBeLessThan(cps * 10 * 3600)
 })
@@ -243,7 +252,8 @@ test("offline study credits XP in phase A and adds no idle money", () => {
   const away = game.advanceOffline(60 * 60 * 1000)
   expect(away.credited).toBe(0)
   expect(Math.abs(away.creditedXp - xpPerSec * 3600)).toBeLessThan(1)
-  expect(away.toast).toMatch(/^welcome back, studied \+/)
+  expect(away.toast?.split("\n")[0]?.endsWith(".")).toBe(true)
+  expect(away.toast?.split("\n")[1]).toMatch(/^studied \+/)
   expect(game.getState().money).toBe(0)
 })
 
@@ -255,6 +265,11 @@ function enemy(id: number) {
 
 test("fight: force spawn, click damage, win pays the reward once", () => {
   game.reset()
+  expect(game.buyJob(1)).toBe(false)
+  game.forceGig(1)
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.buyJob(1)).toBe(true)
   expect(game.getState().fight).toBeNull()
   expect(game.forceEnemy(9999)).toBe(false)
   expect(game.getState().fight).toBeNull()
@@ -305,6 +320,9 @@ test("fight: click damage is click power times the live boost", () => {
 test("fight: flee ends clean with no reward and no penalty", () => {
   game.reset()
   game.forceGig(1)
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.buyJob(1)).toBe(true)
   const row = enemy(1)
   game.forceEnemy(row.id)
   game.click()
@@ -387,7 +405,8 @@ test("fight: boost rolls wait out the fight, shop stays usable", () => {
   expect(game.buySkill(1)).toBe(true)
   expect(game.getState().fight).not.toBeNull()
 
-  for (let i = 0; i < 6; i++) {
+  // Six 29s ticks are 174s. Early pity is 187.5s, so that wait does not guarantee a roll.
+  for (let i = 0; i < 7; i++) {
     game.forceEnemy(1)
     game.tick(FIGHT_DURATION_MS - 1_000)
     expect(game.getState().activeBoost).toBeNull()
@@ -397,63 +416,62 @@ test("fight: boost rolls wait out the fight, shop stays usable", () => {
   expect(game.getState().activeBoost).not.toBeNull()
 })
 
-test("events: forceEvent applies the table row once, the modal closes without undoing it", () => {
+test("events: Yes applies a gift once, No leaves the balance alone", () => {
   game.reset()
   expect(game.forceEvent(99_999)).toBe(false)
   expect(game.getState().event).toBeNull()
 
   game.forceGig(1)
   game.setMoney(1_000)
+  game.setXp(1_000)
   const row = EVENTS.find((item) => item.id === 21)
-  expect(row?.effects).toEqual([{ kind: "money", delta: 800 }])
+  expect(row?.offer).toEqual({ kind: "gift", resource: "money", minutes: 10 })
   expect(game.forceEvent(21)).toBe(true)
-  const fired = game.getState()
-  expect(fired.money).toBe(1_800)
-  expect(fired.event).toEqual({ eventId: 21, name: "Open-source bounty", lines: ["+$800"] })
+  const opened = game.getState()
+  expect(opened.money).toBe(1_000)
+  expect(opened.event?.eventId).toBe(21)
+  expect(opened.event?.name).toBe("Open-source bounty")
+  expect(opened.event?.lines[0]).toMatch(/^\+\$/)
+  expect(game.acceptEvent()).toBe(true)
+  const paid = game.getState()
+  expect(paid.money).toBeGreaterThan(1_000)
+  expect(paid.event).toBeNull()
+  expect(game.acceptEvent()).toBe(false)
+  expect(game.getState().money).toBe(paid.money)
 
   expect(game.forceEvent(3)).toBe(true)
-  expect(game.getState().event?.eventId).toBe(3)
-  expect(game.getState().money).toBe(1_770)
-
+  const offered = game.getState()
+  expect(offered.event?.lines).toHaveLength(2)
   game.dismissEvent()
   expect(game.getState().event).toBeNull()
   expect(game.getState().lastEvent?.eventId).toBe(3)
-  expect(game.getState().money).toBe(1_770)
+  expect(game.getState().money).toBe(offered.money)
+  expect(game.getState().xp).toBe(offered.xp)
 })
 
-test("events: a penalty never takes more than you have", () => {
+test("events: a trade scales to the pile, and Yes is refused when you cannot pay", () => {
   game.reset()
   game.forceGig(1)
-  game.setMoney(10)
-  game.setXp(5)
+  game.setMoney(1_000_000)
+  game.setXp(1_000_000)
   expect(game.forceEvent(3)).toBe(true)
+  const before = game.getState()
+  expect(game.acceptEvent()).toBe(true)
+  const after = game.getState()
+  expect(after.xp - before.xp).toBeGreaterThanOrEqual(10_000)
+  expect(before.money - after.money).toBeGreaterThanOrEqual(10_000)
+  expect(after.xpTotal).toBeGreaterThan(before.xpTotal)
+
+  game.setMoney(0)
+  expect(game.forceEvent(3)).toBe(true)
+  expect(game.acceptEvent()).toBe(false)
   expect(game.getState().money).toBe(0)
-  expect(game.forceEvent(106)).toBe(true)
-  expect(game.getState().xp).toBe(0)
-  expect(game.getState().xpTotal).toBe(5)
   game.dismissEvent()
+  game.forceGig(1)
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.buyJob(1)).toBe(true)
   expect(game.click().money).toBeGreaterThan(0)
-})
-
-test("events: a permanent multiplier scales click and cps, a timed one scales its target only", () => {
-  game.reset()
-  game.forceGig(5)
-  game.tick(1)
-  const base = game.getState()
-  expect(base.foreverMult).toBe(1)
-
-  game.forceEvent(41)
-  const forever = game.getState()
-  expect(forever.foreverMult).toBe(1.03)
-  expect(forever.clickPower).toBeCloseTo(base.clickPower * 1.03)
-  expect(forever.cps).toBeCloseTo(base.cps * 1.03)
-
-  game.forceEvent(58)
-  const timed = game.getState()
-  expect(timed.tempMults.click?.mult).toBe(1.2)
-  expect(timed.clickPower).toBeCloseTo(base.clickPower * 1.03 * 1.2)
-  expect(timed.cps).toBeCloseTo(forever.cps)
-  game.dismissEvent()
 })
 
 test("events: none fire during a fight, forceEnemy closes an open one", () => {
@@ -466,6 +484,46 @@ test("events: none fire during a fight, forceEnemy closes an open one", () => {
   game.flee()
   expect(game.forceEvent(2)).toBe(true)
   game.dismissEvent()
+})
+
+test("a 1:1 waits for a job, then the three replies pay, sit, or bill you", () => {
+  game.reset()
+  expect(game.forceReview()).toBe(false)
+
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.buyJob(1)).toBe(true)
+
+  expect(game.forceReview(1)).toBe(true)
+  const open = game.getState()
+  expect(open.review?.jobId).toBe(1)
+  expect(open.review?.jobName).toBe("Internship offer")
+  expect(open.review?.question).toMatch(/golden retriever/)
+  expect(open.review?.replies.map((reply) => reply.choice)).toEqual(["exceeds", "meets", "pip"])
+  expect(open.event).toBeNull()
+
+  const before = game.getState()
+  expect(game.answerReview("meets")).toBe(true)
+  expect(game.getState().money).toBe(before.money)
+  expect(game.getState().xp).toBe(before.xp)
+  expect(game.getState().review).toBeNull()
+  expect(game.getState().lastReview?.choice).toBe("meets")
+
+  expect(game.forceReview(1)).toBe(true)
+  const raisedFrom = game.getState().money
+  expect(game.answerReview("exceeds")).toBe(true)
+  expect(game.getState().money).toBeGreaterThan(raisedFrom)
+  expect(game.getState().lastReview?.lines[0]).toMatch(/^\+\$/)
+
+  game.setMoney(0)
+  expect(game.forceReview(1)).toBe(true)
+  expect(game.getState().review?.replies.find((reply) => reply.choice === "pip")?.canAccept).toBe(false)
+  expect(game.answerReview("pip")).toBe(false)
+  expect(game.getState().review).not.toBeNull()
+  expect(game.getState().money).toBe(0)
+  game.dismissReview()
+  expect(game.getState().review).toBeNull()
+  expect(game.getState().money).toBe(0)
 })
 
 test("fight: v1.2 rewards pay out like a payday", () => {
@@ -498,10 +556,17 @@ test("ide: the pack follows the owned era, tabs navigate, the shop era previews 
     return row
   }
   top("Angel syndicate seat")
-  expect(game.getState().ide).toMatchObject({ era: "mid", packId: "search", kind: "files", items: ["BinarySearch.java", "BinarySearchTest.java"] })
+  const searchIde = game.getState().ide
+  expect(searchIde).toMatchObject({ era: "mid", packId: "search", kind: "files", index: 0 })
+  expect(searchIde.items[0]).toBe("BinarySearch.java")
+  expect(searchIde.items.length).toBeGreaterThan(2)
+  expect(searchIde.folders).toEqual(["fizzbuzz", "two_sum", "reverse_list", "debounce", "search"])
+  expect(game.ideSelect(0, "fizzbuzz")).toBe(true)
+  expect(game.getState().ide.packId).toBe("fizzbuzz")
   expect(game.ideSelect(1)).toBe(true)
+  expect(game.getState().ide.packId).toBe("fizzbuzz")
   expect(game.getState().ide.index).toBe(1)
-  expect(game.ideSelect(3)).toBe(false)
+  expect(game.ideSelect(99)).toBe(false)
   expect(game.ideSelect(-1)).toBe(false)
   expect(game.getState().ide.index).toBe(1)
 
@@ -519,16 +584,19 @@ test("ide: the pack follows the owned era, tabs navigate, the shop era previews 
   expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
 
   top("Custom accelerator IP")
+  expect(game.getState().ide.restPackId).toBe("frontier")
+  expect(game.ideSelect(0, "frontier")).toBe(true)
   expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", packId: "frontier" })
   top("Mars megacampus Holdings")
+  expect(game.ideSelect(0, "mars")).toBe(true)
   expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", packId: "mars", items: ["Habitat power", "GPU shed policy", "Dust storm runbook"] })
 })
 
 test("save: a save from another schema version is wiped, not migrated", () => {
   game.reset()
   game.forceGig(1)
-  localStorage.setItem("tech-ascension.save", JSON.stringify({ version: 2, money: 5e9, xp: 99, owned: { "26": 3 }, savedAt: 1 }))
-  const hydrated = hydrate(localStorage.getItem("tech-ascension.save"), Date.now())
+  const raw = JSON.stringify({ version: 2, money: 5e9, xp: 99, owned: { "26": 3 }, savedAt: 1 })
+  const hydrated = hydrate(raw, Date.now())
   expect(hydrated.reset).toBe(true)
   expect(hydrated.save.money).toBe(0)
   expect(hydrated.save.owned).toEqual({})

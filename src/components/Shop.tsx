@@ -1,15 +1,18 @@
+import { Check, Circle } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { UI_ICON } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
-import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import { ERA_ACCENT } from "../data/sprites.ts"
+import type { EmojiKind } from "../data/emojiAssets.ts"
+import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
-import { GEAR_KINDS } from "../data/gear.ts"
+import { gearSections } from "../data/gear.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
-import { ERA_ACCENT, thumbForTier } from "../data/sprites.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, visibleShopRows } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
-import { nextUnlock } from "../game/nextUnlock.ts"
+import { nextUnlock, shopFocus } from "../game/nextUnlock.ts"
 import type { NextUnlock } from "../game/nextUnlock.ts"
 import {
   capitalRequirements,
@@ -28,7 +31,9 @@ import {
   SHOP_TABS,
 } from "../game/phase.ts"
 import type { Requirement, ShopTab } from "../game/phase.ts"
+import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
+import { ScrollPanel } from "./ScrollPanel.tsx"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 function nextLine(next: NextUnlock): string {
@@ -37,11 +42,11 @@ function nextLine(next: NextUnlock): string {
 }
 
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string }> = {
-  A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "#6fe08c" },
-  B: { label: "Gigs", title: "Take on a gig", hint: "First dollars", glow: "#5aa9ff" },
-  C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "#f3b94a" },
-  G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "#4fd1c5" },
-  D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "#ff7b4f" },
+  A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "var(--ide-green)" },
+  B: { label: "Gigs", title: "Take on a gig", hint: "First dollars", glow: "var(--ide-blue)" },
+  C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "var(--ide-peach)" },
+  G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "var(--ide-sky)" },
+  D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "var(--ide-mauve)" },
 }
 
 function OwnedCount({ value }: { value: number }) {
@@ -54,7 +59,9 @@ function OwnedCount({ value }: { value: number }) {
 }
 
 type OfferProps = {
-  artId: number
+  kind: EmojiKind
+  id: number
+  rowKey: string
   glow: string
   index: number
   afford: boolean
@@ -67,15 +74,27 @@ type OfferProps = {
   actions: ReactNode
 }
 
-function Offer({ artId, glow, index, afford, flash, fresh, locked, done, title, children, actions }: OfferProps) {
+function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
+  const header = row.previousElementSibling
+  const anchor = header instanceof HTMLElement && header.classList.contains("shop-section") ? header : row
+  const listRect = list.getBoundingClientRect()
+  const anchorRect = anchor.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
+  const align = anchor === row ? Math.max(0, (list.clientHeight - rowRect.height) / 2) : 0
+  const top = list.scrollTop + (anchorRect.top - listRect.top) - align
+  list.scrollTop = Math.max(0, top)
+}
+
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, title, children, actions }: OfferProps) {
   return (
     <article
+      data-row={rowKey}
       className={["offer", afford ? "afford" : "", flash ? "flash" : "", fresh ? "fresh" : "", locked ? "is-locked" : "", done ? "is-done" : ""]
         .filter(Boolean)
         .join(" ")}
       style={{ ["--offer-glow" as string]: glow, ["--i" as string]: index }}
     >
-      <img src={thumbForTier(artId)} alt="" width={64} height={64} />
+      <SpriteTap kind={kind} id={id} className="offer-art" size={64} label={title} />
       <div className="offer-copy">
         <h3>
           {title}
@@ -95,7 +114,7 @@ function LockPanel({ title, lines, either }: { title: string; lines: Requirement
       <ul>
         {lines.map((line) => (
           <li key={line.text} className={line.met ? "met" : ""}>
-            <i aria-hidden="true" />
+            {line.met ? <Check {...UI_ICON} strokeWidth={2.5} aria-hidden /> : <Circle {...UI_ICON} aria-hidden />}
             {line.text}
           </li>
         ))}
@@ -123,7 +142,11 @@ export function Shop() {
   const clearGig = useGame((s) => s.clearGig)
   const wipe = useGame((s) => s.wipe)
 
-  const [picked, setPicked] = useState<ShopTab | null>(null)
+  const [picked, setPickedState] = useState<ShopTab | null>(() => readSavedShopTab())
+  const setPicked = (tab: ShopTab | null) => {
+    writeSavedShopTab(tab)
+    setPickedState(tab)
+  }
   const [lastPhase, setLastPhase] = useState(phase)
   // The era tab doubles as the IDE preview: the store holds it and snaps it back to the owned era.
   const pickedEra = useGame((s) => s.previewEra)
@@ -131,8 +154,13 @@ export function Shop() {
   const holdPreview = useGame((s) => s.holdPreview)
   const [flashKey, setFlashKey] = useState<string | null>(null)
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
+  const [pinnedRow, setPinnedRow] = useState<string | null>(null)
+  const [jumpSeq, setJumpSeq] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const seenRows = useRef(new Map<string, number>())
+  const jumpRow = useRef<string | null>(null)
+  const jumped = useRef(0)
+  const pin = (kind: string, id: number) => pinnedRow === `${kind}:${id}`
 
   // A newly opened phase takes over the tab so the unlock is not missed.
   if (phase !== lastPhase) {
@@ -150,14 +178,26 @@ export function Shop() {
     D: capitalUnlocked(gates),
   }
 
-  const skillRows = visibleShopRows(SKILL_TIERS, (row) => ownedCount(skills, row.id) > 0)
-  const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id))
-  const jobRows = visibleShopRows(JOB_TIERS, (job) => jobs.includes(job.id))
-  const equipRows = visibleShopRows(EQUIPMENT, (row) => ownedCount(equipment, row.id) > 0)
+  const skillRows = visibleShopRows(
+    SKILL_TIERS,
+    (row) => ownedCount(skills, row.id) > 0,
+    (row) => pin("skill", row.id),
+  )
+  const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id), (gig) => pin("gig", gig.id))
+  const jobRows = visibleShopRows(JOB_TIERS, (job) => jobs.includes(job.id), (job) => pin("job", job.id))
+  const equipRows = visibleShopRows(
+    EQUIPMENT,
+    (row) => ownedCount(equipment, row.id) > 0,
+    (row) => pin("gear", row.id),
+  )
   const next = nextUnlock({ ...gates, equipment, money, xp })
 
   const revealedByEra = useMemo(() => {
-    const visible = visibleShopRows(CAPITAL, (tier) => ownedCount(owned, tier.id) > 0)
+    const visible = visibleShopRows(
+      CAPITAL,
+      (tier) => ownedCount(owned, tier.id) > 0,
+      (tier) => pinnedRow === `capital:${tier.id}`,
+    )
     const map = new Map<Era, typeof visible>()
     for (const tier of visible) {
       const rows = map.get(tier.era)
@@ -166,7 +206,7 @@ export function Shop() {
     }
     for (const rows of map.values()) rows.sort((a, b) => a.baseCost - b.baseCost)
     return map
-  }, [owned])
+  }, [owned, pinnedRow])
   const eraTabs = eraSections().filter((section) => revealedByEra.has(section.id))
   const topEra = [...eraTabs].reverse().find((section) => (revealedByEra.get(section.id) ?? []).some((tier) => ownedCount(owned, tier.id) > 0))
   const era = pickedEra && revealedByEra.has(pickedEra) ? pickedEra : (topEra?.id ?? eraTabs[0]?.id ?? "mid")
@@ -175,17 +215,63 @@ export function Shop() {
   const rowCount =
     tab === "A" ? skillRows.length : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tab
+  const showJumpEnd = unlocked[tab]
+
+  function scrollToLastAvailable() {
+    const list = listRef.current
+    if (!list) return
+    const offers = [...list.querySelectorAll<HTMLElement>(".offer")]
+    const target =
+      [...offers].reverse().find((el) => !el.classList.contains("is-done") && !el.classList.contains("is-locked")) ??
+      offers.at(-1)
+    if (!target) return
+    target.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }
   useLayoutEffect(() => {
     const list = listRef.current
     if (!list) return
     const previous = seenRows.current.get(rowScope)
     seenRows.current.set(rowScope, rowCount)
+    if (jumpRow.current && jumped.current !== jumpSeq) return
     if (previous === undefined || rowCount <= previous) return
-    const row = list.querySelector<HTMLElement>(".offer:last-of-type")
+    const row =
+      [...list.querySelectorAll<HTMLElement>(".offer.fresh")].at(-1) ??
+      list.querySelector<HTMLElement>(".offer:last-of-type")
     if (!row) return
-    const overflow = row.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom
-    if (overflow > 0) list.scrollTop += overflow
-  }, [rowScope, rowCount])
+    const listBox = list.getBoundingClientRect()
+    const rowBox = row.getBoundingClientRect()
+    const below = rowBox.bottom - listBox.bottom
+    const above = listBox.top - rowBox.top
+    if (below > 0) list.scrollTop += below
+    else if (above > 0) list.scrollTop -= above
+  }, [rowScope, rowCount, jumpSeq])
+
+  useLayoutEffect(() => {
+    const rowKey = jumpRow.current
+    if (!rowKey || jumpSeq === 0 || jumped.current === jumpSeq) return
+    const list = listRef.current
+    const row = list?.querySelector<HTMLElement>(`[data-row="${rowKey}"]`)
+    if (!list || !row) return
+    scrollRowIntoList(list, row)
+    jumped.current = jumpSeq
+  }, [jumpSeq, tab, era, rowScope, rowCount])
+
+  function openNext(target: NextUnlock) {
+    const focus = shopFocus({ ...gates, equipment, money, xp }, target)
+    if (!focus) {
+      jumpRow.current = null
+      setPicked(target.tab)
+      return
+    }
+    jumpRow.current = focus.row
+    setPinnedRow(focus.row)
+    setPicked(focus.tab)
+    if (focus.era && focus.era !== era) setPickedEra(focus.era)
+    setJumpSeq((n) => n + 1)
+    const flash = focus.row.startsWith("gear:") ? `equip:${focus.row.slice("gear:".length)}` : focus.row
+    setFlashKey(flash)
+    window.setTimeout(() => setFlashKey((current) => (current === flash ? null : current)), 440)
+  }
 
   const revealedKeys = [
     ...skillRows.map((row) => `skill:${row.id}`),
@@ -264,7 +350,7 @@ export function Shop() {
         data-testid="next-unlock"
         data-next={next?.key ?? "none"}
         disabled={!next}
-        onClick={() => next && setPicked(next.tab)}
+        onClick={() => next && openNext(next)}
       >
         <span className="next-kicker">Next</span>
         {next ? (
@@ -295,7 +381,17 @@ export function Shop() {
         </div>
       ) : null}
 
-      <div className="shop-list" key={rowScope} ref={listRef}>
+      <ScrollPanel
+        key={rowScope}
+        wrapClassName="shop-list-wrap"
+        className="shop-list"
+        scrollRef={listRef}
+        showArrow={showJumpEnd}
+        onScrollBottom={scrollToLastAvailable}
+        arrowLabel="Jump to latest available option"
+        arrowTitle="Latest available"
+        testId="shop-jump-end"
+      >
         {tab === "A" ? (
           <>
             {skillRows.map((row, index) => {
@@ -307,7 +403,9 @@ export function Shop() {
               return (
                 <Offer
                   key={row.id}
-                  artId={artFor(SKILL_ART, row.id)}
+                  kind="skill"
+                  id={row.id}
+                  rowKey={`skill:${row.id}`}
                   glow={tabGlow}
                   index={index}
                   afford={afford}
@@ -354,7 +452,9 @@ export function Shop() {
               return (
                 <Offer
                   key={gig.id}
-                  artId={artFor(GIG_ART, gig.id)}
+                  kind="gig"
+                  id={gig.id}
+                  rowKey={`gig:${gig.id}`}
                   glow={tabGlow}
                   index={index}
                   afford={status === "ready"}
@@ -388,7 +488,9 @@ export function Shop() {
               return (
                 <Offer
                   key={job.id}
-                  artId={artFor(JOB_ART, job.id)}
+                  kind="job"
+                  id={job.id}
+                  rowKey={`job:${job.id}`}
                   glow={tabGlow}
                   index={index}
                   afford={afford}
@@ -415,13 +517,10 @@ export function Shop() {
         {tab === "G" ? (
           unlocked.G ? (
             <>
-              {GEAR_KINDS.map((group) => {
-                const rows = equipRows.filter((row) => row.kind === group.id).sort((a, b) => a.baseCost - b.baseCost)
-                if (rows.length === 0) return null
-                return (
-                  <Fragment key={group.id}>
-                    <h3 className="shop-section">{group.label}</h3>
-                    {rows.map((row, index) => {
+              {gearSections(equipRows).map((group) => (
+                <Fragment key={group.id}>
+                  <h3 className="shop-section">{group.label}</h3>
+                  {group.rows.map((row, index) => {
                       const have = ownedCount(equipment, row.id)
                       const cost = nextCost(row.baseCost, have)
                       const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
@@ -436,7 +535,9 @@ export function Shop() {
                       return (
                         <Offer
                           key={row.id}
-                          artId={artFor(EQUIP_ART, row.id)}
+                          kind="equipment"
+                          id={row.id}
+                          rowKey={`gear:${row.id}`}
                           glow={tabGlow}
                           index={index}
                           afford={afford}
@@ -464,9 +565,8 @@ export function Shop() {
                         </Offer>
                       )
                     })}
-                  </Fragment>
-                )
-              })}
+                </Fragment>
+              ))}
             </>
           ) : (
             <LockPanel title="Gear" lines={gearRequirements({ xpTotal })} />
@@ -485,7 +585,9 @@ export function Shop() {
                 return (
                   <Offer
                     key={tier.id}
-                    artId={tier.artId}
+                    kind="capital"
+                    id={tier.id}
+                    rowKey={`capital:${tier.id}`}
                     glow={ERA_ACCENT[tier.era].glow}
                     index={index}
                     afford={afford}
@@ -517,7 +619,7 @@ export function Shop() {
             <LockPanel title="Capital" lines={capitalRequirements(gates)} either />
           )
         ) : null}
-      </div>
+      </ScrollPanel>
       <button
         type="button"
         className="wipe"

@@ -1,4 +1,4 @@
-import { thumbForTier } from "../data/sprites.ts"
+import { SpriteTap } from "./SpriteView.tsx"
 import { ownedSources } from "../game/economy.ts"
 import type { OwnedSource } from "../game/economy.ts"
 import { formatNumber } from "../game/format.ts"
@@ -26,15 +26,7 @@ export function OwnedStrip() {
     <ul className="owned-strip" data-testid="owned-strip" aria-label="Owned">
       {rows.map((row) => (
         <li key={row.key} className="owned-row" data-kind={row.kind} data-tier={row.id}>
-          <img
-            className="owned-thumb"
-            src={thumbForTier(row.artId)}
-            alt=""
-            width={32}
-            height={32}
-            loading="lazy"
-            draggable={false}
-          />
+          <SpriteTap kind={row.kind} id={row.id} className="owned-thumb" size={32} label={row.name} />
           <span className="owned-name">{row.name}</span>
           {row.kind === "job" || row.kind === "gig" ? null : <span className="owned-count">×{formatNumber(row.count)}</span>}
           <span className="owned-rate">

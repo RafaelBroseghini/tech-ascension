@@ -1,7 +1,7 @@
 import { EQUIPMENT, SKILL_TIERS } from "../data/phases.ts"
 import { ownedCount } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
-import { linkedOutProfile } from "./linkedout.ts"
+import { linkedOutProfile, type LinkedOutPost, type RecruiterInMail } from "./linkedout.ts"
 
 export type ResumeEntry = {
   title: string
@@ -24,6 +24,9 @@ export type ResumeDoc = {
   headline: string
   location: string
   openToWork: boolean
+  openToWorkBanner: string | null
+  thoughtLeadership: readonly LinkedOutPost[]
+  recruiterInMail: RecruiterInMail | null
   experience: ResumeGroup[]
   projects: ResumeEntry[]
   skills: readonly string[]
@@ -94,6 +97,9 @@ export function resumeDocument(owned: Owners): ResumeDoc | null {
     headline: profile?.headline ?? "Self-taught",
     location: profile?.location ?? "",
     openToWork: profile?.openToWork ?? skills.length > 0,
+    openToWorkBanner: profile?.openToWorkBanner ?? null,
+    thoughtLeadership: profile?.thoughtLeadership ?? [],
+    recruiterInMail: profile?.recruiterInMail ?? null,
     experience,
     projects,
     skills: profile?.skills ?? skills,
@@ -111,8 +117,11 @@ function entryLines(entry: ResumeEntry, depth: "###" | "####"): string[] {
 /** Markdown of the same resume, for copy, download, and share. */
 export function resumeMarkdown(doc: ResumeDoc): string {
   const lines: string[] = [`# ${doc.name}`, "", `**${doc.headline}**`]
-  const where = [doc.location, doc.openToWork ? "Open to work" : ""].filter((part) => part.length > 0).join(" · ")
+  const where = [doc.location, doc.openToWork && !doc.openToWorkBanner ? "Open to work" : ""]
+    .filter((part) => part.length > 0)
+    .join(" · ")
   if (where) lines.push(where)
+  if (doc.openToWorkBanner) lines.push("", `*${doc.openToWorkBanner}*`, "")
   lines.push("")
 
   if (doc.experience.length > 0) {
@@ -142,6 +151,17 @@ export function resumeMarkdown(doc: ResumeDoc): string {
 
   if (doc.tools.length > 0) {
     lines.push("## Tools", "", doc.tools.join(" · "), "")
+  }
+
+  if (doc.thoughtLeadership.length > 0) {
+    lines.push("## Activity", "")
+    for (const post of doc.thoughtLeadership) {
+      lines.push(post.text, "", post.reactions, "")
+    }
+  }
+
+  if (doc.recruiterInMail) {
+    lines.push("## InMail", "", `**${doc.recruiterInMail.from}**`, doc.recruiterInMail.preview, "")
   }
 
   return `${lines.join("\n").trim()}\n`

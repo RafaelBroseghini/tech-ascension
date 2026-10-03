@@ -1,8 +1,11 @@
+import { MousePointerClick } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
-import { formatNumber, HERO_RAW_DIGITS_BELOW } from "../game/format.ts"
+import { formatFullNumber, formatNumber, RAW_DIGITS_BELOW } from "../game/format.ts"
+import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
+import { UI_ICON } from "./icons/ui.tsx"
 
 const COUNT_UP_MS = 720
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -47,6 +50,7 @@ function useScore(target: number): number {
 
 export function HeroMoney() {
   const money = useGame((state) => state.money)
+  const xp = useGame((state) => state.xp)
   const skills = useGame((state) => state.skills)
   const equipment = useGame((state) => state.equipment)
   const owned = useGame((state) => state.owned)
@@ -59,30 +63,38 @@ export function HeroMoney() {
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
   const valueRef = useRef<HTMLSpanElement>(null)
-  const shown = useScore(money)
-  const text = formatNumber(shown, HERO_RAW_DIGITS_BELOW)
+  const shownMoney = useScore(money)
+  const shownXp = Math.floor(xp)
+  const moneyText = formatNumber(shownMoney)
+  const fullMoney = formatFullNumber(shownMoney)
+  const fullXp = formatFullNumber(shownXp)
+  const showFullMoney = shownMoney >= RAW_DIGITS_BELOW
+  const paysClickMoney = clickPaysMoney({ jobs })
   const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
 
   useEffect(() => {
     const el = valueRef.current
     if (!pop || !el || typeof el.animate !== "function" || prefersReducedMotion()) return
-    for (const animation of el.getAnimations()) animation.cancel()
+    for (const animation of el.getAnimations()) {
+      animation.finished.catch(() => {})
+      animation.cancel()
+    }
     if (pop.size === "large") {
       el.animate(
         [
-          { transform: "scale(1)", textShadow: "0 4px 0 #1a1c2c" },
+          { transform: "scale(1)", textShadow: "0 4px 0 var(--ink)" },
           {
             transform: "scale(1.42, 0.78) rotate(-2deg)",
-            textShadow: "-5px 0 #f38ba8, 5px 0 #89dceb, 0 4px 0 #1a1c2c",
+            textShadow: "-5px 0 var(--ide-red), 5px 0 var(--ide-sky), 0 4px 0 var(--ink)",
             offset: 0.18,
           },
           {
             transform: "scale(0.9, 1.22) rotate(1.5deg)",
-            textShadow: "-3px 0 #f38ba8, 3px 0 #89dceb, 0 4px 0 #1a1c2c",
+            textShadow: "-3px 0 var(--ide-red), 3px 0 var(--ide-sky), 0 4px 0 var(--ink)",
             offset: 0.4,
           },
-          { transform: "scale(1.08, 0.96)", textShadow: "-1px 0 #f38ba8, 1px 0 #89dceb, 0 4px 0 #1a1c2c", offset: 0.65 },
-          { transform: "scale(1)", textShadow: "0 4px 0 #1a1c2c" },
+          { transform: "scale(1.08, 0.96)", textShadow: "-1px 0 var(--ide-red), 1px 0 var(--ide-sky), 0 4px 0 var(--ink)", offset: 0.65 },
+          { transform: "scale(1)", textShadow: "0 4px 0 var(--ink)" },
         ],
         { duration: 620, easing: "cubic-bezier(0.25, 0.9, 0.3, 1)" },
       )
@@ -100,18 +112,34 @@ export function HeroMoney() {
   }, [pop])
 
   return (
-    <div className="hero-money" aria-live="off">
-      <span className="hero-money-label">Money</span>
+    <div className="hero-money" aria-live="off" aria-label="Money">
       <span
         key={buyStamp}
         ref={valueRef}
         data-testid="money"
-        className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", text.length > 11 ? "is-long" : ""].filter(Boolean).join(" ")}
+        className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", moneyText.length > 11 ? "is-long" : ""]
+          .filter(Boolean)
+          .join(" ")}
       >
-        ${text}
+        ${moneyText}
+      </span>
+      {showFullMoney ? (
+        <span className="hero-money-full" data-testid="money-full">
+          ${fullMoney}
+        </span>
+      ) : null}
+      <span className="hero-money-full hero-money-full-xp" data-testid="xp-full">
+        {fullXp} XP
       </span>
       <span className="hero-money-sub">
-        +${formatNumber(rates.click)} · +{formatNumber(rates.xpClick * rates.mult)} XP
+        <MousePointerClick className="hero-money-click-icon" {...UI_ICON} aria-hidden />
+        {paysClickMoney ? (
+          <>
+            +${formatNumber(rates.click)} · +{formatNumber(rates.xpClick * rates.mult)} XP
+          </>
+        ) : (
+          <>+{formatNumber(rates.xpClick * rates.mult)} XP per click</>
+        )}
       </span>
     </div>
   )

@@ -3,7 +3,7 @@
  *  - click is a ~260ms bump: the sprite pops up, tips away from the pointer and
  *    settles with a tiny jitter; it restarts on every click and is a little
  *    bigger when hot. No side-to-side shaking.
- *  - idle life (side-to-side sway, aura, motes) is slow and never covers the UI
+ *  - idle life (side-to-side sway, motes) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
  * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
@@ -40,11 +40,6 @@
 @keyframes sway {
   0%, 100% { transform: translateX(-6px) rotate(-0.5deg); }
   50% { transform: translateX(6px) rotate(0.5deg); }
-}
-
-@keyframes aura-breathe {
-  0%, 100% { filter: brightness(0.9); }
-  50% { filter: brightness(1.25); }
 }
 
 @keyframes mote-rise {
@@ -170,9 +165,9 @@
 
 /* Chromatic split: red and cyan fringes pull apart on impact and converge. */
 @keyframes score-chroma {
-  0% { text-shadow: -9px 0 #f38ba8, 9px 0 #89dceb, 0 5px 0 var(--ink); }
-  14% { text-shadow: -7px 0 #f38ba8, 7px 0 #89dceb, 0 5px 0 var(--ink); }
-  40% { text-shadow: -2px 0 #f38ba8, 2px 0 #89dceb, 0 5px 0 var(--ink); }
+  0% { text-shadow: -9px 0 var(--ide-red), 9px 0 var(--ide-sky), 0 5px 0 var(--ink); }
+  14% { text-shadow: -7px 0 var(--ide-red), 7px 0 var(--ide-sky), 0 5px 0 var(--ink); }
+  40% { text-shadow: -2px 0 var(--ide-red), 2px 0 var(--ide-sky), 0 5px 0 var(--ink); }
   100% { text-shadow: 0 5px 0 var(--ink), 4px 0 0 var(--ink), -4px 0 0 var(--ink), 0 -4px 0 var(--ink); }
 }
 
@@ -193,7 +188,8 @@
     scroll-behavior: auto !important;
   }
 
-  .sprite-bob {
+  .sprite-bob,
+  .sprite canvas {
     animation: none !important;
     transform: none !important;
   }

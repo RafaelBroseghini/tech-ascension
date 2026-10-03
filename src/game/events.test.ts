@@ -1,30 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
 import type { EventDef } from "./events.ts"
-import { advanceEventClock, applyEvent, eligibleEvents, EVENT_AFTER_BLOCK_MS, eventById, eventRequiresMet, pickEvent } from "./events.ts"
+import { advanceEventClock, eligibleEvents, EVENT_AFTER_BLOCK_MS, EVENT_PILE_SHARE, eventById, eventRequiresMet, eventStake, pickEvent, previewOffer, resolveOffer } from "./events.ts"
+import type { EarningRates } from "./events.ts"
 import { BOOST_WAIT_MAX_FACTOR, BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
 import type { Era } from "../data/capital.ts"
-import { FOREVER_MULT_MAX, FOREVER_MULT_MIN, modFactors, pruneTemp } from "./mods.ts"
-import { useGame } from "./store.ts"
+import { FOREVER_MULT_MAX, modFactors, pruneTemp } from "./mods.ts"
+import { readCareerText } from "./ledger.ts"
+import { persistNow, useGame } from "./store.ts"
 import { hydrate } from "./save.ts"
 import { production } from "./economy.ts"
 
-vi.hoisted(() => {
-  const store = new Map<string, string>()
-  Object.assign(globalThis, {
-    localStorage: {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => void store.set(key, value),
-      removeItem: (key: string) => void store.delete(key),
-    },
-  })
-})
-
 const ERAS: Era[] = ["early", "mid", "upper", "q3", "end"]
-const BASE = { money: 1_000, xp: 500, xpTotal: 900, foreverMult: 1, temp: {} }
+const RATES: EarningRates = { cps: 0, click: 1, xpPerSec: 0, xpPerClick: 1 }
+const RICH: EarningRates = { cps: 1_000, click: 50, xpPerSec: 200, xpPerClick: 20 }
 
-function def(partial: Partial<EventDef> & Pick<EventDef, "effects">): EventDef {
-  return { id: 999, name: "test", eras: ["any"], weight: 1, flavor: "", ...partial }
+function def(partial: Partial<EventDef> = {}): EventDef {
+  return { id: 999, name: "test", eras: ["any"], weight: 1, flavor: "", offer: { kind: "gift", resource: "xp", minutes: 5 }, ...partial }
 }
 
 describe("events table (v2)", () => {
@@ -35,17 +27,11 @@ describe("events table (v2)", () => {
     for (const event of EVENTS) {
       expect(event.weight).toBeGreaterThan(0)
       expect(event.eras.length).toBeGreaterThan(0)
-      expect(event.effects.length).toBeGreaterThan(0)
+      expect(event.offer.minutes).toBeGreaterThan(0)
       expect(event.name).not.toBe("")
       for (const era of event.eras) expect([...ERAS, "any"]).toContain(era)
-      for (const effect of event.effects) {
-        expect(["money", "moneyPct", "xp", "foreverMult", "tempMult"]).toContain(effect.kind)
-        if (effect.kind === "tempMult") {
-          expect(effect.ms).toBeGreaterThan(0)
-          expect(effect.mult).toBeGreaterThan(0)
-        }
-        if (effect.kind === "foreverMult") expect(effect.mult).toBeGreaterThan(0)
-      }
+      if (event.offer.kind === "gift") expect(["money", "xp"]).toContain(event.offer.resource)
+      else expect(["money", "xp"]).toContain(event.offer.gain)
     }
   })
 
@@ -61,7 +47,7 @@ describe("events table (v2)", () => {
   })
 
   it("keeps cash events out of the pool until money exists", () => {
-    const touchesMoney = (event: EventDef) => event.effects.some((effect) => effect.kind === "money" || effect.kind === "moneyPct")
+    const touchesMoney = (event: EventDef) => event.offer.kind === "trade" || (event.offer.kind === "gift" && event.offer.resource === "money")
     for (const era of ERAS) {
       const dry = eligibleEvents(era, false)
       expect(dry.length).toBeGreaterThan(0)
@@ -88,18 +74,18 @@ describe("events table (v2)", () => {
 
 describe("event requires", () => {
   it("treats a missing or empty gate as eligible, and ANDs filled fields", () => {
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }] }))).toBe(true)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minGigs: 0, minGearOwned: 0 } }))).toBe(true)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2 } }))).toBe(false)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2 } }), { jobs: [2] })).toBe(true)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 7 } }), { jobs: [2, 6] })).toBe(false)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { jobIds: [6, 8] } }), { jobs: [8] })).toBe(true)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { gigIds: [8, 22] } }), { gigs: [22] })).toBe(true)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { gigIds: [8, 22] } }), { gigs: [1] })).toBe(false)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "4": 1 } })).toBe(false)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "7": 2 } })).toBe(true)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2] })).toBe(false)
-    expect(eventRequiresMet(def({ effects: [{ kind: "xp", delta: 1 }], requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2], gigs: [1] })).toBe(true)
+    expect(eventRequiresMet(def())).toBe(true)
+    expect(eventRequiresMet(def({ requires: { minGigs: 0, minGearOwned: 0 } }))).toBe(true)
+    expect(eventRequiresMet(def({ requires: { minJobId: 2 } }))).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minJobId: 2 } }), { jobs: [2] })).toBe(true)
+    expect(eventRequiresMet(def({ requires: { minJobId: 7 } }), { jobs: [2, 6] })).toBe(false)
+    expect(eventRequiresMet(def({ requires: { jobIds: [6, 8] } }), { jobs: [8] })).toBe(true)
+    expect(eventRequiresMet(def({ requires: { gigIds: [8, 22] } }), { gigs: [22] })).toBe(true)
+    expect(eventRequiresMet(def({ requires: { gigIds: [8, 22] } }), { gigs: [1] })).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "4": 1 } })).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "7": 2 } })).toBe(true)
+    expect(eventRequiresMet(def({ requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2] })).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2], gigs: [1] })).toBe(true)
   })
 
   it("keeps required rows out of an empty career and lets them in once the gate is met", () => {
@@ -109,64 +95,65 @@ describe("event requires", () => {
   })
 })
 
-describe("applyEvent", () => {
-  it("adds and removes money and XP, reporting what changed", () => {
-    const out = applyEvent(BASE, def({ effects: [{ kind: "money", delta: 400 }, { kind: "xp", delta: 300 }] }), 0)
-    expect(out.patch).toMatchObject({ money: 1_400, xp: 800, xpTotal: 1_200 })
-    expect(out.lines.map((line) => line.text)).toEqual(["+$400", "+300 XP"])
-    expect(out.lines.every((line) => line.tone === "good")).toBe(true)
+describe("resolveOffer", () => {
+  it("prices a stake from minutes of income, and at least 1% of a fat pile", () => {
+    expect(eventStake("money", 10, RATES, 0)).toBe(10 * 60 * 0.5)
+    expect(eventStake("xp", 4, RATES, 1_000_000)).toBe(Math.floor(1_000_000 * EVENT_PILE_SHARE))
+    expect(eventStake("money", 15, { ...RICH, cps: 1e9 }, 0)).toBe(15 * 60 * 1e9)
   })
 
-  it("never lets a penalty go below zero, and reports only what was actually lost", () => {
-    const out = applyEvent({ ...BASE, money: 30, xp: 20 }, def({ effects: [{ kind: "money", delta: -100_000 }, { kind: "xp", delta: -150 }] }), 0)
-    expect(out.patch).toMatchObject({ money: 0, xp: 0 })
-    expect(out.lines.map((line) => line.text)).toEqual(["-$30", "-20 XP"])
-    const broke = applyEvent({ ...BASE, money: 0, xp: 0 }, def({ effects: [{ kind: "money", delta: -50 }, { kind: "xp", delta: -50 }] }), 0)
-    expect(broke.patch).toMatchObject({ money: 0, xp: 0, xpTotal: 900 })
-    expect(broke.lines).toEqual([])
+  it("a gift only adds, a trade swaps, and neither can be a pure loss", () => {
+    const gift = resolveOffer(1_000, 400, 900, { kind: "gift", resource: "xp", minutes: 10 }, RATES)
+    expect(gift.applied).toBe(true)
+    expect(gift.xp).toBeGreaterThan(400)
+    expect(gift.xpTotal).toBe(900 + (gift.xp - 400))
+    expect(gift.money).toBe(1_000)
+    expect(gift.lines.every((line) => line.tone === "good")).toBe(true)
+
+    const deal = resolveOffer(1_000_000, 1_000_000, 1_000_000, { kind: "trade", gain: "money", minutes: 10 }, RATES)
+    expect(deal.applied).toBe(true)
+    expect(deal.money).toBeGreaterThan(1_000_000)
+    expect(deal.xp).toBeLessThan(1_000_000)
+    expect(deal.xpTotal).toBe(1_000_000)
+    expect(deal.lines.map((line) => line.tone)).toEqual(["good", "bad"])
+
+    const broke = resolveOffer(0, 500, 500, { kind: "trade", gain: "xp", minutes: 6 }, RATES)
+    expect(broke.applied).toBe(false)
+    expect(broke).toMatchObject({ money: 0, xp: 500, xpTotal: 500 })
   })
 
-  it("never lowers lifetime XP, so phase gates cannot close", () => {
-    const out = applyEvent(BASE, def({ effects: [{ kind: "xp", delta: -400 }] }), 0)
-    expect(out.patch.xp).toBe(100)
-    expect(out.patch.xpTotal).toBe(900)
+  it("never lowers lifetime XP or pushes a balance below zero", () => {
+    const brokeXp = resolveOffer(50, 3, 900, { kind: "trade", gain: "money", minutes: 30 }, RICH)
+    expect(brokeXp.xp).toBeGreaterThanOrEqual(0)
+    expect(brokeXp.xpTotal).toBe(900)
+    expect(brokeXp.money).toBeGreaterThan(50)
   })
 
-  it("takes a percentage of cash", () => {
-    const tax = applyEvent(BASE, def({ effects: [{ kind: "moneyPct", pct: -0.05 }] }), 0)
-    expect(tax.patch.money).toBeCloseTo(950)
-    expect(tax.lines[0]?.text).toBe("-$50 (-5% of your cash)")
-    expect(applyEvent({ ...BASE, money: 0 }, def({ effects: [{ kind: "moneyPct", pct: -0.05 }] }), 0).lines).toEqual([])
-  })
-
-  it("stacks permanent multipliers inside a clamp", () => {
-    let state = { ...BASE }
-    const up = def({ effects: [{ kind: "foreverMult", mult: 1.5 }] })
-    for (let i = 0; i < 40; i++) state = { ...state, ...applyEvent(state, up, 0).patch }
-    expect(state.foreverMult).toBe(FOREVER_MULT_MAX)
-    const down = def({ effects: [{ kind: "foreverMult", mult: 0.5 }] })
-    for (let i = 0; i < 40; i++) state = { ...state, ...applyEvent(state, down, 0).patch }
-    expect(state.foreverMult).toBe(FOREVER_MULT_MIN)
-    expect(applyEvent(state, down, 0).lines).toEqual([])
-  })
-
-  it("replaces a timed multiplier on the same target instead of stacking it", () => {
-    const first = applyEvent(BASE, def({ effects: [{ kind: "tempMult", mult: 1.2, ms: 180_000, target: "click" }] }), 1_000)
-    expect(first.patch.temp.click).toEqual({ mult: 1.2, endsAt: 181_000 })
-    const second = applyEvent({ ...BASE, temp: first.patch.temp }, def({ effects: [{ kind: "tempMult", mult: 0.9, ms: 120_000, target: "click" }, { kind: "tempMult", mult: 1.1, ms: 600_000, target: "xpPerSec" }] }), 5_000)
-    expect(second.patch.temp.click).toEqual({ mult: 0.9, endsAt: 125_000 })
-    expect(second.patch.temp.xpPerSec).toEqual({ mult: 1.1, endsAt: 605_000 })
-    expect(second.lines.map((line) => line.text)).toEqual(["Click income x0.9 for 2 min", "Idle XP/s x1.1 for 10 min"])
-  })
-
-  it("every table row applies cleanly to an empty save without negatives or NaN", () => {
+  it("every table row is a gift or a fair trade, and a million XP is not a 30 XP nick", () => {
     for (const event of EVENTS) {
-      const out = applyEvent({ money: 0, xp: 0, xpTotal: 0, foreverMult: 1, temp: {} }, event, 0)
-      for (const value of [out.patch.money, out.patch.xp, out.patch.xpTotal, out.patch.foreverMult]) {
-        expect(Number.isFinite(value)).toBe(true)
-        expect(value).toBeGreaterThanOrEqual(0)
+      const out = resolveOffer(1_000_000, 1_000_000, 1_000_000, event.offer, RICH)
+      expect(out.applied).toBe(true)
+      expect(out.money).toBeGreaterThanOrEqual(0)
+      expect(out.xp).toBeGreaterThanOrEqual(0)
+      expect(out.xpTotal).toBeGreaterThanOrEqual(1_000_000)
+      if (event.offer.kind === "gift") {
+        const gained = event.offer.resource === "money" ? out.money - 1_000_000 : out.xp - 1_000_000
+        expect(gained).toBeGreaterThanOrEqual(Math.floor(1_000_000 * EVENT_PILE_SHARE))
+        if (event.offer.resource === "money") expect(out.xp).toBe(1_000_000)
+        else expect(out.money).toBe(1_000_000)
+      } else {
+        expect(out.money).not.toBe(1_000_000)
+        expect(out.xp).not.toBe(1_000_000)
+        const xpMoved = Math.abs(out.xp - 1_000_000)
+        expect(xpMoved).toBeGreaterThanOrEqual(Math.floor(1_000_000 * EVENT_PILE_SHARE))
       }
+      const refused = resolveOffer(0, 0, 0, event.offer, { cps: 0, click: 0, xpPerSec: 0, xpPerClick: 0 })
+      expect(refused.applied).toBe(false)
+      expect(refused).toMatchObject({ money: 0, xp: 0, xpTotal: 0 })
     }
+    const preview = previewOffer({ kind: "trade", gain: "xp", minutes: 6 }, RATES, 1_000_000, 1_000_000)
+    expect(preview.loss).toBeGreaterThanOrEqual(10_000)
+    expect(preview.gain).toBeGreaterThanOrEqual(10_000)
   })
 })
 
@@ -238,7 +225,7 @@ describe("advanceEventClock", () => {
   it("rolls only cash-free events until money exists", () => {
     for (let i = 0; i < 200; i++) {
       const out = advanceEventClock(0, { era: "mid", paying: false, blocked: false }, 1, () => i / 200)
-      expect(out.fire?.effects.some((effect) => effect.kind === "money" || effect.kind === "moneyPct")).toBe(false)
+      expect(out.fire?.offer.kind === "trade" || (out.fire?.offer.kind === "gift" && out.fire.offer.resource === "money")).toBe(false)
     }
   })
 })
@@ -285,29 +272,33 @@ describe("events in the store", () => {
     expect(game().event).not.toBeNull()
   })
 
-  it("fires one event at a time and applies it exactly once", () => {
-    useGame.setState({ money: 1_000, peakMoney: 1_000 })
+  it("opens an event without applying it, and Yes applies it once", () => {
+    useGame.setState({ money: 1_000, peakMoney: 1_000, xp: 1_000, xpTotal: 1_000 })
     const before = useGame.getState().money
     expect(useGame.getState().fireEvent(21)).toBe(true)
-    const state = useGame.getState()
-    expect(state.money).toBe(before + 800)
-    expect(state.event).toMatchObject({ eventId: 21 })
-    expect(state.event?.lines.map((line) => line.text)).toEqual(["+$800"])
+    expect(useGame.getState().money).toBe(before)
+    expect(useGame.getState().event).toMatchObject({ eventId: 21 })
+    expect(useGame.getState().acceptEvent()).toBe(true)
+    const paid = useGame.getState().money
+    expect(paid).toBeGreaterThan(before)
+    expect(useGame.getState().event).toBeNull()
+    expect(useGame.getState().acceptEvent()).toBe(false)
+    expect(useGame.getState().money).toBe(paid)
 
     expect(useGame.getState().fireEvent(2)).toBe(true)
     expect(useGame.getState().event?.eventId).toBe(2)
     expect(useGame.getState().eventSeq).toBe(2)
-    expect(useGame.getState().money).toBe(before + 800)
+    expect(useGame.getState().money).toBe(paid)
   })
 
-  it("dismisses without undoing the effects and schedules the next wait fresh", () => {
-    useGame.setState({ money: 1_000, peakMoney: 1_000 })
+  it("No declines the deal and schedules the next wait fresh", () => {
+    useGame.setState({ money: 1_000, peakMoney: 1_000, xp: 1_000, xpTotal: 1_000 })
     useGame.getState().fireEvent(21)
-    const paid = useGame.getState().money
+    const before = useGame.getState().money
     useGame.getState().dismissEvent()
     expect(useGame.getState().event).toBeNull()
     expect(useGame.getState().lastEvent?.eventId).toBe(21)
-    expect(useGame.getState().money).toBe(paid)
+    expect(useGame.getState().money).toBe(before)
     expect(useGame.getState().nextEventAt).toBeNull()
   })
 
@@ -326,23 +317,21 @@ describe("events in the store", () => {
   })
 
   it("the permanent multiplier scales clicks and idle income, and persists", () => {
-    useGame.setState({ money: 0, peakMoney: 1, gigs: [1, 5], xp: 0 })
+    useGame.setState({ money: 0, peakMoney: 1, gigs: [1, 5], jobs: [1], xp: 0 })
     const base = useGame.getState().click().money
-    useGame.getState().fireEvent(41)
-    expect(useGame.getState().foreverMult).toBe(1.03)
+    useGame.setState({ foreverMult: 1.03 })
     expect(useGame.getState().click().money).toBeCloseTo(base * 1.03)
-    const saved = JSON.parse(localStorage.getItem("tech-ascension.save") ?? "{}")
+    persistNow()
+    const saved = JSON.parse(readCareerText() ?? "{}")
     expect(saved.foreverMult).toBe(1.03)
   })
 
   it("the timed multiplier applies for its window and then stops", () => {
-    useGame.setState({ money: 0, peakMoney: 1, gigs: [1, 5], xp: 0 })
-    useGame.getState().fireEvent(58)
-    expect(useGame.getState().tempMults.click?.mult).toBe(1.2)
-    const hot = useGame.getState().click().money
-    expect(hot).toBeCloseTo(1.2)
-    const endsAt = useGame.getState().tempMults.click?.endsAt ?? 0
-    useGame.getState().tick(endsAt + 1_000)
+    useGame.setState({ money: 0, peakMoney: 1, gigs: [1, 5], jobs: [1], xp: 0 })
+    const start = useGame.getState().now
+    useGame.setState({ tempMults: { click: { mult: 1.2, endsAt: start + 180_000 } } })
+    expect(useGame.getState().click().money).toBeCloseTo(1.2)
+    useGame.getState().tick(start + 181_000)
     expect(useGame.getState().tempMults.click).toBeUndefined()
     useGame.setState({ activeBoost: null })
     expect(useGame.getState().click().money).toBe(1)
@@ -351,10 +340,9 @@ describe("events in the store", () => {
   it("idle income credits a timed multiplier only for the seconds it ran", () => {
     useGame.setState({ money: 0, peakMoney: 1, gigs: [8], xp: 0 })
     const cps = 2
-    useGame.getState().fireEvent(97)
     const start = useGame.getState().now
-    const ends = useGame.getState().tempMults.cps?.endsAt ?? 0
-    const ran = Math.max(0, ends - start)
+    const ran = 300_000
+    useGame.setState({ tempMults: { cps: { mult: 1.15, endsAt: start + ran } } })
     const total = 600_000
     const before = useGame.getState().money
     useGame.getState().tick(start + total)
@@ -363,19 +351,30 @@ describe("events in the store", () => {
     expect(Math.abs(gained - expected)).toBeLessThan(cps * 5)
   })
 
-  it("a cash penalty at zero money leaves the save intact and never softlocks", () => {
-    useGame.getState().fireEvent(3)
+  it("a trade you cannot afford does nothing and never softlocks", () => {
+    expect(useGame.getState().fireEvent(3)).toBe(true)
+    expect(useGame.getState().acceptEvent()).toBe(false)
     expect(useGame.getState().money).toBe(0)
-    useGame.getState().fireEvent(106)
-    expect(useGame.getState().xp).toBe(0)
-    expect(useGame.getState().xpTotal).toBe(0)
+    expect(useGame.getState().event).not.toBeNull()
+    useGame.getState().dismissEvent()
     expect(useGame.getState().click().xp).toBeGreaterThan(0)
   })
 
+  it("a fat XP pile moves at least 1% when the deal is about XP", () => {
+    useGame.setState({ money: 1_000_000, peakMoney: 1_000_000, xp: 1_000_000, xpTotal: 1_000_000 })
+    useGame.getState().fireEvent(3)
+    const before = useGame.getState()
+    expect(useGame.getState().acceptEvent()).toBe(true)
+    const after = useGame.getState()
+    expect(after.xp - before.xp).toBeGreaterThanOrEqual(10_000)
+    expect(before.money - after.money).toBeGreaterThanOrEqual(10_000)
+    expect(after.xpTotal).toBeGreaterThan(before.xpTotal)
+  })
+
   it("event multipliers survive a reload and credit offline income", () => {
-    useGame.setState({ money: 0, peakMoney: 1, gigs: [8], xp: 0 })
-    useGame.getState().fireEvent(41)
-    const text = localStorage.getItem("tech-ascension.save")
+    useGame.setState({ money: 0, peakMoney: 1, gigs: [8], xp: 0, foreverMult: 1.03 })
+    persistNow()
+    const text = readCareerText()
     const savedAt = JSON.parse(text ?? "{}").savedAt as number
     const hour = 3_600_000
     const loaded = hydrate(text, savedAt + hour)

@@ -1,13 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
-import { installGameHarness } from './game/harness.ts'
+import "./index.css"
+import { openGame } from "./game/openGame.ts"
 
-installGameHarness()
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+void openGame()

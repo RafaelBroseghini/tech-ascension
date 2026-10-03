@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
 import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
-import { ERA_ACCENT, spriteForTier } from "../data/sprites.ts"
+import { ERA_ACCENT } from "../data/sprites.ts"
+import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
+import { HOVER_CLICK_STEP_MS, MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
+import { getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
+import { ownsEverything } from "../game/nextUnlock.ts"
 import { eraOf, stageOf } from "../game/phase.ts"
 import type { Era } from "../data/capital.ts"
 import { formatNumber } from "../game/format.ts"
@@ -12,10 +16,12 @@ import { useGame } from "../game/store.ts"
 import { capDrops, FALL_MS, waterfallCount } from "../game/waterfall.ts"
 import type { Drop } from "../game/waterfall.ts"
 import { FightOverlay } from "./FightOverlay.tsx"
+import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
+import { DeskCat } from "./DeskCat.tsx"
+import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
-import { ResumeButton } from "./CornerActions.tsx"
 import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
 
@@ -26,11 +32,12 @@ type Ring = { id: number; x: number; y: number; big: boolean }
 
 let seq = 1
 
+const hoverClickPref = () => getDeskPrefs().hoverClick
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 function burstBits(era: Era): Bit[] {
   const glow = ERA_ACCENT[era].glow
-  const colors = [glow, glow, "#f7f0df"]
+  const colors = [glow, glow, "var(--text)"]
   return Array.from({ length: 20 }, () => {
     const angle = Math.random() * Math.PI * 2
     const dist = 70 + Math.random() * 130
@@ -56,7 +63,7 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
       dx: Math.cos(angle) * dist,
       dy: Math.sin(angle) * dist - 10,
       size: 4 + Math.random() * 4,
-      color: Math.random() < 0.35 ? "#f7f0df" : color,
+      color: Math.random() < 0.35 ? "var(--text)" : color,
     }
   })
 }
@@ -95,27 +102,23 @@ export function Stage() {
   const [sparks, setSparks] = useState<Spark[]>([])
   const [rings, setRings] = useState<Ring[]>([])
   const [drops, setDrops] = useState<Drop[]>([])
-  const [entered, setEntered] = useState(false)
+  const [emojiPulse, setEmojiPulse] = useState(0)
 
   const hitboxRef = useRef<HTMLButtonElement>(null)
   const tiltRef = useRef<HTMLSpanElement>(null)
-  const imgRef = useRef<HTMLImageElement>(null)
   const heat = useRef(0)
   const lastSide = useRef(1)
+  const hoverRef = useRef(false)
+  const pointRef = useRef<{ x: number; y: number } | null>(null)
+  const hoverClickOn = useSyncExternalStore(subscribeDeskPrefs, hoverClickPref, hoverClickPref)
+  const catalogComplete = useGame((state) => ownsEverything(state))
+  const autoClick = hoverClickOn && catalogComplete
 
   const stage = stageOf({ skills, owned, jobs, gigs })
-  const artId = stage?.artId ?? 0
   const accent = ERA_ACCENT[eraOf({ owned })]
   const boosted = Boolean(activeBoost && activeBoost.endsAt > now)
   const stageName = stage?.name ?? "High school"
   const boostLeft = activeBoost && boosted ? Math.max(0, activeBoost.endsAt - now) : 0
-
-  const lastArt = useRef(artId)
-  useEffect(() => {
-    if (lastArt.current === artId) return
-    lastArt.current = artId
-    setEntered(true)
-  }, [artId])
 
   useEffect(() => {
     return useGame.subscribe((state, previous) => {
@@ -146,11 +149,17 @@ export function Stage() {
     return () => window.clearInterval(id)
   }, [])
 
+  const stageEmoji = stageEmojiSource(stage?.source)
+
+  usePreloadEmoji(stageEmoji?.kind ?? STAGE_START_EMOJI.kind, stageEmoji?.id ?? STAGE_START_EMOJI.id)
+
   function playImpact(nx: number, ny: number) {
     const tilt = tiltRef.current
-    const img = imgRef.current
     if (!tilt || typeof tilt.animate !== "function") return
-    for (const animation of tilt.getAnimations()) animation.cancel()
+    for (const animation of tilt.getAnimations()) {
+      animation.finished.catch(() => {})
+      animation.cancel()
+    }
     if (prefersReducedMotion()) {
       tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
       return
@@ -174,21 +183,16 @@ export function Stage() {
       ],
       { duration: 260, easing: "cubic-bezier(0.25, 0.9, 0.3, 1)" },
     )
-    img?.animate(
-      [
-        { filter: `brightness(${1.3 + heat.current * 0.3}) saturate(1.2)` },
-        { filter: "brightness(1) saturate(1)" },
-      ],
-      { duration: 220, easing: "ease-out" },
-    )
   }
 
   function fire(clientX: number | null, clientY: number | null) {
     const box = hitboxRef.current
     if (!box || useGame.getState().fight) return
+    pokeDesk()
     const gain = click()
     heat.current = Math.min(1, heat.current + 0.14)
     box.style.setProperty("--heat", heat.current.toFixed(3))
+    if (stageEmoji) setEmojiPulse((n) => n + 1)
 
     const rect = box.getBoundingClientRect()
     const hasPoint = clientX !== null && clientY !== null && (clientX !== 0 || clientY !== 0)
@@ -199,7 +203,7 @@ export function Stage() {
     playImpact((x - 50) / 50, (y - 50) / 50)
 
     const textLabels: { kind: Loot["kind"]; text: string }[] = [
-      { kind: "money", text: `+$${formatNumber(gain.money)}` },
+      ...(gain.money > 0 ? [{ kind: "money" as const, text: `+$${formatNumber(gain.money)}` }] : []),
       { kind: "xp", text: `+${formatNumber(gain.xp)} XP` },
     ]
 
@@ -239,6 +243,34 @@ export function Stage() {
     )
   }
 
+  const fireRef = useRef(fire)
+  useEffect(() => {
+    fireRef.current = fire
+  })
+
+  useEffect(() => {
+    if (!autoClick) return
+    const id = window.setInterval(() => {
+      if (!hoverRef.current || document.hidden) return
+      const state = useGame.getState()
+      if (state.fight || state.event || state.review || !getDeskPrefs().hoverClick || !ownsEverything(state)) return
+      const point = pointRef.current
+      fireRef.current(point?.x ?? null, point?.y ?? null)
+    }, HOVER_CLICK_STEP_MS)
+    return () => window.clearInterval(id)
+  }, [autoClick])
+
+  function trackHover(event: PointerEvent<HTMLButtonElement>) {
+    if (event.pointerType !== "mouse") return
+    hoverRef.current = true
+    pointRef.current = { x: event.clientX, y: event.clientY }
+  }
+
+  function clearHover() {
+    hoverRef.current = false
+    pointRef.current = null
+  }
+
   function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return
     fire(event.clientX, event.clientY)
@@ -258,6 +290,8 @@ export function Stage() {
   return (
     <section className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : ""].filter(Boolean).join(" ")} aria-label="Click stage">
       <IdeChrome />
+      <StickyNote />
+      <DeskCat />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
         {boosted ? (
@@ -277,13 +311,21 @@ export function Stage() {
         type="button"
         className="hitbox"
         data-testid="stage"
+        data-auto-click={autoClick ? "on" : "off"}
+        onPointerEnter={trackHover}
+        onPointerMove={trackHover}
+        onPointerLeave={clearHover}
+        onPointerCancel={clearHover}
         onPointerDown={onPointerDown}
         onClick={onClick}
         onKeyDown={onKeyDown}
-        aria-label={`Click to earn. Current stage ${stageName}.`}
+        aria-label={
+          autoClick
+            ? `Click to earn. Hover to auto-click at ${MAX_CLICKS_PER_SEC} per second. Current stage ${stageName}.`
+            : `Click to earn. Current stage ${stageName}.`
+        }
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
-        <span className="aura" aria-hidden="true" />
         <span className="motes" aria-hidden="true">
           {Array.from({ length: 9 }, (_, index) => (
             <i key={index} style={{ ["--i" as string]: index }} />
@@ -292,16 +334,14 @@ export function Stage() {
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">
-              <img
-                key={artId}
-                ref={imgRef}
-                className={entered ? "sprite sprite-enter" : "sprite"}
-                src={spriteForTier(artId)}
-                alt=""
-                width={256}
-                height={256}
-                draggable={false}
-              />
+              {stageEmoji ? (
+                <SpriteStage
+                  kind={stageEmoji.kind}
+                  id={stageEmoji.id}
+                  pulseNonce={emojiPulse}
+                  className="sprite"
+                />
+              ) : null}
             </span>
           </span>
         </span>
@@ -388,10 +428,7 @@ export function Stage() {
       )}
       <div className="plate">
         <p className="era-tag">{stage ? accent.kicker : "Before the offer"}</p>
-        <h2>
-          {stageName}
-          <ResumeButton />
-        </h2>
+        <h2>{stageName}</h2>
       </div>
       <div className="career-dock">
         <OwnedStrip />

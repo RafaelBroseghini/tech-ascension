@@ -8,6 +8,7 @@ import {
   highestOwnedSkill,
   highestOwnedCapital,
   idlePerSec,
+  highestJobId,
   jobById,
   ownedCount,
   production,
@@ -18,23 +19,36 @@ import {
   xpPerSec,
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
-import { advanceEventClock, applyEvent, eventById } from "./events.ts"
-import type { EventLine } from "./events.ts"
+import { advanceEventClock, eventById, resolveOffer } from "./events.ts"
+import type { EarningRates, EventLine } from "./events.ts"
+import { noteToast } from "./offlineNote.ts"
+import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
+import type { ReviewChoiceId } from "./reviews.ts"
 import { advanceEnemyClock, applyDamage, endFight, enemyById, startFight } from "./fight.ts"
 import type { Fight, FightOutcome } from "./fight.ts"
-import { formatMultiplier } from "./format.ts"
+import { getDeskPrefs } from "./desk.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import type { IdeSelection } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
-import { canBuyJob, capitalUnlocked, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
+import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
-import { freshSave, hydrate, OFFLINE_CAP_MS, SAVE_VERSION } from "./save.ts"
+import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
+import { freshSave, OFFLINE_CAP_MS, SAVE_VERSION } from "./save.ts"
 import type { SaveData } from "./save.ts"
-import { clearSave, readSaveText, writeSave } from "./storage.ts"
+import {
+  creditMoney,
+  emptyStats,
+  emptyStatsClock,
+  normalizeStats,
+  recordClick,
+  touchIdleRecord,
+} from "./stats.ts"
+import type { GameStats, StatsClock } from "./stats.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { MONEY_POP } from "../data/phases.ts"
+import { firstNewMilestone } from "./milestones.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -43,6 +57,17 @@ export type FightResult = FightOutcome & { id: number }
 export type ToastMessage = {
   id: number
   text: string
+  /** Diary sentence when this toast is the offline sticky note. `text` is the credit line. */
+  note?: string
+}
+
+/** A 1:1 on screen. Nothing is applied until a reply is chosen. */
+export type ActiveReview = {
+  id: number
+  promptId: number
+  jobId: number
+  lines: EventLine[]
+  choice: ReviewChoiceId | null
 }
 
 export type PopKind = keyof typeof MONEY_POP
@@ -60,10 +85,11 @@ export type MoneyPop = {
 
 export type BuyMode = "one" | "max"
 
-/** A random event on screen. Its effects are already applied; dismissing only closes the modal. */
+/** A random event on screen. Nothing is applied until the player accepts. */
 export type ActiveEvent = {
   id: number
   eventId: number
+  /** Filled when the choice is resolved, so lastEvent keeps the numbers that landed. */
   lines: EventLine[]
 }
 
@@ -74,6 +100,7 @@ type GameState = {
   /** Lifetime XP earned. Phase gates read this. */
   xpTotal: number
   peakMoney: number
+  stats: GameStats
   skills: OwnedMap
   equipment: OwnedMap
   /** Phase D capital rows. */
@@ -98,6 +125,12 @@ type GameState = {
   lastEvent: ActiveEvent | null
   eventSeq: number
   nextEventAt: number | null
+  /** A 1:1 on screen, or null. */
+  review: ActiveReview | null
+  /** The most recent 1:1, kept after it closes. */
+  lastReview: ActiveReview | null
+  reviewSeq: number
+  nextReviewAt: number | null
   ideSel: IdeSelection
   /** Era the shop is browsing, shown in the IDE pane until it snaps back. Null means the owned era. */
   previewEra: Era | null
@@ -106,6 +139,7 @@ type GameState = {
   toastSeq: number
   pop: MoneyPop | null
   popSeq: number
+  seenMilestones: string[]
   buyStamp: number
   celebrationNonce: number
   click: () => { money: number; xp: number }
@@ -121,9 +155,18 @@ type GameState = {
   forceEnemy: (enemyId: number) => boolean
   dismissToast: () => void
   dismissFightResult: () => void
-  /** Fire an event now (harness only). False for an unknown id or during a fight. Replaces an open one. */
+  /** Open an event now (harness only). False for an unknown id or during a fight. Replaces an open one without applying it. */
   fireEvent: (eventId: number) => boolean
+  /** Take the open deal. False when nothing is open or the cost cannot be paid. */
+  acceptEvent: () => boolean
+  /** Decline the open event. Balances stay put. */
   dismissEvent: () => void
+  /** Open a 1:1 for the highest job. False with no job, during a fight, or for a prompt outside that job's band. */
+  fireReview: (promptId?: number) => boolean
+  /** Take a reply. False when nothing is open, the choice is unknown, or the plan cannot be paid. */
+  answerReview: (choice: ReviewChoiceId) => boolean
+  /** Leave the 1:1. Balances stay put. */
+  dismissReview: () => void
   selectIde: (packId: string, index: number) => void
   setPreviewEra: (era: Era | null) => void
   /** Keep a browsed era alive while the shop or the IDE is being used. */
@@ -145,10 +188,12 @@ function toSave(state: GameState, now: number): SaveData {
     gigs: state.gigs,
     savedAt: now,
     peakMoney: Math.max(state.peakMoney, state.money),
+    stats: state.stats,
   }
   if (state.foreverMult !== 1) save.foreverMult = state.foreverMult
   const temp = pruneTemp(state.tempMults, now)
   if (Object.keys(temp).length > 0) save.tempMults = temp
+  if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
   if (state.activeBoost && state.activeBoost.endsAt > now) {
     save.activeBoost = state.activeBoost
   }
@@ -160,21 +205,20 @@ function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
 }
 
 let lastSaveAt = 0
+let statsClock: StatsClock = emptyStatsClock()
+
+function applyClickStats(stats: GameStats, now: number): GameStats {
+  const next = recordClick(stats, statsClock, now)
+  statsClock = next.clock
+  return next.stats
+}
 
 function boot() {
   const now = Date.now()
-  const hydrated = hydrate(readSaveText(), now)
-  let toast: ToastMessage | null = hydrated.toast ? { id: 1, text: hydrated.toast } : null
-  if (!toast && hydrated.save.activeBoost) {
-    toast = {
-      id: 1,
-      text: `click boost ×${formatMultiplier(hydrated.save.activeBoost.mult)}`,
-    }
-  }
-  if (hydrated.reset) clearSave()
-  writeSave(hydrated.save)
-  lastSaveAt = now
-  return { hydrated, toast, toastSeq: toast ? 1 : 0, now }
+  const { save, toast } = loadCareerForBoot(now)
+  lastSaveAt = save.savedAt
+  const message = noteToast(toast, 1)
+  return { save, toast: message, toastSeq: message ? 1 : 0, now }
 }
 
 const booted = boot()
@@ -192,18 +236,44 @@ export const PHASE_UNLOCK_COPY: Record<Phase, string> = {
   D: "Capital unlocked",
 }
 
+function earningRates(state: GameState, now: number): EarningRates {
+  const rates = production(state, state.activeBoost, now, modsOf(state))
+  return {
+    cps: rates.idle,
+    click: rates.click,
+    xpPerSec: rates.xpIdle,
+    xpPerClick: rates.xpClick * rates.mult,
+  }
+}
+
+function resolutionOf(state: GameState) {
+  const event = state.event
+  if (!event) return null
+  const def = eventById(event.eventId)
+  if (!def) return null
+  const now = Math.max(Date.now(), state.now)
+  return resolveOffer(state.money, state.xp, state.xpTotal, def.offer, earningRates(state, now))
+}
+
+function reviewResolution(state: GameState, choice: ReviewChoiceId) {
+  if (!state.review) return null
+  const now = Math.max(Date.now(), state.now)
+  return resolveReviewChoice(choice, state.money, state.xp, state.xpTotal, earningRates(state, now))
+}
+
 export const useGame = create<GameState>((set, get) => ({
-  money: booted.hydrated.save.money,
-  xp: booted.hydrated.save.xp,
-  xpTotal: booted.hydrated.save.xpTotal,
-  peakMoney: booted.hydrated.save.peakMoney,
-  skills: booted.hydrated.save.skills,
-  equipment: booted.hydrated.save.equipment,
-  owned: booted.hydrated.save.owned,
-  jobs: booted.hydrated.save.jobs,
-  gigs: booted.hydrated.save.gigs,
-  phase: phaseOf(booted.hydrated.save),
-  activeBoost: booted.hydrated.save.activeBoost ?? null,
+  money: booted.save.money,
+  xp: booted.save.xp,
+  xpTotal: booted.save.xpTotal,
+  peakMoney: booted.save.peakMoney,
+  stats: normalizeStats(booted.save.stats),
+  skills: booted.save.skills,
+  equipment: booted.save.equipment,
+  owned: booted.save.owned,
+  jobs: booted.save.jobs,
+  gigs: booted.save.gigs,
+  phase: phaseOf(booted.save),
+  activeBoost: booted.save.activeBoost ?? null,
   nextBoostAt: null,
   idleSince: booted.now,
   now: booted.now,
@@ -211,12 +281,16 @@ export const useGame = create<GameState>((set, get) => ({
   nextEnemyAt: null,
   fightResult: null,
   fightSeq: 0,
-  foreverMult: booted.hydrated.save.foreverMult ?? 1,
-  tempMults: booted.hydrated.save.tempMults ?? {},
+  foreverMult: booted.save.foreverMult ?? 1,
+  tempMults: booted.save.tempMults ?? {},
   event: null,
   lastEvent: null,
   eventSeq: 0,
   nextEventAt: null,
+  review: null,
+  lastReview: null,
+  reviewSeq: 0,
+  nextReviewAt: null,
   ideSel: { packId: "", index: 0 },
   previewEra: null,
   previewUntil: 0,
@@ -224,6 +298,7 @@ export const useGame = create<GameState>((set, get) => ({
   toastSeq: booted.toastSeq,
   pop: null,
   popSeq: 0,
+  seenMilestones: booted.save.seenMilestones ?? [],
   buyStamp: 0,
   celebrationNonce: 0,
 
@@ -231,36 +306,47 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     if (state.fight) return get().hit()
     const now = Date.now()
+    const stats = applyClickStats(state.stats, now)
     const rates = production(state, state.activeBoost, now, modsOf(state))
     const xpGain = rates.xpClick * rates.mult
+    const clickMoney = clickPaysMoney(state) ? rates.click : 0
     set({
-      money: state.money + rates.click,
+      money: state.money + clickMoney,
       xp: state.xp + xpGain,
       xpTotal: state.xpTotal + xpGain,
+      stats: clickMoney > 0 ? creditMoney(stats, clickMoney, "click") : stats,
       now,
-      ...makePop(state, "click", rates.click, ""),
+      ...(clickMoney > 0 ? makePop(state, "click", clickMoney, "") : {}),
     })
-    return { money: rates.click, xp: xpGain }
+    return { money: clickMoney, xp: xpGain }
   },
 
   hit: () => {
     const state = get()
     const fight = state.fight
     if (!fight) return { money: 0, xp: 0 }
-    const damage = production(state, state.activeBoost, Date.now(), modsOf(state)).click
+    const now = Date.now()
+    const stats = applyClickStats(state.stats, now)
+    const damage = production(state, state.activeBoost, now, modsOf(state)).click
     const result = applyDamage(fight, damage)
     if (!result.outcome) {
-      set({ fight: result.fight })
+      set({ fight: result.fight, stats, now })
       return { money: 0, xp: 0 }
     }
     const fightSeq = state.fightSeq + 1
+    const reward = result.outcome.reward
+    let nextStats = stats
+    if (result.outcome.kind === "win") nextStats = { ...nextStats, fightWins: nextStats.fightWins + 1 }
+    if (reward > 0) nextStats = creditMoney(nextStats, reward, "other")
     set({
       fight: null,
       nextEnemyAt: null,
-      money: state.money + result.outcome.reward,
+      money: state.money + reward,
+      stats: nextStats,
+      now,
       fightResult: { ...result.outcome, id: fightSeq },
       fightSeq,
-      ...makePop(state, "fightWin", result.outcome.reward, enemyById(result.outcome.enemyId)?.name ?? "Enemy defeated"),
+      ...makePop(state, "fightWin", reward, enemyById(result.outcome.enemyId)?.name ?? "Enemy defeated"),
     })
     persistNow()
     return { money: 0, xp: 0 }
@@ -276,7 +362,7 @@ export const useGame = create<GameState>((set, get) => ({
   forceEnemy: (enemyId) => {
     const enemy = enemyById(enemyId)
     if (!enemy) return false
-    set({ fight: startFight(enemy, get().now), nextEnemyAt: null, fightResult: null, event: null })
+    set({ fight: startFight(enemy, get().now), nextEnemyAt: null, fightResult: null, event: null, review: null })
     return true
   },
 
@@ -372,6 +458,7 @@ export const useGame = create<GameState>((set, get) => ({
     set({
       money: state.money + gig.lump,
       gigs: [...state.gigs, gig.id].sort((a, b) => a - b),
+      stats: creditMoney(state.stats, gig.lump, "other"),
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
@@ -389,26 +476,83 @@ export const useGame = create<GameState>((set, get) => ({
     const def = eventById(eventId)
     const state = get()
     if (!def || state.fight) return false
-    const at = Math.max(Date.now(), state.now)
-    const applied = applyEvent({ money: state.money, xp: state.xp, xpTotal: state.xpTotal, ...modsOf(state) }, def, at)
     const eventSeq = state.eventSeq + 1
-    const event: ActiveEvent = { id: eventSeq, eventId: def.id, lines: applied.lines }
+    const event: ActiveEvent = { id: eventSeq, eventId: def.id, lines: [] }
+    set({ event, lastEvent: event, eventSeq, nextEventAt: null, review: null })
+    persistNow()
+    return true
+  },
+
+  acceptEvent: () => {
+    const state = get()
+    const resolved = resolutionOf(state)
+    if (!state.event || !resolved?.applied) return false
+    const moneyGain = Math.max(0, resolved.money - state.money)
     set({
-      money: applied.patch.money,
-      xp: applied.patch.xp,
-      xpTotal: applied.patch.xpTotal,
-      foreverMult: applied.patch.foreverMult,
-      tempMults: applied.patch.temp,
-      event,
-      lastEvent: event,
-      eventSeq,
+      money: resolved.money,
+      xp: resolved.xp,
+      xpTotal: resolved.xpTotal,
+      stats: moneyGain > 0 ? creditMoney(state.stats, moneyGain, "other") : state.stats,
+      event: null,
+      lastEvent: { ...state.event, lines: resolved.lines },
       nextEventAt: null,
     })
     persistNow()
     return true
   },
 
-  dismissEvent: () => set({ event: null, nextEventAt: null }),
+  dismissEvent: () => {
+    const state = get()
+    const resolved = state.event ? resolutionOf(state) : null
+    set({
+      event: null,
+      nextEventAt: null,
+      lastEvent: state.event ? { ...state.event, lines: resolved?.lines ?? state.event.lines } : state.lastEvent,
+    })
+  },
+
+  fireReview: (promptId) => {
+    const state = get()
+    const jobId = highestJobId(state.jobs)
+    if (state.fight || jobId == null) return false
+    const pool = promptsForJob(jobId)
+    const prompt = promptId == null ? pickPrompt(pool, Math.random()) : pool.find((row) => row.id === promptId) ?? null
+    if (!prompt) return false
+    const reviewSeq = state.reviewSeq + 1
+    const review: ActiveReview = { id: reviewSeq, promptId: prompt.id, jobId, lines: [], choice: null }
+    set({ review, lastReview: review, reviewSeq, nextReviewAt: null, event: null })
+    persistNow()
+    return true
+  },
+
+  answerReview: (choice) => {
+    const state = get()
+    if (!state.review || !isReviewChoice(choice)) return false
+    const resolved = reviewResolution(state, choice)
+    if (!resolved?.applied) return false
+    const moneyGain = Math.max(0, resolved.money - state.money)
+    set({
+      money: resolved.money,
+      xp: resolved.xp,
+      xpTotal: resolved.xpTotal,
+      stats: moneyGain > 0 ? creditMoney(state.stats, moneyGain, "other") : state.stats,
+      review: null,
+      lastReview: { ...state.review, lines: resolved.lines, choice },
+      nextReviewAt: null,
+    })
+    persistNow()
+    return true
+  },
+
+  dismissReview: () => {
+    const state = get()
+    if (!state.review) return
+    set({
+      review: null,
+      nextReviewAt: null,
+      lastReview: state.review,
+    })
+  },
 
   selectIde: (packId, index) => {
     const held = get().previewEra
@@ -432,11 +576,13 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const dt = Math.max(0, Math.min(now - state.now, OFFLINE_CAP_MS))
     const era = eraOf(state)
-    // Rare enemies only show up once money exists; a fight forced earlier still runs out its clock.
-    const enemy =
-      state.fight || moneyMode(state)
+    // Rare enemies only show up once money exists. The desk switch skips the clock entirely;
+    // a fight already on screen is cleared without a toast. forceEnemy still starts one.
+    const enemy = getDeskPrefs().enemies
+      ? state.fight || moneyMode(state)
         ? advanceEnemyClock({ fight: state.fight, nextEnemyAt: state.nextEnemyAt }, era, now, Math.random)
         : { clock: { fight: null, nextEnemyAt: null }, spawned: null, outcome: null }
+      : { clock: { fight: null, nextEnemyAt: null }, spawned: null, outcome: null }
     // Boost rolls wait out a fight so a boost cannot land and expire unseen behind the overlay.
     const fighting = enemy.clock.fight !== null
     const clock: BoostClock = {
@@ -449,6 +595,9 @@ export const useGame = create<GameState>((set, get) => ({
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
     const xpGain = xpPerSec(state.skills) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
+    let stats = touchIdleRecord(state.stats, statsClock, now)
+    stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
+    if (gain > 0) stats = creditMoney(stats, gain, "idle")
     const balance = { money: state.money + gain, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out fights and each other: one slot, never stacked.
     const eventAdvance = advanceEventClock(
@@ -456,25 +605,36 @@ export const useGame = create<GameState>((set, get) => ({
       {
         era,
         paying: moneyMode(state),
-        blocked: fighting || state.fight !== null || state.event !== null,
+        blocked: fighting || state.fight !== null || state.event !== null || state.review !== null,
         owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
       },
       now,
       Math.random,
     )
     const fired = eventAdvance.fire
-    const applied = fired ? applyEvent({ ...balance, foreverMult: state.foreverMult, temp: tempMults }, fired, now) : null
     const eventSeq = fired ? state.eventSeq + 1 : state.eventSeq
-    // A spawning enemy closes an open event modal (its effects are already in) so the fight clock never runs behind it.
-    const event: ActiveEvent | null = enemy.spawned
-      ? null
-      : fired && applied
-        ? { id: eventSeq, eventId: fired.id, lines: applied.lines }
-        : state.event
-    let toastSeq = advanced.spawned ? state.toastSeq + 1 : state.toastSeq
-    let toast = advanced.spawned
-      ? { id: toastSeq, text: `click boost ×${formatMultiplier(advanced.spawned.mult)}` }
-      : state.toast
+    // A spawning enemy closes an open event without applying it, so the fight clock never runs behind the modal.
+    const opened: ActiveEvent | null = fired ? { id: eventSeq, eventId: fired.id, lines: [] } : null
+    const event: ActiveEvent | null = enemy.spawned ? null : opened ?? state.event
+    const reviewJob = highestJobId(state.jobs)
+    const reviewAdvance = advanceReviewClock(
+      state.nextReviewAt,
+      {
+        jobId: reviewJob,
+        blocked: fighting || state.fight !== null || state.event !== null || state.review !== null || fired !== null || enemy.spawned !== null,
+      },
+      now,
+      Math.random,
+    )
+    const reviewFired = reviewAdvance.fire
+    const reviewSeq = reviewFired ? state.reviewSeq + 1 : state.reviewSeq
+    const openedReview: ActiveReview | null =
+      reviewFired && reviewJob != null
+        ? { id: reviewSeq, promptId: reviewFired.id, jobId: reviewJob, lines: [], choice: null }
+        : null
+    const review: ActiveReview | null = enemy.spawned ? null : openedReview ?? (fired ? null : state.review)
+    let toastSeq = state.toastSeq
+    let toast = state.toast
     let fightResult = state.fightResult
     let fightSeq = state.fightSeq
     if (enemy.outcome) {
@@ -485,15 +645,20 @@ export const useGame = create<GameState>((set, get) => ({
     }
 
     set({
-      money: applied ? applied.patch.money : balance.money,
-      xp: applied ? applied.patch.xp : balance.xp,
-      xpTotal: applied ? applied.patch.xpTotal : balance.xpTotal,
-      foreverMult: applied ? applied.patch.foreverMult : state.foreverMult,
-      tempMults: applied ? applied.patch.temp : tempMults,
+      money: balance.money,
+      xp: balance.xp,
+      xpTotal: balance.xpTotal,
+      stats,
+      foreverMult: state.foreverMult,
+      tempMults,
       event,
       lastEvent: fired ? event : state.lastEvent,
       eventSeq,
       nextEventAt: eventAdvance.nextEventAt,
+      review,
+      lastReview: openedReview ?? state.lastReview,
+      reviewSeq,
+      nextReviewAt: reviewAdvance.nextReviewAt,
       previewEra: state.previewEra && now >= state.previewUntil ? null : state.previewEra,
       now,
       activeBoost: advanced.clock.activeBoost,
@@ -508,7 +673,7 @@ export const useGame = create<GameState>((set, get) => ({
     })
 
     if (now - lastSaveAt >= SAVE_EVERY_MS) {
-      writeSave(toSave(get(), now))
+      writeCareer(toSave(get(), now))
       lastSaveAt = now
     }
   },
@@ -516,13 +681,15 @@ export const useGame = create<GameState>((set, get) => ({
   wipe: () => {
     const now = Date.now()
     const save = freshSave(now)
-    writeSave(save)
+    writeCareer(save)
     lastSaveAt = now
+    statsClock = emptyStatsClock()
     set({
       money: 0,
       xp: 0,
       xpTotal: 0,
       peakMoney: 0,
+      stats: emptyStats(),
       skills: {},
       equipment: {},
       owned: {},
@@ -543,17 +710,35 @@ export const useGame = create<GameState>((set, get) => ({
       lastEvent: null,
       eventSeq: 0,
       nextEventAt: null,
+      review: null,
+      lastReview: null,
+      reviewSeq: 0,
+      nextReviewAt: null,
       ideSel: { packId: "", index: 0 },
       previewEra: null,
       previewUntil: 0,
       toast: null,
       pop: null,
       popSeq: 0,
+      seenMilestones: [],
       buyStamp: 0,
       celebrationNonce: 0,
     })
   },
 }))
+
+useGame.subscribe((state, prev) => {
+  const hit = firstNewMilestone(
+    { money: prev.money, xpTotal: prev.xpTotal },
+    { money: state.money, xpTotal: state.xpTotal },
+    new Set(state.seenMilestones),
+  )
+  if (!hit || state.seenMilestones.includes(hit.id)) return
+  useGame.setState({
+    seenMilestones: [...state.seenMilestones, hit.id],
+    ...makePop(state, "unlock", 0, hit.label),
+  })
+})
 
 // Any code path that changes money or XP (clicks, idle ticks, harness) goes through here: it keeps
 // the peak current and notices when a gate opens, so the unlock pop fires once per phase.
@@ -579,12 +764,12 @@ useGame.subscribe((state) => {
 
 export function persistNow(): void {
   const now = Date.now()
-  writeSave(toSave(useGame.getState(), now))
+  writeCareer(toSave(useGame.getState(), now))
   lastSaveAt = now
 }
 
 /** Write the live balance with an explicit savedAt. Used to simulate time away. */
 export function writeStateAt(savedAt: number): void {
-  writeSave(toSave(useGame.getState(), savedAt))
+  stageCareer(toSave(useGame.getState(), savedAt))
   lastSaveAt = savedAt
 }
