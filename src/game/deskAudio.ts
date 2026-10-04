@@ -16,12 +16,22 @@ import {
 } from "tone"
 import { clickKitById } from "./deskClickKits.ts"
 import type { ClickKitId } from "./deskClickKits.ts"
-import { musicStyleById } from "./deskMusicStyles.ts"
+import { musicStyleById, styleSteps } from "./deskMusicStyles.ts"
 import type { MusicStyle, MusicStyleId } from "./deskMusicStyles.ts"
 
 type RoomPrefs = { music: boolean; sounds: boolean; musicStyle: MusicStyleId; clickKit: ClickKitId }
 type DeskNoise = "type" | "coffee" | "click"
-type MusicEvent = { time: number; semi: number | null; chord: number | null }
+type MusicEvent = {
+  time: number
+  semi: number | null
+  /** Pad stack on a chord downbeat, already in Hz. */
+  pad: readonly number[] | null
+  /** Bass note on a chord downbeat, in Hz. */
+  bass: number | null
+  /** The section's loudness, 0 to 1. */
+  level: number
+  kick: boolean
+}
 
 type Graph = {
   musicGain: Gain
@@ -184,37 +194,48 @@ function tune(style: MusicStyle, g: Graph): void {
   })
 }
 
-function playLead(g: Graph, style: MusicStyle, semi: number, time: number): void {
+function playLead(g: Graph, style: MusicStyle, semi: number, time: number, level: number): void {
   const note = freq(semi)
   const dur = Math.max(0.03, Math.min(style.step * 0.85, style.lead.attack + style.lead.release))
   if (style.id === "synth") {
-    g.mono.triggerAttackRelease(note, dur, time, style.lead.peak)
+    g.mono.triggerAttackRelease(note, dur, time, style.lead.peak * level)
     return
   }
   if (style.id === "lofi") {
-    g.am.triggerAttackRelease(note, dur, time, Math.min(1, style.lead.peak * 2.5))
+    g.am.triggerAttackRelease(note, dur, time, Math.min(1, style.lead.peak * 2.5 * level))
     return
   }
-  g.lead.triggerAttackRelease(note, dur, time, style.lead.peak)
+  g.lead.triggerAttackRelease(note, dur, time, style.lead.peak * level)
 }
 
+/** Lays every section end to end on one Part, so the loop is the whole track. */
 function createPart(style: MusicStyle, g: Graph): Part<MusicEvent> {
-  const events: MusicEvent[] = style.melody.map((semi, index) => ({
-    time: index * style.step,
-    semi,
-    chord: index % style.chordEvery === 0 ? Math.floor(index / style.chordEvery) : null,
-  }))
+  const events: MusicEvent[] = []
+  const bassHold = Math.max(0.2, style.step * style.chordEvery * 0.9)
+  let offset = 0
+  for (const section of style.sections) {
+    section.melody.forEach((semi, index) => {
+      const downbeat = index % style.chordEvery === 0
+      const tones = section.chords[Math.floor(index / style.chordEvery)] ?? []
+      events.push({
+        time: (offset + index) * style.step,
+        semi,
+        pad: downbeat && tones.length ? tones.map((tone) => freq(tone - 12)) : null,
+        bass: downbeat && section.bass && tones.length ? freq((tones[0] ?? 0) - 24) : null,
+        level: section.level,
+        kick: downbeat && section.kick && Boolean(style.pulse),
+      })
+    })
+    offset += section.melody.length
+  }
   const piece = new Part<MusicEvent>((time, event) => {
-    if (event.chord !== null) {
-      const tones = style.chords[event.chord % style.chords.length] ?? []
-      const notes = tones.map((semi) => freq(semi - 12))
-      if (notes.length) g.pad.triggerAttackRelease(notes, Math.max(0.05, style.pad.attack), time, style.pad.peak)
-      if (style.pulse) g.kick.triggerAttackRelease(style.pulse.freq, 0.08, time, Math.min(0.9, style.pulse.peak * 5))
-    }
-    if (typeof event.semi === "number") playLead(g, style, event.semi, time)
+    if (event.pad) g.pad.triggerAttackRelease([...event.pad], Math.max(0.05, style.pad.attack), time, style.pad.peak * event.level)
+    if (event.bass !== null) g.pad.triggerAttackRelease(event.bass, bassHold, time, style.pad.peak * 1.4 * event.level)
+    if (event.kick && style.pulse) g.kick.triggerAttackRelease(style.pulse.freq, 0.08, time, Math.min(0.9, style.pulse.peak * 5))
+    if (typeof event.semi === "number") playLead(g, style, event.semi, time, event.level)
   }, events)
   piece.loop = true
-  piece.loopEnd = style.melody.length * style.step
+  piece.loopEnd = styleSteps(style) * style.step
   piece.humanize = style.humanize > 0 ? style.humanize : false
   return piece
 }
