@@ -3,7 +3,7 @@ import { createElement } from "react"
 import { createRoot } from "react-dom/client"
 import type { Root } from "react-dom/client"
 import { flushSync } from "react-dom"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { SKILL_TIERS } from "../data/phases.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
@@ -37,6 +37,7 @@ function countLeft(row: ParentNode | null | undefined): number {
 
 describe("shop rows", () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     flushSync(() => {
       for (const root of roots.splice(0)) root.unmount()
     })
@@ -170,5 +171,32 @@ describe("shop rows", () => {
     const qa = renderShop().querySelector<HTMLElement>("[data-row='job:5']")
     expect(qa?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^[\d,.]+[KMB]? more XP$/)
     expect(qa?.querySelector(".branch-mark svg.lucide-lock")).toBeNull()
+  })
+
+  describe("jump to latest arrow", () => {
+    function overflow(on: boolean) {
+      vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(on ? 2000 : 0)
+      vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(on ? 300 : 0)
+    }
+
+    it("sits in the shop header, right beside the hide chevron, not at the bottom of the list", async () => {
+      overflow(true)
+      const host = renderShop()
+      // the list measures itself after it mounts, so the arrow arrives a beat after the first paint
+      await vi.waitFor(() => expect(host.querySelector("[data-testid='shop-jump-end']")).not.toBeNull())
+      const jump = host.querySelector<HTMLElement>("[data-testid='shop-jump-end']")
+      const hide = host.querySelector<HTMLElement>("[data-testid='shop-panel-hide']")
+      expect(jump?.parentElement?.classList.contains("shop-head-top")).toBe(true)
+      expect(jump?.nextElementSibling).toBe(hide ?? null)
+      expect(host.querySelector(".panel-scroll-wrap")?.contains(jump ?? null)).toBe(false)
+      expect(host.querySelector(".panel-scroll-end")).toBeNull()
+    })
+
+    it("stays away while the list fits on screen", async () => {
+      overflow(false)
+      const host = renderShop()
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      expect(host.querySelector("[data-testid='shop-jump-end']")).toBeNull()
+    })
   })
 })
