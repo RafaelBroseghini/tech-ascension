@@ -69,9 +69,23 @@ type OfferProps = {
   fresh?: boolean
   locked?: boolean
   done?: boolean
+  /** 0–1 fill for a closed reveal gate. Null when the row has no gate left. */
+  gate?: number | null
   title: string
   children: ReactNode
   actions: ReactNode
+}
+
+function ratio(have: number, need: number): number {
+  if (!(need > 0)) return 1
+  return Math.max(0, Math.min(1, have / need))
+}
+
+/** The thinnest reading of a closed gate. Null once every part is met. */
+function gateFill(parts: number[]): number | null {
+  if (parts.length === 0) return null
+  const fill = Math.min(...parts)
+  return fill >= 1 ? null : fill
 }
 
 function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
@@ -85,7 +99,8 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, title, children, actions }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, title, children, actions }: OfferProps) {
+  const gated = typeof gate === "number" && gate < 1
   return (
     <article
       data-row={rowKey}
@@ -94,7 +109,15 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         .join(" ")}
       style={{ ["--offer-glow" as string]: glow, ["--i" as string]: index }}
     >
-      <SpriteTap kind={kind} id={id} className="offer-art" size={64} label={title} />
+      <div className="offer-art-col">
+        <span
+          className={gated ? "offer-gate" : "offer-gate is-clear"}
+          style={gated ? { ["--gate" as string]: String(Math.max(0, gate)) } : undefined}
+          data-testid={gated ? "offer-gate" : undefined}
+          aria-hidden="true"
+        />
+        <SpriteTap kind={kind} id={id} className="offer-art" size={64} label={title} />
+      </div>
       <div className="offer-copy">
         <h3>
           {title}
@@ -411,6 +434,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const revealed = isSkillRevealed(row, skills, xpTotal)
               const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
+              const gate = revealed || have > 0 ? null : gateFill([ratio(xpTotal, row.unlockAtXp)])
               return (
                 <Offer
                   key={row.id}
@@ -423,11 +447,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   flash={flashKey === key}
                   fresh={fresh.has(key)}
                   locked={!revealed && have === 0}
+                  gate={gate}
                   title={row.name}
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, "one"))}>
-                        {revealed || have > 0 ? `Learn ${formatNumber(cost)} XP` : "Locked"}
+                        {`Learn ${formatNumber(cost)} XP`}
                       </button>
                       <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, "max"))}>
                         Max
@@ -460,6 +485,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                 gigs.length < gig.priorGigs ? `${gig.priorGigs} gigs cleared` : "",
                 gigSkillGap(gates, gig) ?? "",
               ].filter(Boolean)
+              const skillMet = gig.skillIds.filter((id) => ownedCount(skills, id) > 0).length
+              const gate =
+                status === "locked"
+                  ? gateFill([ratio(xpTotal, gig.xpReq), ratio(gigs.length, gig.priorGigs), ratio(skillMet, gig.skillIds.length)])
+                  : null
               return (
                 <Offer
                   key={gig.id}
@@ -472,10 +502,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   flash={flashKey === key}
                   locked={status === "locked"}
                   done={status === "done"}
+                  gate={gate}
                   title={gig.name}
                   actions={
                     <button type="button" disabled={status !== "ready"} onClick={() => act(key, () => clearGig(gig.id))}>
-                      {status === "done" ? "Cleared" : status === "ready" ? "Clear gig" : "Locked"}
+                      {status === "done" ? "Cleared" : "Clear gig"}
                     </button>
                   }
                 >
@@ -496,6 +527,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const status = jobState(gates, job)
               const afford = status === "ready" && canAfford(money, job.baseCost)
               const key = `job:${job.id}`
+              const gate = status === "locked" ? gateFill([ratio(xpTotal, job.xpReq)]) : null
               return (
                 <Offer
                   key={job.id}
@@ -508,10 +540,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   flash={flashKey === key}
                   locked={status === "locked"}
                   done={status === "owned"}
+                  gate={gate}
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.baseCost > 0 ? `Take $${formatNumber(job.baseCost)}` : "Accept"}
+                      {status === "owned" ? "Hired" : job.baseCost > 0 ? `Take $${formatNumber(job.baseCost)}` : "Accept"}
                     </button>
                   }
                 >
@@ -543,6 +576,13 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           ? (jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`)
                           : "",
                       ].filter(Boolean)
+                      const gate =
+                        revealed || have > 0
+                          ? null
+                          : gateFill([
+                              ratio(peakMoney, row.unlockMoney),
+                              row.unlockJobId > 0 ? (jobs.includes(row.unlockJobId) ? 1 : 0) : 1,
+                            ])
                       return (
                         <Offer
                           key={row.id}
@@ -555,11 +595,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           flash={flashKey === key}
                           fresh={fresh.has(key)}
                           locked={!revealed && have === 0}
+                          gate={gate}
                           title={row.name}
                           actions={
                             <>
                               <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "one"))}>
-                                {revealed || have > 0 ? `Buy $${formatNumber(cost)}` : "Locked"}
+                                {`Buy $${formatNumber(cost)}`}
                               </button>
                               <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "max"))}>
                                 Max
@@ -593,6 +634,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                 const revealed = isRevealed(tier, owned, peakMoney)
                 const afford = revealed && canAfford(money, cost)
                 const key = `capital:${tier.id}`
+                const gate = revealed || have > 0 ? null : gateFill([ratio(peakMoney, tier.baseCost)])
                 return (
                   <Offer
                     key={tier.id}
@@ -605,11 +647,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     flash={flashKey === key}
                     fresh={fresh.has(key)}
                     locked={!revealed && have === 0}
+                    gate={gate}
                     title={tier.name}
                     actions={
                       <>
                         <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, "one"))}>
-                          {revealed || have > 0 ? `Buy $${formatNumber(cost)}` : "Locked"}
+                          {`Buy $${formatNumber(cost)}`}
                         </button>
                         <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buy(tier.id, "max"))}>
                           Max

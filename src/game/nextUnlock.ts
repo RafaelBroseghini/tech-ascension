@@ -92,17 +92,24 @@ const wallet = (p: Progression) => (typeof p.money === "number" && Number.isFini
 const study = (p: Progression) => (typeof p.xp === "number" && Number.isFinite(p.xp) ? p.xp : 0)
 
 /**
- * The one thing to chase next. Closed gates come first, in the order their XP
- * thresholds fall: Gear tab (10K XP), Gig Board (14K + two skills), Job Board
- * (40K + 6 gigs), then Capital (Senior job or $500K). With every gate open,
- * walk Skills, then Gigs, Jobs, Gear and Capital in catalog order and stop at
- * the first row that is not owned yet. An earlier unlocked row that was never
- * bought wins over a later row the player already qualifies for. Gear, skills
- * and capital have no stack cap, so the first copy is the teaser step and a
- * second copy does not keep the banner parked. `needs` is never empty.
- * Returns null when every row has been bought at least once.
+ * The one thing to chase next. The banner names a purchase, not a closed tab.
+ * The first skill that has not been bought yet wins, even while Gear or a board
+ * is still thousands of XP away. Once every skill is owned, closed gates come
+ * first, in the order their XP thresholds fall: Gear tab (10K XP), Gig Board
+ * (14K + two skills), Job Board (40K + 6 gigs), then Capital (Senior job or
+ * $500K). With every gate open, walk Gigs, Jobs, Gear and Capital in catalog
+ * order and stop at the first row that is not owned yet. An earlier unlocked
+ * row that was never bought wins over a later row the player already qualifies
+ * for. Gear, skills and capital have no stack cap, so the first copy is the
+ * teaser step and a second copy does not keep the banner parked. `needs` is
+ * never empty. Returns null when every row has been bought at least once.
  */
 export function nextUnlock(p: Progression): NextUnlock | null {
+  for (const skill of SKILL_TIERS) {
+    if (ownedCount(p.skills, skill.id) > 0) continue
+    return skillTarget(p, skill)
+  }
+
   if (!equipmentOpen(p)) {
     return { key: "board:gear", name: "Gear", tab: "G", needs: [xpLeft(p.xpTotal, GEAR_TAB_UNLOCK.minXp)], either: false }
   }
@@ -132,10 +139,6 @@ export function nextUnlock(p: Progression): NextUnlock | null {
     return { key: "board:capital", name: "Capital", tab: "D", needs, either: true }
   }
 
-  for (const skill of SKILL_TIERS) {
-    if (ownedCount(p.skills, skill.id) > 0) continue
-    return skillTarget(p, skill)
-  }
   for (const gig of GIGS) {
     if (p.gigs.includes(gig.id)) continue
     return gigTarget(p, gig)

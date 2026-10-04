@@ -207,7 +207,7 @@ export function Stage() {
 
     const textLabels: { kind: Loot["kind"]; text: string }[] = [
       ...(gain.money > 0 ? [{ kind: "money" as const, text: `+$${formatNumber(gain.money)}` }] : []),
-      { kind: "xp", text: `+${formatNumber(gain.xp)} XP` },
+      ...(gain.xp > 0 ? [{ kind: "xp" as const, text: `+${formatNumber(gain.xp)} XP` }] : []),
     ]
 
     const originX = hasPoint && clientX !== null ? clientX : rect.left + rect.width / 2
@@ -416,20 +416,6 @@ export function Stage() {
               </span>
             )
           })}
-          {loot.map((item) => (
-            <span
-              key={item.id}
-              className={item.kind === "xp" ? "loot loot-xp" : "loot loot-money"}
-              style={{
-                left: item.x,
-                top: item.y,
-                ["--dx" as string]: `${item.dx}px`,
-                ["--dy" as string]: `${item.dy}px`,
-              }}
-            >
-              {item.text}
-            </span>
-          ))}
           {loot.map((item) => (
             <span
               key={item.id}

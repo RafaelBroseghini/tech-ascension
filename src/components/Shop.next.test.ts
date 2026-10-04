@@ -75,10 +75,13 @@ describe("next suggestion click", () => {
     expect(list?.scrollTop ?? 0).toBeGreaterThan(1500)
   })
 
-  it("opens the missing skill when the suggestion is the locked gig board", () => {
+  it("opens the next unbought skill instead of a locked board", () => {
     writeSavedShopTab("B")
-    useGame.setState({ xp: 14_000, xpTotal: 14_000, skills: { "15": 1 } })
+    const skills = Object.fromEntries(SKILL_TIERS.slice(0, 15).map((row) => [String(row.id), 1]))
+    useGame.setState({ xp: 14_000, xpTotal: 14_000, skills })
     const host = renderShop()
+    expect(host.querySelector("[data-testid='next-unlock']")?.textContent).toContain("React")
+    expect(host.querySelector("[data-testid='next-unlock']")?.textContent).not.toContain("Gig Board")
     expect(host.querySelector("[data-row='skill:16']")).toBeNull()
 
     clickNext(host)
@@ -88,12 +91,46 @@ describe("next suggestion click", () => {
     expect(row?.querySelector("h3")?.textContent).toContain("React")
   })
 
+  it("names the first skill on a fresh career and keeps the gate off the buy button", () => {
+    const host = renderShop()
+    const next = host.querySelector("[data-testid='next-unlock']")
+    expect(next?.textContent).toContain(SKILL_TIERS[0]?.name)
+    expect(next?.textContent).not.toContain("Gear")
+    const row = host.querySelector<HTMLElement>("[data-row='skill:1']")
+    const buy = row?.querySelector<HTMLButtonElement>(".offer-actions button:not(.ghost)")
+    expect(buy?.textContent).toMatch(/Learn/)
+    expect(buy?.textContent).not.toContain("Locked")
+    expect(buy?.disabled).toBe(true)
+    expect(row?.querySelector("[data-testid='offer-gate']")).toBeNull()
+    expect(row?.querySelector(".offer-art-col img")).toBeTruthy()
+    expect(row?.classList.contains("afford")).toBe(false)
+    expect(row?.style.opacity ?? "").toBe("")
+  })
+
+  it("puts a locked skill's gate beside the art and leaves the emoji in color", () => {
+    const first = SKILL_TIERS[0]
+    if (!first) throw new Error("missing skill")
+    useGame.setState({ xp: 0, xpTotal: first.baseXpCost, skills: { "1": 1 } })
+    const host = renderShop()
+    const row = host.querySelector<HTMLElement>("[data-row='skill:2']")
+    expect(host.querySelector("[data-testid='next-unlock']")?.textContent).toContain(SKILL_TIERS[1]?.name)
+    const gate = row?.querySelector<HTMLElement>("[data-testid='offer-gate']")
+    expect(gate).toBeTruthy()
+    expect(row?.querySelector(".offer-actions")?.contains(gate ?? null)).toBe(false)
+    const buy = row?.querySelector(".offer-actions button")
+    expect(buy?.textContent).toMatch(/Learn/)
+    expect(buy?.textContent).not.toContain("Locked")
+    expect(row?.querySelector(".offer-art-col [data-testid='offer-gate']")).toBe(gate ?? null)
+    expect(row?.querySelector(".offer-art-col img")).toBeTruthy()
+    expect(row?.style.opacity ?? "").toBe("")
+  })
+
   it("opens the next gig when the job board is what the suggestion names", () => {
     writeSavedShopTab("C")
     useGame.setState({
       xp: 80_000,
       xpTotal: 80_000,
-      skills: { "15": 1, "16": 1 },
+      skills: ownedAll(SKILL_TIERS),
       gigs: [1, 2, 3, 4, 5],
     })
     const host = renderShop()
