@@ -1,4 +1,4 @@
-import { ArrowDown, Banknote, Check, ChevronRight, Circle, GitBranch, Lock } from "lucide-react"
+import { ArrowDown, Banknote, Check, ChevronRight, Circle, Lock } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -6,8 +6,8 @@ import { ERA_ACCENT } from "../data/sprites.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
-import { gearSections, gearSidegrades } from "../data/gear.ts"
-import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, jobBranches, SKILL_TIERS } from "../data/phases.ts"
+import { gearSections } from "../data/gear.ts"
+import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, visibleShopRows } from "../game/economy.ts"
@@ -40,10 +40,6 @@ function nextLine(next: NextUnlock): string {
   const body = next.needs.join(next.either ? " or " : " · ")
   return next.needs.every((line) => line.startsWith("to ")) ? body : `need ${body}`
 }
-
-/** Gear that costs less than the row it sits under, and jobs that branch off a pricier one. */
-const SIDEGRADES = gearSidegrades(EQUIPMENT)
-const BRANCHES = jobBranches(JOB_TIERS)
 
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string }> = {
   A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "var(--ide-green)" },
@@ -82,8 +78,6 @@ type OfferProps = {
    * is missing. The same bottom bar and a money line, counting down as you earn. Ignored while the gate is shut.
    */
   saving?: { fill: number; left: string }
-  /** sidegrade: a cheaper piece tucked under its parent. branch: another career path, not the next rung. */
-  variant?: "sidegrade" | "branch"
   title: string
   children: ReactNode
   actions: ReactNode
@@ -112,7 +106,7 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, variant, title, children, actions }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions }: OfferProps) {
   const gated = typeof gate === "number" && gate < 1
   const pending = !gated && saving && saving.fill < 1 ? saving : null
   return (
@@ -125,30 +119,18 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         fresh ? "fresh" : "",
         locked ? "is-locked" : "",
         done ? "is-done" : "",
-        variant ?? "",
       ]
         .filter(Boolean)
         .join(" ")}
       style={{ ["--offer-glow" as string]: glow, ["--i" as string]: index }}
     >
       <div className="offer-art-col">
-        <SpriteTap kind={kind} id={id} className="offer-art" size={variant === "sidegrade" ? 40 : 64} label={title} />
+        <SpriteTap kind={kind} id={id} className="offer-art" size={64} label={title} />
       </div>
       <div className="offer-copy">
         <h3>
           {title}
           {fresh ? <span className="new-tag">New</span> : null}
-          {variant === "sidegrade" ? (
-            <span className="side-tag" title="Costs less than the row above, but it is a side purchase, not an earlier tier">
-              sidegrade
-            </span>
-          ) : null}
-          {variant === "branch" ? (
-            <span className="branch-mark" title="A different path from the job above, priced on its own">
-              <GitBranch {...UI_ICON_SM} aria-hidden />
-              branch
-            </span>
-          ) : null}
         </h3>
         <p>{children}</p>
         {gated && unlock && unlock.length > 0 ? (
@@ -614,7 +596,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       ? { fill: ratio(money, job.baseCost), left: `$${formatNumber(Math.ceil(job.baseCost - money))} more` }
                       : undefined
                   }
-                  variant={BRANCHES.has(job.id) ? "branch" : undefined}
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
@@ -667,7 +648,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                             ...(peakMoney < row.unlockMoney ? [`$${formatNumber(Math.ceil(row.unlockMoney - peakMoney))} more held`] : []),
                             ...(row.unlockJobId > 0 && !jobs.includes(row.unlockJobId) ? [`the ${jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`} job`] : []),
                           ]}
-                          variant={SIDEGRADES.has(row.id) ? "sidegrade" : undefined}
                           title={row.name}
                           actions={
                             <>
