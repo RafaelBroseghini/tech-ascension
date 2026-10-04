@@ -73,7 +73,7 @@ type OfferProps = {
   fresh?: boolean
   locked?: boolean
   done?: boolean
-  /** 0–1 progress through a closed reveal gate: the dim layer over the row recedes as it fills. Null when the gate is open. */
+  /** 0–1 progress through a closed reveal gate: the bar along the bottom of the row fills as it closes. Null when the gate is open. */
   gate?: number | null
   /** What is still missing, as counts that fall while you earn. Shown under the row's attributes until the gate opens. */
   unlock?: string[]
@@ -153,7 +153,7 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         ) : null}
       </div>
       <div className="offer-actions">{actions}</div>
-      {gated ? <span className="offer-veil" style={{ ["--gate" as string]: String(Math.max(0, gate)) }} data-testid="offer-veil" aria-hidden="true" /> : null}
+      {gated ? <span className="offer-progress" style={{ ["--gate" as string]: String(Math.max(0, gate)) }} data-testid="offer-progress" aria-hidden="true" /> : null}
     </article>
   )
 }

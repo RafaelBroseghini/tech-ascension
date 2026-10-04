@@ -1924,29 +1924,28 @@ img { -webkit-user-drag: none; user-select: none; }
   height: var(--art);
 }
 
-/* A locked row gets a wash of its tab's color across everything but the emoji: faint over what is already
-   earned, strong over what is still missing. It recedes as XP or money closes the gate and is gone once the row unlocks. */
-.offer {
-  --veil-base: calc(var(--sp-4) + var(--art) + var(--sp-3));
-}
-
-.offer-veil {
+/* A locked row gets a slim bar along its bottom edge in the tab's color. It fills as XP or money closes
+   the gate, and it is gone once the row unlocks. */
+.offer-progress {
   position: absolute;
-  top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  left: var(--veil-base);
-  background: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--a) 8%, transparent) calc(var(--gate, 0) * 100%),
-    color-mix(in srgb, var(--a) 30%, transparent) calc(var(--gate, 0) * 100%)
-  );
+  height: 4px;
+  background: color-mix(in srgb, var(--a) 16%, transparent);
   pointer-events: none;
 }
 
+.offer-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--gate, 0) * 100%);
+  background: var(--a);
+  border-radius: 0 2px 2px 0;
+}
+
 .offer .offer-unlock {
-  position: relative;
-  z-index: 2;
   display: flex;
   align-items: center;
   gap: 5px;

@@ -102,13 +102,13 @@ describe("next suggestion click", () => {
     expect(buy?.textContent).not.toContain("Locked")
     expect(buy?.disabled).toBe(true)
     expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
-    expect(row?.querySelector("[data-testid='offer-veil']")).toBeNull()
+    expect(row?.querySelector("[data-testid='offer-progress']")).toBeNull()
     expect(row?.querySelector(".offer-art-col img")).toBeTruthy()
     expect(row?.classList.contains("afford")).toBe(false)
     expect(row?.style.opacity ?? "").toBe("")
   })
 
-  it("dims a locked skill across the row, says what is missing under its attributes, and leaves the emoji in color", () => {
+  it("shows a locked skill's progress in a bar along the bottom of the row, says what is missing under its attributes, and leaves the emoji in color", () => {
     const first = SKILL_TIERS[0]
     if (!first) throw new Error("missing skill")
     useGame.setState({ xp: 0, xpTotal: first.baseXpCost, skills: { "1": 1 } })
@@ -122,9 +122,9 @@ describe("next suggestion click", () => {
     const buy = row?.querySelector(".offer-actions button")
     expect(buy?.textContent).toMatch(/Learn/)
     expect(buy?.textContent).not.toContain("Locked")
-    const veil = row?.querySelector<HTMLElement>("[data-testid='offer-veil']")
-    expect(veil?.parentElement).toBe(row ?? null)
-    expect(row?.querySelector(".offer-art-col")?.contains(veil ?? null)).toBe(false)
+    const bar = row?.querySelector<HTMLElement>("[data-testid='offer-progress']")
+    expect(bar?.parentElement).toBe(row ?? null)
+    expect(row?.querySelector(".offer-art-col")?.contains(bar ?? null)).toBe(false)
     expect(row?.querySelector(".offer-art-col img")).toBeTruthy()
     expect(row?.style.opacity ?? "").toBe("")
   })
