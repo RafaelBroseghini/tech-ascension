@@ -1627,22 +1627,14 @@ img { -webkit-user-drag: none; user-select: none; }
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--text-dim);
+  /* The editor theme's own color, so the down and hide/show arrows follow the chosen theme. */
+  color: var(--ide-mauve);
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease-out);
 }
 
 .shop-panel-toggle:hover {
-  color: var(--text);
-}
-
-/* Jump to the latest available row. Sits left of the hide chevron in the shop header. */
-.shop-jump-end {
-  color: var(--accent);
-}
-
-.shop-jump-end:hover {
-  color: var(--accent-hi);
+  color: var(--ide-text);
 }
 
 .shop-panel-show {
