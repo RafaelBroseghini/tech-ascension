@@ -6,6 +6,7 @@ describe("desk", () => {
   beforeEach(() => {
     setDeskPref("music", false)
     setDeskPref("sounds", true)
+    setDeskPref("clicks", true)
     setDeskPref("cat", true)
     setDeskPref("enemies", true)
     setDeskPref("hoverClick", false)
@@ -16,6 +17,7 @@ describe("desk", () => {
       music: false,
       musicStyle: "cozy",
       sounds: true,
+      clicks: true,
       clickKit: "thock",
       cat: true,
       enemies: true,
@@ -28,6 +30,7 @@ describe("desk", () => {
       music: false,
       musicStyle: "cozy",
       sounds: true,
+      clicks: true,
       clickKit: "thock",
       cat: true,
       enemies: true,
@@ -40,6 +43,7 @@ describe("desk", () => {
       music: true,
       musicStyle: "edm",
       sounds: true,
+      clicks: true,
       clickKit: "thock",
       cat: true,
       enemies: true,
@@ -53,6 +57,16 @@ describe("desk", () => {
   it("keeps a stored click kit and falls back to thock for an unknown one", () => {
     expect(parseDeskPrefs(JSON.stringify({ clickKit: "felt" })).clickKit).toBe("felt")
     expect(parseDeskPrefs(JSON.stringify({ clickKit: "beep" })).clickKit).toBe("thock")
+  })
+
+  it("keeps the click apart from the room's desk sounds", () => {
+    expect(parseDeskPrefs(JSON.stringify({ sounds: false, clicks: true }))).toMatchObject({ sounds: false, clicks: true })
+    expect(parseDeskPrefs(JSON.stringify({ sounds: true, clicks: false }))).toMatchObject({ sounds: true, clicks: false })
+    // saved before the click had its own switch: a muted room stays muted
+    expect(parseDeskPrefs(JSON.stringify({ sounds: false })).clicks).toBe(false)
+    expect(parseDeskPrefs(JSON.stringify({ sounds: true })).clicks).toBe(true)
+    setDeskPref("sounds", false)
+    expect(getDeskPrefs().clicks).toBe(true)
   })
 
   it("persists a switch", () => {
@@ -88,6 +102,7 @@ describe("desk", () => {
       music: true,
       musicStyle: "cozy",
       sounds: false,
+      clicks: false,
       clickKit: "thock",
       cat: false,
       enemies: true,

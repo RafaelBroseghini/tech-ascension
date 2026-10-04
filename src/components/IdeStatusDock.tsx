@@ -1,4 +1,4 @@
-import { Music, MousePointerClick, Palette, Swords, Volume2 } from "lucide-react"
+import { Music, MousePointer2, MousePointerClick, Palette, Swords, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
 import { createPortal } from "react-dom"
@@ -20,7 +20,7 @@ import { UI_ICON_SM } from "./icons/ui.tsx"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-type ChipId = "music" | "sounds" | "cat" | "enemies" | "hoverClick" | "theme"
+type ChipId = "music" | "sounds" | "clicks" | "cat" | "enemies" | "hoverClick" | "theme"
 
 function StatusChip({
   id,
@@ -201,12 +201,27 @@ export function IdeStatusDock() {
         onClose={closeChip}
         icon={<ChipIcon Icon={Volume2} />}
         panel={
+          <SettingsSection heading="Desk sounds">
+            <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["sounds"]} />
+          </SettingsSection>
+        }
+      />
+
+      <StatusChip
+        id="clicks"
+        label="Click sound"
+        active={desk.clicks}
+        open={openChip === "clicks"}
+        onOpen={() => setOpenChip("clicks")}
+        onClose={closeChip}
+        icon={<ChipIcon Icon={MousePointer2} />}
+        panel={
           <>
-            <SettingsSection heading="Desk sounds">
-              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["sounds"]} />
+            <SettingsSection heading="Click sound">
+              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["clicks"]} />
             </SettingsSection>
-            {desk.sounds ? (
-              <SettingsSection heading="Click sound">
+            {desk.clicks ? (
+              <SettingsSection heading="Click kit">
                 <ClickKitList desk={desk} />
               </SettingsSection>
             ) : null}

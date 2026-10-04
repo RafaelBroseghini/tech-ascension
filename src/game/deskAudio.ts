@@ -19,7 +19,7 @@ import type { ClickKitId } from "./deskClickKits.ts"
 import { musicStyleById, styleSteps } from "./deskMusicStyles.ts"
 import type { MusicStyle, MusicStyleId } from "./deskMusicStyles.ts"
 
-type RoomPrefs = { music: boolean; sounds: boolean; musicStyle: MusicStyleId; clickKit: ClickKitId }
+type RoomPrefs = { music: boolean; sounds: boolean; clicks: boolean; musicStyle: MusicStyleId; clickKit: ClickKitId }
 type DeskNoise = "type" | "coffee" | "click"
 type MusicEvent = {
   time: number
@@ -53,7 +53,7 @@ type Graph = {
 
 const C4 = 261.63
 
-let readPrefs: () => RoomPrefs = () => ({ music: false, sounds: false, musicStyle: "cozy", clickKit: "thock" })
+let readPrefs: () => RoomPrefs = () => ({ music: false, sounds: false, clicks: false, musicStyle: "cozy", clickKit: "thock" })
 let graph: Graph | null = null
 let part: Part<MusicEvent> | null = null
 let roomTimer = 0
@@ -360,7 +360,7 @@ function stopRoom(): void {
 /** The player's click in the chosen wooden kit, louder than the room keys. */
 export function playCozyClick(): void {
   const prefs = readPrefs()
-  if (!prefs.sounds || !canHear()) return
+  if (!prefs.clicks || !canHear()) return
   gestureHeard = true
   const g = build()
   if (!g || (typeof document !== "undefined" && document.hidden)) return
@@ -384,21 +384,21 @@ export function playCozyClick(): void {
 /** Starts or stops the room from the saved switches. Does not touch the audio context until a pointer or key. */
 export function syncDeskAudio(): void {
   if (!canHear()) return
-  const { music, sounds } = readPrefs()
-  if (!music && !sounds && !graph) return
+  const { music, sounds, clicks } = readPrefs()
+  if (!music && !sounds && !clicks && !graph) return
   if (!gestureHeard) {
     armGestureUnlock()
     return
   }
   const g = build()
   if (!g) return
-  if ((music || sounds) && !running()) {
+  if ((music || sounds || clicks) && !running()) {
     wake(() => syncDeskAudio())
     return
   }
   const audible = !document.hidden && running()
   g.musicGain.gain.setTargetAtTime(music && audible ? 0.75 : 0, now(), 0.08)
-  g.soundGain.gain.setTargetAtTime(sounds && audible ? 0.9 : 0, now(), 0.04)
+  g.soundGain.gain.setTargetAtTime((sounds || clicks) && audible ? 0.9 : 0, now(), 0.04)
   if (sounds && audible && !roomTimer) armRoom(280 + Math.random() * 420)
   if (!sounds || !audible) stopRoom()
   if (!music || !audible) {

@@ -10,7 +10,10 @@ import { readPref, writePref } from "./ledger.ts"
 export type DeskPrefs = {
   music: boolean
   musicStyle: MusicStyleId
+  /** The room: typing, coffee, a mouse. Not the player's own click. */
   sounds: boolean
+  /** The player's own click. Separate from the room, so either can be off. */
+  clicks: boolean
   clickKit: ClickKitId
   cat: boolean
   /** When false, rare enemies do not spawn. A fight already on screen is dismissed. */
@@ -28,6 +31,7 @@ const DEFAULTS: DeskPrefs = {
   music: false,
   musicStyle: "cozy",
   sounds: true,
+  clicks: true,
   clickKit: "thock",
   cat: true,
   enemies: true,
@@ -61,10 +65,12 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ...DEFAULTS }
-  for (const key of ["music", "sounds", "cat", "enemies", "hoverClick", "mobilePlayAck"] as const) {
+  for (const key of ["music", "sounds", "clicks", "cat", "enemies", "hoverClick", "mobilePlayAck"] as const) {
     const value = (body as Record<string, unknown>)[key]
     if (typeof value === "boolean") next[key] = value
   }
+  // A room saved before the click had its own switch keeps what its desk sounds said.
+  if (typeof (body as Record<string, unknown>).clicks !== "boolean") next.clicks = next.sounds
   next.musicStyle = parseMusicStyleId((body as Record<string, unknown>).musicStyle)
   next.clickKit = parseClickKitId((body as Record<string, unknown>).clickKit)
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
@@ -92,7 +98,7 @@ export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[
   writePrefs(prefs)
   for (const listener of prefListeners) listener()
   syncDeskAudio()
-  if ((key === "sounds" && value) || (key === "clickKit" && prefs.sounds)) playCozyClick()
+  if ((key === "clicks" && value) || (key === "clickKit" && prefs.clicks)) playCozyClick()
 }
 
 export function setDeskHeroOffset(x: number, y: number): void {
@@ -130,5 +136,5 @@ export function pokeDesk(): void {
 
 bindDeskAudio(() => {
   const prefs = getDeskPrefs()
-  return { music: prefs.music, sounds: prefs.sounds, musicStyle: prefs.musicStyle, clickKit: prefs.clickKit }
+  return { music: prefs.music, sounds: prefs.sounds, clicks: prefs.clicks, musicStyle: prefs.musicStyle, clickKit: prefs.clickKit }
 })
