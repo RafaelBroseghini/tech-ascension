@@ -173,6 +173,66 @@ describe("shop rows", () => {
     expect(qa?.querySelector(".branch-mark svg.lucide-lock")).toBeNull()
   })
 
+  describe("jobs: how much money is left", () => {
+    const readyJobs = (money: number) => {
+      writeSavedShopTab("C")
+      useGame.setState({
+        xpTotal: 2_000_000,
+        xp: 2_000_000,
+        money,
+        peakMoney: Math.max(money, 10_000),
+        gigs: [1, 2, 3, 4, 5, 6],
+        jobs: [1, 2, 3, 4],
+      })
+      return renderShop()
+    }
+    const job5 = (host: ParentNode) => host.querySelector<HTMLElement>("[data-row='job:5']")
+    const fill = (row: HTMLElement | null) => Number(row?.querySelector<HTMLElement>("[data-testid='offer-progress']")?.style.getPropertyValue("--gate"))
+
+    it("fills a bottom bar with the share of the price held and says how much is left", () => {
+      const row = job5(readyJobs(1_000))
+      const saving = row?.querySelector("[data-testid='offer-saving']")
+      expect(saving?.textContent).toMatch(/^\$[\d,.]+[KMB]? more$/)
+      expect(saving?.querySelector("svg")?.getAttribute("aria-label")).toBe("Money needed")
+      expect(row?.querySelector("[data-testid='offer-progress']")?.getAttribute("data-kind")).toBe("money")
+      expect(fill(row)).toBeCloseTo(1_000 / 3_000, 2)
+      expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
+      expect(row?.querySelector<HTMLButtonElement>(".offer-actions button")?.disabled).toBe(true)
+    })
+
+    it("counts down and fills as money comes in", () => {
+      const host = readyJobs(1_000)
+      const before = fill(job5(host))
+      expect(job5(host)?.querySelector("[data-testid='offer-saving']")?.textContent).toBe("$2,000 more")
+      flushSync(() => useGame.setState({ money: 2_500 }))
+      expect(job5(host)?.querySelector("[data-testid='offer-saving']")?.textContent).toBe("$500 more")
+      expect(fill(job5(host))).toBeGreaterThan(before)
+    })
+
+    it("clears the line and the bar once the job is affordable", () => {
+      const host = readyJobs(1_000)
+      flushSync(() => useGame.setState({ money: 3_000 }))
+      expect(job5(host)?.querySelector("[data-testid='offer-saving']")).toBeNull()
+      expect(job5(host)?.querySelector("[data-testid='offer-progress']")).toBeNull()
+      expect(job5(host)?.querySelector<HTMLButtonElement>(".offer-actions button")?.disabled).toBe(false)
+    })
+
+    it("shows the XP unlock first, and the money only after the job is open", () => {
+      writeSavedShopTab("C")
+      useGame.setState({ xpTotal: 40_000, xp: 40_000, money: 1_000, peakMoney: 1_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [1, 2, 3, 4] })
+      const row = job5(renderShop())
+      expect(row?.querySelector("[data-testid='offer-unlock']")).not.toBeNull()
+      expect(row?.querySelector("[data-testid='offer-saving']")).toBeNull()
+      expect(row?.querySelector("[data-testid='offer-progress']")?.getAttribute("data-kind")).toBe("unlock")
+    })
+
+    it("leaves a hired job without a bar", () => {
+      const host = readyJobs(1_000)
+      expect(host.querySelector("[data-row='job:4'] [data-testid='offer-progress']")).toBeNull()
+      expect(host.querySelector("[data-row='job:4'] [data-testid='offer-saving']")).toBeNull()
+    })
+  })
+
   describe("jump to latest arrow", () => {
     function overflow(on: boolean) {
       vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(on ? 2000 : 0)
