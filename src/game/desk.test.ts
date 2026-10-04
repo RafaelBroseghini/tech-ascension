@@ -16,6 +16,7 @@ describe("desk", () => {
       music: false,
       musicStyle: "cozy",
       sounds: true,
+      clickKit: "thock",
       cat: true,
       enemies: true,
       hoverClick: false,
@@ -27,6 +28,7 @@ describe("desk", () => {
       music: false,
       musicStyle: "cozy",
       sounds: true,
+      clickKit: "thock",
       cat: true,
       enemies: true,
       hoverClick: false,
@@ -38,6 +40,7 @@ describe("desk", () => {
       music: true,
       musicStyle: "edm",
       sounds: true,
+      clickKit: "thock",
       cat: true,
       enemies: true,
       hoverClick: false,
@@ -45,6 +48,11 @@ describe("desk", () => {
       heroOffsetY: 0,
       mobilePlayAck: false,
     })
+  })
+
+  it("keeps a stored click kit and falls back to thock for an unknown one", () => {
+    expect(parseDeskPrefs(JSON.stringify({ clickKit: "felt" })).clickKit).toBe("felt")
+    expect(parseDeskPrefs(JSON.stringify({ clickKit: "beep" })).clickKit).toBe("thock")
   })
 
   it("persists a switch", () => {
@@ -80,6 +88,7 @@ describe("desk", () => {
       music: true,
       musicStyle: "cozy",
       sounds: false,
+      clickKit: "thock",
       cat: false,
       enemies: true,
       hoverClick: false,

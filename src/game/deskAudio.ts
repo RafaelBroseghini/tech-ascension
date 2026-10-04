@@ -14,10 +14,12 @@ import {
   now,
   start,
 } from "tone"
+import { clickKitById } from "./deskClickKits.ts"
+import type { ClickKitId } from "./deskClickKits.ts"
 import { musicStyleById } from "./deskMusicStyles.ts"
 import type { MusicStyle, MusicStyleId } from "./deskMusicStyles.ts"
 
-type RoomPrefs = { music: boolean; sounds: boolean; musicStyle: MusicStyleId }
+type RoomPrefs = { music: boolean; sounds: boolean; musicStyle: MusicStyleId; clickKit: ClickKitId }
 type DeskNoise = "type" | "coffee" | "click"
 type MusicEvent = { time: number; semi: number | null; chord: number | null }
 
@@ -41,7 +43,7 @@ type Graph = {
 
 const C4 = 261.63
 
-let readPrefs: () => RoomPrefs = () => ({ music: false, sounds: false, musicStyle: "cozy" })
+let readPrefs: () => RoomPrefs = () => ({ music: false, sounds: false, musicStyle: "cozy", clickKit: "thock" })
 let graph: Graph | null = null
 let part: Part<MusicEvent> | null = null
 let roomTimer = 0
@@ -334,9 +336,10 @@ function stopRoom(): void {
   phraseTimers = []
 }
 
-/** The player's click: a soft wooden thock, louder than the room keys. */
+/** The player's click in the chosen wooden kit, louder than the room keys. */
 export function playCozyClick(): void {
-  if (!readPrefs().sounds || !canHear()) return
+  const prefs = readPrefs()
+  if (!prefs.sounds || !canHear()) return
   gestureHeard = true
   const g = build()
   if (!g || (typeof document !== "undefined" && document.hidden)) return
@@ -344,12 +347,16 @@ export function playCozyClick(): void {
     wake(() => playCozyClick())
     return
   }
+  const kit = clickKitById(prefs.clickKit)
   const time = now()
-  const body = 124 + Math.random() * 26
-  g.wood.triggerAttackRelease(body, 0.05, time, 0.2)
-  g.woodHigh.triggerAttackRelease(body * 1.5, 0.04, time, 0.06)
-  g.noiseFilter.frequency.setValueAtTime(1200 + Math.random() * 400, time)
-  g.noise.triggerAttackRelease(0.03, time, 0.08)
+  const body = kit.body.min + Math.random() * kit.body.spread
+  Object.assign(g.wood.envelope, { attack: kit.wood.attack, decay: kit.wood.decay, release: kit.wood.release })
+  g.woodHigh.oscillator.type = kit.high.type
+  Object.assign(g.woodHigh.envelope, { attack: kit.high.attack, decay: kit.high.decay, release: kit.high.release })
+  g.wood.triggerAttackRelease(body, kit.wood.hold, time, kit.wood.velocity)
+  g.woodHigh.triggerAttackRelease(body * kit.high.ratio, kit.high.hold, time, kit.high.velocity)
+  g.noiseFilter.frequency.setValueAtTime(kit.grain.min + Math.random() * kit.grain.spread, time)
+  g.noise.triggerAttackRelease(kit.grain.hold, time, kit.grain.velocity)
   syncDeskAudio()
 }
 

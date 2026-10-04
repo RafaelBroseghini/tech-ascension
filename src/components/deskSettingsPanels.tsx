@@ -6,6 +6,7 @@ import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
 import { MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
 import { setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
+import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, previewIdeTheme, setIdeTheme } from "../game/ideTheme.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
@@ -107,6 +108,26 @@ export function MusicStyleList({ desk }: MusicStyleListProps) {
           onClick={() => setDeskPref("musicStyle", id)}
         >
           <span className="ide-theme-name">{MUSIC_STYLES[id].label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function ClickKitList({ desk }: MusicStyleListProps) {
+  return (
+    <div className="desk-toggles" role="listbox" aria-label="Click sounds">
+      {CLICK_KIT_IDS.map((id) => (
+        <button
+          key={id}
+          type="button"
+          role="option"
+          aria-selected={desk.clickKit === id}
+          className={desk.clickKit === id ? "ide-theme-option is-active" : "ide-theme-option"}
+          data-testid={`desk-kit-${id}`}
+          onClick={() => setDeskPref("clickKit", id)}
+        >
+          <span className="ide-theme-name">{CLICK_KITS[id].label}</span>
         </button>
       ))}
     </div>
