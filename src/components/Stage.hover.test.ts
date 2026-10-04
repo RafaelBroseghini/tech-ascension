@@ -125,3 +125,27 @@ describe("hover click", () => {
     expect(useGame.getState().money).toBe(earned)
   })
 })
+
+describe("click reward", () => {
+  afterEach(() => {
+    flushSync(() => {
+      for (const root of roots) root.unmount()
+    })
+    roots.length = 0
+    document.body.replaceChildren()
+    useGame.getState().wipe()
+  })
+
+  it("pops the XP a fresh click pays, once, and not a dollar", () => {
+    renderStage()
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='stage']")
+    if (!button) throw new Error("missing stage")
+    flushSync(() => {
+      button.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", clientX: 80, clientY: 80, button: 0 }),
+      )
+    })
+    const loot = [...document.querySelectorAll(".loot")].map((el) => el.textContent)
+    expect(loot).toEqual(["+1 XP"])
+  })
+})

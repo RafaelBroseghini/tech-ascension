@@ -1890,7 +1890,7 @@ img { -webkit-user-drag: none; user-select: none; }
   flex: 0 0 auto;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
   gap: var(--sp-3);
   align-items: center;
   padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4);
@@ -1905,8 +1905,8 @@ img { -webkit-user-drag: none; user-select: none; }
   content: "";
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
+  top: var(--sp-3);
+  height: 64px;
   width: 4px;
   background: var(--a);
   transform: scaleY(0);
@@ -1914,14 +1914,51 @@ img { -webkit-user-drag: none; user-select: none; }
   transition: transform var(--dur-base) var(--ease-out);
 }
 
+.offer:not(.afford) { background: color-mix(in srgb, var(--ink) 42%, var(--surface-0)); }
 .offer.afford { background: color-mix(in srgb, var(--a) 14%, var(--surface-0)); }
 .offer.afford::before { transform: scaleY(1); }
 
+.offer-art-col {
+  display: grid;
+  grid-template-columns: 4px 64px;
+  column-gap: 8px;
+  align-items: center;
+  width: 76px;
+  height: 64px;
+}
+
+.offer-gate {
+  width: 4px;
+  height: 52px;
+  justify-self: center;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.offer-gate.is-clear { visibility: hidden; }
+
+.offer-gate::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--gate, 0) * 100%);
+  max-height: 100%;
+  background: var(--a);
+  border-radius: inherit;
+}
+
 .offer img,
-.offer-art {
+.offer-art,
+.offer .emoji-tap {
   width: 64px;
   height: 64px;
   display: block;
+  opacity: 1;
+  filter: none;
   transition: transform var(--dur-base) var(--ease-out);
 }
 
@@ -2419,7 +2456,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .hitbox { --size: 192px; margin-top: var(--sp-5); }
   .stage-panel h2 { font-size: var(--fs-lg); }
 
-  .offer { grid-template-columns: 64px minmax(0, 1fr); }
+  .offer { grid-template-columns: 76px minmax(0, 1fr); }
   .offer-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
 }
 
@@ -2500,8 +2537,8 @@ img { -webkit-user-drag: none; user-select: none; }
   border-bottom: var(--stroke) solid var(--surface-1);
 }
 
-.offer.is-locked { opacity: 0.55; }
-.offer.is-done { opacity: 0.7; }
+.offer.is-locked .offer-copy,
+.offer.is-done .offer-copy { opacity: 0.78; }
 .offer.is-done h3 { color: var(--text-dim); }
 
 .lock-panel {

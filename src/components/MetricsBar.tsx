@@ -5,7 +5,7 @@ import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { TEMP_TARGETS } from "../game/mods.ts"
 import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
-import { PHASE_NAME, stageOf } from "../game/phase.ts"
+import { clickPaysMoney, PHASE_NAME, stageOf } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
 export function MetricsBar() {
@@ -21,6 +21,8 @@ export function MetricsBar() {
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
   const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+  // clickPower is $1 before any gear, but a click does not pay that dollar until the first job.
+  const paidClick = clickPaysMoney({ jobs }) ? rates.click : 0
   const stage = stageOf({ skills, owned, jobs, gigs })
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
@@ -44,7 +46,7 @@ export function MetricsBar() {
         ) : null}
         <div className="m-rate">
           <dt>$/click</dt>
-          <dd data-testid="per-click">${formatNumber(rates.click)}</dd>
+          <dd data-testid="per-click">${formatNumber(paidClick)}</dd>
         </div>
         <div className="m-xp-rate">
           <dt>XP/click</dt>

@@ -157,7 +157,10 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
 
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
   game.reset()
-  expect(game.getState().nextUnlock).toMatchObject({ key: "board:gear", tab: "G", needs: ["10,000 more XP"] })
+  const first = SKILL_TIERS[0]
+  if (!first) throw new Error("missing skill")
+  expect(game.getState().nextUnlock).toMatchObject({ key: `skill:${first.id}`, name: first.name, tab: "A" })
+  expect(game.getState().nextUnlock?.key).not.toBe("board:gear")
   expect(game.getState().unlocks.gear).toBe(false)
   game.setMoney(1e6)
   expect(game.buyEquipment(1)).toBe(false)
@@ -169,9 +172,8 @@ test("Gear opens at 10K XP, and the next-unlock target follows the gates", () =>
   expect(game.getState().clickPower).toBe(1 + 2)
 
   game.reset()
-  game.setXp(1_000_000)
-  expect(game.buySkill(15)).toBe(true)
-  expect(game.buySkill(16)).toBe(true)
+  game.setXp(1e12)
+  for (const skill of SKILL_TIERS) expect(game.buySkill(skill.id)).toBe(true)
   for (let id = 1; id <= 4; id++) expect(game.forceGig(id)).toBe(true)
   expect(game.getState().nextUnlock).toMatchObject({ key: "board:job", tab: "C", needs: ["2 more gigs"] })
   expect(game.forceGig(5)).toBe(true)
