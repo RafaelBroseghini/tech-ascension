@@ -11,7 +11,7 @@ import {
   Search,
   Terminal,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   closeIdePythonConsole,
   getIdePythonConsole,
@@ -32,6 +32,7 @@ import {
   tryUnlockIdeLoreFromStatusBar,
   tryUnlockIdeLoreFromTab,
 } from "../game/ideSecrets.ts"
+import { revealIn } from "../game/ideScroll.ts"
 import { readCollapsedFolders, writeCollapsedFolders } from "../game/ideTreePrefs.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
@@ -190,10 +191,34 @@ export function IdeChrome() {
       const next = new Set(current)
       if (next.has(packId)) next.delete(packId)
       else next.add(packId)
-      writeCollapsedFolders(next)
       return next
     })
   }
+
+  // The open file always has a visible row: when the selection lands in a folded folder, it opens.
+  const selection = `${pack.id}:${index}`
+  const [seenSelection, setSeenSelection] = useState("")
+  if (selection !== seenSelection) {
+    setSeenSelection(selection)
+    if (collapsed.has(pack.id)) {
+      const next = new Set(collapsed)
+      next.delete(pack.id)
+      setCollapsed(next)
+    }
+  }
+  useEffect(() => {
+    writeCollapsedFolders(collapsed)
+  }, [collapsed])
+
+  // ...and the tab strip and explorer scroll to it, so the tab and the row always match the file on screen.
+  const tabsRef = useRef<HTMLElement>(null)
+  const treeRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const tab = tabsRef.current?.querySelector<HTMLElement>(".ide-tab.is-active")
+    if (tabsRef.current && tab) revealIn(tabsRef.current, tab, "x")
+    const row = treeRef.current?.querySelector<HTMLElement>(".ide-item-wrap.is-active")
+    if (treeRef.current && row) revealIn(treeRef.current, row, "y")
+  }, [pack.id, index])
 
   const active = items[index]
   const lang = pack.kind === "files" ? (pack.files[index]?.lang ?? pack.files[0]?.lang) : undefined
@@ -260,7 +285,7 @@ export function IdeChrome() {
       </nav>
       <aside className="ide-tree" aria-label="Explorer">
         <p className="ide-tree-title">Explorer</p>
-        <div className="ide-folder-tree" role="tree" aria-label="Project folders">
+        <div ref={treeRef} className="ide-folder-tree" role="tree" aria-label="Project folders">
           {folders.map((folder) => {
             const folderItems = itemsOf(folder.pack)
             const isOpen = !collapsed.has(folder.id)
@@ -360,7 +385,7 @@ export function IdeChrome() {
           })}
         </div>
       </aside>
-      <header className="ide-tabs" role="tablist" aria-label={`${pack.label} ${pack.kind === "files" ? "files" : pack.kind === "inbox" ? "emails" : "slides"}`}>
+      <header ref={tabsRef} className="ide-tabs" role="tablist" aria-label={`${pack.label} ${pack.kind === "files" ? "files" : pack.kind === "inbox" ? "emails" : "slides"}`}>
         {items.map((item, row) => (
           <button
             key={item.key}

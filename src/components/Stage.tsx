@@ -20,6 +20,7 @@ import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { DeskCat } from "./DeskCat.tsx"
 import { StickyNote } from "./StickyNote.tsx"
+import { scrollIdeEditor } from "../game/ideScroll.ts"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { IdePythonConsole } from "./IdePythonConsole.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
@@ -295,6 +296,7 @@ export function Stage() {
       ref={stagePanelRef}
       className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : ""].filter(Boolean).join(" ")}
       aria-label="Click stage"
+      onWheel={scrollIdeEditor}
     >
       <IdeChrome />
       <StickyNote />
