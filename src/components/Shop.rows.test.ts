@@ -58,34 +58,34 @@ describe("shop rows", () => {
     expect(unlock?.querySelector("svg")).not.toBeNull()
   })
 
-  it("dims the row with a layer that stays off the emoji and the buttons", () => {
+  it("draws a progress bar along the bottom of the row, not inside the emoji or the buttons", () => {
     useGame.setState({ xp: 0, xpTotal: skill(0).baseXpCost, skills: { "1": 1 } })
     const row = renderShop().querySelector<HTMLElement>("[data-row='skill:2']")
-    const veil = row?.querySelector<HTMLElement>("[data-testid='offer-veil']")
-    expect(veil?.parentElement).toBe(row ?? null)
-    expect(veil?.getAttribute("aria-hidden")).toBe("true")
-    expect(Number(veil?.style.getPropertyValue("--gate"))).toBeGreaterThanOrEqual(0)
-    expect(row?.querySelector(".offer-art-col")?.contains(veil ?? null)).toBe(false)
-    expect(row?.querySelector(".offer-actions")?.contains(veil ?? null)).toBe(false)
+    const bar = row?.querySelector<HTMLElement>("[data-testid='offer-progress']")
+    expect(bar?.parentElement).toBe(row ?? null)
+    expect(bar?.getAttribute("aria-hidden")).toBe("true")
+    expect(Number(bar?.style.getPropertyValue("--gate"))).toBeGreaterThanOrEqual(0)
+    expect(row?.querySelector(".offer-art-col")?.contains(bar ?? null)).toBe(false)
+    expect(row?.querySelector(".offer-actions")?.contains(bar ?? null)).toBe(false)
     const price = row?.querySelector<HTMLButtonElement>(".offer-actions button:not(.ghost)")
     expect(price?.textContent).toMatch(/^Learn /)
   })
 
-  it("counts down and recedes as lifetime XP comes in", () => {
+  it("counts down and fills as lifetime XP comes in", () => {
     const second = skill(1)
     useGame.setState({ xp: 0, xpTotal: second.unlockAtXp - 100, skills: { "1": 1 } })
     const host = renderShop()
     const row = () => host.querySelector<HTMLElement>("[data-row='skill:2']")
     const before = countLeft(row())
-    const fillBefore = Number(row()?.querySelector<HTMLElement>("[data-testid='offer-veil']")?.style.getPropertyValue("--gate"))
+    const fillBefore = Number(row()?.querySelector<HTMLElement>("[data-testid='offer-progress']")?.style.getPropertyValue("--gate"))
     expect(before).toBe(100)
 
     flushSync(() => useGame.setState({ xpTotal: second.unlockAtXp - 40 }))
     expect(countLeft(row())).toBe(40)
-    expect(Number(row()?.querySelector<HTMLElement>("[data-testid='offer-veil']")?.style.getPropertyValue("--gate"))).toBeGreaterThan(fillBefore)
+    expect(Number(row()?.querySelector<HTMLElement>("[data-testid='offer-progress']")?.style.getPropertyValue("--gate"))).toBeGreaterThan(fillBefore)
   })
 
-  it("removes the unlock line and the dim layer once the row unlocks", () => {
+  it("removes the unlock line and the progress bar once the row unlocks", () => {
     const second = skill(1)
     useGame.setState({ xp: 0, xpTotal: second.unlockAtXp - 5, skills: { "1": 1 } })
     const host = renderShop()
@@ -94,14 +94,14 @@ describe("shop rows", () => {
 
     flushSync(() => useGame.setState({ xpTotal: second.unlockAtXp }))
     expect(row()?.querySelector("[data-testid='offer-unlock']")).toBeNull()
-    expect(row()?.querySelector("[data-testid='offer-veil']")).toBeNull()
+    expect(row()?.querySelector("[data-testid='offer-progress']")).toBeNull()
   })
 
-  it("shows no unlock line or veil on a row that was already open", () => {
+  it("shows no unlock line or progress bar on a row that was already open", () => {
     useGame.setState({ xp: skill(0).baseXpCost, xpTotal: skill(0).baseXpCost, skills: {} })
     const row = renderShop().querySelector<HTMLElement>("[data-row='skill:1']")
     expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
-    expect(row?.querySelector("[data-testid='offer-veil']")).toBeNull()
+    expect(row?.querySelector("[data-testid='offer-progress']")).toBeNull()
   })
 
   it("has no buy bar and no vertical meters", () => {
