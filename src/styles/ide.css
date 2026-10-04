@@ -329,7 +329,11 @@
 .code-layer {
   position: absolute;
   inset: 0;
-  padding: var(--sp-4) 0 0 var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-4) var(--sp-3);
+  /* A file longer than the pane scrolls. The stage forwards wheel turns here (see ideScroll.ts). */
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 .code-enter { animation: code-in 260ms linear; }
 .code-leave { animation: code-out 260ms linear forwards; }
