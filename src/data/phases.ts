@@ -282,19 +282,6 @@ export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map((row) => ({
   baseCost: scalePurchaseCost(row.baseCost),
 }))
 
-/**
- * Jobs that cost less than the job before them (QA rotation under code review, frontend under backend).
- * They are career branches, not a cheaper next rung, so the shop marks them. Prices stay as they are.
- */
-export function jobBranches(rows: readonly { id: number; baseCost: number }[] = JOB_TIERS): ReadonlySet<number> {
-  const found = new Set<number>()
-  rows.forEach((row, index) => {
-    const before = rows[index - 1]
-    if (before && row.baseCost < before.baseCost) found.add(row.id)
-  })
-  return found
-}
-
 /** Balatro pops: big on gig/fight/unlock; medium on click. */
 export const MONEY_POP = { click: "medium", gigClear: "large", fightWin: "large", unlock: "large" } as const;
 

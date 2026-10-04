@@ -30,22 +30,6 @@ export function gearSections<T extends { kind: GearKind }>(rows: readonly T[]): 
   })
 }
 
-/**
- * Rows that cost less than the row before them in their section: a cable kit under a keyboard, a KVM
- * under a switch. They stay in catalog order, under the row that opened them, but they are a side
- * purchase, not the next tier getting cheaper. Derived from the catalog so a renumber cannot miss one.
- */
-export function gearSidegrades<T extends { id: number; kind: GearKind; baseCost: number }>(rows: readonly T[]): ReadonlySet<number> {
-  const found = new Set<number>()
-  const before = new Map<GearKind, number>()
-  for (const row of rows) {
-    const cost = before.get(row.kind)
-    if (cost !== undefined && row.baseCost < cost) found.add(row.id)
-    before.set(row.kind, row.baseCost)
-  }
-  return found
-}
-
 export type GearItem = {
   id: number
   kind: GearKind

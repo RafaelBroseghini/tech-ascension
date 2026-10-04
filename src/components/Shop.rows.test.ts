@@ -119,21 +119,22 @@ describe("shop rows", () => {
     expect(waiting?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^\$[\d,.]+[KMB]? more held/)
   })
 
-  it("indents the cable kit as a sidegrade, with the keyboard above it left alone", () => {
+  it("treats a cheaper gear row like any other row: no indent, tag or special card", () => {
     writeSavedShopTab("G")
     useGame.setState({ xpTotal: 20_000, money: 1_000_000, peakMoney: 1_000_000, equipment: { "1": 1 }, jobs: [], gigs: [] })
     const host = renderShop()
     const keyboard = host.querySelector<HTMLElement>("[data-row='gear:1']")
     const kit = host.querySelector<HTMLElement>("[data-row='gear:2']")
-    expect(keyboard?.classList.contains("sidegrade")).toBe(false)
-    expect(kit?.classList.contains("sidegrade")).toBe(true)
-    expect(kit?.classList.contains("offer")).toBe(true)
-    expect(kit?.querySelector(".side-tag")?.textContent).toBe("sidegrade")
     expect(kit?.querySelector("h3")?.childNodes[0]?.textContent?.trim()).toBe("Cable management kit")
-    expect(keyboard?.querySelector(".side-tag")).toBeNull()
+    expect(kit?.className.replace(/\b(afford|fresh|flash)\b/g, "").trim()).toBe(keyboard?.className.replace(/\b(afford|fresh|flash)\b/g, "").trim())
+    expect(kit?.querySelector(".side-tag, .branch-mark")).toBeNull()
+    expect(kit?.querySelector(".offer-art-col")).not.toBeNull()
+    // the keyboard comes first, though the kit costs less
+    const order = [...host.querySelectorAll(".shop-list .offer")].map((row) => row.getAttribute("data-row"))
+    expect(order).toEqual(["gear:1", "gear:2"])
   })
 
-  it("marks QA rotation as a branch with no lock, no indent, and the price still the buy", () => {
+  it("treats a cheaper job like any other job: the same row, the price is the buy", () => {
     writeSavedShopTab("C")
     useGame.setState({
       xpTotal: 2_000_000,
@@ -143,22 +144,16 @@ describe("shop rows", () => {
       gigs: [1, 2, 3, 4, 5, 6],
       jobs: [1, 2, 3, 4],
     })
-    const host = renderShop()
-    const qa = host.querySelector<HTMLElement>("[data-row='job:5']")
+    const qa = renderShop().querySelector<HTMLElement>("[data-row='job:5']")
     expect(qa?.querySelector("h3")?.childNodes[0]?.textContent?.trim()).toBe("QA rotation")
-    expect(qa?.classList.contains("branch")).toBe(true)
-    expect(qa?.classList.contains("sidegrade")).toBe(false)
-    const mark = qa?.querySelector(".branch-mark")
-    expect(mark?.textContent).toBe("branch")
-    expect(mark?.querySelector("svg.lucide-lock")).toBeNull()
-    expect(qa?.querySelector("[data-testid='offer-unlock']")).toBeNull()
+    expect(qa?.className.split(/\s+/).sort()).toEqual(["afford", "offer"].sort())
+    expect(qa?.querySelector(".branch-mark, .side-tag")).toBeNull()
     const price = qa?.querySelector<HTMLButtonElement>(".offer-actions button")
     expect(price?.textContent).toMatch(/^Take \$/)
     expect(price?.disabled).toBe(false)
-    expect(host.querySelector("[data-row='job:4'] .branch-mark")).toBeNull()
   })
 
-  it("shows a locked job's missing XP and keeps its branch mark without a lock", () => {
+  it("shows a locked job's missing XP in the unlock line", () => {
     writeSavedShopTab("C")
     useGame.setState({
       xpTotal: 40_000,
@@ -170,7 +165,6 @@ describe("shop rows", () => {
     })
     const qa = renderShop().querySelector<HTMLElement>("[data-row='job:5']")
     expect(qa?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^[\d,.]+[KMB]? more XP$/)
-    expect(qa?.querySelector(".branch-mark svg.lucide-lock")).toBeNull()
   })
 
   describe("jobs: how much money is left", () => {
