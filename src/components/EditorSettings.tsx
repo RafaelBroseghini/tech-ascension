@@ -1,4 +1,4 @@
-import { MousePointerClick, Music, Settings, Swords, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Settings, Swords, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
@@ -20,7 +20,7 @@ const GROUPS = [
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-type ToggleKey = "music" | "sounds" | "cat" | "enemies" | "hoverClick"
+type ToggleKey = "music" | "sounds" | "clicks" | "cat" | "enemies" | "hoverClick"
 
 const TOGGLES: readonly {
   key: ToggleKey
@@ -33,6 +33,7 @@ const TOGGLES: readonly {
 }[] = [
   { key: "music", label: "Music", Icon: Music },
   { key: "sounds", label: "Desk sounds", Icon: Volume2 },
+  { key: "clicks", label: "Click sound", Icon: MousePointer2 },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
   { key: "enemies", label: "Enemies", Icon: Swords },
   {
@@ -144,10 +145,10 @@ export function EditorSettings() {
               </ul>
             </div>
           </section>
-          {desk.sounds ? (
+          {desk.clicks ? (
             <section className="ide-settings-section" aria-labelledby={`${menuId}-click-kit`}>
               <p className="ide-theme-heading" id={`${menuId}-click-kit`}>
-                Click sound
+                Click kit
               </p>
               <div className="ide-settings-section-panel">
                 <ul role="listbox" aria-label="Click sounds">
