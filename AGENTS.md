@@ -9,7 +9,8 @@ Drive the game through `window.__GAME__`. Do not scrape buttons or guess DOM sel
 - Prefer `__GAME__` over DOM selectors.
 - Run `npm run smoke:play` first to prove mechanics. It must exit non-zero on any failed assert.
 - Free play: `npm run play:agent`, then drive the open page with `__GAME__`.
-- Do not grind past mid (tier 33, Principal AI architect) in automated runs unless the user asks. Phases A to C and a single mid check are enough.
+- Do not grind past the mid era in automated runs unless the user asks. Mid is capital ids 1-5 (era flips to `upper` at id 6, "Acquire rival SaaS"). Phases A to C and a single mid check (id 3, "WhyCombinator batch investment") are enough.
+- `npm test` runs the unit tests (Vitest, node, `src/**/*.test.ts`). `npm run smoke:play` runs only `src/game/smoke.play.ts` (happy-dom). `npm run lint` is oxlint, `npm run build` is `tsc -b && vite build`.
 
 ## API
 
@@ -28,7 +29,7 @@ getState(): {
  equipment: Record<string, number>  // Gear tab, keyed by gear id
  jobs: number[]                     // owned job ids
  gigs: number[]                     // cleared gig ids
- unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }   // gear opens with the Job Board
+ unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }   // gear opens at 10,000 lifetime XP (or once any gear is owned), independent of the boards
  nextUnlock: { key: string; name: string; tab: "A" | "B" | "C" | "G" | "D"; needs: string[]; either: boolean } | null   // the shop banner target
  era: "early" | "mid" | "upper" | "q3" | "end"
  spriteTierId: number
@@ -86,13 +87,13 @@ previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
 reset(): void
 ```
 
-The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/gear.ts`, capital in `src/data/capital.ts`):
+The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/gear.ts`, capital in `src/data/capital.ts`). Every purchase price (skill XP, job, gear, capital) is multiplied by `PURCHASE_COST_SCALE = 2` in `src/data/costs.ts`; the exported rows are already scaled, so read costs from the data modules, never from memory. Payouts and gates are not scaled. Gates latch: owning what a gate leads to (a gig, a job, a capital row, any gear) keeps it open.
 
 - **A Skill grind.** 104 skills, bought with XP only. The first skills cost a lot of clicks, and the next one stays locked until lifetime XP climbs past the last purchase. There is no $/s.
-- **B Gigs.** Gig Board opens at 14,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned. 65 gigs, each cleared once for a lump $ and an optional `retainerCps`. Each gig requires every earlier gig plus a skill set that grows by one skill each time (gig 1 needs skills 1–6), capped at the skill table.
-- **C Jobs.** Job Board opens at 40,000 lifetime XP and 6 cleared gigs. 31 jobs (each held once, salary $/s).
+- **B Gigs.** Gig Board opens at 14,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned (`GIG_BOARD_UNLOCK`). 65 gigs, each cleared once for a lump $ and an optional `retainerCps`. Each gig requires every earlier gig plus a skill set that grows by one skill each time (gig 1 needs skills 1–6), capped at the skill table. Gig 1 also needs 12,000 lifetime XP. Gig 8 ("Site maintenance retainer", 2 $/s) is the first retainer; gigs 1-7 pay a lump only.
+- **C Jobs.** Job Board opens at 40,000 lifetime XP and 6 cleared gigs (`JOB_BOARD_UNLOCK`). 31 jobs (each held once, salary $/s). Job 1 (Internship offer) is free but needs 35,000 lifetime XP; job 14 (Senior SWE) needs 160,000 XP.
 - **Gear** (its own shop tab, between Jobs and Capital; table in `src/data/gear.ts`). Opens at 10,000 lifetime XP. 110 repeatable items bought with `buyEquipment`. Later rows also wait on a job id.
-- **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point.
+- **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point (`peakMoney`, so spending it later does not close the gate). Eras by id: mid 1-5, upper 6-11, q3 12-14, end 15-25. Only `buy(1..25)` is valid. Row 1 costs $200,000 and row 3 costs $4,000,000 after the 2x scale.
 
 - `cps` is idle $/s (retainers + salaries + equipment + capital). Click boosts do not change it.
 - `clickPower` is the base $ payout. Every click always pays `xpPerClick × activeBoost.mult` XP; dollars wait until the first job. After that, clicks also pay `clickPower × activeBoost.mult`. Idle $/s still starts at the first retainer.
@@ -121,7 +122,7 @@ Vitest + happy-dom, all through `__GAME__`:
 1. **Phase A.** Click until the first skill is affordable. Clicks pay XP only, money and $/s stay 0, `buySkill` spends XP and keeps `xpTotal`, skills study while idle.
 2. **A to B.** `setXp` and buy Portfolio and React: the Gig Board opens (not before both), `completeGig` is gated, the first clear pays the lump (clicks stay XP-only until a job), `lastPop` is large.
 3. **B.** The first retainer gig is the first `$/s`.
-4. **B to C to D.** Five gigs and 35K XP open the Job Board, an intern salary adds $/s, the Senior job (id 14) opens capital with no cash.
+4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), an intern salary adds $/s, the Senior job (id 14) opens capital with no cash.
    **Gear.** Gear and `buyEquipment` stay shut until 10,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
 5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
@@ -161,12 +162,13 @@ Phase A, then the Gig Board:
 ```js
 const game = window.__GAME__
 game.reset()
-while (game.getState().xp < 240) game.click() // each click pays $ and XP; the first skill is a long grind
+while (game.getState().xp < 240) game.click() // phase A clicks pay XP only (money stays 0); the first skill is 240 clicks
 game.buySkill(1)
 game.setXp(30_000)
-game.buySkill(11) // Portfolio
-game.buySkill(12) // React: Gig Board opens (phase B)
-game.completeGig(1) // first $, clicks now pay money
+game.buySkill(15) // Portfolio
+game.buySkill(16) // React: Gig Board opens (phase B)
+for (let id = 2; id <= 6; id++) game.buySkill(id) // gig 1 needs skills 1-6
+game.completeGig(1) // first $; clicks still pay XP only until the first job
 game.getState()
 ```
 
@@ -176,19 +178,22 @@ Jobs and capital:
 const game = window.__GAME__
 game.reset()
 game.setXp(60_000)
-for (const id of [1, 2, 3, 4, 5]) game.forceGig(id)
-game.buyJob(1) // free internship, salary $/s
-game.setMoney(500_000) // or buy a senior job: capital opens either way
-game.buy(19)
+for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job Board
+game.buyJob(1) // free internship (needs 35K XP), salary $/s
+game.setMoney(500_000) // or buy a senior job (id 14): capital opens either way
+game.buy(1) // $200,000 after the 2x scale; buy(19) and up cost trillions
 ```
 
-Click boost (tier 26, still mid):
+Click boost (capital id 3, still mid):
 
 ```js
 const game = window.__GAME__
 game.reset()
+game.setXp(40_000)
+for (let id = 1; id <= 6; id++) game.forceGig(id)
+game.buyJob(1) // dollars per click wait for the first job; without one a click pays XP only
 game.setMoney(7e6)
-game.buy(26)
+game.buy(3) // $4,000,000: the capital gate opens at $500K held
 game.forceBoost(5, 10_000)
 const before = game.getState()
 game.click()
@@ -200,7 +205,7 @@ Offline sim:
 ```js
 const game = window.__GAME__
 game.reset()
-game.forceGig(5) // retainer: first $/s
+for (let id = 1; id <= 8; id++) game.forceGig(id) // gig 8 is the first retainer: first $/s
 game.advanceOffline(60 * 60 * 1000)
 game.advanceOffline(10 * 60 * 60 * 1000)
 ```
