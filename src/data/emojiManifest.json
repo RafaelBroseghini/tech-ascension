@@ -6,14 +6,14 @@
   },
   "skill": {
     "0": {
-      "label": "laptop + Laptop",
+      "label": "laptop + DoomScrollCapoo",
       "idle": "https://cdn3.emoji.gg/emojis/4501-laptop.png",
-      "click": "https://cdn3.emoji.gg/emojis/505978-laptop.gif"
+      "click": "https://cdn3.emoji.gg/emojis/238112-doomscrollcapoo.gif"
     },
     "1": {
-      "label": "Discord_Laptop + pink_laptop",
+      "label": "Discord_Laptop + Laptop Shake",
       "idle": "https://cdn3.emoji.gg/emojis/9472-discord-laptop.png",
-      "click": "https://cdn3.emoji.gg/emojis/2262-pink-laptop.gif"
+      "click": "https://cdn3.emoji.gg/emojis/885021-laptop-shake.gif"
     },
     "2": {
       "label": "rust + pixel toro jam",
@@ -26,9 +26,9 @@
       "click": "https://cdn3.emoji.gg/emojis/6705_windows_loading.gif"
     },
     "4": {
-      "label": "book + pixel toro spin",
-      "idle": "https://cdn3.emoji.gg/emojis/398041-book.png",
-      "click": "https://cdn3.emoji.gg/emojis/7601-pixel-toro-spin.gif"
+      "label": "youtube + diamond play",
+      "idle": "https://cdn3.emoji.gg/emojis/881969-youtube.png",
+      "click": "https://cdn3.emoji.gg/emojis/540066-diamondyoutubeplaybutton.png"
     },
     "5": {
       "label": "web + MONEY",
@@ -36,19 +36,19 @@
       "click": "https://cdn3.emoji.gg/emojis/583778-money.gif"
     },
     "6": {
-      "label": "windows 10 + black java",
-      "idle": "https://cdn3.emoji.gg/emojis/3163_windows_10.png",
-      "click": "https://cdn3.emoji.gg/emojis/6238_black_java.png"
+      "label": "book + oneko sleep",
+      "idle": "https://cdn3.emoji.gg/emojis/32505-book.png",
+      "click": "https://cdn3.emoji.gg/emojis/15583-oneko-sleep.gif"
     },
     "7": {
-      "label": "Book + Book",
+      "label": "Book + booklove",
       "idle": "https://cdn3.emoji.gg/emojis/57356-book.png",
-      "click": "https://cdn3.emoji.gg/emojis/32505-book.png"
+      "click": "https://cdn3.emoji.gg/emojis/76128-booklove.gif"
     },
     "8": {
-      "label": "Linux + Linux",
+      "label": "Linux + Glorious Neckbeard",
       "idle": "https://cdn3.emoji.gg/emojis/445509-linux.png",
-      "click": "https://cdn3.emoji.gg/emojis/963200-linux.png"
+      "click": "https://cdn3.emoji.gg/emojis/843115-glorious-neckbeard.png"
     },
     "9": {
       "label": "minecraft husk pixel art + windows tongue bluescreen",
@@ -76,9 +76,9 @@
       "click": "https://cdn3.emoji.gg/emojis/8517-css.png"
     },
     "14": {
-      "label": "Javascript + JavaScript",
-      "idle": "https://cdn3.emoji.gg/emojis/813443-javascript.png",
-      "click": "https://cdn3.emoji.gg/emojis/774598-javascript.png"
+      "label": "JavaScript + JSsmile",
+      "idle": "https://cdn3.emoji.gg/emojis/96295-javascript.png",
+      "click": "https://cdn3.emoji.gg/emojis/892971-jssmile.png"
     },
     "15": {
       "label": "cat mog + android",
@@ -136,9 +136,9 @@
       "click": "https://cdn3.emoji.gg/emojis/96204-cyber-barbedheart.png"
     },
     "26": {
-      "label": "Database + Database",
+      "label": "Database + databaseerror",
       "idle": "https://cdn3.emoji.gg/emojis/903620-database.png",
-      "click": "https://cdn3.emoji.gg/emojis/664054-database.png"
+      "click": "https://cdn3.emoji.gg/emojis/4887-databaseerror.png"
     },
     "27": {
       "label": "lock + Lock",
@@ -156,9 +156,9 @@
       "click": "https://cdn3.emoji.gg/emojis/96295-javascript.png"
     },
     "30": {
-      "label": "Python + python",
+      "label": "Python + rainbow python",
       "idle": "https://cdn3.emoji.gg/emojis/604557-python.png",
-      "click": "https://cdn3.emoji.gg/emojis/64443-python.png"
+      "click": "https://cdn3.emoji.gg/emojis/rainbow_python.gif"
     },
     "31": {
       "label": "python + Python",
@@ -211,9 +211,9 @@
       "click": "https://cdn3.emoji.gg/emojis/405894-postgresql.png"
     },
     "41": {
-      "label": "Warning + Firefox",
-      "idle": "https://cdn3.emoji.gg/emojis/Warning.png",
-      "click": "https://cdn3.emoji.gg/emojis/9301-firefox.png"
+      "label": "database + DatabaseCheck",
+      "idle": "https://cdn3.emoji.gg/emojis/903620-database.png",
+      "click": "https://cdn3.emoji.gg/emojis/DatabaseCheck.png"
     },
     "42": {
       "label": "csharp + Firefox",
@@ -261,9 +261,9 @@
       "click": "https://cdn3.emoji.gg/emojis/258242-notebook.png"
     },
     "51": {
-      "label": "this_gets_my_pp_hard + Developer",
-      "idle": "https://cdn3.emoji.gg/emojis/this_gets_my_pp_hard.png",
-      "click": "https://cdn3.emoji.gg/emojis/310414-developer.png"
+      "label": "JavaScript + JScry",
+      "idle": "https://cdn3.emoji.gg/emojis/813443-javascript.png",
+      "click": "https://cdn3.emoji.gg/emojis/154268-jscry.png"
     },
     "52": {
       "label": "Coffee + coffee",
@@ -281,9 +281,9 @@
       "click": "https://cdn3.emoji.gg/emojis/615350-coffee.png"
     },
     "55": {
-      "label": "GitHub + github",
+      "label": "GitHub + opensource",
       "idle": "https://cdn3.emoji.gg/emojis/8346-github.png",
-      "click": "https://cdn3.emoji.gg/emojis/88455-github.png"
+      "click": "https://cdn3.emoji.gg/emojis/947119-opensource.gif"
     },
     "56": {
       "label": "Nvidia + Coffee",
@@ -306,9 +306,9 @@
       "click": "https://cdn3.emoji.gg/emojis/37455-rocket.png"
     },
     "60": {
-      "label": "lock + Lock",
+      "label": "lock + highwarning",
       "idle": "https://cdn3.emoji.gg/emojis/182447-lock.png",
-      "click": "https://cdn3.emoji.gg/emojis/853056-lock.png"
+      "click": "https://cdn3.emoji.gg/emojis/233446-highwarning.png"
     },
     "61": {
       "label": "lock + lock",
@@ -336,14 +336,14 @@
       "click": "https://cdn3.emoji.gg/emojis/2051-y2k-moon.png"
     },
     "66": {
-      "label": "rocket + rocket",
-      "idle": "https://cdn3.emoji.gg/emojis/73173-rocket.png",
-      "click": "https://cdn3.emoji.gg/emojis/98757-rocket.png"
+      "label": "TypeScript + TypeScript",
+      "idle": "https://cdn3.emoji.gg/emojis/8584-typescript.png",
+      "click": "https://cdn3.emoji.gg/emojis/622731-typescript.png"
     },
     "67": {
-      "label": "calendar + npm logo",
-      "idle": "https://cdn3.emoji.gg/emojis/2226-calendar.png",
-      "click": "https://cdn3.emoji.gg/emojis/1843_npm_logo.png"
+      "label": "cloud + cloud",
+      "idle": "https://cdn3.emoji.gg/emojis/877704-cloud.png",
+      "click": "https://cdn3.emoji.gg/emojis/621117-cloud.png"
     },
     "68": {
       "label": "Terminal + terminal",
@@ -411,9 +411,9 @@
       "click": "https://cdn3.emoji.gg/emojis/86717-security-filter.png"
     },
     "81": {
-      "label": "Linux + linux",
+      "label": "Linux + cat typing",
       "idle": "https://cdn3.emoji.gg/emojis/5198-linux.png",
-      "click": "https://cdn3.emoji.gg/emojis/6274_linux.png"
+      "click": "https://cdn3.emoji.gg/emojis/877573-cat-typing.gif"
     },
     "82": {
       "label": "github + Github",
@@ -446,9 +446,9 @@
       "click": "https://cdn3.emoji.gg/emojis/662081-github.png"
     },
     "88": {
-      "label": "cant_read + Blender",
+      "label": "cant_read + gothicbook",
       "idle": "https://cdn3.emoji.gg/emojis/cant_read.gif",
-      "click": "https://cdn3.emoji.gg/emojis/75145-blender.png"
+      "click": "https://cdn3.emoji.gg/emojis/30770-gothicbook.png"
     },
     "89": {
       "label": "ChatGPT + Website",
@@ -511,9 +511,9 @@
       "click": "https://cdn3.emoji.gg/emojis/677035-robot.png"
     },
     "101": {
-      "label": "Book + Book",
+      "label": "Book + librarybookshelf",
       "idle": "https://cdn3.emoji.gg/emojis/393100-book.png",
-      "click": "https://cdn3.emoji.gg/emojis/401776-book.png"
+      "click": "https://cdn3.emoji.gg/emojis/813842-librarybookshelf.gif"
     },
     "102": {
       "label": "Nvidia + Office",
@@ -526,9 +526,9 @@
       "click": "https://cdn3.emoji.gg/emojis/4601_github.png"
     },
     "104": {
-      "label": "Rocket + Rocket",
+      "label": "Rocket + purplerocket",
       "idle": "https://cdn3.emoji.gg/emojis/197279-rocket.png",
-      "click": "https://cdn3.emoji.gg/emojis/272886-rocket.png"
+      "click": "https://cdn3.emoji.gg/emojis/160372-purplerocket.gif"
     }
   },
   "gig": {
@@ -568,9 +568,9 @@
       "click": "https://cdn3.emoji.gg/emojis/6222-keyboard.gif"
     },
     "8": {
-      "label": "laptop + laptop",
-      "idle": "https://cdn3.emoji.gg/emojis/4501-laptop.png",
-      "click": "https://cdn3.emoji.gg/emojis/1447_laptop.png"
+      "label": "computer + TooManyTabs",
+      "idle": "https://cdn3.emoji.gg/emojis/17985-computer.png",
+      "click": "https://cdn3.emoji.gg/emojis/6097-toomanytabs.png"
     },
     "9": {
       "label": "theme + discord_light_theme",
@@ -880,9 +880,9 @@
       "click": "https://cdn3.emoji.gg/emojis/visual_studio_code_2017.png"
     },
     "5": {
-      "label": "Linux + pixel toro cheerleader",
-      "idle": "https://cdn3.emoji.gg/emojis/465231-linux.png",
-      "click": "https://cdn3.emoji.gg/emojis/2089-pixel-toro-cheerleader.gif"
+      "label": "bug + bughunter",
+      "idle": "https://cdn3.emoji.gg/emojis/668375-bug.png",
+      "click": "https://cdn3.emoji.gg/emojis/189974-bughunter.png"
     },
     "6": {
       "label": "fire + warning",
@@ -910,9 +910,9 @@
       "click": "https://cdn3.emoji.gg/emojis/3932-pixel-toro-lovehearts.gif"
     },
     "11": {
-      "label": "Error + pixel toro watermelon",
-      "idle": "https://cdn3.emoji.gg/emojis/Error.png",
-      "click": "https://cdn3.emoji.gg/emojis/6056-pixel-toro-watermelon.gif"
+      "label": "HTML + JSsmirk",
+      "idle": "https://cdn3.emoji.gg/emojis/8094-html.png",
+      "click": "https://cdn3.emoji.gg/emojis/175425-jssmirk.png"
     },
     "12": {
       "label": "cat + Laptop",
@@ -1017,9 +1017,9 @@
   },
   "gear": {
     "1": {
-      "label": "star + Crown",
-      "idle": "https://cdn3.emoji.gg/emojis/13910-star.png",
-      "click": "https://cdn3.emoji.gg/emojis/293484-crown.gif"
+      "label": "keyboard + CapooKeyboardSlam",
+      "idle": "https://cdn3.emoji.gg/emojis/6222-keyboard.gif",
+      "click": "https://cdn3.emoji.gg/emojis/533693-capookeyboardslam.gif"
     },
     "2": {
       "label": "bug + Kitty",
@@ -1027,9 +1027,9 @@
       "click": "https://cdn3.emoji.gg/emojis/58300-kitty.gif"
     },
     "3": {
-      "label": "lock + pixel toro loveletter",
-      "idle": "https://cdn3.emoji.gg/emojis/7300-lock.png",
-      "click": "https://cdn3.emoji.gg/emojis/9793-pixel-toro-loveletter.gif"
+      "label": "DeskLamp + goth lamp",
+      "idle": "https://cdn3.emoji.gg/emojis/734120-desklamp.gif",
+      "click": "https://cdn3.emoji.gg/emojis/81586-goth-lamp.gif"
     },
     "4": {
       "label": "Lock + pixel toro bloodcough",
@@ -1037,14 +1037,14 @@
       "click": "https://cdn3.emoji.gg/emojis/5165-pixel-toro-bloodcough.gif"
     },
     "5": {
-      "label": "laptop + Laptop",
+      "label": "laptop + Laptop Shake",
       "idle": "https://cdn3.emoji.gg/emojis/1447_laptop.png",
-      "click": "https://cdn3.emoji.gg/emojis/6922_Laptop.gif"
+      "click": "https://cdn3.emoji.gg/emojis/885021-laptop-shake.gif"
     },
     "6": {
-      "label": "lock + pixel toro popuplove",
-      "idle": "https://cdn3.emoji.gg/emojis/9719-lock.png",
-      "click": "https://cdn3.emoji.gg/emojis/4767-pixel-toro-popuplove.gif"
+      "label": "monitor + catlickscreen",
+      "idle": "https://cdn3.emoji.gg/emojis/52182-monitor.png",
+      "click": "https://cdn3.emoji.gg/emojis/796761-catlickscreen.gif"
     },
     "7": {
       "label": "Lock + pixel toro cellphone",
@@ -1077,9 +1077,9 @@
       "click": "https://cdn3.emoji.gg/emojis/4673-pixel-toro-confused.gif"
     },
     "13": {
-      "label": "Keyboard + Keyboard",
+      "label": "Keyboard + cat keyboard bounce",
       "idle": "https://cdn3.emoji.gg/emojis/2892-keyboard.png",
-      "click": "https://cdn3.emoji.gg/emojis/6222-keyboard.gif"
+      "click": "https://cdn3.emoji.gg/emojis/3950-cat-keyboard-bounce.gif"
     },
     "14": {
       "label": "lock + pixel toro lovejump",
@@ -1097,14 +1097,14 @@
       "click": "https://cdn3.emoji.gg/emojis/57086-star.png"
     },
     "17": {
-      "label": "raspberry_smoothie + autumn_v2_pie",
-      "idle": "https://cdn3.emoji.gg/emojis/8539_raspberry_smoothie.png",
-      "click": "https://cdn3.emoji.gg/emojis/35053-autumn-v2-pie.png"
+      "label": "raspberrypi + raspberry cupcake",
+      "idle": "https://cdn3.emoji.gg/emojis/501850-raspberrypi.png",
+      "click": "https://cdn3.emoji.gg/emojis/86279-raspberry-cupcake.png"
     },
     "18": {
-      "label": "poe + doggy_hat",
-      "idle": "https://cdn3.emoji.gg/emojis/poe.png",
-      "click": "https://cdn3.emoji.gg/emojis/31015-doggy-hat.png"
+      "label": "raspberrypi + raspberrypi",
+      "idle": "https://cdn3.emoji.gg/emojis/1348_raspberrypi.png",
+      "click": "https://cdn3.emoji.gg/emojis/501850-raspberrypi.png"
     },
     "19": {
       "label": "Patch_what + windows 2020",
@@ -1152,9 +1152,9 @@
       "click": "https://cdn3.emoji.gg/emojis/7695-pixel-toro-excite.gif"
     },
     "28": {
-      "label": "computer + Computer",
+      "label": "computer + jellyoncomputer",
       "idle": "https://cdn3.emoji.gg/emojis/17985-computer.png",
-      "click": "https://cdn3.emoji.gg/emojis/50833-computer.png"
+      "click": "https://cdn3.emoji.gg/emojis/298260-jellyoncomputer.png"
     },
     "29": {
       "label": "windows 1995 + windows 2001",
@@ -1332,9 +1332,9 @@
       "click": "https://cdn3.emoji.gg/emojis/3011_windows_2000.png"
     },
     "64": {
-      "label": "Warlock_Class_WoW + pixel toro laugh",
-      "idle": "https://cdn3.emoji.gg/emojis/441124-warlock-class-wow.png",
-      "click": "https://cdn3.emoji.gg/emojis/8773-pixel-toro-laugh.gif"
+      "label": "gpu + nvidia 3090",
+      "idle": "https://cdn3.emoji.gg/emojis/77056-gpu.png",
+      "click": "https://cdn3.emoji.gg/emojis/6450-nvidia-3090-gpu.png"
     },
     "65": {
       "label": "cyber gages + cyber screw",
@@ -1574,9 +1574,9 @@
       "click": "https://cdn3.emoji.gg/emojis/2690-chart.png"
     },
     "2": {
-      "label": "money + money",
+      "label": "money + flyingmoney",
       "idle": "https://cdn3.emoji.gg/emojis/521155-money.png",
-      "click": "https://cdn3.emoji.gg/emojis/454403-money.png"
+      "click": "https://cdn3.emoji.gg/emojis/808643-flyingmoney.gif"
     },
     "3": {
       "label": "Rocket + Coin",
@@ -1584,19 +1584,19 @@
       "click": "https://cdn3.emoji.gg/emojis/Coin.gif"
     },
     "4": {
-      "label": "money + MONEY",
+      "label": "money + sadmoney",
       "idle": "https://cdn3.emoji.gg/emojis/484031-money.png",
-      "click": "https://cdn3.emoji.gg/emojis/583778-money.gif"
+      "click": "https://cdn3.emoji.gg/emojis/424723-sadmoney.png"
     },
     "5": {
-      "label": "Money + Money",
+      "label": "Money + 2xmoney",
       "idle": "https://cdn3.emoji.gg/emojis/238839-money.png",
-      "click": "https://cdn3.emoji.gg/emojis/686385-money.gif"
+      "click": "https://cdn3.emoji.gg/emojis/963609-2xmoney.png"
     },
     "6": {
-      "label": "money + Money",
+      "label": "money + charts down",
       "idle": "https://cdn3.emoji.gg/emojis/129949-money.png",
-      "click": "https://cdn3.emoji.gg/emojis/374900-money.gif"
+      "click": "https://cdn3.emoji.gg/emojis/4849-charts-down.png"
     },
     "7": {
       "label": "Coin + money",
@@ -1614,9 +1614,9 @@
       "click": "https://cdn3.emoji.gg/emojis/921655-ai.png"
     },
     "10": {
-      "label": "html + pixel toro soul",
-      "idle": "https://cdn3.emoji.gg/emojis/96295-html.png",
-      "click": "https://cdn3.emoji.gg/emojis/8978-pixel-toro-soul.gif"
+      "label": "money + chart increasing",
+      "idle": "https://cdn3.emoji.gg/emojis/521155-money.png",
+      "click": "https://cdn3.emoji.gg/emojis/14504-chart-increasing.gif"
     },
     "11": {
       "label": "chip + chip",
@@ -1624,9 +1624,9 @@
       "click": "https://cdn3.emoji.gg/emojis/10772-chip.gif"
     },
     "12": {
-      "label": "css + pixel toro jam",
-      "idle": "https://cdn3.emoji.gg/emojis/css.png",
-      "click": "https://cdn3.emoji.gg/emojis/4674-pixel-toro-jam.gif"
+      "label": "chip + chip",
+      "idle": "https://cdn3.emoji.gg/emojis/27693-chip.png",
+      "click": "https://cdn3.emoji.gg/emojis/1797-chip.png"
     },
     "13": {
       "label": "css + coffee",
@@ -1639,14 +1639,14 @@
       "click": "https://cdn3.emoji.gg/emojis/64371-coffee.gif"
     },
     "15": {
-      "label": "robot + robot",
+      "label": "robot + robocodance",
       "idle": "https://cdn3.emoji.gg/emojis/561519-robot.png",
-      "click": "https://cdn3.emoji.gg/emojis/53721-robot.png"
+      "click": "https://cdn3.emoji.gg/emojis/820273-robocodance.gif"
     },
     "16": {
-      "label": "java + pixel toro peep",
-      "idle": "https://cdn3.emoji.gg/emojis/64443-java.png",
-      "click": "https://cdn3.emoji.gg/emojis/8549-pixel-toro-peep.gif"
+      "label": "money + redcandle",
+      "idle": "https://cdn3.emoji.gg/emojis/238839-money.png",
+      "click": "https://cdn3.emoji.gg/emojis/513223-redcandle.png"
     },
     "17": {
       "label": "Minecraft Slime pixel art + Minecraft Stray Pixel Art",
@@ -1669,9 +1669,9 @@
       "click": "https://cdn3.emoji.gg/emojis/884054-rocket.png"
     },
     "21": {
-      "label": "Moon + Moon",
-      "idle": "https://cdn3.emoji.gg/emojis/52980-moon.png",
-      "click": "https://cdn3.emoji.gg/emojis/63092-moon.gif"
+      "label": "Moon + kirbymoon",
+      "idle": "https://cdn3.emoji.gg/emojis/633403-moon.png",
+      "click": "https://cdn3.emoji.gg/emojis/863585-kirbymoon.png"
     },
     "22": {
       "label": "OuterSpace + Petpet_Rocket",
