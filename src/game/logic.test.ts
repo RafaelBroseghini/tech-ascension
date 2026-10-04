@@ -26,7 +26,7 @@ import {
 } from "./economy.ts"
 import { formatCompact, formatNumber, RAW_DIGITS_BELOW } from "./format.ts"
 import { ownedArtIds } from "./phase.ts"
-import { hasEmoji } from "../data/emojiAssets.ts"
+import { emojiIdleUrl, hasEmoji } from "../data/emojiAssets.ts"
 import {
   DESK_CAT_EMOJI,
   DESK_CAT_CLICK_POOL,
@@ -381,6 +381,20 @@ describe("emoji.gg art", () => {
       expect(url).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
       expect(url).not.toBe(DESK_CAT_EMOJI)
     }
+  })
+
+  it("does not show the ERROR stamp as job art", () => {
+    const frontend = JOB_TIERS.find((job) => job.name === "Frontend specialist")
+    const advisor = JOB_TIERS.find((job) => job.name === "Board advisor (tech)")
+    expect(frontend?.id).toBe(11)
+    expect(advisor?.id).toBe(25)
+    for (const job of JOB_TIERS) {
+      const idle = emojiIdleUrl("job", job.id) ?? ""
+      expect(idle).not.toMatch(/\/Error\.png$/i)
+      expect(idle.length).toBeGreaterThan(0)
+    }
+    expect(emojiIdleUrl("job", frontend?.id ?? 0)).toMatch(/8094-html\.png$/)
+    expect(emojiIdleUrl("job", advisor?.id ?? 0)).toMatch(/158897-crown\.png$/)
   })
 })
 
