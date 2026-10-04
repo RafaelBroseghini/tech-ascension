@@ -7,6 +7,7 @@ import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
 import { MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
 import { getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
+import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
@@ -143,6 +144,31 @@ export function EditorSettings() {
               </ul>
             </div>
           </section>
+          {desk.sounds ? (
+            <section className="ide-settings-section" aria-labelledby={`${menuId}-click-kit`}>
+              <p className="ide-theme-heading" id={`${menuId}-click-kit`}>
+                Click sound
+              </p>
+              <div className="ide-settings-section-panel">
+                <ul role="listbox" aria-label="Click sounds">
+                  {CLICK_KIT_IDS.map((id) => (
+                    <li key={id} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={desk.clickKit === id}
+                        className={desk.clickKit === id ? "ide-theme-option is-active" : "ide-theme-option"}
+                        data-testid={`desk-kit-${id}`}
+                        onClick={() => setDeskPref("clickKit", id)}
+                      >
+                        <span className="ide-theme-name">{CLICK_KITS[id].label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          ) : null}
           <section className="ide-settings-section" aria-labelledby={`${menuId}-editor-theme`}>
             <p className="ide-theme-heading" id={`${menuId}-editor-theme`}>
               Editor theme

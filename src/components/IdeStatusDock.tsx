@@ -9,6 +9,7 @@ import { getSavedIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
 import {
+  ClickKitList,
   DeskToggleList,
   EditorThemeList,
   MusicStyleList,
@@ -200,9 +201,16 @@ export function IdeStatusDock() {
         onClose={closeChip}
         icon={<ChipIcon Icon={Volume2} />}
         panel={
-          <SettingsSection heading="Desk sounds">
-            <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["sounds"]} />
-          </SettingsSection>
+          <>
+            <SettingsSection heading="Desk sounds">
+              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["sounds"]} />
+            </SettingsSection>
+            {desk.sounds ? (
+              <SettingsSection heading="Click sound">
+                <ClickKitList desk={desk} />
+              </SettingsSection>
+            ) : null}
+          </>
         }
       />
 

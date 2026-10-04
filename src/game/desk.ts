@@ -1,4 +1,6 @@
 import { bindDeskAudio, playCozyClick, syncDeskAudio } from "./deskAudio.ts"
+import { parseClickKitId } from "./deskClickKits.ts"
+import type { ClickKitId } from "./deskClickKits.ts"
 import { parseMusicStyleId } from "./deskMusicStyles.ts"
 import type { MusicStyleId } from "./deskMusicStyles.ts"
 import { readPref, writePref } from "./ledger.ts"
@@ -9,6 +11,7 @@ export type DeskPrefs = {
   music: boolean
   musicStyle: MusicStyleId
   sounds: boolean
+  clickKit: ClickKitId
   cat: boolean
   /** When false, rare enemies do not spawn. A fight already on screen is dismissed. */
   enemies: boolean
@@ -25,6 +28,7 @@ const DEFAULTS: DeskPrefs = {
   music: false,
   musicStyle: "cozy",
   sounds: true,
+  clickKit: "thock",
   cat: true,
   enemies: true,
   hoverClick: false,
@@ -62,6 +66,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     if (typeof value === "boolean") next[key] = value
   }
   next.musicStyle = parseMusicStyleId((body as Record<string, unknown>).musicStyle)
+  next.clickKit = parseClickKitId((body as Record<string, unknown>).clickKit)
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
   next.heroOffsetY = parseHeroOffset((body as Record<string, unknown>).heroOffsetY)
   return next
@@ -87,7 +92,7 @@ export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[
   writePrefs(prefs)
   for (const listener of prefListeners) listener()
   syncDeskAudio()
-  if (key === "sounds" && value) playCozyClick()
+  if ((key === "sounds" && value) || (key === "clickKit" && prefs.sounds)) playCozyClick()
 }
 
 export function setDeskHeroOffset(x: number, y: number): void {
@@ -125,5 +130,5 @@ export function pokeDesk(): void {
 
 bindDeskAudio(() => {
   const prefs = getDeskPrefs()
-  return { music: prefs.music, sounds: prefs.sounds, musicStyle: prefs.musicStyle }
+  return { music: prefs.music, sounds: prefs.sounds, musicStyle: prefs.musicStyle, clickKit: prefs.clickKit }
 })
