@@ -1,4 +1,4 @@
-import { ArrowDown, Check, ChevronRight, Circle, GitBranch, Lock } from "lucide-react"
+import { ArrowDown, Banknote, Check, ChevronRight, Circle, GitBranch, Lock } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -77,6 +77,11 @@ type OfferProps = {
   gate?: number | null
   /** What is still missing, as counts that fall while you earn. Shown under the row's attributes until the gate opens. */
   unlock?: string[]
+  /**
+   * Once a row is open but the price is not yet in hand: `fill` is the share of the price held, `left` says how much
+   * is missing. The same bottom bar and a money line, counting down as you earn. Ignored while the gate is shut.
+   */
+  saving?: { fill: number; left: string }
   /** sidegrade: a cheaper piece tucked under its parent. branch: another career path, not the next rung. */
   variant?: "sidegrade" | "branch"
   title: string
@@ -107,8 +112,9 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, variant, title, children, actions }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, variant, title, children, actions }: OfferProps) {
   const gated = typeof gate === "number" && gate < 1
+  const pending = !gated && saving && saving.fill < 1 ? saving : null
   return (
     <article
       data-row={rowKey}
@@ -151,9 +157,19 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
             <span>{unlock.join(" + ")}</span>
           </p>
         ) : null}
+        {pending ? (
+          <p className="offer-unlock" data-testid="offer-saving">
+            <Banknote {...UI_ICON_SM} aria-label="Money needed" role="img" />
+            <span>{pending.left}</span>
+          </p>
+        ) : null}
       </div>
       <div className="offer-actions">{actions}</div>
-      {gated ? <span className="offer-progress" style={{ ["--gate" as string]: String(Math.max(0, gate)) }} data-testid="offer-progress" aria-hidden="true" /> : null}
+      {gated ? (
+        <span className="offer-progress" data-kind="unlock" style={{ ["--gate" as string]: String(Math.max(0, gate)) }} data-testid="offer-progress" aria-hidden="true" />
+      ) : pending ? (
+        <span className="offer-progress" data-kind="money" style={{ ["--gate" as string]: String(Math.max(0, pending.fill)) }} data-testid="offer-progress" aria-hidden="true" />
+      ) : null}
     </article>
   )
 }
@@ -593,6 +609,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   done={status === "owned"}
                   gate={gate}
                   unlock={[`${formatNumber(Math.ceil(job.xpReq - xpTotal))} more XP`]}
+                  saving={
+                    status === "ready" && job.baseCost > 0
+                      ? { fill: ratio(money, job.baseCost), left: `$${formatNumber(Math.ceil(job.baseCost - money))} more` }
+                      : undefined
+                  }
                   variant={BRANCHES.has(job.id) ? "branch" : undefined}
                   title={job.name}
                   actions={
