@@ -1890,7 +1890,8 @@ img { -webkit-user-drag: none; user-select: none; }
   flex: 0 0 auto;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) auto;
+  --art: 64px;
+  grid-template-columns: calc(var(--art) + 28px) minmax(0, 1fr) auto;
   gap: var(--sp-3);
   align-items: center;
   padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4);
@@ -1918,37 +1919,94 @@ img { -webkit-user-drag: none; user-select: none; }
 .offer.afford { background: color-mix(in srgb, var(--a) 14%, var(--surface-0)); }
 .offer.afford::before { transform: scaleY(1); }
 
+/* Two meters left of the art: unlock (lock icon under its bar) and buy (money or XP icon under its bar). */
 .offer-art-col {
   display: grid;
-  grid-template-columns: 4px 64px;
-  column-gap: 8px;
+  grid-template-columns: 11px 11px var(--art);
+  column-gap: 3px;
   align-items: center;
-  width: 76px;
-  height: 64px;
+  width: calc(var(--art) + 28px);
+  height: var(--art);
 }
 
-.offer-gate {
+.offer-meter {
+  height: var(--art);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-faint);
+}
+
+.offer-meter svg { display: block; flex: 0 0 auto; }
+.offer-meter { grid-row: 1; }
+.offer-art-col > .offer-art { grid-column: 3; grid-row: 1; }
+.offer-meter.is-buy.is-ready { color: var(--ide-green); }
+
+.offer-gate,
+.offer-buy {
   width: 4px;
-  height: 52px;
-  justify-self: center;
+  height: calc(var(--art) - 15px);
+  flex: 0 0 auto;
   border-radius: 2px;
   background: color-mix(in srgb, var(--line) 70%, transparent);
   position: relative;
   overflow: hidden;
 }
 
-.offer-gate.is-clear { visibility: hidden; }
-
-.offer-gate::after {
+.offer-gate::after,
+.offer-buy::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(var(--gate, 0) * 100%);
   max-height: 100%;
-  background: var(--a);
   border-radius: inherit;
+}
+
+.offer-gate::after {
+  height: calc(var(--gate, 0) * 100%);
+  background: var(--a);
+}
+
+/* The gate just closed: the lock opens and pops, the row gets one sweep, then the buy bar slides left. */
+.offer-meter.is-opening { color: var(--a); }
+.offer-meter.is-opening svg { animation: lock-pop 420ms var(--ease-out); }
+
+.offer.unlocking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 10%, var(--a) 50%, transparent 90%);
+  opacity: 0.4;
+  pointer-events: none;
+  animation: buy-sweep 700ms var(--ease-out) forwards;
+}
+
+.offer-meter.is-slid { animation: meter-slide 320ms var(--ease-out); }
+
+@keyframes lock-pop {
+  0% { transform: scale(0.7) rotate(-14deg); }
+  60% { transform: scale(1.35) rotate(6deg); }
+  100% { transform: none; }
+}
+
+@keyframes meter-slide {
+  from { transform: translateX(14px); opacity: 0.4; }
+  to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-meter.is-opening svg,
+  .offer.unlocking::after,
+  .offer-meter.is-slid { animation: none; }
+}
+
+.offer-buy::after {
+  height: calc(var(--buy, 0) * 100%);
+  background: var(--ide-green);
 }
 
 .offer img,
@@ -2456,7 +2514,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .hitbox { --size: 192px; margin-top: var(--sp-5); }
   .stage-panel h2 { font-size: var(--fs-lg); }
 
-  .offer { grid-template-columns: 76px minmax(0, 1fr); }
+  .offer { grid-template-columns: calc(var(--art) + 28px) minmax(0, 1fr); }
   .offer-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
 }
 
@@ -2540,6 +2598,72 @@ img { -webkit-user-drag: none; user-select: none; }
 .offer.is-locked .offer-copy,
 .offer.is-done .offer-copy { opacity: 0.78; }
 .offer.is-done h3 { color: var(--text-dim); }
+
+/* A cheaper piece under the row that opened it: indented, small, and not the next tier. */
+.offer.sidegrade {
+  --art: 40px;
+  margin-left: var(--sp-5);
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-left: var(--stroke) dashed var(--line-strong);
+}
+
+.offer.sidegrade::before { top: var(--sp-2); height: var(--art); }
+
+.offer.sidegrade img,
+.offer.sidegrade .offer-art,
+.offer.sidegrade .emoji-tap {
+  width: var(--art);
+  height: var(--art);
+}
+
+.offer.sidegrade h3 { font-size: var(--fs-sm); }
+.offer.sidegrade .offer-actions { min-width: 84px; gap: 4px; }
+
+.offer.sidegrade .offer-actions button {
+  padding: 3px 8px 4px;
+  background: transparent;
+  color: var(--a);
+  border-color: color-mix(in srgb, var(--a) 45%, var(--ink));
+  box-shadow: none;
+}
+
+.offer.sidegrade .offer-actions button:hover:not(:disabled) { background: color-mix(in srgb, var(--a) 16%, transparent); }
+.offer.sidegrade .offer-actions button:active:not(:disabled) { transform: translateY(1px); }
+
+.offer.sidegrade .offer-actions button:disabled {
+  background: transparent;
+  color: var(--text-faint);
+  border-color: var(--surface-2);
+}
+
+.side-tag,
+.branch-mark {
+  margin-left: 8px;
+  padding: 1px 6px 2px;
+  vertical-align: middle;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.side-tag {
+  color: var(--text-faint);
+  border: var(--stroke) dashed var(--line-strong);
+}
+
+/* A career branch is another path, not a lock: outlined, branch icon, no padlock. */
+.branch-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ide-mauve);
+  border: var(--stroke) solid color-mix(in srgb, var(--ide-mauve) 55%, transparent);
+}
+
 
 .lock-panel {
   margin: var(--sp-4);
