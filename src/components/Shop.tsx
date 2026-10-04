@@ -301,11 +301,24 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     ...equipRows.map((row) => `equip:${row.id}`),
     ...[...revealedByEra.values()].flat().map((tier) => `capital:${tier.id}`),
   ]
+  const ownedKeys = new Set<string>()
+  for (const [id, count] of Object.entries(skills)) if (count > 0) ownedKeys.add(`skill:${id}`)
+  for (const [id, count] of Object.entries(equipment)) if (count > 0) ownedKeys.add(`equip:${id}`)
+  for (const [id, count] of Object.entries(owned)) if (count > 0) ownedKeys.add(`capital:${id}`)
   const [known, setKnown] = useState<ReadonlySet<string>>(() => new Set(revealedKeys))
-  if (revealedKeys.length !== known.size || revealedKeys.some((key) => !known.has(key))) {
-    const added = revealedKeys.filter((key) => !known.has(key))
-    setKnown(new Set(revealedKeys))
-    setFresh((current) => (revealedKeys.length === 0 ? new Set() : new Set([...current, ...added])))
+  const revealedGrew = revealedKeys.length !== known.size || revealedKeys.some((key) => !known.has(key))
+  // A row that shows up already bought must not keep the badge. Clicking buy also clears it.
+  const staleFresh = [...fresh].some((key) => ownedKeys.has(key))
+  if (revealedGrew || staleFresh) {
+    const added = revealedKeys.filter((key) => !known.has(key) && !ownedKeys.has(key))
+    if (revealedGrew) setKnown(new Set(revealedKeys))
+    setFresh((current) => {
+      const next = new Set<string>()
+      for (const key of current) if (!ownedKeys.has(key)) next.add(key)
+      for (const key of added) next.add(key)
+      if (next.size === current.size && [...next].every((key) => current.has(key))) return current
+      return next
+    })
   }
 
   function act(key: string, run: () => void) {
@@ -445,7 +458,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   index={index}
                   afford={afford}
                   flash={flashKey === key}
-                  fresh={fresh.has(key)}
+                  fresh={fresh.has(key) && have === 0}
                   locked={!revealed && have === 0}
                   gate={gate}
                   title={row.name}
@@ -593,7 +606,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           index={index}
                           afford={afford}
                           flash={flashKey === key}
-                          fresh={fresh.has(key)}
+                          fresh={fresh.has(key) && have === 0}
                           locked={!revealed && have === 0}
                           gate={gate}
                           title={row.name}
@@ -645,7 +658,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     index={index}
                     afford={afford}
                     flash={flashKey === key}
-                    fresh={fresh.has(key)}
+                    fresh={fresh.has(key) && have === 0}
                     locked={!revealed && have === 0}
                     gate={gate}
                     title={tier.name}
