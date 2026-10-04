@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Circle, GitBranch, Lock } from "lucide-react"
+import { ArrowDown, Check, ChevronRight, Circle, GitBranch, Lock } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -266,7 +266,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const rowCount =
     tab === "A" ? skillRows.length : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tab
-  const showJumpEnd = unlocked[tab]
+  const [listOverflows, setListOverflows] = useState(false)
+  const showJumpEnd = unlocked[tab] && listOverflows
 
   function scrollToLastAvailable() {
     const list = listRef.current
@@ -374,6 +375,18 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           <p className="eyebrow">
             {tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
           </p>
+          {showJumpEnd ? (
+            <button
+              type="button"
+              className="shop-panel-toggle shop-jump-end"
+              data-testid="shop-jump-end"
+              aria-label="Jump to latest available option"
+              title="Latest available"
+              onClick={scrollToLastAvailable}
+            >
+              <ArrowDown {...UI_ICON} strokeWidth={2.5} aria-hidden />
+            </button>
+          ) : null}
           <button
             type="button"
             className="shop-panel-toggle shop-panel-hide"
@@ -461,11 +474,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         wrapClassName="shop-list-wrap"
         className="shop-list"
         scrollRef={listRef}
-        showArrow={showJumpEnd}
-        onScrollBottom={scrollToLastAvailable}
-        arrowLabel="Jump to latest available option"
-        arrowTitle="Latest available"
-        testId="shop-jump-end"
+        showArrow={false}
+        onOverflowChange={setListOverflows}
       >
         {tab === "A" ? (
           <>

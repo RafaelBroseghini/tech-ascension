@@ -1636,6 +1636,15 @@ img { -webkit-user-drag: none; user-select: none; }
   color: var(--text);
 }
 
+/* Jump to the latest available row. Sits left of the hide chevron in the shop header. */
+.shop-jump-end {
+  color: var(--accent);
+}
+
+.shop-jump-end:hover {
+  color: var(--accent-hi);
+}
+
 .shop-panel-show {
   position: absolute;
   top: calc(var(--ide-tabs) + var(--sp-3));
