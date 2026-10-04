@@ -1,6 +1,6 @@
-import { Banknote, Check, ChevronRight, Circle, GitBranch, Lock, LockOpen, Zap } from "lucide-react"
+import { Check, ChevronRight, Circle, GitBranch, Lock } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { UI_ICON, UI_ICON_SM, UI_ICON_XS } from "./icons/ui.tsx"
+import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
 import { ERA_ACCENT } from "../data/sprites.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
@@ -73,12 +73,10 @@ type OfferProps = {
   fresh?: boolean
   locked?: boolean
   done?: boolean
-  /** 0–1 fill for a closed reveal gate. Null when the row has no gate left. */
+  /** 0–1 progress through a closed reveal gate: the dim layer over the row recedes as it fills. Null when the gate is open. */
   gate?: number | null
-  /** Hover text for the unlock bar: what is held against what the gate wants. */
-  gateTitle?: string
-  /** What the buy bar fills toward: spendable XP or money held against the price. */
-  buy?: { have: number; cost: number; unit: "xp" | "money" }
+  /** What is still missing, as counts that fall while you earn. Shown under the row's attributes until the gate opens. */
+  unlock?: string[]
   /** sidegrade: a cheaper piece tucked under its parent. branch: another career path, not the next rung. */
   variant?: "sidegrade" | "branch"
   title: string
@@ -109,29 +107,8 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
-/** How long the open lock shows before the unlock bar gives way to the buy bar. */
-const UNLOCK_MS = 900
-
-function held(unit: "xp" | "money", value: number): string {
-  return unit === "xp" ? `${formatNumber(Math.floor(value))} XP` : `$${formatNumber(Math.floor(value))}`
-}
-
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, gateTitle, buy, variant, title, children, actions }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, variant, title, children, actions }: OfferProps) {
   const gated = typeof gate === "number" && gate < 1
-  const buyFill = buy ? ratio(buy.have, buy.cost) : null
-  // When a gate closes while the row is on screen: the lock opens, then the buy bar slides into its place.
-  const [wasGated, setWasGated] = useState(gated)
-  const [opened, setOpened] = useState<"idle" | "opening" | "opened">("idle")
-  if (gated !== wasGated) {
-    setWasGated(gated)
-    setOpened(wasGated && !gated ? "opening" : "idle")
-  }
-  useEffect(() => {
-    if (opened !== "opening") return
-    const timer = window.setTimeout(() => setOpened("opened"), UNLOCK_MS)
-    return () => window.clearTimeout(timer)
-  }, [opened])
-  const opening = opened === "opening"
   return (
     <article
       data-row={rowKey}
@@ -142,7 +119,6 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         fresh ? "fresh" : "",
         locked ? "is-locked" : "",
         done ? "is-done" : "",
-        opening ? "unlocking" : "",
         variant ?? "",
       ]
         .filter(Boolean)
@@ -150,35 +126,6 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
       style={{ ["--offer-glow" as string]: glow, ["--i" as string]: index }}
     >
       <div className="offer-art-col">
-        {gated || opening ? (
-          <span
-            className={opening ? "offer-meter is-opening" : "offer-meter"}
-            title={gated ? gateTitle : "Unlocked"}
-            data-testid={opening ? "offer-unlocking" : undefined}
-          >
-            <span
-              className="offer-gate"
-              style={{ ["--gate" as string]: opening ? "1" : String(Math.max(0, gate ?? 0)) }}
-              data-testid={gated ? "offer-gate" : undefined}
-              aria-hidden="true"
-            />
-            {opening ? <LockOpen {...UI_ICON_XS} aria-label="Unlocked" role="img" /> : <Lock {...UI_ICON_XS} aria-label="Locked" role="img" />}
-          </span>
-        ) : null}
-        {buy ? (
-          <span
-            className={["offer-meter is-buy", buyFill === 1 ? "is-ready" : "", opened === "opened" ? "is-slid" : ""].filter(Boolean).join(" ")}
-            title={`Buy: ${held(buy.unit, buy.have)} of ${held(buy.unit, buy.cost)}`}
-          >
-            <span
-              className="offer-buy"
-              style={{ ["--buy" as string]: String(buyFill) }}
-              data-testid="offer-buy"
-              aria-hidden="true"
-            />
-            {buy.unit === "xp" ? <Zap {...UI_ICON_XS} aria-label="XP price" role="img" /> : <Banknote {...UI_ICON_XS} aria-label="Money price" role="img" />}
-          </span>
-        ) : null}
         <SpriteTap kind={kind} id={id} className="offer-art" size={variant === "sidegrade" ? 40 : 64} label={title} />
       </div>
       <div className="offer-copy">
@@ -198,8 +145,15 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
           ) : null}
         </h3>
         <p>{children}</p>
+        {gated && unlock && unlock.length > 0 ? (
+          <p className="offer-unlock" data-testid="offer-unlock">
+            <Lock {...UI_ICON_SM} aria-label="Locked" role="img" />
+            <span>{unlock.join(" + ")}</span>
+          </p>
+        ) : null}
       </div>
       <div className="offer-actions">{actions}</div>
+      {gated ? <span className="offer-veil" style={{ ["--gate" as string]: String(Math.max(0, gate)) }} data-testid="offer-veil" aria-hidden="true" /> : null}
     </article>
   )
 }
@@ -535,8 +489,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   fresh={fresh.has(key) && have === 0}
                   locked={!revealed && have === 0}
                   gate={gate}
-                  gateTitle={`Unlock: ${formatNumber(Math.floor(xpTotal))} of ${formatNumber(row.unlockAtXp)} lifetime XP`}
-                  buy={{ have: xp, cost, unit: "xp" }}
+                  unlock={[`${formatNumber(Math.ceil(row.unlockAtXp - xpTotal))} more lifetime XP`]}
                   title={row.name}
                   actions={
                     <>
@@ -569,8 +522,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const status = gigState(gates, gig)
               const key = `gig:${gig.id}`
               const gap = [
-                xpTotal < gig.xpReq ? `${formatNumber(gig.xpReq)} XP` : "",
-                gigs.length < gig.priorGigs ? `${gig.priorGigs} gigs cleared` : "",
+                xpTotal < gig.xpReq ? `${formatNumber(Math.ceil(gig.xpReq - xpTotal))} more XP` : "",
+                gigs.length < gig.priorGigs ? `${gig.priorGigs - gigs.length} more ${gig.priorGigs - gigs.length === 1 ? "gig" : "gigs"} cleared` : "",
                 gigSkillGap(gates, gig) ?? "",
               ].filter(Boolean)
               const skillMet = gig.skillIds.filter((id) => ownedCount(skills, id) > 0).length
@@ -591,7 +544,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   locked={status === "locked"}
                   done={status === "done"}
                   gate={gate}
-                  gateTitle={gap.join(" + ")}
+                  unlock={gap}
                   title={gig.name}
                   actions={
                     <button type="button" disabled={status !== "ready"} onClick={() => act(key, () => clearGig(gig.id))}>
@@ -601,7 +554,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                 >
                   {`pays $${formatNumber(gig.lump)}`}
                   {gig.retainerCps > 0 ? ` · retainer +$${formatNumber(gig.retainerCps)}/s` : ""}
-                  {status === "locked" ? ` · needs ${gap.join(" + ")}` : ""}
                 </Offer>
               )
             })
@@ -630,8 +582,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   locked={status === "locked"}
                   done={status === "owned"}
                   gate={gate}
-                  gateTitle={`Unlock: ${formatNumber(Math.floor(xpTotal))} of ${formatNumber(job.xpReq)} XP`}
-                  buy={status !== "owned" && job.baseCost > 0 ? { have: money, cost: job.baseCost, unit: "money" } : undefined}
+                  unlock={[`${formatNumber(Math.ceil(job.xpReq - xpTotal))} more XP`]}
                   variant={BRANCHES.has(job.id) ? "branch" : undefined}
                   title={job.name}
                   actions={
@@ -661,12 +612,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
                       const afford = revealed && canAfford(money, cost)
                       const key = `equip:${row.id}`
-                      const gearGap = [
-                        !revealed && peakMoney < row.unlockMoney ? `hold $${formatNumber(row.unlockMoney)}` : "",
-                        !revealed && row.unlockJobId > 0 && !jobs.includes(row.unlockJobId)
-                          ? (jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`)
-                          : "",
-                      ].filter(Boolean)
                       const gate =
                         revealed || have > 0
                           ? null
@@ -687,13 +632,10 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           fresh={fresh.has(key) && have === 0}
                           locked={!revealed && have === 0}
                           gate={gate}
-                          gateTitle={`Unlock: ${[
-                            peakMoney < row.unlockMoney ? `hold $${formatNumber(row.unlockMoney)}` : "",
-                            ...gearGap.filter((line) => !line.startsWith("hold")),
-                          ]
-                            .filter(Boolean)
-                            .join(" + ")}`}
-                          buy={{ have: money, cost, unit: "money" }}
+                          unlock={[
+                            ...(peakMoney < row.unlockMoney ? [`$${formatNumber(Math.ceil(row.unlockMoney - peakMoney))} more held`] : []),
+                            ...(row.unlockJobId > 0 && !jobs.includes(row.unlockJobId) ? [`the ${jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`} job`] : []),
+                          ]}
                           variant={SIDEGRADES.has(row.id) ? "sidegrade" : undefined}
                           title={row.name}
                           actions={
@@ -710,7 +652,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           {[row.cps > 0 ? `+$${formatNumber(row.cps)}/s` : "", row.clickBonus > 0 ? `+$${formatNumber(row.clickBonus)} click` : ""]
                             .filter(Boolean)
                             .join(" · ")}
-                          {gearGap.some((line) => !line.startsWith("hold")) ? ` · needs ${gearGap.filter((line) => !line.startsWith("hold")).join(" + ")}` : ""}
                           {" · owned "}
                           <OwnedCount value={have} />
                         </Offer>
@@ -747,8 +688,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     fresh={fresh.has(key) && have === 0}
                     locked={!revealed && have === 0}
                     gate={gate}
-                    gateTitle={`Unlock: held $${formatNumber(Math.floor(peakMoney))} of $${formatNumber(tier.baseCost)}`}
-                    buy={{ have: money, cost, unit: "money" }}
+                    unlock={[`$${formatNumber(Math.ceil(tier.baseCost - peakMoney))} more held`]}
                     title={tier.name}
                     actions={
                       <>

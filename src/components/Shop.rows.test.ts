@@ -3,7 +3,7 @@ import { createElement } from "react"
 import { createRoot } from "react-dom/client"
 import type { Root } from "react-dom/client"
 import { flushSync } from "react-dom"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { SKILL_TIERS } from "../data/phases.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
@@ -23,9 +23,20 @@ function renderShop(): HTMLDivElement {
   return host
 }
 
+const skill = (index: number) => {
+  const row = SKILL_TIERS[index]
+  if (!row) throw new Error(`missing skill ${index}`)
+  return row
+}
+
+/** The first number in the unlock line, for "does the count fall". */
+function countLeft(row: ParentNode | null | undefined): number {
+  const text = row?.querySelector("[data-testid='offer-unlock']")?.textContent ?? ""
+  return Number(/(\d[\d,]*)/.exec(text)?.[1]?.replace(/,/g, "") ?? Number.NaN)
+}
+
 describe("shop rows", () => {
   afterEach(() => {
-    vi.useRealTimers()
     flushSync(() => {
       for (const root of roots.splice(0)) root.unmount()
     })
@@ -34,89 +45,80 @@ describe("shop rows", () => {
     useGame.getState().wipe()
   })
 
-  it("puts the lock directly under the unlock bar and the XP icon under the buy bar on a locked skill", () => {
-    const first = SKILL_TIERS[0]
-    if (!first) throw new Error("missing skill")
-    useGame.setState({ xp: 0, xpTotal: first.baseXpCost, skills: { "1": 1 } })
+  it("puts the unlock line below the row's attributes, inside the copy", () => {
+    useGame.setState({ xp: 0, xpTotal: skill(0).baseXpCost, skills: { "1": 1 } })
     const row = renderShop().querySelector<HTMLElement>("[data-row='skill:2']")
-    const gate = row?.querySelector<HTMLElement>("[data-testid='offer-gate']")
-    expect(gate?.nextElementSibling?.getAttribute("aria-label")).toBe("Locked")
-    const buy = row?.querySelector<HTMLElement>("[data-testid='offer-buy']")
-    expect(buy?.nextElementSibling?.getAttribute("aria-label")).toBe("XP price")
-    expect(buy?.style.getPropertyValue("--buy")).toBe("0")
-    expect(row?.querySelector(".offer-art-col")?.contains(buy ?? null)).toBe(true)
-    expect(row?.querySelector(".offer-actions")?.contains(buy ?? null)).toBe(false)
+    const unlock = row?.querySelector("[data-testid='offer-unlock']")
+    expect(unlock?.parentElement?.classList.contains("offer-copy")).toBe(true)
+    expect(unlock?.previousElementSibling?.tagName).toBe("P")
+    expect(unlock?.previousElementSibling).not.toBe(unlock)
+    expect(unlock?.previousElementSibling?.textContent).toContain("owned")
+    expect(unlock?.textContent).toMatch(/^[\d,]+ more lifetime XP$/)
+    expect(unlock?.querySelector("svg")?.getAttribute("aria-label")).toBe("Locked")
+    expect(unlock?.querySelector("svg")).not.toBeNull()
   })
 
-  it("says what is missing with bars and hover text, not with 'needs' wording", () => {
-    const first = SKILL_TIERS[0]
-    if (!first) throw new Error("missing skill")
-    useGame.setState({ xp: 0, xpTotal: first.baseXpCost, skills: { "1": 1 } })
+  it("dims the row with a layer that stays off the emoji and the buttons", () => {
+    useGame.setState({ xp: 0, xpTotal: skill(0).baseXpCost, skills: { "1": 1 } })
     const row = renderShop().querySelector<HTMLElement>("[data-row='skill:2']")
-    expect(row?.querySelector(".offer-copy p")?.textContent).not.toMatch(/needs|short|more lifetime/)
-    expect(row?.querySelector(".offer-meter:not(.is-buy)")?.getAttribute("title")).toMatch(/^Unlock: .* lifetime XP$/)
-    expect(row?.querySelector(".offer-meter.is-buy")?.getAttribute("title")).toMatch(/^Buy: /)
+    const veil = row?.querySelector<HTMLElement>("[data-testid='offer-veil']")
+    expect(veil?.parentElement).toBe(row ?? null)
+    expect(veil?.getAttribute("aria-hidden")).toBe("true")
+    expect(Number(veil?.style.getPropertyValue("--gate"))).toBeGreaterThanOrEqual(0)
+    expect(row?.querySelector(".offer-art-col")?.contains(veil ?? null)).toBe(false)
+    expect(row?.querySelector(".offer-actions")?.contains(veil ?? null)).toBe(false)
     const price = row?.querySelector<HTMLButtonElement>(".offer-actions button:not(.ghost)")
     expect(price?.textContent).toMatch(/^Learn /)
-    expect(price?.disabled).toBe(true)
   })
 
-  it("moves the buy bar into the first column once the row is unlocked", () => {
-    const first = SKILL_TIERS[0]
-    if (!first) throw new Error("missing skill")
-    useGame.setState({ xp: first.baseXpCost * 100, xpTotal: first.baseXpCost * 100, skills: {} })
-    const col = renderShop().querySelector<HTMLElement>("[data-row='skill:1'] .offer-art-col")
-    expect(col?.querySelector("[data-testid='offer-gate']")).toBeNull()
-    expect(col?.firstElementChild?.classList.contains("is-buy")).toBe(true)
-    expect(col?.querySelector("[aria-label='Money price']")).toBeNull()
-    expect(col?.querySelector("[aria-label='XP price']")).not.toBeNull()
-  })
-
-  it("opens the lock, sweeps the row, then slides the buy bar left when a row unlocks", () => {
-    vi.useFakeTimers()
-    const first = SKILL_TIERS[0]
-    const second = SKILL_TIERS[1]
-    if (!first || !second) throw new Error("missing skills")
-    useGame.setState({ xp: 0, xpTotal: first.baseXpCost, skills: { "1": 1 } })
+  it("counts down and recedes as lifetime XP comes in", () => {
+    const second = skill(1)
+    useGame.setState({ xp: 0, xpTotal: second.unlockAtXp - 100, skills: { "1": 1 } })
     const host = renderShop()
     const row = () => host.querySelector<HTMLElement>("[data-row='skill:2']")
-    expect(row()?.querySelector("[aria-label='Locked']")).not.toBeNull()
-    expect(row()?.classList.contains("unlocking")).toBe(false)
+    const before = countLeft(row())
+    const fillBefore = Number(row()?.querySelector<HTMLElement>("[data-testid='offer-veil']")?.style.getPropertyValue("--gate"))
+    expect(before).toBe(100)
+
+    flushSync(() => useGame.setState({ xpTotal: second.unlockAtXp - 40 }))
+    expect(countLeft(row())).toBe(40)
+    expect(Number(row()?.querySelector<HTMLElement>("[data-testid='offer-veil']")?.style.getPropertyValue("--gate"))).toBeGreaterThan(fillBefore)
+  })
+
+  it("removes the unlock line and the dim layer once the row unlocks", () => {
+    const second = skill(1)
+    useGame.setState({ xp: 0, xpTotal: second.unlockAtXp - 5, skills: { "1": 1 } })
+    const host = renderShop()
+    const row = () => host.querySelector<HTMLElement>("[data-row='skill:2']")
+    expect(row()?.querySelector("[data-testid='offer-unlock']")).not.toBeNull()
 
     flushSync(() => useGame.setState({ xpTotal: second.unlockAtXp }))
-    expect(row()?.classList.contains("unlocking")).toBe(true)
-    expect(row()?.querySelector("[data-testid='offer-unlocking'] [aria-label='Unlocked']")).not.toBeNull()
-    expect(row()?.querySelector("[aria-label='Locked']")).toBeNull()
-    expect(row()?.querySelector(".offer-meter.is-buy")?.classList.contains("is-slid")).toBe(false)
-
-    flushSync(() => {
-      vi.advanceTimersByTime(1000)
-    })
-    expect(row()?.classList.contains("unlocking")).toBe(false)
-    expect(row()?.querySelector("[data-testid='offer-unlocking']")).toBeNull()
-    expect(row()?.querySelector(".offer-art-col")?.firstElementChild?.classList.contains("is-buy")).toBe(true)
-    expect(row()?.querySelector(".is-buy")?.classList.contains("is-slid")).toBe(true)
+    expect(row()?.querySelector("[data-testid='offer-unlock']")).toBeNull()
+    expect(row()?.querySelector("[data-testid='offer-veil']")).toBeNull()
   })
 
-  it("does not animate a row that was already unlocked when it first showed", () => {
-    const first = SKILL_TIERS[0]
-    if (!first) throw new Error("missing skill")
-    useGame.setState({ xp: first.baseXpCost, xpTotal: first.baseXpCost, skills: {} })
+  it("shows no unlock line or veil on a row that was already open", () => {
+    useGame.setState({ xp: skill(0).baseXpCost, xpTotal: skill(0).baseXpCost, skills: {} })
     const row = renderShop().querySelector<HTMLElement>("[data-row='skill:1']")
-    expect(row?.classList.contains("unlocking")).toBe(false)
-    expect(row?.querySelector(".is-slid")).toBeNull()
+    expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
+    expect(row?.querySelector("[data-testid='offer-veil']")).toBeNull()
   })
 
-  it("fills the buy bar and marks it ready once the price is held", () => {
-    const first = SKILL_TIERS[0]
-    if (!first) throw new Error("missing skill")
-    useGame.setState({ xp: first.baseXpCost * 100, xpTotal: first.baseXpCost * 100, skills: {} })
-    const row = renderShop().querySelector<HTMLElement>("[data-row='skill:1']")
-    expect(row?.querySelector("[data-testid='offer-buy']")?.getAttribute("style")).toContain("--buy: 1")
-    expect(row?.querySelector(".offer-meter.is-buy")?.classList.contains("is-ready")).toBe(true)
+  it("has no buy bar and no vertical meters", () => {
+    useGame.setState({ xp: 0, xpTotal: skill(0).baseXpCost, skills: { "1": 1 } })
+    const host = renderShop()
+    expect(host.querySelector(".offer-meter, .offer-buy, .offer-gate")).toBeNull()
   })
 
-  it("uses the money icon for gear and indents the cable kit as a sidegrade", () => {
+  it("names the money and the job a gear row still waits on", () => {
+    writeSavedShopTab("G")
+    useGame.setState({ xpTotal: 20_000, money: 10, peakMoney: 10, equipment: { "1": 1, "2": 1, "3": 1, "4": 1 }, jobs: [], gigs: [] })
+    const host = renderShop()
+    const waiting = [...host.querySelectorAll<HTMLElement>(".offer")].find((row) => row.querySelector("[data-testid='offer-unlock']"))
+    expect(waiting?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^\$[\d,.]+[KMB]? more held/)
+  })
+
+  it("indents the cable kit as a sidegrade, with the keyboard above it left alone", () => {
     writeSavedShopTab("G")
     useGame.setState({ xpTotal: 20_000, money: 1_000_000, peakMoney: 1_000_000, equipment: { "1": 1 }, jobs: [], gigs: [] })
     const host = renderShop()
@@ -127,7 +129,6 @@ describe("shop rows", () => {
     expect(kit?.classList.contains("offer")).toBe(true)
     expect(kit?.querySelector(".side-tag")?.textContent).toBe("sidegrade")
     expect(kit?.querySelector("h3")?.childNodes[0]?.textContent?.trim()).toBe("Cable management kit")
-    expect(kit?.querySelector("[data-testid='offer-buy']")?.nextElementSibling?.getAttribute("aria-label")).toBe("Money price")
     expect(keyboard?.querySelector(".side-tag")).toBeNull()
   })
 
@@ -148,11 +149,26 @@ describe("shop rows", () => {
     expect(qa?.classList.contains("sidegrade")).toBe(false)
     const mark = qa?.querySelector(".branch-mark")
     expect(mark?.textContent).toBe("branch")
-    expect(mark?.querySelector("[aria-label='Locked']")).toBeNull()
-    expect(qa?.querySelector("[data-testid='offer-gate']")).toBeNull()
+    expect(mark?.querySelector("svg.lucide-lock")).toBeNull()
+    expect(qa?.querySelector("[data-testid='offer-unlock']")).toBeNull()
     const price = qa?.querySelector<HTMLButtonElement>(".offer-actions button")
     expect(price?.textContent).toMatch(/^Take \$/)
     expect(price?.disabled).toBe(false)
     expect(host.querySelector("[data-row='job:4'] .branch-mark")).toBeNull()
+  })
+
+  it("shows a locked job's missing XP and keeps its branch mark without a lock", () => {
+    writeSavedShopTab("C")
+    useGame.setState({
+      xpTotal: 40_000,
+      xp: 40_000,
+      money: 10_000_000,
+      peakMoney: 10_000_000,
+      gigs: [1, 2, 3, 4, 5, 6],
+      jobs: [1, 2, 3, 4],
+    })
+    const qa = renderShop().querySelector<HTMLElement>("[data-row='job:5']")
+    expect(qa?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^[\d,.]+[KMB]? more XP$/)
+    expect(qa?.querySelector(".branch-mark svg.lucide-lock")).toBeNull()
   })
 })
