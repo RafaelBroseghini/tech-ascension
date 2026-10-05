@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  ChevronsDownUp,
   ChevronLeft,
   ChevronRight,
   File,
@@ -199,6 +200,9 @@ export const IdeChrome = memo(function IdeChrome() {
     })
   }
 
+  const collapseAll = () => setCollapsed(new Set(folders.map((folder) => folder.id)))
+  const allCollapsed = folders.every((folder) => collapsed.has(folder.id))
+
   // The open file always has a visible row: when the selection lands in a folded folder, it opens.
   const selection = `${pack.id}:${index}`
   const [seenSelection, setSeenSelection] = useState("")
@@ -288,7 +292,20 @@ export const IdeChrome = memo(function IdeChrome() {
         </div>
       </nav>
       <aside className="ide-tree" aria-label="Explorer">
-        <p className="ide-tree-title">Explorer</p>
+        <div className="ide-tree-head">
+          <p className="ide-tree-title">Explorer</p>
+          <button
+            type="button"
+            className="ide-tree-action"
+            data-testid="ide-collapse-all"
+            aria-label="Collapse all folders"
+            title="Collapse all folders"
+            disabled={allCollapsed}
+            onClick={collapseAll}
+          >
+            <ChevronsDownUp {...UI_ICON_SM} aria-hidden />
+          </button>
+        </div>
         <div ref={treeRef} className="ide-folder-tree" role="tree" aria-label="Project folders">
           {folders.map((folder) => {
             const folderItems = itemsOf(folder.pack)

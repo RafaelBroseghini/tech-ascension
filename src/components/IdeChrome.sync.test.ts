@@ -5,7 +5,7 @@ import type { Root } from "react-dom/client"
 import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it } from "vitest"
 import { SKILL_TIERS } from "../data/phases.ts"
-import { writeCollapsedFolders } from "../game/ideTreePrefs.ts"
+import { readCollapsedFolders, writeCollapsedFolders } from "../game/ideTreePrefs.ts"
 import { useGame } from "../game/store.ts"
 import { IdeChrome } from "./IdeChrome.tsx"
 
@@ -44,6 +44,21 @@ describe("explorer, tabs and editor stay on the same file", () => {
     document.body.replaceChildren()
     writeCollapsedFolders(new Set())
     useGame.getState().wipe()
+  })
+
+  it("collapses every folder from the Explorer header and keeps them folded", () => {
+    const host = renderIde()
+    const button = host.querySelector<HTMLButtonElement>("[data-testid='ide-collapse-all']")!
+    expect(button.getAttribute("aria-label")).toBe("Collapse all folders")
+    expect(button.disabled).toBe(false)
+    expect(host.querySelectorAll("[data-testid='ide-item']").length).toBeGreaterThan(0)
+    flushSync(() => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    expect(host.querySelectorAll("[data-testid='ide-item']")).toHaveLength(0)
+    expect(host.querySelectorAll("[data-testid='ide-folder']").length).toBeGreaterThan(0)
+    expect(button.disabled).toBe(true)
+    expect(readCollapsedFolders().size).toBe(host.querySelectorAll("[data-testid='ide-folder']").length)
   })
 
   it("agrees on the starting file", () => {
