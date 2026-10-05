@@ -1,5 +1,7 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
+import { clampBuyAmount, goldById, offlineCapMs } from "./gold.ts"
+import type { BuyAmount } from "./gold.ts"
 import type { OwnedMap } from "./economy.ts"
 import { offlineToastText } from "./offlineNote.ts"
 import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
@@ -30,6 +32,10 @@ export type SaveData = {
   jobs: number[]
   /** Completed gig ids. */
   gigs: number[]
+  /** Owned gold skill ids. Omitted when none. */
+  gold?: number[]
+  /** The shop's Buy control. Omitted at one copy; never above what `gold` unlocks. */
+  buyAmount?: BuyAmount
   savedAt: number
   /** Omitted when no boost is running. Cleared on load if endsAt has passed. */
   activeBoost?: ActiveBoost
@@ -121,10 +127,10 @@ export function freshSave(now: number): SaveData {
   }
 }
 
-export function offlineCredit(cps: number, savedAt: number, now: number): number {
+export function offlineCredit(cps: number, savedAt: number, now: number, capMs: number = OFFLINE_CAP_MS): number {
   if (!Number.isFinite(cps) || cps <= 0) return 0
   if (!Number.isFinite(savedAt) || !Number.isFinite(now) || now <= savedAt) return 0
-  const elapsed = Math.min(now - savedAt, OFFLINE_CAP_MS)
+  const elapsed = Math.min(now - savedAt, capMs)
   return cps * (elapsed / 1000)
 }
 
@@ -153,6 +159,11 @@ export function parseSave(input: unknown): SaveData | null {
     peakMoney: Math.max(money, finite(input.peakMoney)),
   }
   if (boost) save.activeBoost = boost
+  const gold = normalizeIds(input.gold, (id) => goldById(id) !== undefined)
+  if (gold.length > 0) save.gold = gold
+  const amount = input.buyAmount === "max" ? "max" : input.buyAmount === 5 || input.buyAmount === 10 ? input.buyAmount : 1
+  const buyAmount = clampBuyAmount(gold, amount)
+  if (buyAmount !== 1) save.buyAmount = buyAmount
   const foreverMult = clampForever(finite(input.foreverMult) || 1)
   if (foreverMult !== 1) save.foreverMult = foreverMult
   const temp = normalizeTemp(input.tempMults)
@@ -176,10 +187,11 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   }
   if (!loaded) return { save: freshSave(now), toast: UNREADABLE, reset: true }
 
-  const away = Math.min(Math.max(0, now - loaded.savedAt), OFFLINE_CAP_MS)
+  const capMs = offlineCapMs(loaded.gold ?? [], OFFLINE_CAP_MS)
+  const away = Math.min(Math.max(0, now - loaded.savedAt), capMs)
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
-  const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now)
-  const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now)
+  const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
+  const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
   const save: SaveData = {
     ...loaded,

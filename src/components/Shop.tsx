@@ -1,4 +1,4 @@
-import { ArrowDown, Banknote, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick } from "lucide-react"
+import { ArrowDown, Banknote, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -9,8 +9,12 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
+import { GOLD_FAMILY_NAME } from "../data/gold.ts"
+import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, visibleShopRows } from "../game/economy.ts"
+import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, visibleShopRows } from "../game/economy.ts"
+import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, visibleGold } from "../game/gold.ts"
+import type { BuyAmount } from "../game/gold.ts"
 import { formatCompact, formatNumber } from "../game/format.ts"
 import { nextUnlock, shopFocus } from "../game/nextUnlock.ts"
 import type { NextUnlock } from "../game/nextUnlock.ts"
@@ -111,6 +115,10 @@ type OfferProps = {
   title: string
   children: ReactNode
   actions: ReactNode
+  /** Replaces the sprite in the art column (gold rows carry a trophy). */
+  art?: ReactNode
+  /** A gold skill row: gold frame, never a sprite. */
+  gold?: boolean
 }
 
 function ratio(have: number, need: number): number {
@@ -177,7 +185,7 @@ function OfferProgress({ kind, fill, label, count }: { kind: "unlock" | "money";
   )
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions, art, gold }: OfferProps) {
   const gated = gate != null && gate.fill < 1
   const pending = !gated && saving && saving.need > 0 && saving.have < saving.need ? saving : null
   return (
@@ -190,13 +198,14 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         fresh ? "fresh" : "",
         locked ? "is-locked" : "",
         done ? "is-done" : "",
+        gold ? "gold-offer" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       style={{ ["--offer-glow" as string]: glow, ["--i" as string]: index }}
     >
       <div className="offer-art-col">
-        <SpriteTap kind={kind} id={id} className="offer-art" size={64} label={title} />
+        {art ?? <SpriteTap kind={kind} id={id} className="offer-art" size={64} label={title} />}
       </div>
       <div className="offer-copy">
         <h3>
@@ -223,6 +232,46 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         />
       ) : null}
     </article>
+  )
+}
+
+/** `Learn 480 XP` for one copy; `Learn ×5 2,400 XP` when a gold amount is set and the budget covers more than one. */
+function buyLabel(verb: string, currency: "xp" | "money", baseCost: number, have: number, budget: number, amount: BuyAmount): string {
+  const price = (n: number) => (currency === "money" ? `$${formatNumber(n)}` : `${formatNumber(n)} XP`)
+  if (amount === 1) return `${verb} ${price(nextCost(baseCost, have))}`
+  const quote = quotePurchase(budget, baseCost, have, amount)
+  if (quote.count <= 1) return `${verb} ${price(nextCost(baseCost, have))}`
+  return `${verb} ×${quote.count} ${price(quote.total)}`
+}
+
+/** 10x dev skills (gold in the code) carry a trophy in the art column instead of a sprite. */
+function GoldArt({ row }: { row: GoldSkill }) {
+  return (
+    <span className="gold-art" role="img" aria-label={`Gold skill: ${row.name}`}>
+      <Trophy size={34} strokeWidth={2.2} aria-hidden />
+    </span>
+  )
+}
+
+/** The Buy amount control. It only appears once a gold skill adds an amount beyond one copy. */
+function AmountPicker({ amounts, value, onPick }: { amounts: readonly BuyAmount[]; value: BuyAmount; onPick: (amount: BuyAmount) => void }) {
+  if (amounts.length < 2) return null
+  return (
+    <div className="buy-amount" role="group" aria-label="Buy amount" data-testid="buy-amount">
+      <span className="buy-amount-label">Buy</span>
+      {amounts.map((amount) => (
+        <button
+          key={amount}
+          type="button"
+          className="buy-amount-step"
+          aria-pressed={amount === value}
+          data-amount={amount}
+          onClick={() => onPick(amount)}
+        >
+          {amount === "max" ? "Max" : `×${amount}`}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -253,6 +302,10 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const owned = useGame((s) => s.owned)
   const jobs = useGame((s) => s.jobs)
   const gigs = useGame((s) => s.gigs)
+  const gold = useGame((s) => s.gold)
+  const buyAmount = useGame((s) => s.buyAmount)
+  const setBuyAmount = useGame((s) => s.setBuyAmount)
+  const buyGold = useGame((s) => s.buyGold)
   const phase = useGame((s) => s.phase)
   const buySkill = useGame((s) => s.buySkill)
   const buyEquipment = useGame((s) => s.buyEquipment)
@@ -265,6 +318,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     writeSavedShopTab(tab)
     setPickedState(tab)
   }
+  const [skillView, setSkillView] = useState<"skills" | "tenx">("skills")
   const [lastPhase, setLastPhase] = useState(phase)
   // The era tab doubles as the IDE preview: the store holds it and snaps it back to the owned era.
   const pickedEra = useGame((s) => s.previewEra)
@@ -310,6 +364,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   )
   // The banner speaks for the open panel only: its closed board, or its first row not bought yet.
   const next = nextUnlock({ ...gates, equipment, money, xp }, tab)
+  const goldOpen = goldSectionOpen({ xpTotal, gold })
+  // The Skills tab splits in two once the first 10x dev skill is in reach: the 104 skills, or the perks.
+  const tenx = tab === "A" && goldOpen && skillView === "tenx"
+  const goldRows = visibleGold(gold)
+  const amounts = buyAmounts(gold)
 
   const revealedByEra = useMemo(() => {
     const visible = visibleShopRows(
@@ -332,8 +391,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "A" ? skillRows.length : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
-  const rowScope = tab === "D" ? `D:${era}` : tab
+    tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
+  const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   const [listOverflows, setListOverflows] = useState(false)
   const showJumpEnd = unlocked[tab] && listOverflows
 
@@ -387,6 +446,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   }, [jumpSeq, tab, era, rowScope, rowCount])
 
   function openNext(target: NextUnlock) {
+    if (target.tab === "A") setSkillView("skills")
     const focus = shopFocus({ ...gates, equipment, money, xp }, target)
     if (!focus) {
       jumpRow.current = null
@@ -485,7 +545,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           const locked = !unlocked[id]
           const affordable =
             !locked &&
-            ((id === "A" && skillRows.some((row) => canAfford(xp, nextCost(row.baseXpCost, ownedCount(skills, row.id))))) ||
+            ((id === "A" &&
+              (skillRows.some((row) => canAfford(xp, nextCost(row.baseXpCost, ownedCount(skills, row.id)))) ||
+                visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)))) ||
               (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
               (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost))) ||
               (id === "G" && equipRows.some((row) => canAfford(money, nextCost(row.baseCost, ownedCount(equipment, row.id))))) ||
@@ -529,6 +591,37 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         )}
       </button>
 
+      {tab === "A" && goldOpen ? (
+        <div className="era-tabs era-sub" role="tablist" aria-label="Skill kinds">
+          <button
+            type="button"
+            role="tab"
+            data-view="skills"
+            aria-selected={!tenx}
+            className={!tenx ? "era-tab active" : "era-tab"}
+            style={{ ["--tab-glow" as string]: PHASE_TAB.A.glow }}
+            onClick={() => setSkillView("skills")}
+          >
+            Skills
+          </button>
+          <button
+            type="button"
+            role="tab"
+            data-view="tenx"
+            aria-selected={tenx}
+            className={tenx ? "era-tab active tenx-tab" : "era-tab tenx-tab"}
+            style={{ ["--tab-glow" as string]: "var(--boost-gold)" }}
+            onClick={() => setSkillView("tenx")}
+          >
+            <Trophy {...UI_ICON_SM} aria-hidden />
+            10x dev
+            {visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)) ? <i className="deal-dot" aria-label="Something is available" /> : null}
+          </button>
+        </div>
+      ) : null}
+
+      {tab !== "B" && tab !== "C" && !tenx && unlocked[tab] ? <AmountPicker amounts={amounts} value={buyAmount} onPick={setBuyAmount} /> : null}
+
       {tab === "D" && unlocked.D && eraTabs.length > 1 ? (
         <div className="era-tabs era-sub" role="tablist" aria-label="Capital eras">
           {eraTabs.map((section) => (
@@ -555,7 +648,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         showArrow={false}
         onOverflowChange={setListOverflows}
       >
-        {tab === "A" ? (
+        {tab === "A" && !tenx ? (
           <>
             {skillRows.map((row, index) => {
               const have = ownedCount(skills, row.id)
@@ -581,11 +674,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   title={row.name}
                   actions={
                     <>
-                      <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, "one"))}>
-                        {`Learn ${formatNumber(cost)} XP`}
-                      </button>
-                      <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, "max"))}>
-                        Max
+                      <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, buyAmount))}>
+                        {buyLabel("Learn", "xp", row.baseXpCost, have, xp, buyAmount)}
                       </button>
                     </>
                   }
@@ -604,6 +694,56 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             {xpTotal >= GIG_BOARD_UNLOCK.minXp && !unlocked.B ? (
               <p className="shop-empty">Gig Board is waiting on Portfolio and React.</p>
             ) : null}
+          </>
+        ) : null}
+
+        {tenx ? (
+          <>
+            <p className="gold-intro">
+              <Trophy {...UI_ICON_SM} aria-hidden />
+              Perks, not income. Each is bought once with XP.
+            </p>
+            {goldRows.map((row, index) => {
+              const owns = gold.includes(row.id)
+              const revealed = isGoldRevealed(row, { xpTotal, gold })
+              const afford = canBuyGold({ xp, xpTotal, gold }, row)
+              const key = `gold:${row.id}`
+              const gate = revealed ? null : gateOf([{ have: xpTotal, need: row.unlockXp, unit: "lifetime XP" }])
+              return (
+                <Offer
+                  key={row.id}
+                  kind="skill"
+                  id={row.id}
+                  rowKey={key}
+                  glow="var(--boost-gold)"
+                  index={index}
+                  afford={afford}
+                  flash={flashKey === key}
+                  locked={!revealed && !owns}
+                  done={owns}
+                  gold
+                  gate={gate}
+                  unlock={[`${formatNumber(Math.ceil(row.unlockXp - xpTotal))} more lifetime XP`]}
+                  title={row.name}
+                  art={<GoldArt row={row} />}
+                  actions={
+                    owns ? (
+                      <button type="button" disabled>
+                        Owned
+                      </button>
+                    ) : (
+                      <button type="button" disabled={!afford} onClick={() => act(key, () => buyGold(row.id))}>
+                        {`Claim ${formatNumber(row.cost)} XP`}
+                      </button>
+                    )
+                  }
+                >
+                  <span className="gold-family">{GOLD_FAMILY_NAME[row.family]}</span>
+                  {" · "}
+                  {row.blurb}
+                </Offer>
+              )
+            })}
           </>
         ) : null}
 
@@ -742,11 +882,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           title={row.name}
                           actions={
                             <>
-                              <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "one"))}>
-                                {`Buy $${formatNumber(cost)}`}
-                              </button>
-                              <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, "max"))}>
-                                Max
+                              <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, buyAmount))}>
+                                {buyLabel("Buy", "money", row.baseCost, have, money, buyAmount)}
                               </button>
                             </>
                           }
@@ -794,11 +931,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     title={tier.name}
                     actions={
                       <>
-                        <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, "one"))}>
-                          {`Buy $${formatNumber(cost)}`}
-                        </button>
-                        <button type="button" className="ghost" disabled={!afford} onClick={() => act(key, () => buy(tier.id, "max"))}>
-                          Max
+                        <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, buyAmount))}>
+                          {buyLabel("Buy", "money", tier.baseCost, have, money, buyAmount)}
                         </button>
                       </>
                     }

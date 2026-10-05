@@ -3,7 +3,6 @@ import type { LucideIcon } from "lucide-react"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
-import { MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
 import { setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
@@ -20,6 +19,7 @@ export const DESK_TOGGLES: readonly {
   label: string
   Icon?: LucideIcon
   emoji?: string
+  /** Hidden until hover clicking is unlocked (a gold hover skill, or every catalog row owned). */
   complete?: boolean
   title?: string
 }[] = [
@@ -31,7 +31,7 @@ export const DESK_TOGGLES: readonly {
     label: "Hover click",
     Icon: MousePointerClick,
     complete: true,
-    title: `Hover the emoji to click at ${MAX_CLICKS_PER_SEC}/s`,
+    title: "Hover the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
 ]
@@ -52,15 +52,16 @@ export function SettingsSection({ heading, children }: { heading: string; childr
 
 type DeskToggleListProps = {
   desk: DeskPrefs
-  catalogComplete: boolean
+  /** Hover clicks a second: 0 while hover clicking is locked. */
+  hoverPerSec: number
   keys?: readonly DeskToggleKey[]
 }
 
-export function DeskToggleList({ desk, catalogComplete, keys }: DeskToggleListProps) {
+export function DeskToggleList({ desk, hoverPerSec, keys }: DeskToggleListProps) {
   const allowed = new Set(keys)
   const rows = DESK_TOGGLES.filter((toggle) => {
     if (keys && !allowed.has(toggle.key)) return false
-    if (toggle.complete && !catalogComplete) return false
+    if (toggle.complete && hoverPerSec <= 0) return false
     return true
   })
   return (
@@ -72,7 +73,7 @@ export function DeskToggleList({ desk, catalogComplete, keys }: DeskToggleListPr
           className="desk-toggle"
           data-testid={`desk-${toggle.key}`}
           aria-pressed={desk[toggle.key]}
-          title={toggle.title}
+          title={toggle.key === "hoverClick" ? `Hover the emoji to click at ${hoverPerSec}/s` : toggle.title}
           onClick={() => setDeskPref(toggle.key, !desk[toggle.key])}
         >
           <span className="desk-toggle-label">

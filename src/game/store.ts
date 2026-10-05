@@ -20,6 +20,8 @@ import {
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { advanceEventClock, eventById, resolveOffer } from "./events.ts"
+import { canBuyGold, clampBuyAmount, goldById, offlineCapMs, toBuyAmount } from "./gold.ts"
+import type { BuyAmount } from "./gold.ts"
 import type { EarningRates, EventLine } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
@@ -44,6 +46,7 @@ import {
 } from "./stats.ts"
 import type { GameStats, StatsClock } from "./stats.ts"
 import { addCatFound } from "./catRoster.ts"
+import { setDeskPref } from "./desk.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { MONEY_POP } from "../data/phases.ts"
 import { firstNewMilestone } from "./milestones.ts"
@@ -79,7 +82,8 @@ export type MoneyPop = {
   label: string
 }
 
-export type BuyMode = "one" | "max"
+/** What a caller asks for. The store never buys more than the gold skills allow (see `clampBuyAmount`). */
+export type BuyMode = "one" | "max" | number
 
 /** A random event on screen. Nothing is applied until the player accepts. */
 export type ActiveEvent = {
@@ -103,6 +107,10 @@ type GameState = {
   owned: OwnedMap
   jobs: number[]
   gigs: number[]
+  /** Owned gold skill ids. */
+  gold: number[]
+  /** The amount the Buy control is set to. Always one of the unlocked amounts. */
+  buyAmount: BuyAmount
   phase: Phase
   activeBoost: ActiveBoost | null
   nextBoostAt: number | null
@@ -140,6 +148,10 @@ type GameState = {
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
   buyJob: (jobId: number) => boolean
+  /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
+  buyGold: (goldId: number) => boolean
+  /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
+  setBuyAmount: (amount: BuyAmount) => void
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
   clearGig: (gigId: number, force?: boolean) => boolean
   /** Note a cat the desk cat turned into. True the first time this cat is seen. */
@@ -180,6 +192,8 @@ function toSave(state: GameState, now: number): SaveData {
     peakMoney: Math.max(state.peakMoney, state.money),
     stats: state.stats,
   }
+  if (state.gold.length > 0) save.gold = state.gold
+  if (state.buyAmount !== 1) save.buyAmount = state.buyAmount
   if (state.foreverMult !== 1) save.foreverMult = state.foreverMult
   const temp = pruneTemp(state.tempMults, now)
   if (Object.keys(temp).length > 0) save.tempMults = temp
@@ -192,6 +206,11 @@ function toSave(state: GameState, now: number): SaveData {
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
   return Object.keys(owned).some((key) => capitalById(Number(key))?.era === era && ownedCount(owned, Number(key)) > 0)
+}
+
+/** A request is held to the amounts the gold skills unlock: without any, every purchase is one copy. */
+function allowedMode(state: Pick<GameState, "gold">, mode: BuyMode): BuyAmount {
+  return clampBuyAmount(state.gold, toBuyAmount(mode))
 }
 
 let lastSaveAt = 0
@@ -262,6 +281,8 @@ export const useGame = create<GameState>((set, get) => ({
   owned: booted.save.owned,
   jobs: booted.save.jobs,
   gigs: booted.save.gigs,
+  gold: booted.save.gold ?? [],
+  buyAmount: booted.save.buyAmount ?? 1,
   phase: phaseOf(booted.save),
   activeBoost: booted.save.activeBoost ?? null,
   nextBoostAt: null,
@@ -325,7 +346,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!capitalUnlocked(state)) return
     const have = ownedCount(state.owned, tier.id)
     if (have === 0 && !isRevealed(tier, state.owned, state.peakMoney)) return
-    const quote = quotePurchase(state.money, tier.baseCost, have, mode)
+    const quote = quotePurchase(state.money, tier.baseCost, have, allowedMode(state, mode))
     if (quote.count <= 0) return
 
     const owned: OwnedMap = { ...state.owned, [String(tier.id)]: have + quote.count }
@@ -353,7 +374,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const have = ownedCount(state.skills, skill.id)
     if (have === 0 && state.xpTotal < skill.unlockAtXp) return
-    const quote = quotePurchase(state.xp, skill.baseXpCost, have, mode)
+    const quote = quotePurchase(state.xp, skill.baseXpCost, have, allowedMode(state, mode))
     if (quote.count <= 0) return
 
     const prevBest = highestOwnedSkill(state.skills)
@@ -376,7 +397,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!equipmentOpen(state)) return
     const have = ownedCount(state.equipment, equip.id)
     if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs)) return
-    const quote = quotePurchase(state.money, equip.baseCost, have, mode)
+    const quote = quotePurchase(state.money, equip.baseCost, have, allowedMode(state, mode))
     if (quote.count <= 0) return
     set({
       money: Math.max(0, state.money - quote.total),
@@ -384,6 +405,26 @@ export const useGame = create<GameState>((set, get) => ({
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
     })
+    persistNow()
+  },
+
+  buyGold: (goldId) => {
+    const row = goldById(goldId)
+    const state = get()
+    if (!row || !canBuyGold(state, row)) return false
+    set({
+      xp: Math.max(0, state.xp - row.cost),
+      gold: [...state.gold, row.id].sort((a, b) => a - b),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+    })
+    persistNow()
+    return true
+  },
+
+  setBuyAmount: (amount) => {
+    set({ buyAmount: clampBuyAmount(get().gold, amount) })
     persistNow()
   },
 
@@ -527,7 +568,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   tick: (now) => {
     const state = get()
-    const dt = Math.max(0, Math.min(now - state.now, OFFLINE_CAP_MS))
+    const dt = Math.max(0, Math.min(now - state.now, offlineCapMs(state.gold, OFFLINE_CAP_MS)))
     const era = eraOf(state)
     const clock: BoostClock = {
       activeBoost: state.activeBoost,
@@ -611,6 +652,9 @@ export const useGame = create<GameState>((set, get) => ({
     writeCareer(save)
     lastSaveAt = now
     statsClock = emptyStatsClock()
+    // The roster is found cat by cat, so the cat on the desk goes back to the default with the run. The
+    // rest of the room (music, sounds, theme) is the player's and stays.
+    setDeskPref("catArt", null)
     set({
       money: 0,
       xp: 0,
@@ -622,6 +666,8 @@ export const useGame = create<GameState>((set, get) => ({
       owned: {},
       jobs: [],
       gigs: [],
+      gold: [],
+      buyAmount: 1,
       phase: "A",
       activeBoost: null,
       nextBoostAt: null,

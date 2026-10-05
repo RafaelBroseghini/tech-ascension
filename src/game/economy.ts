@@ -79,24 +79,22 @@ export function canAfford(money: number, cost: number): boolean {
   return cost - money <= Math.max(1, Math.abs(cost)) * 1e-8
 }
 
+/**
+ * What buying costs. "one" is a single copy, a number buys up to that many (fewer when the budget runs
+ * out first), and "max" buys every copy the budget covers.
+ */
 export function quotePurchase(
   budget: number,
   baseCost: number,
   owned: number,
-  mode: "one" | "max",
+  mode: "one" | "max" | number,
 ): { count: number; total: number } {
-  const empty = { count: 0, total: 0 }
-  if (mode === "one") {
-    const cost = nextCost(baseCost, owned)
-    if (!(cost > 0) || !canAfford(budget, cost)) return empty
-    return { count: 1, total: cost }
-  }
-
+  const limit = mode === "max" ? 5000 : mode === "one" ? 1 : Math.max(1, Math.min(5000, Math.floor(mode)))
   let count = 0
   let total = 0
   let pool = budget
   let have = owned
-  for (let i = 0; i < 5000; i++) {
+  for (let i = 0; i < limit; i++) {
     const cost = nextCost(baseCost, have)
     if (!(cost > 0) || !Number.isFinite(cost) || !canAfford(pool, cost)) break
     pool -= cost

@@ -427,3 +427,35 @@ test("save: a save from another schema version is wiped, not migrated", () => {
   expect(hydrated.save.owned).toEqual({})
   game.reset()
 })
+
+test("10x dev (gold) skills: bulk buying, hover clicking and the offline cap open at XP milestones", () => {
+  game.reset()
+  // The first bulk skill opens at 8,000 lifetime XP and costs spendable XP.
+  game.setXp(7_999)
+  expect(game.buyGold(1)).toBe(false)
+  game.setXp(8_000 + 4_000)
+  expect(game.buyGold(1)).toBe(true)
+  expect(game.getState().gold).toEqual([1])
+  expect(game.getState().xpTotal).toBeGreaterThanOrEqual(12_000)
+
+  // Without a bulk skill every purchase is one copy; with x5 it is up to five.
+  expect(game.getState().buyAmounts).toEqual([1, 5])
+  game.setXp(1e9)
+  expect(game.buySkill(2, 5)).toBe(true)
+  expect(game.getState().skills["2"]).toBe(5)
+  expect(game.setBuyAmount("max")).toBe(5)
+
+  // Hover clicking waits for a hover skill (or the whole catalog) and speeds up per tier.
+  expect(game.getState().hoverRate).toBe(0)
+  expect(game.forceGold(2)).toBe(true)
+  expect(game.getState().hoverRate).toBe(2)
+  expect(game.forceGold(5)).toBe(true)
+  expect(game.getState().hoverRate).toBe(5)
+
+  // Time away is paid for 8 hours until an away skill stretches it.
+  expect(game.getState().offlineCapHours).toBe(8)
+  expect(game.forceGold(4)).toBe(true)
+  expect(game.getState().offlineCapHours).toBe(12)
+  game.reset()
+  expect(game.getState().gold).toEqual([])
+})

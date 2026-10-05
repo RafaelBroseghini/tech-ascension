@@ -6,7 +6,7 @@ import { parseMusicStyleId } from "./deskMusicStyles.ts"
 import type { MusicStyleId } from "./deskMusicStyles.ts"
 import { readPref, writePref } from "./ledger.ts"
 
-/** Separate from the career save, so wiping a run keeps the room. */
+/** Separate from the career save, so wiping a run keeps the room. The exception is the chosen cat (`catArt`): the store resets it on wipe, since the roster is found per run. */
 
 export type DeskPrefs = {
   music: boolean

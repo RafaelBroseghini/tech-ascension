@@ -29,6 +29,11 @@ getState(): {
  equipment: Record<string, number>  // Gear tab, keyed by gear id
  jobs: number[]                     // owned job ids
  gigs: number[]                     // cleared gig ids
+ gold: number[]                     // owned gold skill ids (src/data/gold.ts)
+ buyAmounts: (1 | 5 | 10 | "max")[] // amounts the Buying gold skills unlock; 1 is always there
+ buyAmount: 1 | 5 | 10 | "max"      // what the shop's Buy control is set to
+ hoverRate: number                  // hover clicks per second: 0 until a hover gold skill (or every catalog row) is owned
+ offlineCapHours: number            // 8, or more with the Time away gold skills
  unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }   // gear opens at 10,000 lifetime XP (or once any gear is owned), independent of the boards
  nextUnlock: { key: string; name: string; tab: "A" | "B" | "C" | "G" | "D"; needs: string[]; either: boolean } | null   // the next thing to chase across the whole game; each shop tab banner is the same idea scoped to its own panel
  era: "early" | "mid" | "upper" | "q3" | "end"
@@ -61,10 +66,13 @@ getState(): {
 }
 
 click(): { money: number; xp: number }
-buy(tierId: number): boolean          // phase D capital row (ids 1-25)
-buySkill(skillId: number): boolean
+buy(tierId: number, amount?: 1 | 5 | 10 | "max"): boolean   // phase D capital row (ids 1-25)
+buySkill(skillId: number, amount?: 1 | 5 | 10 | "max"): boolean
 buyJob(jobId: number): boolean
-buyEquipment(equipId: number): boolean   // a Gear tab row
+buyEquipment(equipId: number, amount?: 1 | 5 | 10 | "max"): boolean   // a Gear tab row
+buyGold(goldId: number): boolean      // gold skill, paid in spendable XP; normal gates
+forceGold(goldId: number): boolean    // grants a gold skill, bypassing XP, order and price
+setBuyAmount(amount): 1 | 5 | 10 | "max"   // returns the amount now set (clamped to what is unlocked)
 completeGig(gigId: number): boolean   // normal gates
 forceGig(gigId: number): boolean      // bypasses XP / prior-gig / board gates
 setXp(n: number): void
@@ -89,6 +97,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - **B Gigs.** Gig Board opens at 14,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned (`GIG_BOARD_UNLOCK`). 65 gigs, each cleared once for a lump $ and an optional `retainerCps`. Each gig requires every earlier gig plus a skill set that grows by one skill each time (gig 1 needs skills 1–6), capped at the skill table. Gig 1 also needs 12,000 lifetime XP. Gig 8 ("Site maintenance retainer", 2 $/s) is the first retainer; gigs 1-7 pay a lump only.
 - **C Jobs.** Job Board opens at 40,000 lifetime XP and 6 cleared gigs (`JOB_BOARD_UNLOCK`). 31 jobs (each held once, salary $/s; twelve of them, the learning, teaching and research roles, also add idle XP/s through `xpPerSec` in `src/data/phases.ts`, and eleven pay a one-time lump of XP on hire through `xpLump`, added to both `xp` and `xpTotal`). Job 1 (Internship offer) is free but needs 35,000 lifetime XP; job 14 (Senior SWE) needs 160,000 XP.
 - **Gear** (its own shop tab, between Jobs and Capital; table in `src/data/gear.ts`). Opens at 10,000 lifetime XP. 110 repeatable items bought with `buyEquipment`. Later rows also wait on a job id.
+- **10x dev skills** (`gold` in the code and the harness: `src/data/gold.ts`, rules in `src/game/gold.ts`). Ten one-off perks bought once with spendable XP, shown in their own "10x dev" sub-tab of the Skills tab with a trophy and a description. A row opens at its lifetime-XP milestone and waits on the earlier row of its family. **Buying** (Bulk Buy ×5, ×10, Max at 8,000 / 60,000 / 600,000 XP) adds amounts to the shop's Buy control; without one, `buy`, `buySkill` and `buyEquipment` always buy one copy whatever `amount` asks for, and with one they buy up to that many. **Hover clicking** (2, 5, 10, 15 clicks/s from 20,000 XP; the endgame 20/s still comes from owning every catalog row) makes `hoverRate` positive. **Time away** raises the offline cap from 8 to 12, 16 and 24 hours. Prices are a quarter of the opening XP, then the 2x scale. Saves keep them in an optional `gold` list.
 - **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point (`peakMoney`, so spending it later does not close the gate). Eras by id: mid 1-5, upper 6-11, q3 12-14, end 15-25. Only `buy(1..25)` is valid. Row 1 costs $200,000 and row 3 costs $4,000,000 after the 2x scale.
 
 - `cps` is idle $/s (retainers + salaries + equipment + capital). Click boosts do not change it.
@@ -101,7 +110,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - The shop lists owned rows plus the next unowned row, even while that row is still locked. Skills cannot be bought until `xpTotal` reaches `unlockAtXp`. Gear and capital first copies wait until their reveal gate (held money, and a job for some gear). `buy(tierId)` still enforces the capital gate.
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock. Skills keep studying (XP/s) in every phase, and held jobs that teach add to it.
 - `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll.
-- `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours, for both $ and XP. The toast is a sticky note on the desk: one diary sentence, a newline, then the credit (`credited $X`, `studied +X XP`, or both). The sentence follows the career (studying, a retainer, a job, senior, empire) and rotates once per hour away. The credit math is unchanged.
+- `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours (`offlineCapHours`, longer with Time away gold skills), for both $ and XP. The toast is a sticky note on the desk: one diary sentence, a newline, then the credit (`credited $X`, `studied +X XP`, or both). The sentence follows the career (studying, a retainer, a job, senior, empire) and rotates once per hour away. The credit math is unchanged.
 - `forceEvent(id)` opens a random event now (ids 1–110, `src/data/events.ts`) without applying it. Returns false for an unknown id. An open event is replaced, never stacked. `acceptEvent()` takes the deal and returns false when a trade's cost cannot be paid. `dismissEvent()` declines and changes nothing. `event` is the modal on screen, `lastEvent` is kept after either choice. Stakes are minutes of what you currently earn (idle, or half a click per second when that is higher), and at least 1% of the balance you hold. A gift only adds money or XP. A trade swaps one for the other. Nothing only deducts. Random events roll roughly every 240s from rows whose `eras` include `any` or the current era. Optional `requires` (job, gig, gear) is AND across fields and OR inside a list; a row with no `requires` stays era-only. Cash events (money gifts and every trade) wait until money exists. A loss never pushes money or spendable XP below 0, and lifetime XP never falls.
 - `forceReview(promptId?)` opens a 1:1 for the highest job you hold (`src/data/reviews.ts`). It returns false with no job or when `promptId` is outside that job's band. Omit `promptId` to roll one. It replaces an open event or review without applying it. `answerReview("exceeds")` is a money gift (12 minutes). `answerReview("meets")` closes the meeting and changes nothing. `answerReview("pip")` trades money for XP (10 minutes) and returns false when that cost cannot be paid, leaving the meeting up. `dismissReview()` leaves without a reply. `review.replies[].lines` are the same `+$` / `-XP` strings as events; meets has none and shows no change. A 1:1 rolls about every 12 minutes, only once a job is held, and waits out an event or a meeting already on screen. If both clocks are due, the event wins and the 1:1 slips 5 seconds.
 - `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
@@ -122,7 +131,8 @@ Vitest + happy-dom, all through `__GAME__`:
 5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
 7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The toast is a diary sentence plus that credit.
-8. **Events, 1:1s and the IDE.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, a 1:1 waits for a job and its three replies pay, sit or bill you, and the IDE pack follows the owned era.
+8. **10x dev skills.** A bulk skill is gated by lifetime XP and price, `amount` only works once unlocked, hover rate and offline cap follow the gold owned.
+9. **Events, 1:1s and the IDE.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, a 1:1 waits for a job and its three replies pay, sit or bill you, and the IDE pack follows the owned era.
 
 ## Free play (`npm run play:agent`)
 

@@ -6,7 +6,8 @@ import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
 import { ERA_ACCENT } from "../data/eraAccent.ts"
 import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
-import { HOVER_CLICK_STEP_MS, MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
+import { hoverStepMs } from "../game/autoClick.ts"
+import { hoverRate } from "../game/gold.ts"
 import { getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { eraOf, stageOf } from "../game/phase.ts"
@@ -155,8 +156,8 @@ export function Stage() {
   const hoverRef = useRef(false)
   const pointRef = useRef<{ x: number; y: number } | null>(null)
   const hoverClickOn = useSyncExternalStore(subscribeDeskPrefs, hoverClickPref, hoverClickPref)
-  const catalogComplete = useGame((state) => ownsEverything(state))
-  const autoClick = hoverClickOn && catalogComplete
+  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
+  const autoClick = hoverClickOn && hoverPerSec > 0
 
   const stage = stageOf({ skills, owned, jobs, gigs })
   const accent = ERA_ACCENT[eraOf({ owned })]
@@ -322,12 +323,12 @@ export function Stage() {
     const id = window.setInterval(() => {
       if (!hoverRef.current || document.hidden) return
       const state = useGame.getState()
-      if (state.event || state.review || !getDeskPrefs().hoverClick || !ownsEverything(state)) return
+      if (state.event || state.review || !getDeskPrefs().hoverClick || hoverRate(state.gold, ownsEverything(state)) <= 0) return
       const point = pointRef.current
       fireRef.current(point?.x ?? null, point?.y ?? null)
-    }, HOVER_CLICK_STEP_MS)
+    }, hoverStepMs(hoverPerSec))
     return () => window.clearInterval(id)
-  }, [autoClick])
+  }, [autoClick, hoverPerSec])
 
   function trackHover(event: PointerEvent<HTMLButtonElement>) {
     if (event.pointerType !== "mouse") return
@@ -385,7 +386,7 @@ export function Stage() {
         onKeyDown={onKeyDown}
         aria-label={
           autoClick
-            ? `Click to earn. Hover to auto-click at ${MAX_CLICKS_PER_SEC} per second. Current stage ${stageName}.`
+            ? `Click to earn. Hover to auto-click at ${hoverPerSec} per second. Current stage ${stageName}.`
             : `Click to earn. Current stage ${stageName}.`
         }
       >
