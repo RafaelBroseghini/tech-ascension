@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie"
+import { ADMIN_CODE, ADMIN_ROW_ID, isAdminCode } from "./adminMode.ts"
 import { bodyNeedsRewrite, judgeCas, judgeClaim, storedJson, type CareerRow, type DurablePort, type Json, type LoadedShelf, type PrefId, type PrefRow } from "./ledger.ts"
 
 type CasResult = "landed" | "stale" | "aborted"
@@ -9,7 +10,7 @@ type StoredRecord = {
   body: Json
 }
 
-class TechDatabase extends Dexie {
+export class TechDatabase extends Dexie {
   records!: Table<StoredRecord, string>
 
   constructor() {
@@ -29,6 +30,31 @@ class TechDatabase extends Dexie {
 export function openTechDatabase(): Promise<TechDatabase> {
   const db = new TechDatabase()
   return db.open().then(() => db)
+}
+
+/** True when the admin row holds the admin code. Never throws. */
+export async function readAdminMode(db: TechDatabase): Promise<boolean> {
+  try {
+    return isAdminCode((await db.records.get(ADMIN_ROW_ID))?.body)
+  } catch {
+    return false
+  }
+}
+
+/** Toggle admin mode on/off in the database. */
+export async function toggleAdminMode(db: TechDatabase): Promise<boolean> {
+  try {
+    const current = await readAdminMode(db)
+    if (current) {
+      await db.records.delete(ADMIN_ROW_ID)
+      return false
+    } else {
+      await db.records.put({ id: ADMIN_ROW_ID, rev: 0, body: ADMIN_CODE })
+      return true
+    }
+  } catch {
+    return false
+  }
 }
 
 function readRev(value: unknown): number | null {

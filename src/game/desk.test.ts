@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { CAT_ROSTER } from "./catRoster.ts"
 import { getDeskActivity, getDeskPrefs, parseDeskPrefs, pokeDesk, setDeskPref, subscribeDeskActivity, subscribeDeskPrefs } from "./desk.ts"
 import { readPref } from "./ledger.ts"
 
@@ -8,11 +9,10 @@ describe("desk", () => {
     setDeskPref("sounds", true)
     setDeskPref("clicks", true)
     setDeskPref("cat", true)
-    setDeskPref("enemies", true)
     setDeskPref("hoverClick", false)
   })
 
-  it("starts with music off, desk sounds on, the cat out, and enemies on", () => {
+  it("starts with music off, desk sounds on, and the cat out", () => {
     expect(parseDeskPrefs(null)).toEqual({
       music: false,
       musicStyle: "cozy",
@@ -20,7 +20,7 @@ describe("desk", () => {
       clicks: true,
       clickKit: "thock",
       cat: true,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
@@ -33,7 +33,7 @@ describe("desk", () => {
       clicks: true,
       clickKit: "thock",
       cat: true,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
@@ -46,7 +46,7 @@ describe("desk", () => {
       clicks: true,
       clickKit: "thock",
       cat: true,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
@@ -57,6 +57,8 @@ describe("desk", () => {
   it("keeps a stored click kit and falls back to thock for an unknown one", () => {
     expect(parseDeskPrefs(JSON.stringify({ clickKit: "felt" })).clickKit).toBe("felt")
     expect(parseDeskPrefs(JSON.stringify({ clickKit: "beep" })).clickKit).toBe("thock")
+    expect(parseDeskPrefs(JSON.stringify({ catArt: CAT_ROSTER[0]!.url })).catArt).toBe(CAT_ROSTER[0]!.url)
+    expect(parseDeskPrefs(JSON.stringify({ catArt: "https://example.com/dog.gif" })).catArt).toBeNull()
   })
 
   it("keeps the click apart from the room's desk sounds", () => {
@@ -105,7 +107,7 @@ describe("desk", () => {
       clicks: false,
       clickKit: "thock",
       cat: false,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,

@@ -1,3 +1,4 @@
+import { isRosterCat } from "./catRoster.ts"
 import { bindDeskAudio, playCozyClick, syncDeskAudio } from "./deskAudio.ts"
 import { parseClickKitId } from "./deskClickKits.ts"
 import type { ClickKitId } from "./deskClickKits.ts"
@@ -16,8 +17,8 @@ export type DeskPrefs = {
   clicks: boolean
   clickKit: ClickKitId
   cat: boolean
-  /** When false, rare enemies do not spawn. A fight already on screen is dismissed. */
-  enemies: boolean
+  /** Roster cat picked to sit on the desk instead of the sleeping one. Null is the default cat. */
+  catArt: string | null
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
@@ -34,7 +35,7 @@ const DEFAULTS: DeskPrefs = {
   clicks: true,
   clickKit: "thock",
   cat: true,
-  enemies: true,
+  catArt: null,
   hoverClick: false,
   heroOffsetX: 0,
   heroOffsetY: 0,
@@ -65,7 +66,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ...DEFAULTS }
-  for (const key of ["music", "sounds", "clicks", "cat", "enemies", "hoverClick", "mobilePlayAck"] as const) {
+  for (const key of ["music", "sounds", "clicks", "cat", "hoverClick", "mobilePlayAck"] as const) {
     const value = (body as Record<string, unknown>)[key]
     if (typeof value === "boolean") next[key] = value
   }
@@ -73,6 +74,8 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
   if (typeof (body as Record<string, unknown>).clicks !== "boolean") next.clicks = next.sounds
   next.musicStyle = parseMusicStyleId((body as Record<string, unknown>).musicStyle)
   next.clickKit = parseClickKitId((body as Record<string, unknown>).clickKit)
+  const catArt = (body as Record<string, unknown>).catArt
+  next.catArt = isRosterCat(catArt) ? catArt : null
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
   next.heroOffsetY = parseHeroOffset((body as Record<string, unknown>).heroOffsetY)
   return next

@@ -61,7 +61,7 @@ export function phaseRank(phase: Phase): number {
   return PHASES.indexOf(phase)
 }
 
-/** Fights and cash events start once a gig is cleared, a job is held, or money already exists. */
+/** Cash events start once a gig is cleared, a job is held, or money already exists. */
 export function moneyMode(p: Pick<Progress, "peakMoney" | "gigs" | "jobs">): boolean {
   return p.gigs.length > 0 || p.jobs.length > 0 || p.peakMoney > 0
 }
@@ -110,7 +110,7 @@ export type Stage = {
   /** Code-overlay id (see src/data/art.ts). The picture on screen comes from `source`, not this id. */
   artId: number
   name: string
-  /** Era for boosts, fights and the stage accent. Only owned capital rows move it past "early". */
+  /** Era for boosts and the stage accent. Only owned capital rows move it past "early". */
   era: Era
   /** Catalog row whose sprite file, if one exists, is the stage picture. */
   source: { kind: EmojiKind; id: number }

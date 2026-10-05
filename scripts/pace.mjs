@@ -1,0 +1,92 @@
+// Prints the pacing estimate (docs/PACING.md): how long a player who is not at the game all day takes to own
+// everything, from the formula and from the model behind it (src/game/pace.ts).
+//
+//   npm run pace                          the table in the docs
+//   npm run pace -- 3 15 2                one profile: visits per day, minutes per visit, clicks per second
+//
+// Needs Node 22.18 or newer, which runs the TypeScript the game is written in without a build step.
+import { CAPITAL } from "../src/data/capital.ts"
+import { GEAR } from "../src/data/gear.ts"
+import { JOB_TIERS } from "../src/data/phases.ts"
+import {
+  cadenceOf,
+  PACE_MILESTONES,
+  COLLECTOR_PAYBACK_SECONDS,
+  estimateDays,
+  FINAL_CLICK_SHARE,
+  OFFLINE_CAP_SECONDS,
+  PACE_K,
+  paceOf,
+  REINVESTOR_PAYBACK_SECONDS,
+  simulatePace,
+} from "../src/game/pace.ts"
+
+const MAX_DAYS = 5000
+const PLAYERS = [
+  { name: "collector", k: PACE_K.collector, paybackSeconds: COLLECTOR_PAYBACK_SECONDS },
+  { name: "reinvestor", k: PACE_K.reinvestor, paybackSeconds: REINVESTOR_PAYBACK_SECONDS },
+]
+
+const TABLE = [
+  ["Left open, clicking in bursts", 24, 15, 2],
+  ["Hardcore", 6, 20, 3],
+  ["Regular", 3, 15, 2],
+  ["Commuter", 2, 10, 2],
+  ["Daily", 1, 30, 2],
+  ["Daily, short", 1, 10, 2],
+  ["Every other day", 0.5, 30, 2],
+  ["Weekly", 1 / 7, 30, 2],
+]
+
+const days = (n) => (n >= 100 ? Math.round(n) : n.toFixed(1)).toString()
+
+function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
+  const profile = { visitsPerDay, minutesPerVisit, clicksPerSec }
+  const cad = cadenceOf(profile)
+  const cells = PLAYERS.map((player) => {
+    const run = simulatePace(profile, { maxDays: MAX_DAYS, paybackSeconds: player.paybackSeconds })
+    // The reinvestor's constant needs a visit at least daily: further apart, a two-day payback is out of reach.
+    const valid = player.name === "collector" || profile.visitsPerDay >= 1
+    return {
+      model: run.complete ? days(run.days) : `>${MAX_DAYS}`,
+      formula: valid ? days(estimateDays(profile, player.k)) : "n/a",
+      // Time actually spent at the game: every visit, until the day it finishes.
+      handsOn: run.complete ? `${Math.round((run.days * visitsPerDay * minutesPerVisit) / 60)} h` : "-",
+      run,
+    }
+  })
+  return { name, profile, cad, pace: paceOf(profile), cells }
+}
+
+const args = process.argv.slice(2).map(Number)
+const custom = args.length === 3 && args.every((n) => Number.isFinite(n) && n > 0)
+const rows = custom ? [row("Your profile", ...args)] : TABLE.map((entry) => row(...entry))
+
+// The last capital row is most of the bill: with every other row owned and nothing re-bought, how long
+// does its price take at full income?
+const last = CAPITAL.reduce((a, b) => (b.baseCost > a.baseCost ? b : a))
+const firstCopyIncome =
+  CAPITAL.reduce((sum, r) => sum + (r === last ? 0 : r.cps), 0) +
+  GEAR.reduce((sum, r) => sum + r.cps, 0) +
+  JOB_TIERS.reduce((sum, r) => sum + r.cps, 0)
+
+console.log(`offline cap ${OFFLINE_CAP_SECONDS / 3600}h · final click share ${FINAL_CLICK_SHARE.toFixed(2)} · K ${PACE_K.collector} (collector) / ${PACE_K.reinvestor} (reinvestor)`)
+console.log(`last row: ${last.name}, $${last.baseCost.toExponential(1)}; first-copy income without it $${firstCopyIncome.toExponential(2)}/s, so its price alone is ${(last.baseCost / firstCopyIncome / 86400).toFixed(1)} days of full income`)
+console.log("")
+console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Reinvestor: model / formula | Collector: model / formula | Hands-on (reinvestor / collector) |")
+console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+for (const { name, profile, cad, pace, cells } of rows) {
+  const [collector, reinvestor] = cells
+  console.log(
+    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${reinvestor.model} / ${reinvestor.formula} days | ${collector.model} / ${collector.formula} days | ${reinvestor.handsOn} / ${collector.handsOn} |`,
+  )
+}
+
+if (custom) {
+  console.log("")
+  console.log("Day each milestone is reached:")
+  for (const [index, player] of PLAYERS.entries()) {
+    const { milestones } = rows[0].cells[index].run
+    console.log(`- ${player.name}: ${PACE_MILESTONES.filter((id) => milestones[id] !== undefined).map((id) => `${id} ${milestones[id].toFixed(2)}`).join(", ")}`)
+  }
+}

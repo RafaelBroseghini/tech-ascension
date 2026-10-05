@@ -242,47 +242,65 @@ export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => ({
   skillIds: skillsForGig(row.id),
 }))
 
-export type JobTier = { id: number; name: string; xpReq: number; baseCost: number; cps: number };
-const JOB_ROWS: readonly JobTier[] = [
-  { id: 1, name: "Internship offer", xpReq: 35000, baseCost: 0, cps: 8 },
-  { id: 2, name: "Junior SWE", xpReq: 45000, baseCost: 500, cps: 25 },
-  { id: 3, name: "Junior + mentor buddy", xpReq: 50000, baseCost: 800, cps: 30 },
-  { id: 4, name: "Code review skills", xpReq: 55000, baseCost: 2000, cps: 15 },
-  { id: 5, name: "QA rotation", xpReq: 60000, baseCost: 1500, cps: 20 },
-  { id: 6, name: "On-call rotation", xpReq: 70000, baseCost: 8000, cps: 40 },
-  { id: 7, name: "Mid-level SWE", xpReq: 90000, baseCost: 25000, cps: 80 },
-  { id: 8, name: "Feature owner", xpReq: 100000, baseCost: 40000, cps: 100 },
-  { id: 9, name: "System design study", xpReq: 110000, baseCost: 50000, cps: 30 },
-  { id: 10, name: "Backend specialist", xpReq: 120000, baseCost: 60000, cps: 120 },
-  { id: 11, name: "Frontend specialist", xpReq: 120000, baseCost: 55000, cps: 110 },
-  { id: 12, name: "Full-stack generalist", xpReq: 130000, baseCost: 70000, cps: 130 },
-  { id: 13, name: "Tech lead (acting)", xpReq: 150000, baseCost: 100000, cps: 160 },
-  { id: 14, name: "Senior SWE", xpReq: 160000, baseCost: 120000, cps: 200 },
-  { id: 15, name: "Senior + hiring loop", xpReq: 180000, baseCost: 150000, cps: 220 },
-  { id: 16, name: "Staff engineer", xpReq: 220000, baseCost: 400000, cps: 500 },
-  { id: 17, name: "Staff platform", xpReq: 250000, baseCost: 500000, cps: 550 },
-  { id: 18, name: "Engineering manager", xpReq: 280000, baseCost: 700000, cps: 450 },
-  { id: 19, name: "Principal engineer", xpReq: 300000, baseCost: 900000, cps: 800 },
-  { id: 20, name: "Director of Eng", xpReq: 350000, baseCost: 1500000, cps: 900 },
-  { id: 21, name: "VP Engineering", xpReq: 450000, baseCost: 4000000, cps: 1500 },
-  { id: 22, name: "CTO (startup)", xpReq: 500000, baseCost: 8000000, cps: 2000 },
-  { id: 23, name: "Distinguished engineer", xpReq: 600000, baseCost: 12000000, cps: 2500 },
-  { id: 24, name: "Fellow / industry voice", xpReq: 750000, baseCost: 25000000, cps: 4000 },
-  { id: 25, name: "Board advisor (tech)", xpReq: 900000, baseCost: 50000000, cps: 5000 },
-  { id: 26, name: "Fractional executive", xpReq: 1000000, baseCost: 80000000, cps: 6000 },
-  { id: 27, name: "Partner at BigCo", xpReq: 1200000, baseCost: 150000000, cps: 10000 },
-  { id: 28, name: "Chief Scientist", xpReq: 1400000, baseCost: 300000000, cps: 15000 },
-  { id: 29, name: "Lab director", xpReq: 1600000, baseCost: 500000000, cps: 20000 },
-  { id: 30, name: "Empire operator", xpReq: 2000000, baseCost: 1000000000, cps: 35000 },
-  { id: 31, name: "Sovereign tech chair", xpReq: 2500000, baseCost: 5000000000, cps: 80000 },
+/**
+ * `clickBonus` adds flat dollars to every click. `clickPct` adds that percent of your idle $/s to every click, so
+ * clicking keeps pace with salaries and capital all the way up. `xpPerSec` is idle XP from learning on the job and
+ * `xpLump` is XP paid once, the moment you take it (onboarding, a course, a rotation). Only the roles that are about
+ * learning, teaching or research grant either, so the XP gates behind the jobs do not rest on the skill grind alone.
+ */
+export type JobTier = {
+  id: number
+  name: string
+  xpReq: number
+  baseCost: number
+  cps: number
+  clickBonus: number
+  clickPct: number
+  xpPerSec: number
+  xpLump: number
+};
+const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump"> & { xpPerSec?: number; xpLump?: number })[] = [
+  { id: 1, name: "Internship offer", xpReq: 35000, baseCost: 0, cps: 8, clickBonus: 2, clickPct: 1, xpPerSec: 6, xpLump: 1500 },
+  { id: 2, name: "Junior SWE", xpReq: 45000, baseCost: 500, cps: 25, clickBonus: 4, clickPct: 1, xpPerSec: 8 },
+  { id: 3, name: "Junior + mentor buddy", xpReq: 50000, baseCost: 800, cps: 30, clickBonus: 4, clickPct: 1, xpPerSec: 12, xpLump: 2500 },
+  { id: 4, name: "Code review skills", xpReq: 55000, baseCost: 2000, cps: 15, clickBonus: 6, clickPct: 1.5, xpPerSec: 14, xpLump: 3500 },
+  { id: 5, name: "QA rotation", xpReq: 60000, baseCost: 1500, cps: 20, clickBonus: 4, clickPct: 1, xpLump: 3000 },
+  { id: 6, name: "On-call rotation", xpReq: 70000, baseCost: 8000, cps: 40, clickBonus: 6, clickPct: 1, xpPerSec: 10, xpLump: 5000 },
+  { id: 7, name: "Mid-level SWE", xpReq: 90000, baseCost: 25000, cps: 80, clickBonus: 10, clickPct: 1.5 },
+  { id: 8, name: "Feature owner", xpReq: 100000, baseCost: 40000, cps: 100, clickBonus: 12, clickPct: 1.5 },
+  { id: 9, name: "System design study", xpReq: 110000, baseCost: 50000, cps: 30, clickBonus: 15, clickPct: 2, xpPerSec: 18, xpLump: 8000 },
+  { id: 10, name: "Backend specialist", xpReq: 120000, baseCost: 60000, cps: 120, clickBonus: 15, clickPct: 1.5 },
+  { id: 11, name: "Frontend specialist", xpReq: 120000, baseCost: 55000, cps: 110, clickBonus: 15, clickPct: 1.5 },
+  { id: 12, name: "Full-stack generalist", xpReq: 130000, baseCost: 70000, cps: 130, clickBonus: 18, clickPct: 1.5 },
+  { id: 13, name: "Tech lead (acting)", xpReq: 150000, baseCost: 100000, cps: 160, clickBonus: 20, clickPct: 2, xpLump: 8000 },
+  { id: 14, name: "Senior SWE", xpReq: 160000, baseCost: 120000, cps: 200, clickBonus: 25, clickPct: 2 },
+  { id: 15, name: "Senior + hiring loop", xpReq: 180000, baseCost: 150000, cps: 220, clickBonus: 25, clickPct: 2 },
+  { id: 16, name: "Staff engineer", xpReq: 220000, baseCost: 400000, cps: 500, clickBonus: 50, clickPct: 2, xpPerSec: 20, xpLump: 12000 },
+  { id: 17, name: "Staff platform", xpReq: 250000, baseCost: 500000, cps: 550, clickBonus: 50, clickPct: 2 },
+  { id: 18, name: "Engineering manager", xpReq: 280000, baseCost: 700000, cps: 450, clickBonus: 60, clickPct: 2.5 },
+  { id: 19, name: "Principal engineer", xpReq: 300000, baseCost: 900000, cps: 800, clickBonus: 80, clickPct: 2.5, xpPerSec: 30, xpLump: 20000 },
+  { id: 20, name: "Director of Eng", xpReq: 350000, baseCost: 1500000, cps: 900, clickBonus: 100, clickPct: 2.5 },
+  { id: 21, name: "VP Engineering", xpReq: 450000, baseCost: 4000000, cps: 1500, clickBonus: 150, clickPct: 2.5 },
+  { id: 22, name: "CTO (startup)", xpReq: 500000, baseCost: 8000000, cps: 2000, clickBonus: 200, clickPct: 3 },
+  { id: 23, name: "Distinguished engineer", xpReq: 600000, baseCost: 12000000, cps: 2500, clickBonus: 250, clickPct: 3, xpPerSec: 40 },
+  { id: 24, name: "Fellow / industry voice", xpReq: 750000, baseCost: 25000000, cps: 4000, clickBonus: 400, clickPct: 3, xpPerSec: 50, xpLump: 50000 },
+  { id: 25, name: "Board advisor (tech)", xpReq: 900000, baseCost: 50000000, cps: 5000, clickBonus: 500, clickPct: 3 },
+  { id: 26, name: "Fractional executive", xpReq: 1000000, baseCost: 80000000, cps: 6000, clickBonus: 600, clickPct: 3 },
+  { id: 27, name: "Partner at BigCo", xpReq: 1200000, baseCost: 150000000, cps: 10000, clickBonus: 1000, clickPct: 3 },
+  { id: 28, name: "Chief Scientist", xpReq: 1400000, baseCost: 300000000, cps: 15000, clickBonus: 1500, clickPct: 3, xpPerSec: 60 },
+  { id: 29, name: "Lab director", xpReq: 1600000, baseCost: 500000000, cps: 20000, clickBonus: 2000, clickPct: 3, xpPerSec: 70, xpLump: 100000 },
+  { id: 30, name: "Empire operator", xpReq: 2000000, baseCost: 1000000000, cps: 35000, clickBonus: 3500, clickPct: 4 },
+  { id: 31, name: "Sovereign tech chair", xpReq: 2500000, baseCost: 5000000000, cps: 80000, clickBonus: 8000, clickPct: 4 },
 ] as const;
 
 export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map((row) => ({
   ...row,
   baseCost: scalePurchaseCost(row.baseCost),
+  xpPerSec: row.xpPerSec ?? 0,
+  xpLump: row.xpLump ?? 0,
 }))
 
-/** Balatro pops: big on gig/fight/unlock; medium on click. */
-export const MONEY_POP = { click: "medium", gigClear: "large", fightWin: "large", unlock: "large" } as const;
+/** Balatro pops: big on gig/unlock; medium on click. */
+export const MONEY_POP = { click: "medium", gigClear: "large", unlock: "large" } as const;
 
 export const BASE_XP_PER_CLICK = 1;

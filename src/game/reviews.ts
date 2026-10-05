@@ -11,7 +11,7 @@ export type { ReviewChoiceId, ReviewPrompt, ReviewReply }
 /** About three event-waits. A 1:1 should feel rare next to the random-event clock. */
 export const REVIEW_MEAN_WAIT_MS = 12 * 60 * 1000
 
-/** A blocked roll (fight, event, or a review already up) fires this long after the block lifts. */
+/** A blocked roll (an event or a review already up) fires this long after the block lifts. */
 export const REVIEW_AFTER_BLOCK_MS = 5_000
 
 /** Raise: minutes of current income, same stake rules as a gift. */

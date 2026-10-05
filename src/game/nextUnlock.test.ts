@@ -54,7 +54,7 @@ describe("next unlock teaser", () => {
 
     const capital = nextUnlock({ ...EMPTY, xpTotal: 100_000, skills: ALL_SKILLS, gigs: [1, 2, 3, 4, 5, 6], peakMoney: 120_000 })
     expect(capital).toMatchObject({ key: "board:capital", tab: "D", either: true })
-    expect(capital?.needs).toEqual(["Senior SWE (60,000 more XP)", "$380,000 more held"])
+    expect(capital?.needs).toEqual(["Senior SWE (60,000 more XP)", "a $500,000 balance"])
   })
 
   it("with every board open, walks catalog order and stops at the first unbought row", () => {
@@ -112,6 +112,37 @@ describe("next unlock teaser", () => {
     const done = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, jobs: ALL_JOBS, gigs: ALL_GIGS, peakMoney: 1e9, money: 1e9 }
     expect(nextUnlock(done)?.key).toBe("gear:1")
     expect(nextUnlock({ ...done, equipment: { "1": 1 } })).toMatchObject({ key: "gear:2", name: GEAR[1]?.name, needs: ["to buy it"] })
+  })
+})
+
+describe("next unlock per panel", () => {
+  it("speaks for the panel it is asked about, not for the whole game", () => {
+    // Fresh career: the skill grind is the global answer, but each other panel names its own closed board.
+    expect(nextUnlock(EMPTY)?.tab).toBe("A")
+    expect(nextUnlock(EMPTY, "A")).toMatchObject({ key: "skill:1", tab: "A" })
+    expect(nextUnlock(EMPTY, "G")).toMatchObject({ key: "board:gear", tab: "G", needs: ["10,000 more XP"] })
+    expect(nextUnlock(EMPTY, "B")).toMatchObject({ key: "board:gig", tab: "B" })
+    expect(nextUnlock(EMPTY, "B")?.needs).toEqual(["14,000 more XP", "Own Portfolio site live", "Own React / one framework"])
+    expect(nextUnlock(EMPTY, "C")).toMatchObject({ key: "board:job", tab: "C", needs: ["40,000 more XP", "6 more gigs"] })
+    expect(nextUnlock(EMPTY, "D")).toMatchObject({ key: "board:capital", tab: "D", either: true })
+  })
+
+  it("moves from a board to that panel's first unbought row once the board opens", () => {
+    const open = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, gigs: [1, 2], jobs: [1], peakMoney: 1e9, money: 1e9 }
+    expect(nextUnlock(open, "A")).toBeNull()
+    expect(nextUnlock(open, "B")).toMatchObject({ key: "gig:3", tab: "B" })
+    expect(nextUnlock(open, "C")).toMatchObject({ key: "job:2", tab: "C" })
+    expect(nextUnlock(open, "G")).toMatchObject({ key: "gear:1", tab: "G", needs: ["to buy it"] })
+    expect(nextUnlock(open, "D")).toMatchObject({ key: "capital:1", tab: "D", needs: ["to buy it"] })
+  })
+
+  it("is null for a panel with every row bought, whatever the others still hold", () => {
+    const base = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, peakMoney: 1e9 }
+    expect(nextUnlock({ ...base, gigs: ALL_GIGS }, "B")).toBeNull()
+    expect(nextUnlock({ ...base, gigs: ALL_GIGS, jobs: ALL_JOBS }, "C")).toBeNull()
+    expect(nextUnlock({ ...base, gigs: ALL_GIGS }, "C")).not.toBeNull()
+    expect(nextUnlock({ ...base, equipment: Object.fromEntries(GEAR.map((row) => [String(row.id), 1])) }, "G")).toBeNull()
+    expect(nextUnlock({ ...base, owned: Object.fromEntries(CAPITAL.map((row) => [String(row.id), 1])) }, "D")).toBeNull()
   })
 })
 

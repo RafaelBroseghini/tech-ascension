@@ -1,5 +1,4 @@
 import { expect, test } from "vitest"
-import { ENEMIES, FIGHT_DURATION_MS } from "../data/enemies.ts"
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
@@ -135,8 +134,19 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   const junior = JOB_TIERS[1]
   const senior = JOB_TIERS.find((job) => job.id === 14)
   if (!intern || !junior || !senior) throw new Error("missing jobs")
+  expect(intern.xpPerSec).toBeGreaterThan(0)
+  expect(intern.xpLump).toBeGreaterThan(0)
+  const unhired = game.getState()
   expect(game.buyJob(intern.id)).toBe(true)
+  // Taking the internship pays its lump of XP once, spendable and lifetime.
+  expect(game.getState().xp - unhired.xp).toBe(intern.xpLump)
+  expect(game.getState().xpTotal - unhired.xpTotal).toBe(intern.xpLump)
   expect(game.getState().cps).toBeCloseTo(board.cps + intern.cps)
+  // The internship teaches too: it adds idle XP/s, and idle time pays it.
+  expect(game.getState().xpPerSec).toBeCloseTo(board.xpPerSec + intern.xpPerSec)
+  const studied = game.getState().xp
+  game.tick(10_000)
+  expect(game.getState().xp - studied).toBeCloseTo(game.getState().xpPerSec * 10)
   expect(game.buyJob(junior.id)).toBe(false)
   game.setXp(45_000)
   game.setMoney(junior.baseCost)
@@ -206,7 +216,10 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   expect(game.buy(row.id)).toBe(true)
   const after = game.getState()
   expect(after.cps - before.cps).toBe(row.cps)
-  expect(after.clickPower - before.clickPower).toBe(row.clickBonus)
+  // A click gains the row's flat bonus plus the intern's share of the new $/s.
+  expect(after.clickShare).toBeGreaterThan(0)
+  expect(after.clickPower - before.clickPower).toBeCloseTo(row.clickBonus + after.clickShare * row.cps, 6)
+  expect(after.clickFlat - before.clickFlat).toBe(row.clickBonus)
   expect(after.spriteTierId).toBe(row.artId)
   expect(after.era).toBe("mid")
 
@@ -217,7 +230,7 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   expect(boosted.cps).toBe(cps)
   const moneyBefore = boosted.money
   game.click()
-  expect(game.getState().money - moneyBefore).toBe(boosted.clickPower * 5)
+  expect(game.getState().money - moneyBefore).toBeCloseTo(boosted.clickPower * 5, 6)
   expect(game.getState().cps).toBe(cps)
 })
 
@@ -257,165 +270,6 @@ test("offline study credits XP in phase A and adds no idle money", () => {
   expect(away.toast?.split("\n")[0]?.endsWith(".")).toBe(true)
   expect(away.toast?.split("\n")[1]).toMatch(/^studied \+/)
   expect(game.getState().money).toBe(0)
-})
-
-function enemy(id: number) {
-  const row = ENEMIES.find((item) => item.id === id)
-  if (!row) throw new Error(`missing enemy ${id}`)
-  return row
-}
-
-test("fight: force spawn, click damage, win pays the reward once", () => {
-  game.reset()
-  expect(game.buyJob(1)).toBe(false)
-  game.forceGig(1)
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.buyJob(1)).toBe(true)
-  expect(game.getState().fight).toBeNull()
-  expect(game.forceEnemy(9999)).toBe(false)
-  expect(game.getState().fight).toBeNull()
-
-  const row = enemy(2)
-  expect(game.forceEnemy(row.id)).toBe(true)
-  const start = game.getState()
-  expect(start.fight).toEqual({ enemyId: row.id, hp: row.hp, maxHp: row.hp, remainingMs: FIGHT_DURATION_MS })
-
-  const power = start.clickPower
-  const gain = game.click()
-  expect(gain.money).toBe(0)
-  const hit = game.getState()
-  expect(hit.fight?.hp).toBe(row.hp - power)
-  expect(hit.money).toBe(start.money)
-  expect(hit.xp).toBe(start.xp)
-
-  let guard = 0
-  while (game.getState().fight) {
-    expect(game.getState().money).toBe(start.money)
-    game.click()
-    guard += 1
-    if (guard > row.hp) throw new Error("enemy never died")
-  }
-  const won = game.getState()
-  expect(guard).toBe(Math.ceil(row.hp / power) - 1)
-  expect(won.money).toBe(start.money + row.reward)
-  expect(won.lastFight).toEqual({ kind: "win", enemyId: row.id, reward: row.reward })
-
-  game.click()
-  expect(game.getState().money).toBe(won.money + power)
-})
-
-test("fight: click damage is click power times the live boost", () => {
-  game.reset()
-  game.forceGig(1)
-  const row = enemy(44)
-  game.forceEnemy(row.id)
-  game.forceBoost(5, 10_000)
-  const before = game.getState()
-  game.click()
-  const after = game.getState()
-  expect(before.fight?.hp).toBe(row.hp)
-  expect(after.fight?.hp).toBe(row.hp - before.clickPower * 5)
-  expect(after.cps).toBe(before.cps)
-})
-
-test("fight: flee ends clean with no reward and no penalty", () => {
-  game.reset()
-  game.forceGig(1)
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.buyJob(1)).toBe(true)
-  const row = enemy(1)
-  game.forceEnemy(row.id)
-  game.click()
-  const before = game.getState()
-  game.flee()
-  const after = game.getState()
-  expect(after.fight).toBeNull()
-  expect(after.money).toBe(before.money)
-  expect(after.xp).toBe(before.xp)
-  expect(after.owned).toEqual(before.owned)
-  expect(after.lastFight).toEqual({ kind: "flee", enemyId: row.id, reward: 0 })
-
-  game.flee()
-  expect(game.getState().lastFight?.kind).toBe("flee")
-  game.click()
-  expect(game.getState().money).toBe(before.money + before.clickPower)
-})
-
-test("fight: timeout ends clean with no reward, idle income keeps running", () => {
-  game.reset()
-  expect(game.forceGig(8)).toBe(true)
-  expect(game.getState().cps).toBeGreaterThan(0)
-  const row = enemy(3)
-  game.forceEnemy(row.id)
-  const before = game.getState()
-
-  game.tick(FIGHT_DURATION_MS - 1_000)
-  const mid = game.getState()
-  expect(mid.fight?.remainingMs).toBe(1_000)
-  expect(mid.money).toBeCloseTo(before.money + before.cps * 29, 6)
-
-  game.tick(1_000)
-  const after = game.getState()
-  expect(after.fight).toBeNull()
-  expect(after.lastFight).toEqual({ kind: "timeout", enemyId: row.id, reward: 0 })
-  expect(after.money).toBeCloseTo(before.money + before.cps * 30, 6)
-  expect(after.owned).toEqual(before.owned)
-})
-
-test("fight: rare spawn waits for money, then comes from idle time, era-gated, one at a time", () => {
-  game.reset()
-  game.tick(8 * 60 * 60 * 1000)
-  game.tick(8 * 60 * 60 * 1000)
-  expect(game.getState().fight).toBeNull()
-  game.forceGig(1)
-  game.tick(8 * 60 * 60 * 1000)
-  expect(game.getState().fight).toBeNull()
-  game.tick(8 * 60 * 60 * 1000)
-  const spawned = game.getState().fight
-  expect(spawned).not.toBeNull()
-  expect(enemy(spawned?.enemyId ?? 0).eraGate).toBe("early")
-  expect(spawned?.remainingMs).toBe(FIGHT_DURATION_MS)
-
-  const id = spawned?.enemyId
-  game.tick(10_000)
-  expect(game.getState().fight?.enemyId).toBe(id)
-  expect(game.getState().fight?.remainingMs).toBe(FIGHT_DURATION_MS - 10_000)
-})
-
-test("fight: spawn pool is the current era only, forceEnemy ignores the gate", () => {
-  game.reset()
-  game.setMoney(tierByName("WhyCombinator batch investment").baseCost)
-  expect(game.buy(tierByName("WhyCombinator batch investment").id)).toBe(true)
-  expect(game.getState().era).toBe("mid")
-  game.tick(8 * 60 * 60 * 1000)
-  game.tick(8 * 60 * 60 * 1000)
-  const spawned = game.getState().fight
-  expect(spawned).not.toBeNull()
-  expect(enemy(spawned?.enemyId ?? 0).eraGate).toBe("mid")
-
-  game.flee()
-  expect(game.forceEnemy(1)).toBe(true)
-  expect(game.getState().fight?.enemyId).toBe(1)
-})
-
-test("fight: boost rolls wait out the fight, shop stays usable", () => {
-  game.reset()
-  game.setXp(SKILL_TIERS[0]?.baseXpCost ?? 10)
-  game.forceEnemy(1)
-  expect(game.buySkill(1)).toBe(true)
-  expect(game.getState().fight).not.toBeNull()
-
-  // Six 29s ticks are 174s. Early pity is 187.5s, so that wait does not guarantee a roll.
-  for (let i = 0; i < 7; i++) {
-    game.forceEnemy(1)
-    game.tick(FIGHT_DURATION_MS - 1_000)
-    expect(game.getState().activeBoost).toBeNull()
-  }
-  game.flee()
-  game.tick(100)
-  expect(game.getState().activeBoost).not.toBeNull()
 })
 
 test("events: Yes applies a gift once, No leaves the balance alone", () => {
@@ -476,18 +330,6 @@ test("events: a trade scales to the pile, and Yes is refused when you cannot pay
   expect(game.click().money).toBeGreaterThan(0)
 })
 
-test("events: none fire during a fight, forceEnemy closes an open one", () => {
-  game.reset()
-  game.forceEvent(2)
-  expect(game.getState().event).not.toBeNull()
-  expect(game.forceEnemy(1)).toBe(true)
-  expect(game.getState().event).toBeNull()
-  expect(game.forceEvent(2)).toBe(false)
-  game.flee()
-  expect(game.forceEvent(2)).toBe(true)
-  game.dismissEvent()
-})
-
 test("a 1:1 waits for a job, then the three replies pay, sit, or bill you", () => {
   game.reset()
   expect(game.forceReview()).toBe(false)
@@ -526,25 +368,6 @@ test("a 1:1 waits for a job, then the three replies pay, sit, or bill you", () =
   game.dismissReview()
   expect(game.getState().review).toBeNull()
   expect(game.getState().money).toBe(0)
-})
-
-test("fight: v1.2 rewards pay out like a payday", () => {
-  game.reset()
-  game.forceGig(1)
-  game.forceBoost(10, 60_000)
-  const row = enemy(1)
-  expect(row.reward).toBe(500)
-  game.forceEnemy(row.id)
-  const before = game.getState().money
-  let guard = 0
-  while (game.getState().fight) {
-    game.click()
-    if (++guard > row.hp) throw new Error("enemy never died")
-  }
-  const won = game.getState()
-  expect(won.money - before).toBe(500)
-  expect(won.lastFight).toEqual({ kind: "win", enemyId: 1, reward: 500 })
-  expect(won.lastPop).toMatchObject({ kind: "fightWin", size: "large", amount: 500 })
 })
 
 test("ide: the pack follows the owned era, tabs navigate, the shop era previews and snaps back", () => {

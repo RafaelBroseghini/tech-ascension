@@ -114,19 +114,36 @@ export function xpPerClick(skills: OwnedMap): number {
   return sum
 }
 
-/** Idle XP/s from skills (study time). Runs in every phase. */
-export function xpPerSec(skills: OwnedMap): number {
+/** Idle XP/s: skills (study time, in every phase) plus the jobs held that teach on the job. */
+export function xpPerSec(p: Pick<Progress, "skills" | "jobs">): number {
   let sum = 0
-  for (const row of SKILL_TIERS) sum += ownedCount(skills, row.id) * row.xpPerSec
+  for (const row of SKILL_TIERS) sum += ownedCount(p.skills, row.id) * row.xpPerSec
+  for (const id of p.jobs) sum += jobById(id)?.xpPerSec ?? 0
   return sum
 }
 
-/** Base money per click: $1 plus equipment and capital click bonuses. Phase B+ only pays it out. */
-export function clickPower(p: Pick<Progress, "equipment" | "owned">): number {
+/** Flat money per click: $1 plus gear, capital, and job click bonuses. */
+export function clickFlat(p: Pick<Progress, "equipment" | "owned" | "jobs">): number {
   let bonus = 0
   for (const row of EQUIPMENT) bonus += ownedCount(p.equipment, row.id) * row.clickBonus
   for (const tier of CAPITAL) bonus += ownedCount(p.owned, tier.id) * tier.clickBonus
+  for (const id of p.jobs) bonus += jobById(id)?.clickBonus ?? 0
   return BASE_CLICK + bonus
+}
+
+/** Share of idle $/s that each click adds: every job held adds its `clickPct`. */
+export function clickShare(p: Pick<Progress, "jobs">): number {
+  let pct = 0
+  for (const id of p.jobs) pct += jobById(id)?.clickPct ?? 0
+  return pct / 100
+}
+
+/**
+ * Money per click before boosts: the flat part plus the jobs' share of idle $/s, so a click stays worth
+ * something next to salaries and capital. Phase B+ only pays it out.
+ */
+export function clickPower(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs">): number {
+  return clickFlat(p) + clickShare(p) * idlePerSec(p)
 }
 
 export type IdleParts = { retainers: number; jobs: number; equipment: number; capital: number }
@@ -201,7 +218,7 @@ export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" 
   for (const id of p.jobs) {
     const job = jobById(id)
     if (job)
-      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: job.cps, xpIdle: 0, click: 0 })
+      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: job.cps, xpIdle: job.xpPerSec, click: job.clickBonus })
   }
   for (const row of EQUIPMENT) {
     const count = ownedCount(p.equipment, row.id)
@@ -284,6 +301,6 @@ export function production(
     idle: idlePerSec(p) * fx.cps,
     mult,
     xpClick: xpPerClick(p.skills) * fx.click,
-    xpIdle: xpPerSec(p.skills) * fx.xpIdle,
+    xpIdle: xpPerSec(p) * fx.xpIdle,
   }
 }

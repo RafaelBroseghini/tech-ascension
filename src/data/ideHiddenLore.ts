@@ -16,7 +16,7 @@ You are inside the incremental game on Rafael's desk.
 
 - Phase A: buy skills with XP from clicks.
 - Phase B: clear gigs on the Gig Board.
-- Phase C: salaries, gear, fights, random events.
+- Phase C: salaries, gear, random events.
 - Phase D: capital rows until Mars Holdings.
 
 ## Surfaces
