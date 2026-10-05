@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { parseAmount, setMoneyDirect, setXpDirect } from "./admin.ts"
+import { CAPITAL } from "../data/capital.ts"
+import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { buyEverything, parseAmount, setMoneyDirect, setXpDirect } from "./admin.ts"
 import { ADMIN_CODE, getAdminMode, isAdminCode, setAdminMode, subscribeAdminMode } from "./adminMode.ts"
 import { useGame } from "./store.ts"
 
@@ -47,5 +49,20 @@ describe("admin", () => {
     expect(useGame.getState()).toMatchObject({ xp: 10, xpTotal: 50_000 })
     setMoneyDirect(Number.NaN)
     expect(useGame.getState().money).toBe(12_345)
+  })
+
+  it("buys everything once, keeps counts, and pays job XP lumps only once", () => {
+    useGame.setState({ equipment: { [String(EQUIPMENT[0]!.id)]: 3 } })
+    buyEverything()
+    const state = useGame.getState()
+    expect(Object.keys(state.skills)).toHaveLength(SKILL_TIERS.length)
+    expect(Object.keys(state.equipment)).toHaveLength(EQUIPMENT.length)
+    expect(Object.keys(state.owned)).toHaveLength(CAPITAL.length)
+    expect(state.equipment[String(EQUIPMENT[0]!.id)]).toBe(3)
+    expect(state.gigs).toHaveLength(GIGS.length)
+    expect(state.jobs).toHaveLength(JOB_TIERS.length)
+    const xp = state.xp
+    buyEverything()
+    expect(useGame.getState().xp).toBe(xp)
   })
 })
