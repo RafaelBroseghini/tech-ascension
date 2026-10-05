@@ -1,7 +1,9 @@
-import { X } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { ChevronRight, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { UI_ICON } from "./icons/ui.tsx"
+import { CatRosterModal } from "./CatRosterModal.tsx"
+import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
+import { CAT_ROSTER } from "../game/catRoster.ts"
 import { formatNumber } from "../game/format.ts"
 import { formatIdleStreak, formatPlayTime } from "../game/stats.ts"
 import type { GameStats } from "../game/stats.ts"
@@ -18,7 +20,6 @@ function buildRows(stats: GameStats, peakMoney: number, gigs: number, jobs: numb
     { label: "Lifetime earnings", value: `$${formatNumber(stats.lifetimeEarned)}` },
     { label: "From clicking", value: `$${formatNumber(stats.moneyFromClicks)}` },
     { label: "From idle & offline", value: `$${formatNumber(stats.moneyFromIdle)}` },
-    { label: "Fight wins", value: formatNumber(stats.fightWins) },
     { label: "Gigs cleared", value: formatNumber(gigs) },
     { label: "Jobs held", value: formatNumber(jobs) },
     { label: "Time played", value: formatPlayTime(stats.playTimeMs) },
@@ -31,16 +32,21 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
   const gigs = useGame((state) => state.gigs.length)
   const jobs = useGame((state) => state.jobs.length)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [roster, setRoster] = useState(false)
   const rows = buildRows(stats, peakMoney, gigs, jobs)
 
   useEffect(() => {
+    if (roster) return
     dialogRef.current?.focus({ preventScroll: true })
     const onKey = (key: KeyboardEvent) => {
       if (key.key === "Escape") onClose()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [onClose])
+  }, [onClose, roster])
+
+  // Escape in the roster goes back to the metrics, not out of both.
+  if (roster) return <CatRosterModal onClose={() => setRoster(false)} />
 
   return createPortal(
     <div className="stats-backdrop" data-testid="stats-backdrop" onClick={onClose}>
@@ -72,7 +78,17 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
               <dd>{row.value}</dd>
             </div>
           ))}
+          <div className="stats-row">
+            <dt>Cats discovered</dt>
+            <dd data-testid="stats-cats">
+              {formatNumber(stats.catsFound.length)} / {formatNumber(CAT_ROSTER.length)}
+            </dd>
+          </div>
         </dl>
+        <button type="button" className="stats-roster" data-testid="open-cat-roster" onClick={() => setRoster(true)}>
+          Cat roster
+          <ChevronRight {...UI_ICON_SM} aria-hidden />
+        </button>
       </div>
     </div>,
     document.body,

@@ -8,12 +8,11 @@ const HOLD_MS = 1500
 const KICKER: Record<MoneyPop["kind"], string> = {
   click: "",
   gigClear: "Gig cleared",
-  fightWin: "Defeated",
   unlock: "Unlocked",
 }
 
 /**
- * The big centered Balatro pop. It only shows for large pops (gig clear, fight win, phase unlock);
+ * The big centered Balatro pop. It only shows for large pops (gig clear, phase unlock);
  * a medium click pop is just the hero total squashing, and idle ticks never get here.
  */
 export function ScorePop() {

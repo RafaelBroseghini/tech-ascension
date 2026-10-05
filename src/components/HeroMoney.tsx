@@ -19,7 +19,7 @@ function easeOutBack(t: number): number {
 }
 
 /**
- * Money shown on screen. Normally the live balance. After a large pop (gig clear, fight win) it counts up
+ * Money shown on screen. Normally the live balance. After a large pop (gig clear, phase unlock) it counts up
  * from the pre-payout balance with overshoot, so the lump feels like it lands. Idle ticks never animate.
  */
 function useScore(target: number): number {
@@ -92,6 +92,7 @@ function HeroMoneyBody() {
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
   const valueRef = useRef<HTMLSpanElement>(null)
+  const squash = useRef<Animation | null>(null)
   const shownMoney = useScore(money)
   const shownXp = Math.floor(xp)
   const moneyText = formatNumber(shownMoney)
@@ -104,12 +105,14 @@ function HeroMoneyBody() {
   useEffect(() => {
     const el = valueRef.current
     if (!pop || !el || typeof el.animate !== "function" || prefersReducedMotion()) return
-    for (const animation of el.getAnimations()) {
-      animation.finished.catch(() => {})
-      animation.cancel()
+    // Only the last squash can still be running. getAnimations() would flush style on every click.
+    const last = squash.current
+    if (last) {
+      last.finished.catch(() => {})
+      last.cancel()
     }
     if (pop.size === "large") {
-      el.animate(
+      squash.current = el.animate(
         [
           { transform: "scale(1)", textShadow: "0 4px 0 var(--ink)" },
           {
@@ -129,7 +132,7 @@ function HeroMoneyBody() {
       )
       return
     }
-    el.animate(
+    squash.current = el.animate(
       [
         { transform: "scale(1)" },
         { transform: "scale(1.14, 0.9)", offset: 0.3 },

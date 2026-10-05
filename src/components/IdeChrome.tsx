@@ -11,7 +11,7 @@ import {
   Search,
   Terminal,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   closeIdePythonConsole,
   getIdePythonConsole,
@@ -62,7 +62,8 @@ type Layer = { pack: IdePack; index: number; uid: number }
 
 let layerSeq = 1
 
-function CodeLayer({ code, lang, leaving, id }: { code: string; lang: Lang; leaving: boolean; id: string }) {
+// A file is hundreds of token spans. Its props are strings, so a parent render never needs to touch it.
+const CodeLayer = memo(function CodeLayer({ code, lang, leaving, id }: { code: string; lang: Lang; leaving: boolean; id: string }) {
   const lines = useMemo(() => {
     const out: { kind: string; text: string }[][] = [[]]
     for (const token of tokenize(code, lang)) {
@@ -91,7 +92,7 @@ function CodeLayer({ code, lang, leaving, id }: { code: string; lang: Lang; leav
       </pre>
     </div>
   )
-}
+})
 
 function Content({ pack, index, leaving }: { pack: IdePack; index: number; leaving: boolean }) {
   const cls = leaving ? "code-layer code-leave" : "code-layer code-enter"
@@ -138,7 +139,7 @@ function Content({ pack, index, leaving }: { pack: IdePack; index: number; leavi
  * IDE shell behind the stage. The palette is the saved editor theme. Unlocked problem bands stay
  * in the explorer as folders; the tab bar follows whichever folder is open.
  */
-export function IdeChrome() {
+export const IdeChrome = memo(function IdeChrome() {
   const skills = useGame((state) => state.skills)
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
@@ -150,7 +151,10 @@ export function IdeChrome() {
   const holdPreview = useGame((state) => state.holdPreview)
 
   const loreUnlocked = useSyncExternalStore(subscribeIdeLore, readIdeLoreUnlocked, readIdeLoreUnlocked)
-  const view = ideView({ skills, owned, jobs, gigs, ideSel, previewEra, loreUnlocked })
+  const view = useMemo(
+    () => ideView({ skills, owned, jobs, gigs, ideSel, previewEra, loreUnlocked }),
+    [skills, owned, jobs, gigs, ideSel, previewEra, loreUnlocked],
+  )
   const { pack, index, count, folders: rawFolders } = view
   const folders = useMemo(
     () => rawFolders.map((folder) => ({ ...folder, pack: packWithHiddenLore(folder.pack, loreUnlocked) })),
@@ -450,4 +454,4 @@ export function IdeChrome() {
       </footer>
     </div>
   )
-}
+})

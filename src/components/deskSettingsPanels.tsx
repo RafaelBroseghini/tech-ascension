@@ -1,4 +1,4 @@
-import { MousePointer2, MousePointerClick, Music, Swords, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
@@ -13,7 +13,7 @@ import { UI_ICON_SM } from "./icons/ui.tsx"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-export type DeskToggleKey = "music" | "sounds" | "clicks" | "cat" | "enemies" | "hoverClick"
+export type DeskToggleKey = "music" | "sounds" | "clicks" | "cat" | "hoverClick"
 
 export const DESK_TOGGLES: readonly {
   key: DeskToggleKey
@@ -26,8 +26,6 @@ export const DESK_TOGGLES: readonly {
   { key: "music", label: "Music", Icon: Music },
   { key: "sounds", label: "Desk sounds", Icon: Volume2 },
   { key: "clicks", label: "Click sound", Icon: MousePointer2 },
-  { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
-  { key: "enemies", label: "Enemies", Icon: Swords },
   {
     key: "hoverClick",
     label: "Hover click",
@@ -35,6 +33,7 @@ export const DESK_TOGGLES: readonly {
     complete: true,
     title: `Hover the emoji to click at ${MAX_CLICKS_PER_SEC}/s`,
   },
+  { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
 ]
 
 const THEME_GROUPS = [

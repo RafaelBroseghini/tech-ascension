@@ -1,6 +1,8 @@
-import { MousePointer2, MousePointerClick, Music, Settings, Swords, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Settings, Trash2, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
+import { AdminSettings } from "./AdminSettings.tsx"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
@@ -20,7 +22,7 @@ const GROUPS = [
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-type ToggleKey = "music" | "sounds" | "clicks" | "cat" | "enemies" | "hoverClick"
+type ToggleKey = "music" | "sounds" | "clicks" | "cat" | "hoverClick"
 
 const TOGGLES: readonly {
   key: ToggleKey
@@ -34,8 +36,6 @@ const TOGGLES: readonly {
   { key: "music", label: "Music", Icon: Music },
   { key: "sounds", label: "Desk sounds", Icon: Volume2 },
   { key: "clicks", label: "Click sound", Icon: MousePointer2 },
-  { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
-  { key: "enemies", label: "Enemies", Icon: Swords },
   {
     key: "hoverClick",
     label: "Hover click",
@@ -43,7 +43,77 @@ const TOGGLES: readonly {
     complete: true,
     title: `Hover the emoji to click at ${MAX_CLICKS_PER_SEC}/s`,
   },
+  { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
 ]
+
+/** The one destructive action in settings. The button opens a modal; only its red button wipes. */
+function WipeSave({ onWiped }: { onWiped: () => void }) {
+  const wipe = useGame((state) => state.wipe)
+  const [confirming, setConfirming] = useState(false)
+  const promptId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!confirming) return
+    dialogRef.current?.focus({ preventScroll: true })
+    const onKey = (key: KeyboardEvent) => {
+      if (key.key !== "Escape") return
+      key.stopPropagation()
+      setConfirming(false)
+    }
+    window.addEventListener("keydown", onKey, true)
+    return () => window.removeEventListener("keydown", onKey, true)
+  }, [confirming])
+
+  return (
+    <section className="ide-settings-section ide-settings-danger">
+      <button type="button" className="ide-wipe" data-testid="wipe-save" onClick={() => setConfirming(true)}>
+        <Trash2 {...UI_ICON_SM} aria-hidden />
+        Wipe save
+      </button>
+      {confirming
+        ? createPortal(
+            <div className="event-backdrop" data-wipe-modal data-testid="wipe-backdrop" onClick={() => setConfirming(false)}>
+              <div
+                ref={dialogRef}
+                className="event-modal"
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby={promptId}
+                tabIndex={-1}
+                data-testid="wipe-confirm-panel"
+                onClick={(click) => click.stopPropagation()}
+              >
+                <h2 id={promptId} className="event-title">
+                  Wipe this save?
+                </h2>
+                <p className="event-flavor">Your career restarts at high school. This can't be undone.</p>
+                <div className="event-actions">
+                  <button type="button" className="event-choice event-no" data-testid="wipe-cancel" onClick={() => setConfirming(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="event-choice ide-wipe-yes"
+                    data-testid="wipe-confirm"
+                    onClick={() => {
+                      setConfirming(false)
+                      wipe()
+                      onWiped()
+                    }}
+                  >
+                    <Trash2 {...UI_ICON_SM} aria-hidden />
+                    Wipe save
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </section>
+  )
+}
 
 export function EditorSettings() {
   const saved = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
@@ -61,10 +131,12 @@ export function EditorSettings() {
   useEffect(() => {
     if (!open) return
     const onPointer = (event: PointerEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) close()
+      const target = event.target as Element
+      if (target.closest?.("[data-wipe-modal]")) return
+      if (!wrapRef.current?.contains(target)) close()
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close()
+      if (event.key === "Escape" && !document.querySelector("[data-wipe-modal]")) close()
     }
     document.addEventListener("pointerdown", onPointer)
     document.addEventListener("keydown", onKey)
@@ -91,6 +163,7 @@ export function EditorSettings() {
       </button>
       {open ? (
         <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => clearIdeThemePreview()}>
+          <AdminSettings headingId={`${menuId}-admin`} />
           <section className="ide-settings-section" aria-labelledby={`${menuId}-settings`}>
             <p className="ide-theme-heading" id={`${menuId}-settings`}>
               Settings
@@ -208,6 +281,7 @@ export function EditorSettings() {
               ))}
             </div>
           </section>
+          <WipeSave onWiped={close} />
         </div>
       ) : null}
     </div>

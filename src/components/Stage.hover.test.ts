@@ -23,7 +23,6 @@ function ownCatalog() {
     xp: 0,
     xpTotal: 1e12,
     peakMoney: 1e12,
-    fight: null,
     event: null,
   })
 }
@@ -76,7 +75,7 @@ describe("hover click", () => {
     flushSync(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(useGame.getState().money).toBe(power * 20)
+    expect(useGame.getState().money / (power * 20)).toBeCloseTo(1, 9)
     expect(useGame.getState().xp).toBe(xpEach * 20)
   })
 

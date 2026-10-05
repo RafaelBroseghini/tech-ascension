@@ -205,7 +205,6 @@ export function IdePythonConsole() {
             disabled={!ready}
             spellCheck={false}
             aria-label="Python prompt"
-            placeholder={ready ? "" : "Starting Python…"}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onKeyDown}
           />

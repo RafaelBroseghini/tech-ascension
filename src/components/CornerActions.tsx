@@ -3,6 +3,7 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { useEffect, useMemo, useState } from "react"
 import { resumeDocument } from "../game/resumeDoc.ts"
 import { useGame } from "../game/store.ts"
+import { CatRosterButton } from "./CatRosterButton.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
 import { MetricsButton } from "./MetricsButton.tsx"
 import { ResumeModal } from "./ResumeModal.tsx"
@@ -72,6 +73,7 @@ export function CornerActions() {
         ) : null}
       </span>
       <ResumeButton />
+      <CatRosterButton />
       <MetricsButton />
       <EditorSettings />
     </div>
