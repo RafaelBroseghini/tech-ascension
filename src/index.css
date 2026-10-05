@@ -577,6 +577,53 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .desk-toggle[aria-pressed="true"] i { color: var(--accent); }
 
+/* Wipe save: red, last in the settings menu, and it asks before it does anything. */
+.ide-settings-danger { margin-top: 12px; }
+
+.ide-wipe,
+.ide-wipe-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.ide-wipe {
+  width: 100%;
+  border: 1px solid var(--ide-red);
+  background: var(--ide-red);
+  color: var(--accent-ink);
+}
+
+.ide-wipe:hover { filter: brightness(1.08); }
+.ide-wipe:active { transform: translateY(1px); }
+
+.ide-wipe-cancel {
+  flex: none;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+}
+
+.ide-wipe-cancel:hover { background: var(--surface-2); }
+
+.ide-wipe-yes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--ide-red);
+  color: var(--accent-ink);
+}
+.ide-wipe-yes:hover { filter: brightness(1.08); }
+
 /* ---------- layout ---------- */
 
 .layout {
@@ -1927,23 +1974,67 @@ img { -webkit-user-drag: none; user-select: none; }
 
 /* A locked row gets a slim bar along its bottom edge in the tab's color. It fills as XP or money closes
    the gate, and it is gone once the row unlocks. */
+/* The row's progress bar, full width under the row, with its own counter inside. */
 .offer-progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 4px;
-  background: color-mix(in srgb, var(--a) 16%, transparent);
+  position: relative;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  height: 16px;
+  margin-top: calc(var(--sp-1, 4px) * -1);
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--a) 45%, transparent);
+  border-radius: 4px;
+  /* Quarter ticks, so a glance says how far along it is. */
+  background:
+    linear-gradient(to right, transparent calc(25% - 1px), color-mix(in srgb, var(--text) 16%, transparent) calc(25% - 1px) 25%, transparent 25%) no-repeat,
+    linear-gradient(to right, transparent calc(50% - 1px), color-mix(in srgb, var(--text) 16%, transparent) calc(50% - 1px) 50%, transparent 50%) no-repeat,
+    linear-gradient(to right, transparent calc(75% - 1px), color-mix(in srgb, var(--text) 16%, transparent) calc(75% - 1px) 75%, transparent 75%) no-repeat,
+    color-mix(in srgb, var(--a) 10%, transparent);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
   pointer-events: none;
 }
 
-.offer-progress::after {
+.offer-progress::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
   width: calc(var(--gate, 0) * 100%);
-  background: var(--a);
-  border-radius: 0 2px 2px 0;
+  background: color-mix(in srgb, var(--a) 58%, transparent);
+  transition: width 400ms var(--ease-out);
+}
+
+/* A money bar is about cash in hand, so it fills in a stripe pattern to set it apart from an unlock. */
+.offer-progress[data-kind="money"]::before {
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--a) 58%, transparent) 0 6px,
+    color-mix(in srgb, var(--a) 44%, transparent) 6px 12px
+  );
+}
+
+.offer-progress-label,
+.offer-progress-count {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  text-shadow: 0 0 3px var(--surface-0);
+}
+
+.offer-progress-label svg { flex: 0 0 auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-progress::before { transition: none; }
 }
 
 .offer .offer-unlock {
@@ -2011,6 +2102,15 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 .offer.afford p { color: var(--text-dim); }
+
+.offer .stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.offer .stat-icon { flex: 0 0 auto; }
 
 .offer .own {
   display: inline-block;
@@ -2086,21 +2186,6 @@ img { -webkit-user-drag: none; user-select: none; }
   border-color: var(--surface-2);
   color: var(--text-faint);
 }
-
-.wipe {
-  margin: var(--sp-2) var(--sp-4) var(--sp-3);
-  align-self: flex-start;
-  background: transparent;
-  border: 0;
-  padding: 2px 0;
-  color: var(--text-faint);
-  font-size: var(--fs-xs);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.wipe:hover { color: var(--text-dim); }
 
 /* ---------- toast ---------- */
 
@@ -2256,181 +2341,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .sticky-note { animation: none; }
-}
-
-/* ---------- rare enemy fight (overlay on the stage, shop stays live) ---------- */
-
-.fight,
-.fight-win {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-3);
-  padding: var(--sp-4);
-  text-align: center;
-}
-
-.fight {
-  background: color-mix(in srgb, var(--ink) 78%, transparent);
-  animation: fight-in 220ms var(--ease-out);
-}
-
-.fight-kicker {
-  margin: 0;
-  color: var(--accent);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-}
-
-.fight-name {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  line-height: 1.1;
-  color: var(--text);
-}
-
-.fight-target {
-  position: relative;
-  width: min(288px, 56vw);
-  aspect-ratio: 1;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: crosshair;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.fight-sprite,
-.fight-win-sprite {
-  display: block;
-  width: 100%;
-  height: 100%;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
-  animation: fight-bob 1600ms ease-in-out infinite;
-}
-
-.fight-hit {
-  position: absolute;
-  pointer-events: none;
-  color: var(--accent-hi);
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: var(--fs-md);
-  text-shadow: 2px 2px 0 var(--ink);
-  animation: fight-hit 700ms var(--ease-out) forwards;
-}
-
-.fight-bars {
-  width: min(380px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
-.fight-row {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--sp-2);
-  font-size: var(--fs-xs);
-}
-
-.fight-label {
-  color: var(--text-dim);
-  font-weight: 700;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  text-align: left;
-}
-
-.fight-num {
-  min-width: 7ch;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.fight-bar {
-  height: 14px;
-  border: var(--stroke) solid var(--ink);
-  background: var(--accent-ink);
-  overflow: hidden;
-}
-
-.fight-bar i {
-  display: block;
-  height: 100%;
-  background: var(--ide-red);
-  transition: width 120ms linear;
-}
-
-.fight-time i { background: var(--accent); transition-duration: 100ms; }
-.fight-time.is-urgent i { background: var(--ide-peach); }
-
-.fight-foot {
-  width: min(380px, 100%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
-.fight-hint {
-  margin: 0;
-  color: var(--text-dim);
-  font-size: var(--fs-xs);
-  text-align: left;
-}
-
-.fight-hint b { color: var(--text); font-family: var(--font-mono); }
-
-.fight-flee {
-  flex: none;
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--radius);
-  padding: 8px 18px;
-  background: var(--text);
-  color: var(--surface-0);
-  font-weight: 800;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: var(--lift-2);
-}
-
-.fight-flee:active { transform: translateY(2px); box-shadow: none; }
-
-.fight-win {
-  z-index: 7;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--ink) 62%, transparent);
-  animation: fight-in 220ms var(--ease-out);
-}
-
-.fight-win-sprite { width: 144px; height: 144px; animation: fight-win-pop 520ms var(--ease-pop); filter: saturate(0.7) brightness(0.9); }
-
-@keyframes fight-in { from { opacity: 0; } }
-@keyframes fight-bob { 50% { transform: translateY(-5px); } }
-@keyframes fight-hit {
-  from { opacity: 1; transform: translate(-50%, 0); }
-  to { opacity: 0; transform: translate(-50%, -48px); }
-}
-@keyframes fight-win-pop { from { transform: scale(0.6); opacity: 0; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .fight, .fight-win, .fight-win-sprite, .fight-sprite { animation: none; }
-  .fight-hit { animation-duration: 1ms; }
 }
 
 /* ---------- small screens ---------- */
@@ -2836,6 +2746,409 @@ img { -webkit-user-drag: none; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .stats-backdrop { animation: none; }
+}
+
+.stats-roster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 var(--sp-4) var(--sp-4);
+  padding: 8px 12px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.stats-roster:hover { background: var(--surface-2); }
+
+/* ---------- rosters: a character select screen in the editor theme ---------- */
+
+.roster-backdrop {
+  --rs-accent: var(--ide-mauve);
+  --rs-dim: color-mix(in srgb, var(--ide-text) 62%, transparent);
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: color-mix(in srgb, var(--ide-crust) 80%, transparent);
+  animation: event-fade 200ms var(--ease-out);
+}
+
+.roster {
+  width: min(60rem, 100%);
+  max-height: min(90dvh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid var(--rs-accent);
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(115deg, transparent 0 22px, color-mix(in srgb, var(--ide-text) 3%, transparent) 22px 44px),
+    radial-gradient(120% 90% at 20% 30%, color-mix(in srgb, var(--rs-accent) 22%, var(--ide-base)) 0%, var(--ide-base) 50%, var(--ide-crust) 100%);
+  box-shadow: 0 0 0 4px var(--ide-crust), 0 24px 60px rgb(0 0 0 / 0.45);
+  color: var(--ide-text);
+}
+
+.roster-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 2px solid var(--rs-accent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--rs-accent) 26%, transparent), transparent 70%);
+}
+
+.roster-head > div { flex: 1 1 auto; min-width: 0; }
+
+.roster-kicker {
+  margin: 0;
+  color: var(--rs-accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.roster-title {
+  margin: 0;
+  color: var(--ide-text);
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 0.9rem + 1.6vw, 2rem);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 color-mix(in srgb, var(--rs-accent) 70%, transparent);
+}
+
+.roster-count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.roster-count strong { color: var(--rs-accent); font-size: var(--fs-lg); }
+
+.roster-count span {
+  color: var(--rs-dim);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.roster-x {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--rs-accent);
+  border-radius: 3px;
+  background: var(--ide-crust);
+  color: var(--rs-accent);
+  cursor: pointer;
+}
+
+.roster-x:hover { background: var(--rs-accent); color: var(--ide-on-accent); }
+
+.roster-body {
+  display: grid;
+  grid-template-columns: minmax(180px, 15rem) minmax(0, 1fr);
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.roster-empty {
+  margin: 0;
+  padding: var(--sp-6, 2.5rem) var(--sp-4);
+  color: var(--rs-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.roster-feature {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: var(--sp-4);
+  border-right: 2px solid color-mix(in srgb, var(--rs-accent) 30%, transparent);
+  background: radial-gradient(60% 45% at 50% 40%, color-mix(in srgb, var(--rs-accent) 30%, transparent), transparent 70%);
+}
+
+.roster-feature img {
+  width: min(160px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 10px 14px rgb(0 0 0 / 0.45));
+  animation: roster-in 260ms var(--ease-out);
+}
+
+.roster-feature[data-locked="true"] img {
+  filter: brightness(0) drop-shadow(0 0 1px color-mix(in srgb, var(--ide-text) 60%, transparent)) drop-shadow(0 10px 14px rgb(0 0 0 / 0.45));
+}
+
+.roster-feature figcaption {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.roster-no {
+  color: var(--rs-accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.roster-name {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--rs-accent) 60%, transparent);
+}
+
+/* The real tools behind a skill, on chips light enough for dark logos in any theme. */
+.roster-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roster-logos li {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid color-mix(in srgb, var(--rs-accent) 55%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, #fff 88%, var(--rs-accent));
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--rs-accent) 40%, transparent);
+}
+
+.roster-owned {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rs-accent) 20%, transparent);
+  color: var(--ide-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+
+.roster-lines {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.roster-hint {
+  color: var(--rs-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-style: normal;
+}
+
+.roster-p1 {
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  padding: 2px 8px;
+  background: var(--rs-accent);
+  color: var(--ide-on-accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  clip-path: polygon(0 0, 100% 0, 86% 100%, 0 100%);
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rs-accent) transparent;
+}
+
+.roster-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 4px;
+  border: 2px solid color-mix(in srgb, var(--ide-text) 16%, transparent);
+  border-radius: 2px;
+  /* A step toward the text color, so the cell reads on light and dark themes alike. */
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--ide-text) 14%, var(--ide-surface)),
+    color-mix(in srgb, var(--ide-text) 8%, var(--ide-mantle))
+  );
+  color: var(--ide-text);
+  cursor: pointer;
+  /* Tall art must not stretch the square. */
+  contain: size;
+  transform: skewX(-6deg);
+  transition: border-color 120ms, transform 120ms;
+}
+
+.roster-cell > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  transform: skewX(6deg);
+}
+
+/* Pinned to the cell so tall art scales down, with an edge for white art on a light cell. */
+.roster-cell > img {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.45));
+}
+
+.roster-cell.is-locked { background: linear-gradient(160deg, var(--ide-overlay), var(--ide-surface)); }
+
+.roster-cell.is-locked > img { filter: brightness(0); }
+
+/* The lucide lock, drawn as a mask so a few hundred locked cells add no SVG nodes. */
+.roster-cell.is-locked::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 12px;
+  height: 12px;
+  background: color-mix(in srgb, var(--ide-text) 70%, transparent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='18' height='11' x='3' y='11' rx='2' ry='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: skewX(6deg);
+}
+
+.roster-cell-count {
+  position: absolute;
+  left: 2px;
+  bottom: 1px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ide-crust) 80%, transparent);
+  color: var(--ide-text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.4;
+  transform: skewX(6deg);
+}
+
+.roster-cell:hover { border-color: color-mix(in srgb, var(--rs-accent) 60%, transparent); }
+
+.roster-cell.is-active {
+  z-index: 1;
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 2px var(--ide-crust), 0 0 14px color-mix(in srgb, var(--rs-accent) 60%, transparent);
+  transform: skewX(-6deg) scale(1.08);
+}
+
+.roster-cell:focus-visible { outline: none; }
+
+.roster-cell.is-chosen { border-color: var(--rs-accent); }
+
+.roster-cell-tag {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  padding: 0 4px;
+  background: var(--rs-accent);
+  color: var(--ide-on-accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  transform: translateX(-50%) skewX(6deg);
+}
+
+@keyframes roster-in {
+  0% { opacity: 0; transform: translateX(-14px) scale(0.92); }
+  100% { opacity: 1; transform: none; }
+}
+
+@media (max-width: 640px) {
+  .roster-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .roster-feature {
+    flex-direction: row;
+    padding: var(--sp-3) var(--sp-4);
+    border-right: none;
+    border-bottom: 2px solid color-mix(in srgb, var(--rs-accent) 30%, transparent);
+  }
+  .roster-feature img { width: 88px; }
+  .roster-feature figcaption { justify-items: start; text-align: left; }
+  .roster-logos { justify-content: flex-start; }
+  .roster-p1 { display: none; }
+  .roster-count span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roster-backdrop, .roster-feature img { animation: none; }
+  .roster-cell { transition: none; }
 }
 
 /* ---------- generated resume modal ---------- */
@@ -3509,3 +3822,55 @@ img { -webkit-user-drag: none; user-select: none; }
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
+
+/* ---------- admin settings (admin mode only) ---------- */
+
+.admin-panel { display: grid; gap: 8px; padding: 6px; }
+
+.admin-field { display: grid; gap: 4px; margin: 0; }
+
+.admin-field label {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+.admin-field label span { color: var(--text); font-variant-numeric: tabular-nums; text-transform: none; }
+
+.admin-field-row { display: flex; gap: 4px; }
+
+.admin-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-0);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.admin-field input[aria-invalid="true"] { border-color: var(--ide-red); }
+
+.admin-field button {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--ide-on-accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-field button:disabled { opacity: 0.45; cursor: not-allowed; }

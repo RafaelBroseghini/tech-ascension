@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
 import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
-import { ERA_ACCENT } from "../data/sprites.ts"
+import { ERA_ACCENT } from "../data/eraAccent.ts"
 import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
 import { HOVER_CLICK_STEP_MS, MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
 import { getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
@@ -15,7 +15,6 @@ import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 import { capDrops, FALL_MS, waterfallCount } from "../game/waterfall.ts"
 import type { Drop } from "../game/waterfall.ts"
-import { FightOverlay } from "./FightOverlay.tsx"
 import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { DeskCat } from "./DeskCat.tsx"
@@ -33,6 +32,20 @@ type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: n
 type Ring = { id: number; x: number; y: number; big: boolean }
 
 let seq = 1
+
+// Particles leave on a timer per burst, one commit for the lot, instead of one commit per
+// animationend. Each wait is its CSS animation plus a frame of slack (index.css).
+const SPARK_MS = 480 + 60
+const RING_MS = 420 + 60
+const RING_BIG_MS = 800 + 60
+const CONFETTI_MS = 720 + 60
+
+function without<T extends { id: number }>(gone: ReadonlySet<number>) {
+  return (current: T[]) => {
+    const next = current.filter((item) => !gone.has(item.id))
+    return next.length === current.length ? current : next
+  }
+}
 
 const hoverClickPref = () => getDeskPrefs().hoverClick
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -90,14 +103,39 @@ function waterfall(x: number, y: number, icons: readonly IconName[], count: numb
   })
 }
 
+// The stage re-renders on every click for its particles. The panels it hosts have their own
+// subscriptions and no props that change with a click, so they skip those renders.
+const StickyNoteMemo = memo(StickyNote)
+const DeskCatMemo = memo(DeskCat)
+const HeroMoneyMemo = memo(HeroMoney)
+const OwnedStripMemo = memo(OwnedStrip)
+const SkillsMemo = memo(Skills)
+const IdePythonConsoleMemo = memo(IdePythonConsole)
+const ScorePopMemo = memo(ScorePop)
+
+const BOOST_CHIP_MS = 12000
+
+/** The click boost countdown. The only part of the stage that follows the clock. */
+function BoostChip({ mult }: { mult: number }) {
+  const left = useGame((state) => (state.activeBoost ? Math.max(0, state.activeBoost.endsAt - state.now) : 0))
+  return (
+    <div className="boost-chip">
+      <span className="boost-chip-mult">×{mult}</span>
+      <span>click boost</span>
+      <i className="boost-chip-bar" style={{ ["--left" as string]: `${Math.min(100, (left / BOOST_CHIP_MS) * 100)}%` }} />
+    </div>
+  )
+}
+
 export function Stage() {
   const skills = useGame((state) => state.skills)
   const equipment = useGame((state) => state.equipment)
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
-  const activeBoost = useGame((state) => state.activeBoost)
-  const now = useGame((state) => state.now)
+  // Derived so an idle tick (a new `now`) does not re-render the whole stage.
+  const boosted = useGame((state) => Boolean(state.activeBoost && state.activeBoost.endsAt > state.now))
+  const mult = useGame((state) => state.activeBoost?.mult ?? 1)
   const click = useGame((state) => state.click)
   const [loot, setLoot] = useState<Loot[]>([])
   const [bits, setBits] = useState<Bit[]>([])
@@ -110,6 +148,8 @@ export function Stage() {
   const hitboxRef = useRef<HTMLButtonElement>(null)
   const tiltRef = useRef<HTMLSpanElement>(null)
   const heat = useRef(0)
+  const heatTimer = useRef(0)
+  const impact = useRef<Animation | null>(null)
   const lastSide = useRef(1)
 
   const hoverRef = useRef(false)
@@ -120,38 +160,51 @@ export function Stage() {
 
   const stage = stageOf({ skills, owned, jobs, gigs })
   const accent = ERA_ACCENT[eraOf({ owned })]
-  const boosted = Boolean(activeBoost && activeBoost.endsAt > now)
   const stageName = stage?.name ?? "High school"
-  const boostLeft = activeBoost && boosted ? Math.max(0, activeBoost.endsAt - now) : 0
 
   useEffect(() => {
     return useGame.subscribe((state, previous) => {
       if (state.celebrationNonce === previous.celebrationNonce || state.celebrationNonce === 0) return
       if (prefersReducedMotion()) return
-      setBits(burstBits(eraOf(state)))
-      setRings((current) => [...current, { id: seq++, x: 50, y: 50, big: true }].slice(-12))
+      const born = burstBits(eraOf(state))
+      const ring = { id: seq++, x: 50, y: 50, big: true }
+      setBits(born)
+      setRings((current) => [...current, ring].slice(-12))
+      window.setTimeout(() => setBits(without(new Set(born.map((bit) => bit.id)))), CONFETTI_MS)
+      window.setTimeout(() => setRings(without(new Set([ring.id]))), RING_BIG_MS)
     })
   }, [])
 
-  // Large pops (gig clear, fight win, phase unlock) get a burst; idle ticks and plain clicks never do.
+  // Large pops (gig clear, phase unlock) get a burst; idle ticks and plain clicks never do.
   useEffect(() => {
     return useGame.subscribe((state, previous) => {
       const pop = state.pop
       if (!pop || pop === previous.pop || pop.size !== "large") return
       if (prefersReducedMotion()) return
-      setBits((current) => [...current, ...burstBits(eraOf(state))].slice(-40))
-      setRings((current) => [...current, { id: seq++, x: 50, y: 46, big: true }].slice(-12))
+      const born = burstBits(eraOf(state))
+      const ring = { id: seq++, x: 50, y: 46, big: true }
+      setBits((current) => [...current, ...born].slice(-40))
+      setRings((current) => [...current, ring].slice(-12))
+      window.setTimeout(() => setBits(without(new Set(born.map((bit) => bit.id)))), CONFETTI_MS)
+      window.setTimeout(() => setRings(without(new Set([ring.id]))), RING_BIG_MS)
     })
   }, [])
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      if (heat.current <= 0.005) return
+  // Heat cools on a timer that only runs while there is heat left, so an idle stage wakes nothing.
+  function warmUp() {
+    if (heatTimer.current) return
+    heatTimer.current = window.setInterval(() => {
+      if (heat.current <= 0.005) {
+        window.clearInterval(heatTimer.current)
+        heatTimer.current = 0
+        return
+      }
       heat.current *= 0.9
       hitboxRef.current?.style.setProperty("--heat", heat.current.toFixed(3))
     }, 80)
-    return () => window.clearInterval(id)
-  }, [])
+  }
+
+  useEffect(() => () => window.clearInterval(heatTimer.current), [])
 
   const stageEmoji = stageEmojiSource(stage?.source)
 
@@ -160,12 +213,14 @@ export function Stage() {
   function playImpact(nx: number, ny: number) {
     const tilt = tiltRef.current
     if (!tilt || typeof tilt.animate !== "function") return
-    for (const animation of tilt.getAnimations()) {
-      animation.finished.catch(() => {})
-      animation.cancel()
+    // Only the last bump can still be running. getAnimations() would flush style on every click.
+    const last = impact.current
+    if (last) {
+      last.finished.catch(() => {})
+      last.cancel()
     }
     if (prefersReducedMotion()) {
-      tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
+      impact.current = tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
       return
     }
     // A bump: the sprite pops up and tips slightly away from the click, then settles
@@ -174,7 +229,7 @@ export function Stage() {
     const dir = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
     const frame = (scale: number, rx: number, ry: number, rz: number, tx: number, ty: number) =>
       `perspective(700px) translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${scale})`
-    tilt.animate(
+    impact.current = tilt.animate(
       [
         { transform: frame(1, 0, 0, 0, 0, 0), offset: 0 },
         {
@@ -191,14 +246,16 @@ export function Stage() {
 
   function fire(clientX: number | null, clientY: number | null) {
     const box = hitboxRef.current
-    if (!box || useGame.getState().fight) return
+    if (!box) return
+    // Measure before any write below, so the read does not force a fresh style and layout pass.
+    const rect = box.getBoundingClientRect()
     pokeDesk()
     const gain = click()
     heat.current = Math.min(1, heat.current + 0.14)
     box.style.setProperty("--heat", heat.current.toFixed(3))
+    warmUp()
     if (stageEmoji) setEmojiPulse((n) => n + 1)
 
-    const rect = box.getBoundingClientRect()
     const hasPoint = clientX !== null && clientY !== null && (clientX !== 0 || clientY !== 0)
     const px = hasPoint ? ((clientX - rect.left) / rect.width) * 100 : 50
     const py = hasPoint ? ((clientY - rect.top) / rect.height) * 100 : 45
@@ -213,6 +270,8 @@ export function Stage() {
 
     const originX = hasPoint && clientX !== null ? clientX : rect.left + rect.width / 2
     const originY = hasPoint && clientY !== null ? clientY : rect.top + rect.height * 0.45
+    // Text and logos fall for the same time, so one timer clears both.
+    const fallen = new Set<number>()
     if (textLabels.length > 0) {
       const bornLoot = textLabels.map((label) => {
         const side = label.kind === "xp" ? 1 : -1
@@ -226,25 +285,31 @@ export function Stage() {
           kind: label.kind,
         }
       })
-      const lootIds = new Set(bornLoot.map((item) => item.id))
+      for (const item of bornLoot) fallen.add(item.id)
       setLoot((current) => [...current, ...bornLoot].slice(-24))
-      window.setTimeout(() => {
-        setLoot((current) => current.filter((item) => !lootIds.has(item.id)))
-      }, FALL_MS + 60)
     }
 
     const born = waterfall(originX, originY, iconPool({ skills, equipment, jobs, gigs }), waterfallCount(boosted))
     if (born.length > 0) {
+      for (const drop of born) fallen.add(drop.id)
       setDrops((current) => capDrops(current, born))
+    }
+    if (fallen.size > 0) {
       window.setTimeout(() => {
-        setDrops((current) => current.filter((item) => !born.some((drop) => drop.id === item.id)))
+        setLoot(without(fallen))
+        setDrops(without(fallen))
       }, FALL_MS + 60)
     }
     if (prefersReducedMotion()) return
-    setRings((current) => [...current, { id: seq++, x, y, big: false }].slice(-14))
-    setSparks((current) =>
-      [...current, ...clickSparks(x, y, accent.glow, boosted ? 14 : 9)].slice(-90),
-    )
+    const ring = { id: seq++, x, y, big: false }
+    const bornSparks = clickSparks(x, y, accent.glow, boosted ? 14 : 9)
+    setRings((current) => [...current, ring].slice(-14))
+    setSparks((current) => [...current, ...bornSparks].slice(-90))
+    const burst = new Set([ring.id, ...bornSparks.map((spark) => spark.id)])
+    window.setTimeout(() => {
+      setRings(without(burst))
+      setSparks(without(burst))
+    }, Math.max(RING_MS, SPARK_MS))
   }
 
   const fireRef = useRef(fire)
@@ -257,7 +322,7 @@ export function Stage() {
     const id = window.setInterval(() => {
       if (!hoverRef.current || document.hidden) return
       const state = useGame.getState()
-      if (state.fight || state.event || state.review || !getDeskPrefs().hoverClick || !ownsEverything(state)) return
+      if (state.event || state.review || !getDeskPrefs().hoverClick || !ownsEverything(state)) return
       const point = pointRef.current
       fireRef.current(point?.x ?? null, point?.y ?? null)
     }, HOVER_CLICK_STEP_MS)
@@ -288,7 +353,6 @@ export function Stage() {
     if (event.repeat && (event.key === " " || event.key === "Enter")) event.preventDefault()
   }
 
-  const mult = activeBoost?.mult ?? 1
   const gold = boosted && mult >= GOLD_MULT_THRESHOLD
 
   return (
@@ -299,22 +363,13 @@ export function Stage() {
       onWheel={scrollIdeEditor}
     >
       <IdeChrome />
-      <StickyNote />
-      <DeskCat />
+      <StickyNoteMemo />
+      <DeskCatMemo />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
-        {boosted ? (
-          <div className="boost-chip">
-            <span className="boost-chip-mult">×{mult}</span>
-            <span>click boost</span>
-            <i
-              className="boost-chip-bar"
-              style={{ ["--left" as string]: `${Math.min(100, (boostLeft / 12000) * 100)}%` }}
-            />
-          </div>
-        ) : null}
+        {boosted ? <BoostChip mult={mult} /> : null}
       </div>
-      <HeroMoney stagePanelRef={stagePanelRef} />
+      <HeroMoneyMemo stagePanelRef={stagePanelRef} />
       <button
         ref={hitboxRef}
         type="button"
@@ -359,7 +414,6 @@ export function Stage() {
             key={ring.id}
             className={ring.big ? "ring ring-big" : "ring"}
             style={{ left: `${ring.x}%`, top: `${ring.y}%` }}
-            onAnimationEnd={() => setRings((current) => current.filter((item) => item.id !== ring.id))}
           />
         ))}
         {sparks.map((spark) => (
@@ -375,7 +429,6 @@ export function Stage() {
               ["--dx" as string]: `${spark.dx}px`,
               ["--dy" as string]: `${spark.dy}px`,
             }}
-            onAnimationEnd={() => setSparks((current) => current.filter((item) => item.id !== spark.id))}
           />
         ))}
         {bits.map((bit) => (
@@ -390,7 +443,6 @@ export function Stage() {
               ["--dy" as string]: `${bit.dy}px`,
               ["--rot" as string]: `${bit.rot}deg`,
             }}
-            onAnimationEnd={() => setBits((current) => current.filter((item) => item.id !== bit.id))}
           />
         ))}
       </button>
@@ -440,12 +492,11 @@ export function Stage() {
         <h2>{stageName}</h2>
       </div>
       <div className="career-dock">
-        <OwnedStrip />
-        <Skills />
+        <OwnedStripMemo />
+        <SkillsMemo />
       </div>
-      <IdePythonConsole />
-      <FightOverlay />
-      <ScorePop />
+      <IdePythonConsoleMemo />
+      <ScorePopMemo />
     </section>
   )
 }

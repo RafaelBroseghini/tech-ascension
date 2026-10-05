@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { emojiClickMs, emojiClickUrl, emojiIdleUrl } from "../data/emojiAssets.ts"
 import { playCozyClick } from "../game/deskAudio.ts"
@@ -9,9 +9,11 @@ type FrameProps = {
   pulseNonce: number
   imgClass: string
   size: number
+  /** Long shop lists defer art far below the fold. The stage sprite always loads at once. */
+  lazy?: boolean
 }
 
-function EmojiFrame({ kind, id, pulseNonce, imgClass, size }: FrameProps) {
+function EmojiFrame({ kind, id, pulseNonce, imgClass, size, lazy = false }: FrameProps) {
   const clickSrc = emojiClickUrl(kind, id)
   const idleSrc = emojiIdleUrl(kind, id)
   const clickMs = emojiClickMs(kind, id)
@@ -35,6 +37,7 @@ function EmojiFrame({ kind, id, pulseNonce, imgClass, size }: FrameProps) {
       alt=""
       width={size}
       height={size}
+      loading={lazy ? "lazy" : undefined}
       draggable={false}
       decoding="async"
     />
@@ -66,8 +69,11 @@ type TapProps = {
   label?: string
 }
 
-/** Shop / owned emoji: click GIF plus the cozy desk tap when sounds are on. */
-export function SpriteTap({ kind, id, className, size = 64, label }: TapProps) {
+/**
+ * Shop / owned emoji: click GIF plus the cozy desk tap when sounds are on. Memoized: the shop
+ * re-renders with the balance ten times a second and every row has one of these.
+ */
+export const SpriteTap = memo(function SpriteTap({ kind, id, className, size = 64, label }: TapProps) {
   const [pulse, setPulse] = useState(0)
   if (!emojiIdleUrl(kind, id)) return null
   return (
@@ -81,10 +87,10 @@ export function SpriteTap({ kind, id, className, size = 64, label }: TapProps) {
         playCozyClick()
       }}
     >
-      <EmojiFrame kind={kind} id={id} pulseNonce={pulse} imgClass={className ?? "emoji-thumb"} size={size} />
+      <EmojiFrame kind={kind} id={id} pulseNonce={pulse} imgClass={className ?? "emoji-thumb"} size={size} lazy />
     </button>
   )
-}
+})
 
 type StillProps = {
   kind: EmojiKind

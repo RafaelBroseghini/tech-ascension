@@ -31,6 +31,7 @@ describe("header click rate", () => {
   it("shows the dollar once a job pays it", () => {
     useGame.setState({ jobs: [1] })
     const host = renderBar()
-    expect(host.querySelector("[data-testid='per-click']")?.textContent).toBe("$1")
+    // $1 base, the intern's +$2, and 1% of the intern's $8/s.
+    expect(host.querySelector("[data-testid='per-click']")?.textContent).toBe("$3.08")
   })
 })

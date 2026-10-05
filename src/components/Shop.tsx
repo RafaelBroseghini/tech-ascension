@@ -1,8 +1,8 @@
-import { ArrowDown, Banknote, Check, ChevronRight, Circle, Lock } from "lucide-react"
+import { ArrowDown, Banknote, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
-import { ERA_ACCENT } from "../data/sprites.ts"
+import { ERA_ACCENT } from "../data/eraAccent.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
@@ -11,7 +11,7 @@ import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../da
 import { CAPITAL } from "../data/capital.ts"
 import type { Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, visibleShopRows } from "../game/economy.ts"
-import { formatNumber } from "../game/format.ts"
+import { formatCompact, formatNumber } from "../game/format.ts"
 import { nextUnlock, shopFocus } from "../game/nextUnlock.ts"
 import type { NextUnlock } from "../game/nextUnlock.ts"
 import {
@@ -41,12 +41,12 @@ function nextLine(next: NextUnlock): string {
   return next.needs.every((line) => line.startsWith("to ")) ? body : `need ${body}`
 }
 
-const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string }> = {
-  A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "var(--ide-green)" },
-  B: { label: "Gigs", title: "Take on a gig", hint: "First dollars", glow: "var(--ide-blue)" },
-  C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "var(--ide-peach)" },
-  G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "var(--ide-sky)" },
-  D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "var(--ide-mauve)" },
+const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string; done: string }> = {
+  A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "var(--ide-green)", done: "Every skill learned" },
+  B: { label: "Gigs", title: "Take on a gig", hint: "First dollars", glow: "var(--ide-blue)", done: "Every gig cleared" },
+  C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "var(--ide-peach)", done: "Every job held" },
+  G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "var(--ide-sky)", done: "Every gear row bought" },
+  D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "var(--ide-mauve)", done: "Every capital row bought" },
 }
 
 function OwnedCount({ value }: { value: number }) {
@@ -55,6 +55,36 @@ function OwnedCount({ value }: { value: number }) {
     <span key={value} className={value !== initial ? "own tick-up" : "own"}>
       {formatNumber(value)}
     </span>
+  )
+}
+
+/** A row has little room, so "click" and "salary" are glyphs. The word stays as the label for screen readers. */
+function StatIcon({ kind }: { kind: "click" | "salary" }) {
+  const Icon = kind === "click" ? MousePointerClick : BriefcaseBusiness
+  return <Icon {...UI_ICON_SM} className="stat-icon" role="img" aria-label={kind} />
+}
+
+/** One stat in a row's line. The icon stays on the same line as its number when the row wraps. */
+function Stat({ icon, children }: { icon?: "click" | "salary"; children: ReactNode }) {
+  return (
+    <span className="stat">
+      {icon ? <StatIcon kind={icon} /> : null}
+      {children}
+    </span>
+  )
+}
+
+/** Stats joined by a dot, the way the rows always read. */
+function Stats({ items }: { items: ReactNode[] }) {
+  return (
+    <>
+      {items.map((item, index) => (
+        <Fragment key={index}>
+          {index > 0 ? " · " : null}
+          {item}
+        </Fragment>
+      ))}
+    </>
   )
 }
 
@@ -69,15 +99,15 @@ type OfferProps = {
   fresh?: boolean
   locked?: boolean
   done?: boolean
-  /** 0–1 progress through a closed reveal gate: the bar along the bottom of the row fills as it closes. Null when the gate is open. */
-  gate?: number | null
+  /** The part of a closed reveal gate holding the row shut: the bar along the bottom fills as it closes and says where it stands. Null when the gate is open. */
+  gate?: Gate | null
   /** What is still missing, as counts that fall while you earn. Shown under the row's attributes until the gate opens. */
   unlock?: string[]
   /**
-   * Once a row is open but the price is not yet in hand: `fill` is the share of the price held, `left` says how much
-   * is missing. The same bottom bar and a money line, counting down as you earn. Ignored while the gate is shut.
+   * Once a row is open but its price is not in hand yet: the balance you have and the price. The bottom bar turns
+   * into a money bar with both amounts and what is left, counting down as you earn. Ignored while the gate is shut.
    */
-  saving?: { fill: number; left: string }
+  saving?: { have: number; need: number }
   title: string
   children: ReactNode
   actions: ReactNode
@@ -88,11 +118,26 @@ function ratio(have: number, need: number): number {
   return Math.max(0, Math.min(1, have / need))
 }
 
-/** The thinnest reading of a closed gate. Null once every part is met. */
-function gateFill(parts: number[]): number | null {
-  if (parts.length === 0) return null
-  const fill = Math.min(...parts)
-  return fill >= 1 ? null : fill
+/** One requirement behind a closed gate: what you have, what it takes, and what it is counted in. */
+type GatePart = { have: number; need: number; unit: "lifetime XP" | "gigs" | "skills" | "job" | "$" }
+type Gate = GatePart & { fill: number }
+
+/** The part furthest from done holds the whole gate shut, so the bar tracks it. Null once every part is met. */
+function gateOf(parts: GatePart[]): Gate | null {
+  let worst: Gate | null = null
+  for (const part of parts) {
+    const fill = ratio(part.have, part.need)
+    if (fill < 1 && (!worst || fill < worst.fill)) worst = { ...part, fill }
+  }
+  return worst
+}
+
+/** `1,200 / 6,000 lifetime XP`, the reading inside an unlock bar. */
+function gateLabel({ have, need, unit }: GatePart): string {
+  const count = (n: number) => formatNumber(Math.floor(n))
+  if (unit === "$") return `$${count(have)} / $${count(need)}`
+  const noun = need === 1 && (unit === "gigs" || unit === "skills") ? unit.slice(0, -1) : unit
+  return `${count(have)} / ${count(need)} ${noun}`
 }
 
 function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
@@ -106,9 +151,35 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
+/** The bar along the bottom of a row: unlock progress, or money saved toward the price. */
+function OfferProgress({ kind, fill, label, count }: { kind: "unlock" | "money"; fill: number; label: ReactNode; count: string }) {
+  const percent = Math.floor(Math.max(0, Math.min(1, fill)) * 100)
+  return (
+    <div
+      className="offer-progress"
+      data-kind={kind}
+      data-testid="offer-progress"
+      role="progressbar"
+      aria-label={kind === "unlock" ? "Unlock progress" : "Saved toward the price"}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      style={{ ["--gate" as string]: String(Math.max(0, fill)) }}
+    >
+      <span className="offer-progress-label">
+        {kind === "unlock" ? <Lock {...UI_ICON_SM} aria-hidden /> : <Banknote {...UI_ICON_SM} aria-hidden />}
+        {label}
+      </span>
+      <span className="offer-progress-count" data-testid="offer-progress-count">
+        {count}
+      </span>
+    </div>
+  )
+}
+
 function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions }: OfferProps) {
-  const gated = typeof gate === "number" && gate < 1
-  const pending = !gated && saving && saving.fill < 1 ? saving : null
+  const gated = gate != null && gate.fill < 1
+  const pending = !gated && saving && saving.need > 0 && saving.have < saving.need ? saving : null
   return (
     <article
       data-row={rowKey}
@@ -139,18 +210,17 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
             <span>{unlock.join(" + ")}</span>
           </p>
         ) : null}
-        {pending ? (
-          <p className="offer-unlock" data-testid="offer-saving">
-            <Banknote {...UI_ICON_SM} aria-label="Money needed" role="img" />
-            <span>{pending.left}</span>
-          </p>
-        ) : null}
       </div>
       <div className="offer-actions">{actions}</div>
       {gated ? (
-        <span className="offer-progress" data-kind="unlock" style={{ ["--gate" as string]: String(Math.max(0, gate)) }} data-testid="offer-progress" aria-hidden="true" />
+        <OfferProgress kind="unlock" fill={gate.fill} label={gateLabel(gate)} count={`${Math.floor(Math.max(0, gate.fill) * 100)}%`} />
       ) : pending ? (
-        <span className="offer-progress" data-kind="money" style={{ ["--gate" as string]: String(Math.max(0, pending.fill)) }} data-testid="offer-progress" aria-hidden="true" />
+        <OfferProgress
+          kind="money"
+          fill={pending.have / pending.need}
+          label={`$${formatCompact(Math.max(0, pending.have))} / $${formatCompact(pending.need)}`}
+          count={`$${formatCompact(Math.ceil(pending.need - pending.have))} to go`}
+        />
       ) : null}
     </article>
   )
@@ -189,7 +259,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const buyJob = useGame((s) => s.buyJob)
   const buy = useGame((s) => s.buy)
   const clearGig = useGame((s) => s.clearGig)
-  const wipe = useGame((s) => s.wipe)
 
   const [picked, setPickedState] = useState<ShopTab | null>(() => readSavedShopTab())
   const setPicked = (tab: ShopTab | null) => {
@@ -239,7 +308,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     (row) => ownedCount(equipment, row.id) > 0,
     (row) => pin("gear", row.id),
   )
-  const next = nextUnlock({ ...gates, equipment, money, xp })
+  // The banner speaks for the open panel only: its closed board, or its first row not bought yet.
+  const next = nextUnlock({ ...gates, equipment, money, xp }, tab)
 
   const revealedByEra = useMemo(() => {
     const visible = visibleShopRows(
@@ -295,6 +365,16 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     if (below > 0) list.scrollTop += below
     else if (above > 0) list.scrollTop -= above
   }, [rowScope, rowCount, jumpSeq])
+
+  // One list serves every tab, so it keeps its scroll offset across a switch. The newest rows sit at the bottom: land there.
+  // This runs before the "Next" jump below, which still wins when it targets a specific row.
+  const shownScope = useRef(rowScope)
+  useLayoutEffect(() => {
+    if (shownScope.current === rowScope) return
+    shownScope.current = rowScope
+    const list = listRef.current
+    if (list) list.scrollTop = list.scrollHeight
+  }, [rowScope])
 
   useLayoutEffect(() => {
     const rowKey = jumpRow.current
@@ -445,7 +525,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             <span className="next-needs">{nextLine(next)}</span>
           </>
         ) : (
-          <span className="next-needs">Everything is open</span>
+          <span className="next-needs">{PHASE_TAB[tab].done}</span>
         )}
       </button>
 
@@ -483,7 +563,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const revealed = isSkillRevealed(row, skills, xpTotal)
               const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
-              const gate = revealed || have > 0 ? null : gateFill([ratio(xpTotal, row.unlockAtXp)])
+              const gate = revealed || have > 0 ? null : gateOf([{ have: xpTotal, need: row.unlockAtXp, unit: "lifetime XP" }])
               return (
                 <Offer
                   key={row.id}
@@ -510,9 +590,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     </>
                   }
                 >
-                  {[row.xpPerClick > 0 ? `+${formatNumber(row.xpPerClick)} XP/click` : "", row.xpPerSec > 0 ? `+${formatNumber(row.xpPerSec)} XP/s` : ""]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  <Stats
+                    items={[
+                      ...(row.xpPerClick > 0 ? [<Stat key="click" icon="click">{`+${formatNumber(row.xpPerClick)} XP`}</Stat>] : []),
+                      ...(row.xpPerSec > 0 ? [<Stat key="sec">{`+${formatNumber(row.xpPerSec)} XP/s`}</Stat>] : []),
+                    ]}
+                  />
                   {" · owned "}
                   <OwnedCount value={have} />
                 </Offer>
@@ -537,7 +620,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const skillMet = gig.skillIds.filter((id) => ownedCount(skills, id) > 0).length
               const gate =
                 status === "locked"
-                  ? gateFill([ratio(xpTotal, gig.xpReq), ratio(gigs.length, gig.priorGigs), ratio(skillMet, gig.skillIds.length)])
+                  ? gateOf([
+                      { have: xpTotal, need: gig.xpReq, unit: "lifetime XP" },
+                      { have: gigs.length, need: gig.priorGigs, unit: "gigs" },
+                      { have: skillMet, need: gig.skillIds.length, unit: "skills" },
+                    ])
                   : null
               return (
                 <Offer
@@ -576,7 +663,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const status = jobState(gates, job)
               const afford = status === "ready" && canAfford(money, job.baseCost)
               const key = `job:${job.id}`
-              const gate = status === "locked" ? gateFill([ratio(xpTotal, job.xpReq)]) : null
+              const gate = status === "locked" ? gateOf([{ have: xpTotal, need: job.xpReq, unit: "lifetime XP" }]) : null
               return (
                 <Offer
                   key={job.id}
@@ -591,11 +678,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   done={status === "owned"}
                   gate={gate}
                   unlock={[`${formatNumber(Math.ceil(job.xpReq - xpTotal))} more XP`]}
-                  saving={
-                    status === "ready" && job.baseCost > 0
-                      ? { fill: ratio(money, job.baseCost), left: `$${formatNumber(Math.ceil(job.baseCost - money))} more` }
-                      : undefined
-                  }
+                  saving={status === "ready" && job.baseCost > 0 ? { have: money, need: job.baseCost } : undefined}
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
@@ -603,7 +686,14 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     </button>
                   }
                 >
-                  {`salary +$${formatNumber(job.cps)}/s`}
+                  <Stats
+                    items={[
+                      <Stat key="salary" icon="salary">{`+$${formatNumber(job.cps)}/s`}</Stat>,
+                      <Stat key="click" icon="click">{`+$${formatNumber(job.clickBonus)} +${job.clickPct}% of $/s`}</Stat>,
+                      ...(job.xpPerSec > 0 ? [<Stat key="xp">{`+${formatNumber(job.xpPerSec)} XP/s`}</Stat>] : []),
+                      ...(job.xpLump > 0 ? [<Stat key="lump">{`+${formatNumber(job.xpLump)} XP once`}</Stat>] : []),
+                    ]}
+                  />
                 </Offer>
               )
             })
@@ -627,9 +717,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       const gate =
                         revealed || have > 0
                           ? null
-                          : gateFill([
-                              ratio(peakMoney, row.unlockMoney),
-                              row.unlockJobId > 0 ? (jobs.includes(row.unlockJobId) ? 1 : 0) : 1,
+                          : gateOf([
+                              { have: peakMoney, need: row.unlockMoney, unit: "$" },
+                              { have: row.unlockJobId > 0 && jobs.includes(row.unlockJobId) ? 1 : 0, need: row.unlockJobId > 0 ? 1 : 0, unit: "job" },
                             ])
                       return (
                         <Offer
@@ -645,9 +735,10 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           locked={!revealed && have === 0}
                           gate={gate}
                           unlock={[
-                            ...(peakMoney < row.unlockMoney ? [`$${formatNumber(Math.ceil(row.unlockMoney - peakMoney))} more held`] : []),
+                            ...(peakMoney < row.unlockMoney ? [`Reach a $${formatNumber(row.unlockMoney)} balance`] : []),
                             ...(row.unlockJobId > 0 && !jobs.includes(row.unlockJobId) ? [`the ${jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`} job`] : []),
                           ]}
+                          saving={revealed && have === 0 ? { have: money, need: cost } : undefined}
                           title={row.name}
                           actions={
                             <>
@@ -660,9 +751,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                             </>
                           }
                         >
-                          {[row.cps > 0 ? `+$${formatNumber(row.cps)}/s` : "", row.clickBonus > 0 ? `+$${formatNumber(row.clickBonus)} click` : ""]
-                            .filter(Boolean)
-                            .join(" · ")}
+                          <Stats
+                            items={[
+                              ...(row.cps > 0 ? [<Stat key="sec">{`+$${formatNumber(row.cps)}/s`}</Stat>] : []),
+                              ...(row.clickBonus > 0 ? [<Stat key="click" icon="click">{`+$${formatNumber(row.clickBonus)}`}</Stat>] : []),
+                            ]}
+                          />
                           {" · owned "}
                           <OwnedCount value={have} />
                         </Offer>
@@ -685,7 +779,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                 const revealed = isRevealed(tier, owned, peakMoney)
                 const afford = revealed && canAfford(money, cost)
                 const key = `capital:${tier.id}`
-                const gate = revealed || have > 0 ? null : gateFill([ratio(peakMoney, tier.baseCost)])
                 return (
                   <Offer
                     key={tier.id}
@@ -697,9 +790,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     afford={afford}
                     flash={flashKey === key}
                     fresh={fresh.has(key) && have === 0}
-                    locked={!revealed && have === 0}
-                    gate={gate}
-                    unlock={[`$${formatNumber(Math.ceil(tier.baseCost - peakMoney))} more held`]}
+                    saving={have === 0 ? { have: money, need: cost } : undefined}
                     title={tier.name}
                     actions={
                       <>
@@ -712,8 +803,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       </>
                     }
                   >
-                    +${formatNumber(tier.cps)}/s
-                    {tier.clickBonus > 0 ? ` · +$${formatNumber(tier.clickBonus)} click` : ""}
+                    <Stats
+                      items={[
+                        <Stat key="sec">{`+$${formatNumber(tier.cps)}/s`}</Stat>,
+                        ...(tier.clickBonus > 0 ? [<Stat key="click" icon="click">{`+$${formatNumber(tier.clickBonus)}`}</Stat>] : []),
+                      ]}
+                    />
                     {" · owned "}
                     <OwnedCount value={have} />
                   </Offer>
@@ -725,15 +820,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           )
         ) : null}
       </ScrollPanel>
-      <button
-        type="button"
-        className="wipe"
-        onClick={() => {
-          if (window.confirm("Wipe this save? Your career restarts at high school.")) wipe()
-        }}
-      >
-        Wipe save
-      </button>
     </aside>
   )
 }

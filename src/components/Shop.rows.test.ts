@@ -4,7 +4,9 @@ import { createRoot } from "react-dom/client"
 import type { Root } from "react-dom/client"
 import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL } from "../data/capital.ts"
+import { EQUIPMENT, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { formatNumber } from "../game/format.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { Shop } from "./Shop.tsx"
@@ -64,8 +66,10 @@ describe("shop rows", () => {
     const row = renderShop().querySelector<HTMLElement>("[data-row='skill:2']")
     const bar = row?.querySelector<HTMLElement>("[data-testid='offer-progress']")
     expect(bar?.parentElement).toBe(row ?? null)
-    expect(bar?.getAttribute("aria-hidden")).toBe("true")
+    expect(bar?.getAttribute("role")).toBe("progressbar")
     expect(Number(bar?.style.getPropertyValue("--gate"))).toBeGreaterThanOrEqual(0)
+    // The counter inside the bar is the percentage through the gate.
+    expect(bar?.querySelector("[data-testid='offer-progress-count']")?.textContent).toBe(`${bar?.getAttribute("aria-valuenow")}%`)
     expect(row?.querySelector(".offer-art-col")?.contains(bar ?? null)).toBe(false)
     expect(row?.querySelector(".offer-actions")?.contains(bar ?? null)).toBe(false)
     const price = row?.querySelector<HTMLButtonElement>(".offer-actions button:not(.ghost)")
@@ -84,6 +88,40 @@ describe("shop rows", () => {
     flushSync(() => useGame.setState({ xpTotal: second.unlockAtXp - 40 }))
     expect(countLeft(row())).toBe(40)
     expect(Number(row()?.querySelector<HTMLElement>("[data-testid='offer-progress']")?.style.getPropertyValue("--gate"))).toBeGreaterThan(fillBefore)
+  })
+
+  it("reads where the lock stands inside the unlock bar", () => {
+    const second = skill(1)
+    useGame.setState({ xp: 0, xpTotal: second.unlockAtXp - 100, skills: { "1": 1 } })
+    const bar = renderShop().querySelector("[data-row='skill:2'] [data-testid='offer-progress']")
+    expect(bar?.querySelector(".offer-progress-label")?.textContent).toBe(
+      `${formatNumber(second.unlockAtXp - 100)} / ${formatNumber(second.unlockAtXp)} lifetime XP`,
+    )
+  })
+
+  it("tracks the requirement that is furthest from done when a gig has several", () => {
+    writeSavedShopTab("B")
+    // Enough lifetime XP, no skills yet: the skill set is what holds gig 1 shut.
+    useGame.setState({ xp: 0, xpTotal: 20_000, skills: { "15": 1, "16": 1 }, gigs: [] })
+    const bar = renderShop().querySelector("[data-row='gig:1'] [data-testid='offer-progress']")
+    expect(bar?.querySelector(".offer-progress-label")?.textContent).toMatch(/^\d+ \/ 6 skills$/)
+  })
+
+  it("lists a job's idle XP and its one-time XP lump on the row", () => {
+    writeSavedShopTab("C")
+    // Holding the first six roles lists Mid-level SWE, the next one, beside them.
+    useGame.setState({ xp: 0, xpTotal: 50_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [1, 2, 3, 4, 5, 6] })
+    const host = renderShop()
+    const job = JOB_TIERS[0]!
+    const text = host.querySelector(`[data-row='job:${job.id}'] p`)?.textContent ?? ""
+    expect(text).toContain(`+${formatNumber(job.xpPerSec)} XP/s`)
+    expect(text).toContain(`+${formatNumber(job.xpLump)} XP once`)
+    // A role that does not teach lists neither.
+    expect(JOB_TIERS[6]?.xpPerSec).toBe(0)
+    expect(JOB_TIERS[6]?.xpLump).toBe(0)
+    const plain = host.querySelector(`[data-row='job:7'] p`)
+    expect(plain).not.toBeNull()
+    expect(plain?.textContent).not.toMatch(/XP/)
   })
 
   it("removes the unlock line and the progress bar once the row unlocks", () => {
@@ -105,18 +143,70 @@ describe("shop rows", () => {
     expect(row?.querySelector("[data-testid='offer-progress']")).toBeNull()
   })
 
+  it("draws click and salary as icons, with the word as the label", () => {
+    useGame.setState({ xp: skill(0).baseXpCost, xpTotal: 200_000, skills: {}, jobs: [], gigs: [1, 2, 3, 4, 5, 6] })
+    const labels = (row: ParentNode | null | undefined) => [...(row?.querySelectorAll("svg.stat-icon") ?? [])].map((icon) => icon.getAttribute("aria-label"))
+
+    writeSavedShopTab("A")
+    const skills = renderShop().querySelector<HTMLElement>("[data-row='skill:1']")
+    expect(skill(0).xpPerClick).toBeGreaterThan(0)
+    expect(labels(skills)).toEqual(["click"])
+    expect(skills?.textContent).not.toMatch(/click/i)
+    expect(skills?.querySelector("p")?.textContent).toMatch(/^\+[\d,.]+ XP/)
+
+    flushSync(() => {
+      for (const root of roots.splice(0)) root.unmount()
+    })
+    document.body.replaceChildren()
+    writeSavedShopTab("C")
+    const job = renderShop().querySelector<HTMLElement>("[data-row='job:1']")
+    expect(labels(job)).toEqual(["salary", "click"])
+    expect(job?.querySelector("p")?.textContent).not.toMatch(/salary|click/i)
+  })
+
+  it("no longer carries a wipe button, which lives in the settings panel", () => {
+    const host = renderShop()
+    expect(host.querySelector(".wipe")).toBeNull()
+    expect(host.textContent).not.toMatch(/wipe/i)
+  })
+
   it("has no buy bar and no vertical meters", () => {
     useGame.setState({ xp: 0, xpTotal: skill(0).baseXpCost, skills: { "1": 1 } })
     const host = renderShop()
     expect(host.querySelector(".offer-meter, .offer-buy, .offer-gate")).toBeNull()
   })
 
-  it("names the money and the job a gear row still waits on", () => {
+  it("names the balance to reach, not a gap against the best balance ever held", () => {
     writeSavedShopTab("G")
     useGame.setState({ xpTotal: 20_000, money: 10, peakMoney: 10, equipment: { "1": 1, "2": 1, "3": 1, "4": 1 }, jobs: [], gigs: [] })
     const host = renderShop()
     const waiting = [...host.querySelectorAll<HTMLElement>(".offer")].find((row) => row.querySelector("[data-testid='offer-unlock']"))
-    expect(waiting?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^\$[\d,.]+[KMB]? more held/)
+    expect(waiting?.querySelector("[data-testid='offer-unlock']")?.textContent).toMatch(/^Reach a \$[\d,]+ balance/)
+    expect(host.textContent).not.toContain("held")
+  })
+
+  it("puts a revealed but unaffordable first gear copy on a money bar", () => {
+    writeSavedShopTab("G")
+    const first = EQUIPMENT[0]!
+    useGame.setState({ xpTotal: 20_000, money: 10, peakMoney: 1_000, equipment: {}, jobs: [], gigs: [] })
+    const row = renderShop().querySelector<HTMLElement>(`[data-row='gear:${first.id}']`)
+    const bar = row?.querySelector<HTMLElement>("[data-testid='offer-progress']")
+    expect(bar?.dataset.kind).toBe("money")
+    expect(bar?.textContent).toContain("$10 / ")
+    expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
+  })
+
+  it("never locks a capital row: it saves toward the price against the balance in hand", () => {
+    writeSavedShopTab("D")
+    const first = CAPITAL[0]!
+    useGame.setState({ xpTotal: 200_000, money: first.baseCost / 4, peakMoney: first.baseCost / 2, jobs: [14], gigs: [1], equipment: {}, owned: {} })
+    const row = renderShop().querySelector<HTMLElement>(`[data-row='capital:${first.id}']`)
+    expect(row?.classList.contains("is-locked")).toBe(false)
+    expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
+    const bar = row?.querySelector<HTMLElement>("[data-testid='offer-progress']")
+    expect(bar?.dataset.kind).toBe("money")
+    expect(Number(bar?.style.getPropertyValue("--gate"))).toBeCloseTo(0.25, 2)
+    expect(bar?.querySelector("[data-testid='offer-progress-count']")?.textContent).toMatch(/to go$/)
   })
 
   it("treats a cheaper gear row like any other row: no indent, tag or special card", () => {
@@ -183,12 +273,12 @@ describe("shop rows", () => {
     const job5 = (host: ParentNode) => host.querySelector<HTMLElement>("[data-row='job:5']")
     const fill = (row: HTMLElement | null) => Number(row?.querySelector<HTMLElement>("[data-testid='offer-progress']")?.style.getPropertyValue("--gate"))
 
-    it("fills a bottom bar with the share of the price held and says how much is left", () => {
+    it("fills a bottom bar with the balance against the price and says how much is left inside it", () => {
       const row = job5(readyJobs(1_000))
-      const saving = row?.querySelector("[data-testid='offer-saving']")
-      expect(saving?.textContent).toMatch(/^\$[\d,.]+[KMB]? more$/)
-      expect(saving?.querySelector("svg")?.getAttribute("aria-label")).toBe("Money needed")
-      expect(row?.querySelector("[data-testid='offer-progress']")?.getAttribute("data-kind")).toBe("money")
+      const bar = row?.querySelector<HTMLElement>("[data-testid='offer-progress']")
+      expect(bar?.getAttribute("data-kind")).toBe("money")
+      expect(bar?.querySelector(".offer-progress-label")?.textContent).toBe("$1K / $3K")
+      expect(bar?.querySelector("[data-testid='offer-progress-count']")?.textContent).toBe("$2K to go")
       expect(fill(row)).toBeCloseTo(1_000 / 3_000, 2)
       expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()
       expect(row?.querySelector<HTMLButtonElement>(".offer-actions button")?.disabled).toBe(true)
@@ -197,16 +287,16 @@ describe("shop rows", () => {
     it("counts down and fills as money comes in", () => {
       const host = readyJobs(1_000)
       const before = fill(job5(host))
-      expect(job5(host)?.querySelector("[data-testid='offer-saving']")?.textContent).toBe("$2,000 more")
+      const count = () => job5(host)?.querySelector("[data-testid='offer-progress-count']")?.textContent
+      expect(count()).toBe("$2K to go")
       flushSync(() => useGame.setState({ money: 2_500 }))
-      expect(job5(host)?.querySelector("[data-testid='offer-saving']")?.textContent).toBe("$500 more")
+      expect(count()).toBe("$500 to go")
       expect(fill(job5(host))).toBeGreaterThan(before)
     })
 
-    it("clears the line and the bar once the job is affordable", () => {
+    it("clears the bar once the job is affordable", () => {
       const host = readyJobs(1_000)
       flushSync(() => useGame.setState({ money: 3_000 }))
-      expect(job5(host)?.querySelector("[data-testid='offer-saving']")).toBeNull()
       expect(job5(host)?.querySelector("[data-testid='offer-progress']")).toBeNull()
       expect(job5(host)?.querySelector<HTMLButtonElement>(".offer-actions button")?.disabled).toBe(false)
     })
@@ -216,14 +306,12 @@ describe("shop rows", () => {
       useGame.setState({ xpTotal: 40_000, xp: 40_000, money: 1_000, peakMoney: 1_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [1, 2, 3, 4] })
       const row = job5(renderShop())
       expect(row?.querySelector("[data-testid='offer-unlock']")).not.toBeNull()
-      expect(row?.querySelector("[data-testid='offer-saving']")).toBeNull()
       expect(row?.querySelector("[data-testid='offer-progress']")?.getAttribute("data-kind")).toBe("unlock")
     })
 
     it("leaves a hired job without a bar", () => {
       const host = readyJobs(1_000)
       expect(host.querySelector("[data-row='job:4'] [data-testid='offer-progress']")).toBeNull()
-      expect(host.querySelector("[data-row='job:4'] [data-testid='offer-saving']")).toBeNull()
     })
   })
 

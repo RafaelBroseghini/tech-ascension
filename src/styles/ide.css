@@ -641,6 +641,31 @@
   animation: desk-z 2.2s ease-in-out infinite;
 }
 
+.desk-cat-new {
+  position: absolute;
+  z-index: 1;
+  top: -6px;
+  left: 50%;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--ide-peach);
+  color: var(--ide-on-accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  transform: translateX(-50%) rotate(-6deg);
+  animation: desk-cat-new 600ms var(--ease-out);
+}
+
+@keyframes desk-cat-new {
+  0% { opacity: 0; transform: translate(-50%, 6px) rotate(-6deg) scale(0.6); }
+  60% { opacity: 1; transform: translate(-50%, -2px) rotate(-6deg) scale(1.1); }
+  100% { transform: translateX(-50%) rotate(-6deg) scale(1); }
+}
+
 @keyframes desk-cat-idle {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
@@ -661,7 +686,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desk-cat, .desk-cat-img, .desk-cat-z { animation: none; }
+  .desk-cat, .desk-cat-img, .desk-cat-z, .desk-cat-new { animation: none; }
 }
 
 :root[data-ide-scheme="light"] .code { opacity: 0.85; }

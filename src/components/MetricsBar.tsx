@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CornerActions } from "./CornerActions.tsx"
 import { production } from "../game/economy.ts"
@@ -7,6 +8,9 @@ import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
 import { clickPaysMoney, PHASE_NAME, stageOf } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
+
+// The bar follows XP and the clock every tick; the buttons on its right do not.
+const CornerActionsMemo = memo(CornerActions)
 
 export function MetricsBar() {
   const xp = useGame((state) => state.xp)
@@ -93,7 +97,7 @@ export function MetricsBar() {
           <dd data-testid="stage-name">{stage?.name ?? "High school"}</dd>
         </div>
       </dl>
-      <CornerActions />
+      <CornerActionsMemo />
     </header>
   )
 }
