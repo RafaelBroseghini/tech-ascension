@@ -1,0 +1,1682 @@
+{
+  "skill:0": {
+    "label": "discord_backpack + GomaCarryPeach",
+    "idle": "https://cdn3.emoji.gg/emojis/72071-discord-backpack.png",
+    "click": "https://cdn3.emoji.gg/emojis/403790-gomacarrypeach.gif"
+  },
+  "skill:1": {
+    "label": "TooManyTabs + Monolaptop",
+    "idle": "https://cdn3.emoji.gg/emojis/6097-toomanytabs.png",
+    "click": "https://cdn3.emoji.gg/emojis/229035-monolaptop.png"
+  },
+  "skill:2": {
+    "label": "meowpeek + lurk_froggy_kitty",
+    "idle": "https://cdn3.emoji.gg/emojis/102902-meowpeek.png",
+    "click": "https://cdn3.emoji.gg/emojis/952925-lurk-froggy-kitty.gif"
+  },
+  "skill:3": {
+    "label": "Rivals_100_Winstreak + GSClimegreenFire",
+    "idle": "https://cdn3.emoji.gg/emojis/72179-rivals-100-winstreak.png",
+    "click": "https://cdn3.emoji.gg/emojis/644677-gsclimegreenfire.png"
+  },
+  "skill:4": {
+    "label": "YouTubeLogo + sleepyztired",
+    "idle": "https://cdn3.emoji.gg/emojis/506849-youtubelogo.png",
+    "click": "https://cdn3.emoji.gg/emojis/507778-sleepyztired.gif"
+  },
+  "skill:5": {
+    "label": "librarybookshelf + Afrogisreadingabook",
+    "idle": "https://cdn3.emoji.gg/emojis/813842-librarybookshelf.gif",
+    "click": "https://cdn3.emoji.gg/emojis/668887-afrogisreadingabook.png"
+  },
+  "skill:6": {
+    "label": "StardewProf + yapping",
+    "idle": "https://cdn3.emoji.gg/emojis/8757-stardewprof.png",
+    "click": "https://cdn3.emoji.gg/emojis/77643-yapping.gif"
+  },
+  "skill:7": {
+    "label": "Nerdcat + reading_doginal",
+    "idle": "https://cdn3.emoji.gg/emojis/299063-nerdcat.png",
+    "click": "https://cdn3.emoji.gg/emojis/461794-reading-doginal.gif"
+  },
+  "skill:8": {
+    "label": "Linux + KirbyDance_TerminalMontage",
+    "idle": "https://cdn3.emoji.gg/emojis/465231-linux.png",
+    "click": "https://cdn3.emoji.gg/emojis/2019_KirbyDance_TerminalMontage.gif"
+  },
+  "skill:9": {
+    "label": "npm logo + Unboxing_YT",
+    "idle": "https://cdn3.emoji.gg/emojis/1843_npm_logo.png",
+    "click": "https://cdn3.emoji.gg/emojis/60814-unboxing-yt.png"
+  },
+  "skill:10": {
+    "label": "Github + poohandtiggerhearts",
+    "idle": "https://cdn3.emoji.gg/emojis/444671-github.png",
+    "click": "https://cdn3.emoji.gg/emojis/313779-poohandtiggerhearts.gif"
+  },
+  "skill:11": {
+    "label": "purpleasterisk + Blobconfused",
+    "idle": "https://cdn3.emoji.gg/emojis/32321-purpleasterisk.png",
+    "click": "https://cdn3.emoji.gg/emojis/492661-blobconfused.png"
+  },
+  "skill:12": {
+    "label": "terminal + 2_shell2",
+    "idle": "https://cdn3.emoji.gg/emojis/6289-terminal.png",
+    "click": "https://cdn3.emoji.gg/emojis/379141-2-shell2.png"
+  },
+  "skill:13": {
+    "label": "html + css",
+    "idle": "https://cdn3.emoji.gg/emojis/96295-html.png",
+    "click": "https://cdn3.emoji.gg/emojis/20210-css.png"
+  },
+  "skill:14": {
+    "label": "Javascript + JScry",
+    "idle": "https://cdn3.emoji.gg/emojis/813443-javascript.png",
+    "click": "https://cdn3.emoji.gg/emojis/154268-jscry.png"
+  },
+  "skill:15": {
+    "label": "WebIcon + Briefcase",
+    "idle": "https://cdn3.emoji.gg/emojis/835996-webicon.png",
+    "click": "https://cdn3.emoji.gg/emojis/845056-briefcase.gif"
+  },
+  "skill:16": {
+    "label": "react + Atomheart",
+    "idle": "https://cdn3.emoji.gg/emojis/47272-react.png",
+    "click": "https://cdn3.emoji.gg/emojis/67547-atomheart.gif"
+  },
+  "skill:17": {
+    "label": "typescript + TYPESHIT",
+    "idle": "https://cdn3.emoji.gg/emojis/6276-typescript.png",
+    "click": "https://cdn3.emoji.gg/emojis/994047-typeshit.png"
+  },
+  "skill:18": {
+    "label": "GomaWeights + doginalbuff",
+    "idle": "https://cdn3.emoji.gg/emojis/725752-gomaweights.png",
+    "click": "https://cdn3.emoji.gg/emojis/822650-doginalbuff.gif"
+  },
+  "skill:19": {
+    "label": "todos + GreenCheckmark",
+    "idle": "https://cdn3.emoji.gg/emojis/777227-todos.png",
+    "click": "https://cdn3.emoji.gg/emojis/482483-greencheckmark.png"
+  },
+  "skill:20": {
+    "label": "janky_rocket + nuclear_launch_button",
+    "idle": "https://cdn3.emoji.gg/emojis/6384-janky-rocket.png",
+    "click": "https://cdn3.emoji.gg/emojis/5309-nuclear-launch-button.gif"
+  },
+  "skill:21": {
+    "label": "broomstick + CleanSpray",
+    "idle": "https://cdn3.emoji.gg/emojis/71966-broomstick.png",
+    "click": "https://cdn3.emoji.gg/emojis/898486-cleanspray.gif"
+  },
+  "skill:22": {
+    "label": "BlueTools + giveaway",
+    "idle": "https://cdn3.emoji.gg/emojis/121580-bluetools.png",
+    "click": "https://cdn3.emoji.gg/emojis/14448-giveaway.png"
+  },
+  "skill:23": {
+    "label": "tailwind + CatPawPaintBrush",
+    "idle": "https://cdn3.emoji.gg/emojis/38293-tailwind.png",
+    "click": "https://cdn3.emoji.gg/emojis/234806-catpawpaintbrush.png"
+  },
+  "skill:24": {
+    "label": "palette + artistkitty",
+    "idle": "https://cdn3.emoji.gg/emojis/12515-palette.png",
+    "click": "https://cdn3.emoji.gg/emojis/508005-artistkitty.gif"
+  },
+  "skill:25": {
+    "label": "NodeJS + DrawingTrain",
+    "idle": "https://cdn3.emoji.gg/emojis/886441-nodejs.png",
+    "click": "https://cdn3.emoji.gg/emojis/430404-drawingtrain.png"
+  },
+  "skill:26": {
+    "label": "sql + DatabaseCheck",
+    "idle": "https://cdn3.emoji.gg/emojis/5752-sql.png",
+    "click": "https://cdn3.emoji.gg/emojis/DatabaseCheck.png"
+  },
+  "skill:27": {
+    "label": "MetalLock + Locked_in",
+    "idle": "https://cdn3.emoji.gg/emojis/462277-metallock.png",
+    "click": "https://cdn3.emoji.gg/emojis/344283-locked-in.png"
+  },
+  "skill:28": {
+    "label": "Bug + Tester",
+    "idle": "https://cdn3.emoji.gg/emojis/668375-bug.png",
+    "click": "https://cdn3.emoji.gg/emojis/919213-tester.png"
+  },
+  "skill:29": {
+    "label": "DitsyWhale + Tick",
+    "idle": "https://cdn3.emoji.gg/emojis/34308-ditsywhale.png",
+    "click": "https://cdn3.emoji.gg/emojis/381213-tick.gif"
+  },
+  "skill:30": {
+    "label": "Python + snake",
+    "idle": "https://cdn3.emoji.gg/emojis/629055-python.png",
+    "click": "https://cdn3.emoji.gg/emojis/124508-snake.png"
+  },
+  "skill:31": {
+    "label": "Python + PythonFlask",
+    "idle": "https://cdn3.emoji.gg/emojis/604557-python.png",
+    "click": "https://cdn3.emoji.gg/emojis/77301-pythonflask.png"
+  },
+  "skill:32": {
+    "label": "Link + PurpleChain",
+    "idle": "https://cdn3.emoji.gg/emojis/874011-link.png",
+    "click": "https://cdn3.emoji.gg/emojis/427726-purplechain.gif"
+  },
+  "skill:33": {
+    "label": "TennisBall + pingpongParrot",
+    "idle": "https://cdn3.emoji.gg/emojis/5928-tennisball.png",
+    "click": "https://cdn3.emoji.gg/emojis/6015_pingpongparrot.gif"
+  },
+  "skill:34": {
+    "label": "handshake + PeachGomaScroll",
+    "idle": "https://cdn3.emoji.gg/emojis/600404-handshake.png",
+    "click": "https://cdn3.emoji.gg/emojis/859488-peachgomascroll.gif"
+  },
+  "skill:35": {
+    "label": "cache_IDS + Lightning",
+    "idle": "https://cdn3.emoji.gg/emojis/63247-cache-ids.png",
+    "click": "https://cdn3.emoji.gg/emojis/256778-lightning.png"
+  },
+  "skill:36": {
+    "label": "storage + RGB_Shulker",
+    "idle": "https://cdn3.emoji.gg/emojis/3218-storage.png",
+    "click": "https://cdn3.emoji.gg/emojis/81536-rgb-shulker.gif"
+  },
+  "skill:37": {
+    "label": "Ram + janky_egg_persist",
+    "idle": "https://cdn3.emoji.gg/emojis/28195-ram.png",
+    "click": "https://cdn3.emoji.gg/emojis/82922-janky-egg-persist.png"
+  },
+  "skill:38": {
+    "label": "postgresql + Elephant",
+    "idle": "https://cdn3.emoji.gg/emojis/405894-postgresql.png",
+    "click": "https://cdn3.emoji.gg/emojis/631583-elephant.gif"
+  },
+  "skill:39": {
+    "label": "mongodb + idc",
+    "idle": "https://cdn3.emoji.gg/emojis/21146-mongodb.png",
+    "click": "https://cdn3.emoji.gg/emojis/855212-idc.png"
+  },
+  "skill:40": {
+    "label": "mysql + Send_Help",
+    "idle": "https://cdn3.emoji.gg/emojis/79350-mysql.png",
+    "click": "https://cdn3.emoji.gg/emojis/77855-send-help.png"
+  },
+  "skill:41": {
+    "label": "HappySheep + rainbowsheepfrollick",
+    "idle": "https://cdn3.emoji.gg/emojis/637339-happysheep.png",
+    "click": "https://cdn3.emoji.gg/emojis/870563-rainbowsheepfrollick.gif"
+  },
+  "skill:42": {
+    "label": "live + streaming_live_now_animated_",
+    "idle": "https://cdn3.emoji.gg/emojis/15430-live.png",
+    "click": "https://cdn3.emoji.gg/emojis/514048-streaming-live-now-animated.gif"
+  },
+  "skill:43": {
+    "label": "Maps + magicalmapbottle",
+    "idle": "https://cdn3.emoji.gg/emojis/815453-maps.png",
+    "click": "https://cdn3.emoji.gg/emojis/463339-magicalmapbottle.gif"
+  },
+  "skill:44": {
+    "label": "vue kiss + angular",
+    "idle": "https://cdn3.emoji.gg/emojis/81786-vue-kiss.png",
+    "click": "https://cdn3.emoji.gg/emojis/6573_angular.png"
+  },
+  "skill:45": {
+    "label": "nowifidino + TV",
+    "idle": "https://cdn3.emoji.gg/emojis/319946-nowifidino.png",
+    "click": "https://cdn3.emoji.gg/emojis/494821-tv.gif"
+  },
+  "skill:46": {
+    "label": "deno + heartdinodance",
+    "idle": "https://cdn3.emoji.gg/emojis/8452-deno.png",
+    "click": "https://cdn3.emoji.gg/emojis/522363-heartdinodance.gif"
+  },
+  "skill:47": {
+    "label": "LEGOLogo + sparklycastle",
+    "idle": "https://cdn3.emoji.gg/emojis/906471-legologo.png",
+    "click": "https://cdn3.emoji.gg/emojis/575665-sparklycastle.gif"
+  },
+  "skill:48": {
+    "label": "ic_accessibility_magnification + WheelchairPuppy",
+    "idle": "https://cdn3.emoji.gg/emojis/1361-ic-accessibility-magnification.png",
+    "click": "https://cdn3.emoji.gg/emojis/47610-wheelchairpuppy.gif"
+  },
+  "skill:49": {
+    "label": "Apple_Puzzle_Piece_Emoji + Nervoussweat",
+    "idle": "https://cdn3.emoji.gg/emojis/41593-apple-puzzle-piece-emoji.png",
+    "click": "https://cdn3.emoji.gg/emojis/815846-nervoussweat.png"
+  },
+  "skill:50": {
+    "label": "CreativeWriters + PinkNotebookFlip",
+    "idle": "https://cdn3.emoji.gg/emojis/55099-creativewriters.png",
+    "click": "https://cdn3.emoji.gg/emojis/86784-pinknotebookflip.gif"
+  },
+  "skill:51": {
+    "label": "Crying + sadhamtaro",
+    "idle": "https://cdn3.emoji.gg/emojis/294501-crying.png",
+    "click": "https://cdn3.emoji.gg/emojis/971153-sadhamtaro.gif"
+  },
+  "skill:52": {
+    "label": "diamond + trophy",
+    "idle": "https://cdn3.emoji.gg/emojis/309930-diamond.png",
+    "click": "https://cdn3.emoji.gg/emojis/55902-trophy.png"
+  },
+  "skill:53": {
+    "label": "github + opensourceParrot",
+    "idle": "https://cdn3.emoji.gg/emojis/840134-github.png",
+    "click": "https://cdn3.emoji.gg/emojis/8708_opensourceparrot.gif"
+  },
+  "skill:54": {
+    "label": "ChalkInfinity + Looping",
+    "idle": "https://cdn3.emoji.gg/emojis/757292-chalkinfinity.png",
+    "click": "https://cdn3.emoji.gg/emojis/698576-looping.png"
+  },
+  "skill:55": {
+    "label": "blue_white_gear + PurpleGear",
+    "idle": "https://cdn3.emoji.gg/emojis/557184-blue-white-gear.png",
+    "click": "https://cdn3.emoji.gg/emojis/957955-purplegear.gif"
+  },
+  "skill:56": {
+    "label": "man_plumber + luigi_dance",
+    "idle": "https://cdn3.emoji.gg/emojis/7259-man-plumber.png",
+    "click": "https://cdn3.emoji.gg/emojis/730200-luigi-dance.png"
+  },
+  "skill:57": {
+    "label": "chillwcat_YT + BrawlBox_BrawlStars",
+    "idle": "https://cdn3.emoji.gg/emojis/12794-chillwcat-yt.png",
+    "click": "https://cdn3.emoji.gg/emojis/83377-brawlbox-brawlstars.png"
+  },
+  "skill:58": {
+    "label": "Telescope + PusheenSailor",
+    "idle": "https://cdn3.emoji.gg/emojis/65264-telescope.png",
+    "click": "https://cdn3.emoji.gg/emojis/54655-pusheensailor.gif"
+  },
+  "skill:59": {
+    "label": "Toggleon + Toggleoff",
+    "idle": "https://cdn3.emoji.gg/emojis/1360-toggleon.png",
+    "click": "https://cdn3.emoji.gg/emojis/8035-toggleoff.png"
+  },
+  "skill:60": {
+    "label": "Shield + washhands",
+    "idle": "https://cdn3.emoji.gg/emojis/943972-shield.png",
+    "click": "https://cdn3.emoji.gg/emojis/62568-washhands.png"
+  },
+  "skill:61": {
+    "label": "hacker + Bhacker",
+    "idle": "https://cdn3.emoji.gg/emojis/40820-hacker.png",
+    "click": "https://cdn3.emoji.gg/emojis/167678-bhacker.gif"
+  },
+  "skill:62": {
+    "label": "BlueFeather + ScribblePaper",
+    "idle": "https://cdn3.emoji.gg/emojis/75247-bluefeather.png",
+    "click": "https://cdn3.emoji.gg/emojis/275349-scribblepaper.png"
+  },
+  "skill:63": {
+    "label": "Document + sappyHeartNote",
+    "idle": "https://cdn3.emoji.gg/emojis/89292-document.png",
+    "click": "https://cdn3.emoji.gg/emojis/983751-sappyheartnote.gif"
+  },
+  "skill:64": {
+    "label": "StaffRoleIcon + maxwelljudge",
+    "idle": "https://cdn3.emoji.gg/emojis/845855-staffroleicon.png",
+    "click": "https://cdn3.emoji.gg/emojis/5359-maxwelljudge.png"
+  },
+  "skill:65": {
+    "label": "groupchat + nerdz_yawn",
+    "idle": "https://cdn3.emoji.gg/emojis/456423-groupchat.png",
+    "click": "https://cdn3.emoji.gg/emojis/936948-nerdz-yawn.png"
+  },
+  "skill:66": {
+    "label": "Nervous + nervousgoma",
+    "idle": "https://cdn3.emoji.gg/emojis/165605-nervous.png",
+    "click": "https://cdn3.emoji.gg/emojis/647040-nervousgoma.gif"
+  },
+  "skill:67": {
+    "label": "Amazon + Cloud1",
+    "idle": "https://cdn3.emoji.gg/emojis/653292-amazon.png",
+    "click": "https://cdn3.emoji.gg/emojis/139418-cloud1.png"
+  },
+  "skill:68": {
+    "label": "windows + Clippy",
+    "idle": "https://cdn3.emoji.gg/emojis/5006-windows.png",
+    "click": "https://cdn3.emoji.gg/emojis/217605-clippy.gif"
+  },
+  "skill:69": {
+    "label": "google + Gemini",
+    "idle": "https://cdn3.emoji.gg/emojis/79833-google.png",
+    "click": "https://cdn3.emoji.gg/emojis/729070-gemini.png"
+  },
+  "skill:70": {
+    "label": "DarkBlueArrow + PeachGomaMoving",
+    "idle": "https://cdn3.emoji.gg/emojis/259419-darkbluearrow.gif",
+    "click": "https://cdn3.emoji.gg/emojis/133956-peachgomamoving.gif"
+  },
+  "skill:71": {
+    "label": "Hourglass + MinecraftClock",
+    "idle": "https://cdn3.emoji.gg/emojis/36880-hourglass.png",
+    "click": "https://cdn3.emoji.gg/emojis/380513-minecraftclock.gif"
+  },
+  "skill:72": {
+    "label": "BlueprintCape + PandaHammer",
+    "idle": "https://cdn3.emoji.gg/emojis/115526-blueprintcape.png",
+    "click": "https://cdn3.emoji.gg/emojis/759889-pandahammer.gif"
+  },
+  "skill:73": {
+    "label": "red_wheel_of_dharma + hamsterwheel",
+    "idle": "https://cdn3.emoji.gg/emojis/7825-red-wheel-of-dharma.png",
+    "click": "https://cdn3.emoji.gg/emojis/559035-hamsterwheel.gif"
+  },
+  "skill:74": {
+    "label": "Whistle + MickeyWhistle",
+    "idle": "https://cdn3.emoji.gg/emojis/8170-whistle.png",
+    "click": "https://cdn3.emoji.gg/emojis/798649-mickeywhistle.gif"
+  },
+  "skill:75": {
+    "label": "cloudflare + KnifeChop",
+    "idle": "https://cdn3.emoji.gg/emojis/27467-cloudflare.png",
+    "click": "https://cdn3.emoji.gg/emojis/502637-knifechop.gif"
+  },
+  "skill:76": {
+    "label": "SSWaves + Cockroach_Dancing",
+    "idle": "https://cdn3.emoji.gg/emojis/859287-sswaves.png",
+    "click": "https://cdn3.emoji.gg/emojis/52709-cockroach-dancing.gif"
+  },
+  "skill:77": {
+    "label": "golang + Juggle",
+    "idle": "https://cdn3.emoji.gg/emojis/3058-golang.png",
+    "click": "https://cdn3.emoji.gg/emojis/9934-juggle.gif"
+  },
+  "skill:78": {
+    "label": "rust_programming + crabrave",
+    "idle": "https://cdn3.emoji.gg/emojis/226653-rust-programming.png",
+    "click": "https://cdn3.emoji.gg/emojis/5708-crabrave.gif"
+  },
+  "skill:79": {
+    "label": "LEGOThinking + Jigglypuff_Lego",
+    "idle": "https://cdn3.emoji.gg/emojis/387933-legothinking.png",
+    "click": "https://cdn3.emoji.gg/emojis/884798-jigglypuff-lego.png"
+  },
+  "skill:80": {
+    "label": "MobilePlayers + iphonelaughingemoji",
+    "idle": "https://cdn3.emoji.gg/emojis/364355-mobileplayers.png",
+    "click": "https://cdn3.emoji.gg/emojis/340242-iphonelaughingemoji.png"
+  },
+  "skill:81": {
+    "label": "whiteandblackwindowslogominimal + Desktop",
+    "idle": "https://cdn3.emoji.gg/emojis/512774-whiteandblackwindowslogominimal.png",
+    "click": "https://cdn3.emoji.gg/emojis/125289-desktop.gif"
+  },
+  "skill:82": {
+    "label": "earthink + PurpleWorld",
+    "idle": "https://cdn3.emoji.gg/emojis/291893-earthink.png",
+    "click": "https://cdn3.emoji.gg/emojis/474377-purpleworld.gif"
+  },
+  "skill:83": {
+    "label": "Stonks + chart_increasing",
+    "idle": "https://cdn3.emoji.gg/emojis/94420-stonks.png",
+    "click": "https://cdn3.emoji.gg/emojis/14504-chart-increasing.gif"
+  },
+  "skill:84": {
+    "label": "fireman + Firefighter",
+    "idle": "https://cdn3.emoji.gg/emojis/505865-fireman.png",
+    "click": "https://cdn3.emoji.gg/emojis/1118-firefighter.gif"
+  },
+  "skill:85": {
+    "label": "Siren + sirene",
+    "idle": "https://cdn3.emoji.gg/emojis/620493-siren.png",
+    "click": "https://cdn3.emoji.gg/emojis/692859-sirene.gif"
+  },
+  "skill:86": {
+    "label": "Soldierhamster + Zmechol",
+    "idle": "https://cdn3.emoji.gg/emojis/68986-soldierhamster.png",
+    "click": "https://cdn3.emoji.gg/emojis/471166-zmechol.gif"
+  },
+  "skill:87": {
+    "label": "Network + ScribbleNetwork",
+    "idle": "https://cdn3.emoji.gg/emojis/530131-network.png",
+    "click": "https://cdn3.emoji.gg/emojis/320969-scribblenetwork.png"
+  },
+  "skill:88": {
+    "label": "Powerscroll + nerd",
+    "idle": "https://cdn3.emoji.gg/emojis/910438-powerscroll.png",
+    "click": "https://cdn3.emoji.gg/emojis/694300-nerd.png"
+  },
+  "skill:89": {
+    "label": "blogger + PepeTyping",
+    "idle": "https://cdn3.emoji.gg/emojis/8205-blogger.png",
+    "click": "https://cdn3.emoji.gg/emojis/121023-pepetyping.gif"
+  },
+  "skill:90": {
+    "label": "GoogleSlides + Discord_Microphone",
+    "idle": "https://cdn3.emoji.gg/emojis/78288-googleslides.png",
+    "click": "https://cdn3.emoji.gg/emojis/358486-discord-microphone.png"
+  },
+  "skill:91": {
+    "label": "podium + Megaphone",
+    "idle": "https://cdn3.emoji.gg/emojis/41869-podium.png",
+    "click": "https://cdn3.emoji.gg/emojis/85925-megaphone.gif"
+  },
+  "skill:92": {
+    "label": "SimpleRubberDuck + duckylove",
+    "idle": "https://cdn3.emoji.gg/emojis/848767-simplerubberduck.png",
+    "click": "https://cdn3.emoji.gg/emojis/308360-duckylove.gif"
+  },
+  "skill:93": {
+    "label": "handshake + FoxyDealz",
+    "idle": "https://cdn3.emoji.gg/emojis/28329-handshake.png",
+    "click": "https://cdn3.emoji.gg/emojis/39119-foxydealz.png"
+  },
+  "skill:94": {
+    "label": "FFBookStack + SweetBunnyReading",
+    "idle": "https://cdn3.emoji.gg/emojis/424346-ffbookstack.png",
+    "click": "https://cdn3.emoji.gg/emojis/8068-sweetbunnyreading.gif"
+  },
+  "skill:95": {
+    "label": "DroolingCatWizard + PartyWizard",
+    "idle": "https://cdn3.emoji.gg/emojis/55947-droolingcatwizard.png",
+    "click": "https://cdn3.emoji.gg/emojis/831935-partywizard.gif"
+  },
+  "skill:96": {
+    "label": "presentation + WhiteBunnySchool",
+    "idle": "https://cdn3.emoji.gg/emojis/8492-presentation.png",
+    "click": "https://cdn3.emoji.gg/emojis/595671-whitebunnyschool.png"
+  },
+  "skill:97": {
+    "label": "NewChatGPTlogo + aislop",
+    "idle": "https://cdn3.emoji.gg/emojis/15945-newchatgptlogo.png",
+    "click": "https://cdn3.emoji.gg/emojis/360567-aislop.png"
+  },
+  "skill:98": {
+    "label": "VSCode + cursorthink",
+    "idle": "https://cdn3.emoji.gg/emojis/2829_VSCode.png",
+    "click": "https://cdn3.emoji.gg/emojis/cursorthink.png"
+  },
+  "skill:99": {
+    "label": "robot + colorflashrobot",
+    "idle": "https://cdn3.emoji.gg/emojis/396992-robot.png",
+    "click": "https://cdn3.emoji.gg/emojis/712715-colorflashrobot.gif"
+  },
+  "skill:100": {
+    "label": "Nvidia + gpu",
+    "idle": "https://cdn3.emoji.gg/emojis/555699-nvidia.png",
+    "click": "https://cdn3.emoji.gg/emojis/77056-gpu.png"
+  },
+  "skill:101": {
+    "label": "CPU + sappyChips",
+    "idle": "https://cdn3.emoji.gg/emojis/47404-cpu.png",
+    "click": "https://cdn3.emoji.gg/emojis/983751-sappychips.gif"
+  },
+  "skill:102": {
+    "label": "ETHEREUM + blockchain",
+    "idle": "https://cdn3.emoji.gg/emojis/696530-ethereum.png",
+    "click": "https://cdn3.emoji.gg/emojis/683322-blockchain.png"
+  },
+  "skill:103": {
+    "label": "DoodleGuitar + NoBrain",
+    "idle": "https://cdn3.emoji.gg/emojis/629815-doodleguitar.png",
+    "click": "https://cdn3.emoji.gg/emojis/501481-nobrain.png"
+  },
+  "skill:104": {
+    "label": "Astronaut + PinkAmongUs",
+    "idle": "https://cdn3.emoji.gg/emojis/14245-astronaut.png",
+    "click": "https://cdn3.emoji.gg/emojis/37331-pinkamongus.gif"
+  },
+  "gig:1": {
+    "label": "login + LadyBug",
+    "idle": "https://cdn3.emoji.gg/emojis/27333-login.png",
+    "click": "https://cdn3.emoji.gg/emojis/33180-ladybug.png"
+  },
+  "gig:2": {
+    "label": "stickybun + Strawberrycake",
+    "idle": "https://cdn3.emoji.gg/emojis/978665-stickybun.png",
+    "click": "https://cdn3.emoji.gg/emojis/451919-strawberrycake.png"
+  },
+  "gig:3": {
+    "label": "AdobePhotoshop + PeachPizza",
+    "idle": "https://cdn3.emoji.gg/emojis/486967-adobephotoshop.png",
+    "click": "https://cdn3.emoji.gg/emojis/342133-peachpizza.gif"
+  },
+  "gig:4": {
+    "label": "modifyuser + adduser",
+    "idle": "https://cdn3.emoji.gg/emojis/208998-modifyuser.png",
+    "click": "https://cdn3.emoji.gg/emojis/40421-adduser.png"
+  },
+  "gig:5": {
+    "label": "FFLadybug + DebugStick",
+    "idle": "https://cdn3.emoji.gg/emojis/142344-ffladybug.png",
+    "click": "https://cdn3.emoji.gg/emojis/3674-debugstick.gif"
+  },
+  "gig:6": {
+    "label": "PuzzleRush_emote_chess + plugin",
+    "idle": "https://cdn3.emoji.gg/emojis/6645-puzzlerush-emote-chess.png",
+    "click": "https://cdn3.emoji.gg/emojis/8614-plugin.png"
+  },
+  "gig:7": {
+    "label": "Email + lovemail",
+    "idle": "https://cdn3.emoji.gg/emojis/70661-email.png",
+    "click": "https://cdn3.emoji.gg/emojis/41672-lovemail.gif"
+  },
+  "gig:8": {
+    "label": "Working + support_workers_Tbearish",
+    "idle": "https://cdn3.emoji.gg/emojis/145682-working.png",
+    "click": "https://cdn3.emoji.gg/emojis/82635-support-workers-tbearish.gif"
+  },
+  "gig:9": {
+    "label": "ShoppingCart + Primo_Shopping",
+    "idle": "https://cdn3.emoji.gg/emojis/956768-shoppingcart.png",
+    "click": "https://cdn3.emoji.gg/emojis/15964-primo-shopping.png"
+  },
+  "gig:10": {
+    "label": "Quill + chatgptcontent",
+    "idle": "https://cdn3.emoji.gg/emojis/77890-quill.png",
+    "click": "https://cdn3.emoji.gg/emojis/744559-chatgptcontent.gif"
+  },
+  "gig:11": {
+    "label": "GoogleChrome + InternetExplorer",
+    "idle": "https://cdn3.emoji.gg/emojis/708685-googlechrome.png",
+    "click": "https://cdn3.emoji.gg/emojis/88018-internetexplorer.png"
+  },
+  "gig:12": {
+    "label": "5star_rating_IDS + rating_IDS",
+    "idle": "https://cdn3.emoji.gg/emojis/263780-5star-rating-ids.png",
+    "click": "https://cdn3.emoji.gg/emojis/847087-rating-ids.png"
+  },
+  "gig:13": {
+    "label": "MicrosoftExcel + ClippyLookUp",
+    "idle": "https://cdn3.emoji.gg/emojis/15135-microsoftexcel.png",
+    "click": "https://cdn3.emoji.gg/emojis/788813-clippylookup.gif"
+  },
+  "gig:14": {
+    "label": "CreditCard + creditcard",
+    "idle": "https://cdn3.emoji.gg/emojis/93975-creditcard.png",
+    "click": "https://cdn3.emoji.gg/emojis/565724-creditcard.gif"
+  },
+  "gig:15": {
+    "label": "Stopwatch + GreenSnail",
+    "idle": "https://cdn3.emoji.gg/emojis/950024-stopwatch.png",
+    "click": "https://cdn3.emoji.gg/emojis/492417-greensnail.gif"
+  },
+  "gig:16": {
+    "label": "person_blue_wheelchair_race_YT + Wheelchair",
+    "idle": "https://cdn3.emoji.gg/emojis/85780-person-blue-wheelchair-race-yt.png",
+    "click": "https://cdn3.emoji.gg/emojis/61125-wheelchair.gif"
+  },
+  "gig:17": {
+    "label": "Box + boxofstars",
+    "idle": "https://cdn3.emoji.gg/emojis/836014-box.png",
+    "click": "https://cdn3.emoji.gg/emojis/527499-boxofstars.gif"
+  },
+  "gig:18": {
+    "label": "VacuumCleanerRobot1 + RoombaCat",
+    "idle": "https://cdn3.emoji.gg/emojis/77914-vacuumcleanerrobot1.png",
+    "click": "https://cdn3.emoji.gg/emojis/43227-roombacat.gif"
+  },
+  "gig:19": {
+    "label": "AlfredStern + Checkmark",
+    "idle": "https://cdn3.emoji.gg/emojis/58747-alfredstern.png",
+    "click": "https://cdn3.emoji.gg/emojis/883480-checkmark.gif"
+  },
+  "gig:20": {
+    "label": "ipad + Phone_Time",
+    "idle": "https://cdn3.emoji.gg/emojis/65095-ipad.png",
+    "click": "https://cdn3.emoji.gg/emojis/7768-phone-time.gif"
+  },
+  "gig:21": {
+    "label": "key + KeysOfTheKingdom",
+    "idle": "https://cdn3.emoji.gg/emojis/7187-key.png",
+    "click": "https://cdn3.emoji.gg/emojis/56871-keysofthekingdom.png"
+  },
+  "gig:22": {
+    "label": "GoodConektion + StatusOnline",
+    "idle": "https://cdn3.emoji.gg/emojis/124857-goodconektion.png",
+    "click": "https://cdn3.emoji.gg/emojis/971828-statusonline.gif"
+  },
+  "gig:23": {
+    "label": "cash + flyingmoney",
+    "idle": "https://cdn3.emoji.gg/emojis/249884-cash.png",
+    "click": "https://cdn3.emoji.gg/emojis/808643-flyingmoney.gif"
+  },
+  "gig:24": {
+    "label": "dashboard_layout + growth_IDS",
+    "idle": "https://cdn3.emoji.gg/emojis/3914-dashboard-layout.png",
+    "click": "https://cdn3.emoji.gg/emojis/17576-growth-ids.png"
+  },
+  "gig:25": {
+    "label": "Twin_Hooks + PenguFishingRod",
+    "idle": "https://cdn3.emoji.gg/emojis/62052-twin-hooks.png",
+    "click": "https://cdn3.emoji.gg/emojis/213712-pengufishingrod.gif"
+  },
+  "gig:26": {
+    "label": "spreadsheet + Database",
+    "idle": "https://cdn3.emoji.gg/emojis/2324-spreadsheet.png",
+    "click": "https://cdn3.emoji.gg/emojis/664054-database.png"
+  },
+  "gig:27": {
+    "label": "ChatGPT + burrito",
+    "idle": "https://cdn3.emoji.gg/emojis/521605-chatgpt.png",
+    "click": "https://cdn3.emoji.gg/emojis/9063-burrito.png"
+  },
+  "gig:28": {
+    "label": "MagnifyGlass + animated_search_lm",
+    "idle": "https://cdn3.emoji.gg/emojis/843501-magnifyglass.png",
+    "click": "https://cdn3.emoji.gg/emojis/955026-animated-search-lm.gif"
+  },
+  "gig:29": {
+    "label": "swagger + spongebobwavydance",
+    "idle": "https://cdn3.emoji.gg/emojis/2845-swagger.gif",
+    "click": "https://cdn3.emoji.gg/emojis/516485-spongebobwavydance.gif"
+  },
+  "gig:30": {
+    "label": "crate_common + boost_crate",
+    "idle": "https://cdn3.emoji.gg/emojis/9396-crate-common.png",
+    "click": "https://cdn3.emoji.gg/emojis/39926-boost-crate.png"
+  },
+  "gig:31": {
+    "label": "CortisolSpike + StrongPepe",
+    "idle": "https://cdn3.emoji.gg/emojis/945125-cortisolspike.png",
+    "click": "https://cdn3.emoji.gg/emojis/249299-strongpepe.gif"
+  },
+  "gig:32": {
+    "label": "magnifyingglasscat + pepedetective",
+    "idle": "https://cdn3.emoji.gg/emojis/1418-magnifyingglasscat.png",
+    "click": "https://cdn3.emoji.gg/emojis/680901-pepedetective.png"
+  },
+  "gig:33": {
+    "label": "vibingsquid + breakdancepatrickstar",
+    "idle": "https://cdn3.emoji.gg/emojis/844492-vibingsquid.png",
+    "click": "https://cdn3.emoji.gg/emojis/574599-breakdancepatrickstar.gif"
+  },
+  "gig:34": {
+    "label": "bandaid + Bandaid",
+    "idle": "https://cdn3.emoji.gg/emojis/80343-bandaid.png",
+    "click": "https://cdn3.emoji.gg/emojis/880715-bandaid.gif"
+  },
+  "gig:35": {
+    "label": "mailbox + spam",
+    "idle": "https://cdn3.emoji.gg/emojis/5947-mailbox.png",
+    "click": "https://cdn3.emoji.gg/emojis/6988-spam.png"
+  },
+  "gig:36": {
+    "label": "lifeguard + PeachHero",
+    "idle": "https://cdn3.emoji.gg/emojis/734822-lifeguard.png",
+    "click": "https://cdn3.emoji.gg/emojis/465019-peachhero.gif"
+  },
+  "gig:37": {
+    "label": "Receipt + YELLOWCALCULATOR",
+    "idle": "https://cdn3.emoji.gg/emojis/Receipt.png",
+    "click": "https://cdn3.emoji.gg/emojis/763532-yellowcalculator.gif"
+  },
+  "gig:38": {
+    "label": "Tasks + AuditLog",
+    "idle": "https://cdn3.emoji.gg/emojis/26500-tasks.png",
+    "click": "https://cdn3.emoji.gg/emojis/8887-auditlog.png"
+  },
+  "gig:39": {
+    "label": "Token + CatToken",
+    "idle": "https://cdn3.emoji.gg/emojis/85199-token.png",
+    "click": "https://cdn3.emoji.gg/emojis/88775-cattoken.gif"
+  },
+  "gig:40": {
+    "label": "wizard + pepewizard",
+    "idle": "https://cdn3.emoji.gg/emojis/359986-wizard.png",
+    "click": "https://cdn3.emoji.gg/emojis/572264-pepewizard.png"
+  },
+  "gig:41": {
+    "label": "ToggleOnOrOff + toggle_on",
+    "idle": "https://cdn3.emoji.gg/emojis/79938-toggleonoroff.png",
+    "click": "https://cdn3.emoji.gg/emojis/1080-toggle-on.png"
+  },
+  "gig:42": {
+    "label": "DigitalArtist + eyeblinkpixelart",
+    "idle": "https://cdn3.emoji.gg/emojis/550268-digitalartist.png",
+    "click": "https://cdn3.emoji.gg/emojis/257332-eyeblinkpixelart.gif"
+  },
+  "gig:43": {
+    "label": "Gifting_Patron + bluepinkgift",
+    "idle": "https://cdn3.emoji.gg/emojis/573564-gifting-patron.png",
+    "click": "https://cdn3.emoji.gg/emojis/723956-bluepinkgift.gif"
+  },
+  "gig:44": {
+    "label": "rocket_red_countdown_liftoff_YT + SailBoat",
+    "idle": "https://cdn3.emoji.gg/emojis/15116-rocket-red-countdown-liftoff-yt.png",
+    "click": "https://cdn3.emoji.gg/emojis/987449-sailboat.gif"
+  },
+  "gig:45": {
+    "label": "calendar + udder_construction",
+    "idle": "https://cdn3.emoji.gg/emojis/530749-calendar.png",
+    "click": "https://cdn3.emoji.gg/emojis/3560-udder-construction.png"
+  },
+  "gig:46": {
+    "label": "Sprint + PikachuSprint",
+    "idle": "https://cdn3.emoji.gg/emojis/3009-sprint.png",
+    "click": "https://cdn3.emoji.gg/emojis/48054-pikachusprint.gif"
+  },
+  "gig:47": {
+    "label": "Eraser_Shocked + PeachTossGoma",
+    "idle": "https://cdn3.emoji.gg/emojis/1520_Eraser_Shocked.png",
+    "click": "https://cdn3.emoji.gg/emojis/645722-peachtossgoma.gif"
+  },
+  "gig:48": {
+    "label": "enterprisenetwork + IDX_Corporate_monday_1001",
+    "idle": "https://cdn3.emoji.gg/emojis/80631-enterprisenetwork.png",
+    "click": "https://cdn3.emoji.gg/emojis/692630-idx-corporate-monday-1001.gif"
+  },
+  "gig:49": {
+    "label": "green_sprout + sunflowerscene",
+    "idle": "https://cdn3.emoji.gg/emojis/724600-green-sprout.png",
+    "click": "https://cdn3.emoji.gg/emojis/982278-sunflowerscene.gif"
+  },
+  "gig:50": {
+    "label": "Pipe + taphand",
+    "idle": "https://cdn3.emoji.gg/emojis/99628-pipe.png",
+    "click": "https://cdn3.emoji.gg/emojis/830857-taphand.gif"
+  },
+  "gig:51": {
+    "label": "unlocked_IDS + Security",
+    "idle": "https://cdn3.emoji.gg/emojis/85871-unlocked-ids.png",
+    "click": "https://cdn3.emoji.gg/emojis/135775-security.png"
+  },
+  "gig:52": {
+    "label": "DrawingScissors + ScissorsIcon",
+    "idle": "https://cdn3.emoji.gg/emojis/244395-drawingscissors.png",
+    "click": "https://cdn3.emoji.gg/emojis/511498-scissorsicon.png"
+  },
+  "gig:53": {
+    "label": "DesignPalette + rainbowraininghearts",
+    "idle": "https://cdn3.emoji.gg/emojis/958995-designpalette.png",
+    "click": "https://cdn3.emoji.gg/emojis/717254-rainbowraininghearts.gif"
+  },
+  "gig:54": {
+    "label": "SSS + emoji_confusion",
+    "idle": "https://cdn3.emoji.gg/emojis/886814-sss.png",
+    "click": "https://cdn3.emoji.gg/emojis/32723-emoji-confusion.png"
+  },
+  "gig:55": {
+    "label": "tornado + StormCloud",
+    "idle": "https://cdn3.emoji.gg/emojis/76889-tornado.gif",
+    "click": "https://cdn3.emoji.gg/emojis/412253-stormcloud.gif"
+  },
+  "gig:56": {
+    "label": "ConductorCap + cheerleader_bearish",
+    "idle": "https://cdn3.emoji.gg/emojis/9171-conductorcap.png",
+    "click": "https://cdn3.emoji.gg/emojis/65123-cheerleader-bearish.gif"
+  },
+  "gig:57": {
+    "label": "Gentlemandetective + PepeInspect",
+    "idle": "https://cdn3.emoji.gg/emojis/603755-gentlemandetective.png",
+    "click": "https://cdn3.emoji.gg/emojis/1337-pepeinspect.gif"
+  },
+  "gig:58": {
+    "label": "disguised_face_android10 + bean_spy",
+    "idle": "https://cdn3.emoji.gg/emojis/45195-disguised-face-android10.png",
+    "click": "https://cdn3.emoji.gg/emojis/9241_bean_spy.png"
+  },
+  "gig:59": {
+    "label": "microchip_c + BelgiumVolleyball",
+    "idle": "https://cdn3.emoji.gg/emojis/50048-microchip-c.png",
+    "click": "https://cdn3.emoji.gg/emojis/363331-belgiumvolleyball.png"
+  },
+  "gig:60": {
+    "label": "BeachBall + PeachGomaSlide",
+    "idle": "https://cdn3.emoji.gg/emojis/452582-beachball.gif",
+    "click": "https://cdn3.emoji.gg/emojis/173130-peachgomaslide.gif"
+  },
+  "gig:61": {
+    "label": "Exit + wavingpolarbear",
+    "idle": "https://cdn3.emoji.gg/emojis/576116-exit.png",
+    "click": "https://cdn3.emoji.gg/emojis/745113-wavingpolarbear.gif"
+  },
+  "gig:62": {
+    "label": "satellite + signal",
+    "idle": "https://cdn3.emoji.gg/emojis/86258-satellite.png",
+    "click": "https://cdn3.emoji.gg/emojis/207980-signal.png"
+  },
+  "gig:63": {
+    "label": "RedPlanet + robt",
+    "idle": "https://cdn3.emoji.gg/emojis/29207-redplanet.png",
+    "click": "https://cdn3.emoji.gg/emojis/24686-robt.png"
+  },
+  "gig:64": {
+    "label": "cinderellaspindance + wifiskeleton",
+    "idle": "https://cdn3.emoji.gg/emojis/437433-cinderellaspindance.gif",
+    "click": "https://cdn3.emoji.gg/emojis/452160-wifiskeleton.png"
+  },
+  "gig:65": {
+    "label": "Crown + Crown",
+    "idle": "https://cdn3.emoji.gg/emojis/307532-crown.png",
+    "click": "https://cdn3.emoji.gg/emojis/293484-crown.gif"
+  },
+  "job:1": {
+    "label": "pixelcoffee + CoffeeMug",
+    "idle": "https://cdn3.emoji.gg/emojis/506055-pixelcoffee.png",
+    "click": "https://cdn3.emoji.gg/emojis/639208-coffeemug.gif"
+  },
+  "job:2": {
+    "label": "Newbie + monkeyheadtilt",
+    "idle": "https://cdn3.emoji.gg/emojis/528443-newbie.png",
+    "click": "https://cdn3.emoji.gg/emojis/854251-monkeyheadtilt.gif"
+  },
+  "job:3": {
+    "label": "SoftBunnyGathering + okaybuddy",
+    "idle": "https://cdn3.emoji.gg/emojis/201759-softbunnygathering.png",
+    "click": "https://cdn3.emoji.gg/emojis/659627-okaybuddy.gif"
+  },
+  "job:4": {
+    "label": "approvedpurple + Approved",
+    "idle": "https://cdn3.emoji.gg/emojis/113827-approvedpurple.png",
+    "click": "https://cdn3.emoji.gg/emojis/387155-approved.gif"
+  },
+  "job:5": {
+    "label": "QATesters + BugHunter",
+    "idle": "https://cdn3.emoji.gg/emojis/767939-qatesters.png",
+    "click": "https://cdn3.emoji.gg/emojis/539873-bughunter.png"
+  },
+  "job:6": {
+    "label": "Yawningprincess + pinkretrotelephone",
+    "idle": "https://cdn3.emoji.gg/emojis/556149-yawningprincess.png",
+    "click": "https://cdn3.emoji.gg/emojis/533216-pinkretrotelephone.gif"
+  },
+  "job:7": {
+    "label": "mid + meh",
+    "idle": "https://cdn3.emoji.gg/emojis/105029-mid.png",
+    "click": "https://cdn3.emoji.gg/emojis/42103-meh.png"
+  },
+  "job:8": {
+    "label": "BlackOwnerRoleIcon + HolographicRoleIcon",
+    "idle": "https://cdn3.emoji.gg/emojis/928868-blackownerroleicon.png",
+    "click": "https://cdn3.emoji.gg/emojis/864917-holographicroleicon.png"
+  },
+  "job:9": {
+    "label": "EuropeanBuildings + fusushithinking",
+    "idle": "https://cdn3.emoji.gg/emojis/25177-europeanbuildings.png",
+    "click": "https://cdn3.emoji.gg/emojis/940851-fusushithinking.gif"
+  },
+  "job:10": {
+    "label": "Database + gear_icon",
+    "idle": "https://cdn3.emoji.gg/emojis/903620-database.png",
+    "click": "https://cdn3.emoji.gg/emojis/570616-gear-icon.png"
+  },
+  "job:11": {
+    "label": "Unicorn + goldensparkleunicorn",
+    "idle": "https://cdn3.emoji.gg/emojis/10881-unicorn.png",
+    "click": "https://cdn3.emoji.gg/emojis/641172-goldensparkleunicorn.gif"
+  },
+  "job:12": {
+    "label": "pancakes + Cute_pancakes",
+    "idle": "https://cdn3.emoji.gg/emojis/54441-pancakes.png",
+    "click": "https://cdn3.emoji.gg/emojis/28249-cute-pancakes.png"
+  },
+  "job:13": {
+    "label": "Raids2 + popcorn",
+    "idle": "https://cdn3.emoji.gg/emojis/65722-raids2.png",
+    "click": "https://cdn3.emoji.gg/emojis/17063-popcorn.gif"
+  },
+  "job:14": {
+    "label": "Grandpa + pepegrandpa",
+    "idle": "https://cdn3.emoji.gg/emojis/97720-grandpa.png",
+    "click": "https://cdn3.emoji.gg/emojis/5931-pepegrandpa.png"
+  },
+  "job:15": {
+    "label": "hiring_IDS + hired_IDS",
+    "idle": "https://cdn3.emoji.gg/emojis/58448-hiring-ids.png",
+    "click": "https://cdn3.emoji.gg/emojis/6264-hired-ids.png"
+  },
+  "job:16": {
+    "label": "Sorcerer + magicianbunny",
+    "idle": "https://cdn3.emoji.gg/emojis/74333-sorcerer.png",
+    "click": "https://cdn3.emoji.gg/emojis/936106-magicianbunny.gif"
+  },
+  "job:17": {
+    "label": "FallGuys + Fallguysexplode",
+    "idle": "https://cdn3.emoji.gg/emojis/41055-fallguys.png",
+    "click": "https://cdn3.emoji.gg/emojis/90326-fallguysexplode.gif"
+  },
+  "job:18": {
+    "label": "BlackManagerRoleIcon + get_hop_on_zoom_bean_sign",
+    "idle": "https://cdn3.emoji.gg/emojis/546126-blackmanagerroleicon.png",
+    "click": "https://cdn3.emoji.gg/emojis/33259-get-hop-on-zoom-bean-sign.gif"
+  },
+  "job:19": {
+    "label": "skinner_smirk + steamed_hams",
+    "idle": "https://cdn3.emoji.gg/emojis/8726-skinner-smirk.png",
+    "click": "https://cdn3.emoji.gg/emojis/67012-steamed-hams.png"
+  },
+  "job:20": {
+    "label": "Chair + Announcement",
+    "idle": "https://cdn3.emoji.gg/emojis/228096-chair.png",
+    "click": "https://cdn3.emoji.gg/emojis/84931-announcement.gif"
+  },
+  "job:21": {
+    "label": "vip + GOLDVIP",
+    "idle": "https://cdn3.emoji.gg/emojis/895577-vip.png",
+    "click": "https://cdn3.emoji.gg/emojis/681818-goldvip.gif"
+  },
+  "job:22": {
+    "label": "pepehoodie + Hoodie_Dance",
+    "idle": "https://cdn3.emoji.gg/emojis/720742-pepehoodie.png",
+    "click": "https://cdn3.emoji.gg/emojis/7341_Hoodie_Dance.gif"
+  },
+  "job:23": {
+    "label": "triumph_old_monocle + medal_silver",
+    "idle": "https://cdn3.emoji.gg/emojis/5835-triumph-old-monocle.png",
+    "click": "https://cdn3.emoji.gg/emojis/78330-medal-silver.gif"
+  },
+  "job:24": {
+    "label": "Podcasts + BrunetteGirlSing",
+    "idle": "https://cdn3.emoji.gg/emojis/1302-podcasts.png",
+    "click": "https://cdn3.emoji.gg/emojis/741529-brunettegirlsing.png"
+  },
+  "job:25": {
+    "label": "Chess + PenguChess",
+    "idle": "https://cdn3.emoji.gg/emojis/280352-chess.png",
+    "click": "https://cdn3.emoji.gg/emojis/60432-penguchess.gif"
+  },
+  "job:26": {
+    "label": "blueberrypie + battery_half_charge",
+    "idle": "https://cdn3.emoji.gg/emojis/244272-blueberrypie.png",
+    "click": "https://cdn3.emoji.gg/emojis/727500-battery-half-charge.png"
+  },
+  "job:27": {
+    "label": "Corpa + BusinessCat",
+    "idle": "https://cdn3.emoji.gg/emojis/1957-corpa.png",
+    "click": "https://cdn3.emoji.gg/emojis/970145-businesscat.png"
+  },
+  "job:28": {
+    "label": "madscientist + DNAstrand",
+    "idle": "https://cdn3.emoji.gg/emojis/295696-madscientist.png",
+    "click": "https://cdn3.emoji.gg/emojis/884762-dnastrand.png"
+  },
+  "job:29": {
+    "label": "Atomium + ScienceShrimp",
+    "idle": "https://cdn3.emoji.gg/emojis/47905-atomium.png",
+    "click": "https://cdn3.emoji.gg/emojis/63857-scienceshrimp.png"
+  },
+  "job:30": {
+    "label": "RoyalGuards + EmperorPalpatine",
+    "idle": "https://cdn3.emoji.gg/emojis/24196-royalguards.png",
+    "click": "https://cdn3.emoji.gg/emojis/16863-emperorpalpatine.png"
+  },
+  "job:31": {
+    "label": "DarkSovereignCrown + Snowglobe",
+    "idle": "https://cdn3.emoji.gg/emojis/84087-darksovereigncrown.png",
+    "click": "https://cdn3.emoji.gg/emojis/159415-snowglobe.png"
+  },
+  "gear:1": {
+    "label": "screenshot + DogKeyboard",
+    "idle": "https://cdn3.emoji.gg/emojis/677415-screenshot.gif",
+    "click": "https://cdn3.emoji.gg/emojis/679076-dogkeyboard.gif"
+  },
+  "gear:2": {
+    "label": "ELECTRICCABLE + Eat_Spaghetti",
+    "idle": "https://cdn3.emoji.gg/emojis/37804-electriccable.png",
+    "click": "https://cdn3.emoji.gg/emojis/5961-eat-spaghetti.png"
+  },
+  "gear:3": {
+    "label": "goth_lamp + DeskLamp",
+    "idle": "https://cdn3.emoji.gg/emojis/81586-goth-lamp.gif",
+    "click": "https://cdn3.emoji.gg/emojis/734120-desklamp.gif"
+  },
+  "gear:4": {
+    "label": "mouseconcerned + mickeymouselaugh",
+    "idle": "https://cdn3.emoji.gg/emojis/260455-mouseconcerned.png",
+    "click": "https://cdn3.emoji.gg/emojis/843526-mickeymouselaugh.gif"
+  },
+  "gear:5": {
+    "label": "CodingLaptop + PeachTired",
+    "idle": "https://cdn3.emoji.gg/emojis/998303-codinglaptop.png",
+    "click": "https://cdn3.emoji.gg/emojis/933021-peachtired.gif"
+  },
+  "gear:6": {
+    "label": "monitor + A_few_hours_later",
+    "idle": "https://cdn3.emoji.gg/emojis/52182-monitor.png",
+    "click": "https://cdn3.emoji.gg/emojis/986524-a-few-hours-later.gif"
+  },
+  "gear:7": {
+    "label": "camera + PeachZoom",
+    "idle": "https://cdn3.emoji.gg/emojis/95178-camera.png",
+    "click": "https://cdn3.emoji.gg/emojis/333059-peachzoom.gif"
+  },
+  "gear:8": {
+    "label": "USB + msrx6",
+    "idle": "https://cdn3.emoji.gg/emojis/9567_USB.png",
+    "click": "https://cdn3.emoji.gg/emojis/8006-msrx6.png"
+  },
+  "gear:9": {
+    "label": "GamingChair + PeachChair",
+    "idle": "https://cdn3.emoji.gg/emojis/684655-gamingchair.png",
+    "click": "https://cdn3.emoji.gg/emojis/467023-peachchair.gif"
+  },
+  "gear:10": {
+    "label": "razerkittypinkheadset + Pengu_Jamming",
+    "idle": "https://cdn3.emoji.gg/emojis/389923-razerkittypinkheadset.png",
+    "click": "https://cdn3.emoji.gg/emojis/7753-pengu-jamming.gif"
+  },
+  "gear:11": {
+    "label": "wacom + DrawingPencil",
+    "idle": "https://cdn3.emoji.gg/emojis/7460-wacom.png",
+    "click": "https://cdn3.emoji.gg/emojis/326988-drawingpencil.png"
+  },
+  "gear:12": {
+    "label": "CatStand + officewfhdiva",
+    "idle": "https://cdn3.emoji.gg/emojis/99720-catstand.png",
+    "click": "https://cdn3.emoji.gg/emojis/663188-officewfhdiva.gif"
+  },
+  "gear:13": {
+    "label": "escreality + KarenTyping",
+    "idle": "https://cdn3.emoji.gg/emojis/68780-escreality.png",
+    "click": "https://cdn3.emoji.gg/emojis/353772-karentyping.gif"
+  },
+  "gear:14": {
+    "label": "jellyoncomputer + PeachWork",
+    "idle": "https://cdn3.emoji.gg/emojis/298260-jellyoncomputer.png",
+    "click": "https://cdn3.emoji.gg/emojis/942144-peachwork.png"
+  },
+  "gear:15": {
+    "label": "WideManul3 + AbsoluteCinema",
+    "idle": "https://cdn3.emoji.gg/emojis/138487-widemanul3.png",
+    "click": "https://cdn3.emoji.gg/emojis/110177-absolutecinema.gif"
+  },
+  "gear:16": {
+    "label": "Arduino + Laptop",
+    "idle": "https://cdn3.emoji.gg/emojis/231864-arduino.png",
+    "click": "https://cdn3.emoji.gg/emojis/505978-laptop.gif"
+  },
+  "gear:17": {
+    "label": "RaspberryPI + mylittleponypinkiepie",
+    "idle": "https://cdn3.emoji.gg/emojis/501850-raspberrypi.png",
+    "click": "https://cdn3.emoji.gg/emojis/86302-mylittleponypinkiepie.gif"
+  },
+  "gear:18": {
+    "label": "DoodleTopHat + TopHatGhost",
+    "idle": "https://cdn3.emoji.gg/emojis/506231-doodletophat.png",
+    "click": "https://cdn3.emoji.gg/emojis/8903-tophatghost.gif"
+  },
+  "gear:19": {
+    "label": "printer95 + money_printer_go_brrrr",
+    "idle": "https://cdn3.emoji.gg/emojis/83214-printer95.png",
+    "click": "https://cdn3.emoji.gg/emojis/1173_money_printer_go_brrrr.gif"
+  },
+  "gear:20": {
+    "label": "NintendoLogo + Yoshi",
+    "idle": "https://cdn3.emoji.gg/emojis/180247-nintendologo.png",
+    "click": "https://cdn3.emoji.gg/emojis/636446-yoshi.gif"
+  },
+  "gear:21": {
+    "label": "gameconsole + Gamingcontroller",
+    "idle": "https://cdn3.emoji.gg/emojis/58005-gameconsole.png",
+    "click": "https://cdn3.emoji.gg/emojis/337500-gamingcontroller.gif"
+  },
+  "gear:22": {
+    "label": "floppy2000 + FloppyDiskParty",
+    "idle": "https://cdn3.emoji.gg/emojis/79727-floppy2000.png",
+    "click": "https://cdn3.emoji.gg/emojis/7517-floppydiskparty.gif"
+  },
+  "gear:23": {
+    "label": "battery_full_charge + GomaPower",
+    "idle": "https://cdn3.emoji.gg/emojis/70394-battery-full-charge.png",
+    "click": "https://cdn3.emoji.gg/emojis/80223-gomapower.gif"
+  },
+  "gear:24": {
+    "label": "wireless + Tenna_kick",
+    "idle": "https://cdn3.emoji.gg/emojis/9118-wireless.png",
+    "click": "https://cdn3.emoji.gg/emojis/78387-tenna-kick.gif"
+  },
+  "gear:25": {
+    "label": "cctvcameraidkbro + snoopy",
+    "idle": "https://cdn3.emoji.gg/emojis/766582-cctvcameraidkbro.png",
+    "click": "https://cdn3.emoji.gg/emojis/811563-snoopy.gif"
+  },
+  "gear:26": {
+    "label": "resinbrick + brick",
+    "idle": "https://cdn3.emoji.gg/emojis/741421-resinbrick.png",
+    "click": "https://cdn3.emoji.gg/emojis/951527-brick.gif"
+  },
+  "gear:27": {
+    "label": "Max + speedpray",
+    "idle": "https://cdn3.emoji.gg/emojis/253723-max.png",
+    "click": "https://cdn3.emoji.gg/emojis/583890-speedpray.gif"
+  },
+  "gear:28": {
+    "label": "Drawer + plantshelf",
+    "idle": "https://cdn3.emoji.gg/emojis/6702-drawer.png",
+    "click": "https://cdn3.emoji.gg/emojis/428887-plantshelf.gif"
+  },
+  "gear:29": {
+    "label": "crystal_cluster + threeheadeddragon",
+    "idle": "https://cdn3.emoji.gg/emojis/8187_crystal_cluster.png",
+    "click": "https://cdn3.emoji.gg/emojis/420144-threeheadeddragon.gif"
+  },
+  "gear:30": {
+    "label": "Vault + Drive",
+    "idle": "https://cdn3.emoji.gg/emojis/2715-vault.png",
+    "click": "https://cdn3.emoji.gg/emojis/141603-drive.gif"
+  },
+  "gear:31": {
+    "label": "DiscordFloppy + Backup",
+    "idle": "https://cdn3.emoji.gg/emojis/2586_DiscordFloppy.png",
+    "click": "https://cdn3.emoji.gg/emojis/9325-backup.gif"
+  },
+  "gear:32": {
+    "label": "phasmo_IDS + PepeMirror",
+    "idle": "https://cdn3.emoji.gg/emojis/756573-phasmo-ids.png",
+    "click": "https://cdn3.emoji.gg/emojis/443727-pepemirror.gif"
+  },
+  "gear:33": {
+    "label": "Rocketracing + Rocket",
+    "idle": "https://cdn3.emoji.gg/emojis/835093-rocketracing.png",
+    "click": "https://cdn3.emoji.gg/emojis/270171-rocket.gif"
+  },
+  "gear:34": {
+    "label": "cassette + ClassicTV",
+    "idle": "https://cdn3.emoji.gg/emojis/5183-cassette.png",
+    "click": "https://cdn3.emoji.gg/emojis/1271-classictv.gif"
+  },
+  "gear:35": {
+    "label": "Ice + PenguinWiggle",
+    "idle": "https://cdn3.emoji.gg/emojis/262289-ice.png",
+    "click": "https://cdn3.emoji.gg/emojis/606529-penguinwiggle.gif"
+  },
+  "gear:36": {
+    "label": "CT + doublektty",
+    "idle": "https://cdn3.emoji.gg/emojis/CT.png",
+    "click": "https://cdn3.emoji.gg/emojis/883847-doublektty.gif"
+  },
+  "gear:37": {
+    "label": "Dropbox + shelterin_YT",
+    "idle": "https://cdn3.emoji.gg/emojis/2891-dropbox.png",
+    "click": "https://cdn3.emoji.gg/emojis/46963-shelterin-yt.png"
+  },
+  "gear:38": {
+    "label": "BucketShrimp + Fish",
+    "idle": "https://cdn3.emoji.gg/emojis/64176-bucketshrimp.png",
+    "click": "https://cdn3.emoji.gg/emojis/546126-fish.gif"
+  },
+  "gear:39": {
+    "label": "Folder + files",
+    "idle": "https://cdn3.emoji.gg/emojis/66031-folder.png",
+    "click": "https://cdn3.emoji.gg/emojis/69583-files.png"
+  },
+  "gear:40": {
+    "label": "Screwdriver + PastelBolt",
+    "idle": "https://cdn3.emoji.gg/emojis/14161-screwdriver.png",
+    "click": "https://cdn3.emoji.gg/emojis/292562-pastelbolt.gif"
+  },
+  "gear:41": {
+    "label": "bunker + Castle",
+    "idle": "https://cdn3.emoji.gg/emojis/2816-bunker.png",
+    "click": "https://cdn3.emoji.gg/emojis/911267-castle.gif"
+  },
+  "gear:42": {
+    "label": "link + Link",
+    "idle": "https://cdn3.emoji.gg/emojis/477798-link.png",
+    "click": "https://cdn3.emoji.gg/emojis/502352-link.png"
+  },
+  "gear:43": {
+    "label": "ups + joyfulholidaypresents",
+    "idle": "https://cdn3.emoji.gg/emojis/76592-ups.png",
+    "click": "https://cdn3.emoji.gg/emojis/370938-joyfulholidaypresents.gif"
+  },
+  "gear:44": {
+    "label": "GoldTicket + MarioCoin",
+    "idle": "https://cdn3.emoji.gg/emojis/60201-goldticket.png",
+    "click": "https://cdn3.emoji.gg/emojis/272522-mariocoin.gif"
+  },
+  "gear:45": {
+    "label": "Ghost + floatingghost",
+    "idle": "https://cdn3.emoji.gg/emojis/970074-ghost.png",
+    "click": "https://cdn3.emoji.gg/emojis/356733-floatingghost.gif"
+  },
+  "gear:46": {
+    "label": "Booking + maketicket",
+    "idle": "https://cdn3.emoji.gg/emojis/55514-booking.png",
+    "click": "https://cdn3.emoji.gg/emojis/560905-maketicket.gif"
+  },
+  "gear:47": {
+    "label": "SHUSH + KrabbyPatty",
+    "idle": "https://cdn3.emoji.gg/emojis/984813-shush.png",
+    "click": "https://cdn3.emoji.gg/emojis/504251-krabbypatty.gif"
+  },
+  "gear:48": {
+    "label": "moneybag + PigSpin",
+    "idle": "https://cdn3.emoji.gg/emojis/40700-moneybag.png",
+    "click": "https://cdn3.emoji.gg/emojis/752271-pigspin.gif"
+  },
+  "gear:49": {
+    "label": "Plane + msfs_bird",
+    "idle": "https://cdn3.emoji.gg/emojis/253179-plane.png",
+    "click": "https://cdn3.emoji.gg/emojis/6535-msfs-bird.gif"
+  },
+  "gear:50": {
+    "label": "SSOctopus + pinkpearloctopustoy",
+    "idle": "https://cdn3.emoji.gg/emojis/978442-ssoctopus.png",
+    "click": "https://cdn3.emoji.gg/emojis/635138-pinkpearloctopustoy.gif"
+  },
+  "gear:51": {
+    "label": "Propose + DiamondRing",
+    "idle": "https://cdn3.emoji.gg/emojis/1945-propose.png",
+    "click": "https://cdn3.emoji.gg/emojis/271120-diamondring.gif"
+  },
+  "gear:52": {
+    "label": "Support + maketicket",
+    "idle": "https://cdn3.emoji.gg/emojis/904428-support.png",
+    "click": "https://cdn3.emoji.gg/emojis/226650-maketicket.gif"
+  },
+  "gear:53": {
+    "label": "broadcast + Tennacainedance",
+    "idle": "https://cdn3.emoji.gg/emojis/44735-broadcast.png",
+    "click": "https://cdn3.emoji.gg/emojis/896928-tennacainedance.gif"
+  },
+  "gear:54": {
+    "label": "a_house + strawberryhouse",
+    "idle": "https://cdn3.emoji.gg/emojis/314595-a-house.png",
+    "click": "https://cdn3.emoji.gg/emojis/999961-strawberryhouse.gif"
+  },
+  "gear:55": {
+    "label": "RTX3070 + pixelartboxofstars",
+    "idle": "https://cdn3.emoji.gg/emojis/1790-rtx3070.png",
+    "click": "https://cdn3.emoji.gg/emojis/632730-pixelartboxofstars.gif"
+  },
+  "gear:56": {
+    "label": "upgrade + UpgradeWheel",
+    "idle": "https://cdn3.emoji.gg/emojis/919403-upgrade.png",
+    "click": "https://cdn3.emoji.gg/emojis/4891_UpgradeWheel.gif"
+  },
+  "gear:57": {
+    "label": "RTX3080TI + doginalgamer",
+    "idle": "https://cdn3.emoji.gg/emojis/6376-rtx3080ti.png",
+    "click": "https://cdn3.emoji.gg/emojis/331404-doginalgamer.gif"
+  },
+  "gear:58": {
+    "label": "WoodenPickaxe + bitcoin_dog",
+    "idle": "https://cdn3.emoji.gg/emojis/548130-woodenpickaxe.png",
+    "click": "https://cdn3.emoji.gg/emojis/394150-bitcoin-dog.gif"
+  },
+  "gear:59": {
+    "label": "Bridge + pixel_wifi",
+    "idle": "https://cdn3.emoji.gg/emojis/13321-bridge.png",
+    "click": "https://cdn3.emoji.gg/emojis/7920-pixel-wifi.gif"
+  },
+  "gear:60": {
+    "label": "AMD_Radeon_RX_6900_XT_GPU + sappyTired",
+    "idle": "https://cdn3.emoji.gg/emojis/7635-amd-radeon-rx-6900-xt-gpu.png",
+    "click": "https://cdn3.emoji.gg/emojis/332471-sappytired.gif"
+  },
+  "gear:61": {
+    "label": "GorillaTagModeratorStick + GorillaTagFireStick",
+    "idle": "https://cdn3.emoji.gg/emojis/111810-gorillatagmoderatorstick.png",
+    "click": "https://cdn3.emoji.gg/emojis/395416-gorillatagfirestick.png"
+  },
+  "gear:62": {
+    "label": "clyde_thinking + PeachThink",
+    "idle": "https://cdn3.emoji.gg/emojis/678984-clyde-thinking.png",
+    "click": "https://cdn3.emoji.gg/emojis/717993-peachthink.gif"
+  },
+  "gear:63": {
+    "label": "speechlesspea + PeachGomaPlay",
+    "idle": "https://cdn3.emoji.gg/emojis/9487-speechlesspea.png",
+    "click": "https://cdn3.emoji.gg/emojis/450704-peachgomaplay.gif"
+  },
+  "gear:64": {
+    "label": "Nvidia + leather",
+    "idle": "https://cdn3.emoji.gg/emojis/7292-nvidia.png",
+    "click": "https://cdn3.emoji.gg/emojis/760763-leather.png"
+  },
+  "gear:65": {
+    "label": "SimplePancakes + sakuyapancake",
+    "idle": "https://cdn3.emoji.gg/emojis/326156-simplepancakes.png",
+    "click": "https://cdn3.emoji.gg/emojis/25164-sakuyapancake.gif"
+  },
+  "gear:66": {
+    "label": "Eight_ggrobloxmemes + BlueberrinniOctopusinni",
+    "idle": "https://cdn3.emoji.gg/emojis/85350-eight-ggrobloxmemes.png",
+    "click": "https://cdn3.emoji.gg/emojis/539684-blueberrinnioctopusinni.png"
+  },
+  "gear:67": {
+    "label": "GomaWeights + PenguStrong",
+    "idle": "https://cdn3.emoji.gg/emojis/466637-gomaweights.png",
+    "click": "https://cdn3.emoji.gg/emojis/1927-pengustrong.gif"
+  },
+  "gear:68": {
+    "label": "PepeCrowded + Grouphugs",
+    "idle": "https://cdn3.emoji.gg/emojis/2482-pepecrowded.png",
+    "click": "https://cdn3.emoji.gg/emojis/121990-grouphugs.png"
+  },
+  "gear:69": {
+    "label": "gigachad + Gigachad",
+    "idle": "https://cdn3.emoji.gg/emojis/21037-gigachad.png",
+    "click": "https://cdn3.emoji.gg/emojis/328644-gigachad.gif"
+  },
+  "gear:70": {
+    "label": "nitro + Nitro",
+    "idle": "https://cdn3.emoji.gg/emojis/928434-nitro.png",
+    "click": "https://cdn3.emoji.gg/emojis/495162-nitro.gif"
+  },
+  "gear:71": {
+    "label": "Cat_gym + pixelgymdiva",
+    "idle": "https://cdn3.emoji.gg/emojis/59400-cat-gym.png",
+    "click": "https://cdn3.emoji.gg/emojis/838407-pixelgymdiva.gif"
+  },
+  "gear:72": {
+    "label": "Windows10 + smallfan",
+    "idle": "https://cdn3.emoji.gg/emojis/635151-windows10.png",
+    "click": "https://cdn3.emoji.gg/emojis/188689-smallfan.gif"
+  },
+  "gear:73": {
+    "label": "ikeabear + Ikeashark",
+    "idle": "https://cdn3.emoji.gg/emojis/8537_ikeabear.png",
+    "click": "https://cdn3.emoji.gg/emojis/15492-ikeashark.png"
+  },
+  "gear:74": {
+    "label": "Oatmeal + Cereal",
+    "idle": "https://cdn3.emoji.gg/emojis/851363-oatmeal.png",
+    "click": "https://cdn3.emoji.gg/emojis/8539-cereal.gif"
+  },
+  "gear:75": {
+    "label": "wiimote_power_button + Radio",
+    "idle": "https://cdn3.emoji.gg/emojis/50459-wiimote-power-button.png",
+    "click": "https://cdn3.emoji.gg/emojis/191724-radio.png"
+  },
+  "gear:76": {
+    "label": "totoro + TotoroBounce",
+    "idle": "https://cdn3.emoji.gg/emojis/9172-totoro.png",
+    "click": "https://cdn3.emoji.gg/emojis/449386-totorobounce.gif"
+  },
+  "gear:77": {
+    "label": "battery_charge_full + plugwalk",
+    "idle": "https://cdn3.emoji.gg/emojis/854570-battery-charge-full.png",
+    "click": "https://cdn3.emoji.gg/emojis/3156-plugwalk.gif"
+  },
+  "gear:78": {
+    "label": "Cage + nicolas_cage_laughing",
+    "idle": "https://cdn3.emoji.gg/emojis/606404-cage.png",
+    "click": "https://cdn3.emoji.gg/emojis/5724-nicolas-cage-laughing.gif"
+  },
+  "gear:79": {
+    "label": "Switch + ethernet",
+    "idle": "https://cdn3.emoji.gg/emojis/957404-switch.png",
+    "click": "https://cdn3.emoji.gg/emojis/45844-ethernet.png"
+  },
+  "gear:80": {
+    "label": "Electricity + Lightning",
+    "idle": "https://cdn3.emoji.gg/emojis/91764-electricity.png",
+    "click": "https://cdn3.emoji.gg/emojis/653548-lightning.gif"
+  },
+  "gear:81": {
+    "label": "Deerantlers + pepebbq",
+    "idle": "https://cdn3.emoji.gg/emojis/12419-deerantlers.png",
+    "click": "https://cdn3.emoji.gg/emojis/417517-pepebbq.png"
+  },
+  "gear:82": {
+    "label": "indigopaint + waterdroplets",
+    "idle": "https://cdn3.emoji.gg/emojis/41542-indigopaint.png",
+    "click": "https://cdn3.emoji.gg/emojis/38389-waterdroplets.gif"
+  },
+  "gear:83": {
+    "label": "chillhotdog + hotairballoon",
+    "idle": "https://cdn3.emoji.gg/emojis/662986-chillhotdog.png",
+    "click": "https://cdn3.emoji.gg/emojis/502490-hotairballoon.gif"
+  },
+  "gear:84": {
+    "label": "OracleDB + ServerBoostings",
+    "idle": "https://cdn3.emoji.gg/emojis/406729-oracledb.png",
+    "click": "https://cdn3.emoji.gg/emojis/44336-serverboostings.gif"
+  },
+  "gear:85": {
+    "label": "SquirtleSplash + Pool",
+    "idle": "https://cdn3.emoji.gg/emojis/669322-squirtlesplash.png",
+    "click": "https://cdn3.emoji.gg/emojis/253017-pool.gif"
+  },
+  "gear:86": {
+    "label": "LEGOBlueMilkLuke + Package_Arrived",
+    "idle": "https://cdn3.emoji.gg/emojis/327957-legobluemilkluke.png",
+    "click": "https://cdn3.emoji.gg/emojis/8735-package-arrived.gif"
+  },
+  "gear:87": {
+    "label": "Snowflake + plant",
+    "idle": "https://cdn3.emoji.gg/emojis/761871-snowflake.png",
+    "click": "https://cdn3.emoji.gg/emojis/108748-plant.gif"
+  },
+  "gear:88": {
+    "label": "melodycellphone + CapooFilming",
+    "idle": "https://cdn3.emoji.gg/emojis/216239-melodycellphone.png",
+    "click": "https://cdn3.emoji.gg/emojis/291159-capoofilming.gif"
+  },
+  "gear:89": {
+    "label": "satellite_signal + Resistbot_Scan",
+    "idle": "https://cdn3.emoji.gg/emojis/7117-satellite-signal.png",
+    "click": "https://cdn3.emoji.gg/emojis/18341-resistbot-scan.gif"
+  },
+  "gear:90": {
+    "label": "radio + pepestereo",
+    "idle": "https://cdn3.emoji.gg/emojis/6834-radio.png",
+    "click": "https://cdn3.emoji.gg/emojis/48160-pepestereo.png"
+  },
+  "gear:91": {
+    "label": "plate + goth_tootheddish",
+    "idle": "https://cdn3.emoji.gg/emojis/18718-plate.png",
+    "click": "https://cdn3.emoji.gg/emojis/78318-goth-tootheddish.gif"
+  },
+  "gear:92": {
+    "label": "astronaut + AstronautInSpace",
+    "idle": "https://cdn3.emoji.gg/emojis/324959-astronaut.png",
+    "click": "https://cdn3.emoji.gg/emojis/16472-astronautinspace.gif"
+  },
+  "gear:93": {
+    "label": "LeonelliCactuselli + QuivioliAmeleonni",
+    "idle": "https://cdn3.emoji.gg/emojis/74175-leonellicactuselli.png",
+    "click": "https://cdn3.emoji.gg/emojis/990407-quivioliameleonni.png"
+  },
+  "gear:94": {
+    "label": "lasergun + Homelander",
+    "idle": "https://cdn3.emoji.gg/emojis/798725-lasergun.png",
+    "click": "https://cdn3.emoji.gg/emojis/22326-homelander.gif"
+  },
+  "gear:95": {
+    "label": "orbiter + doodleshootingstar",
+    "idle": "https://cdn3.emoji.gg/emojis/84100-orbiter.png",
+    "click": "https://cdn3.emoji.gg/emojis/390604-doodleshootingstar.gif"
+  },
+  "gear:96": {
+    "label": "UFO + shocked_alien",
+    "idle": "https://cdn3.emoji.gg/emojis/918753-ufo.png",
+    "click": "https://cdn3.emoji.gg/emojis/110575-shocked-alien.png"
+  },
+  "gear:97": {
+    "label": "Starfield + starry",
+    "idle": "https://cdn3.emoji.gg/emojis/4102-starfield.png",
+    "click": "https://cdn3.emoji.gg/emojis/407237-starry.gif"
+  },
+  "gear:98": {
+    "label": "Tent + petcabin",
+    "idle": "https://cdn3.emoji.gg/emojis/94870-tent.png",
+    "click": "https://cdn3.emoji.gg/emojis/8399-petcabin.gif"
+  },
+  "gear:99": {
+    "label": "oxygen + whitebearbubbles",
+    "idle": "https://cdn3.emoji.gg/emojis/66479-oxygen.png",
+    "click": "https://cdn3.emoji.gg/emojis/176667-whitebearbubbles.gif"
+  },
+  "gear:100": {
+    "label": "sleigh + Dust",
+    "idle": "https://cdn3.emoji.gg/emojis/3692-sleigh.png",
+    "click": "https://cdn3.emoji.gg/emojis/292452-dust.gif"
+  },
+  "gear:101": {
+    "label": "GeometryDashGridObject04 + PurpleSpider",
+    "idle": "https://cdn3.emoji.gg/emojis/5979-geometrydashgridobject04.png",
+    "click": "https://cdn3.emoji.gg/emojis/535234-purplespider.gif"
+  },
+  "gear:102": {
+    "label": "batterycharging + Battery_100",
+    "idle": "https://cdn3.emoji.gg/emojis/33143-batterycharging.png",
+    "click": "https://cdn3.emoji.gg/emojis/6736-battery-100.gif"
+  },
+  "gear:103": {
+    "label": "ice_cube_with_face + cutefroyo",
+    "idle": "https://cdn3.emoji.gg/emojis/75595-ice-cube-with-face.png",
+    "click": "https://cdn3.emoji.gg/emojis/255758-cutefroyo.gif"
+  },
+  "gear:104": {
+    "label": "dirt + Sand",
+    "idle": "https://cdn3.emoji.gg/emojis/540357-dirt.png",
+    "click": "https://cdn3.emoji.gg/emojis/180279-sand.png"
+  },
+  "gear:105": {
+    "label": "SSSunflower1 + SSSunflowerFull",
+    "idle": "https://cdn3.emoji.gg/emojis/497164-sssunflower1.png",
+    "click": "https://cdn3.emoji.gg/emojis/974124-sssunflowerfull.png"
+  },
+  "gear:106": {
+    "label": "NUKEY_DOOKY + HomerSobbing",
+    "idle": "https://cdn3.emoji.gg/emojis/29907-nukey-dooky.png",
+    "click": "https://cdn3.emoji.gg/emojis/29301-homersobbing.gif"
+  },
+  "gear:107": {
+    "label": "GApple + heartsapple",
+    "idle": "https://cdn3.emoji.gg/emojis/520815-gapple.png",
+    "click": "https://cdn3.emoji.gg/emojis/52810-heartsapple.gif"
+  },
+  "gear:108": {
+    "label": "Bee + bumblebeejellycatplushie",
+    "idle": "https://cdn3.emoji.gg/emojis/496446-bee.png",
+    "click": "https://cdn3.emoji.gg/emojis/596838-bumblebeejellycatplushie.png"
+  },
+  "gear:109": {
+    "label": "NASALogo + Control",
+    "idle": "https://cdn3.emoji.gg/emojis/880005-nasalogo.png",
+    "click": "https://cdn3.emoji.gg/emojis/403264-control.png"
+  },
+  "gear:110": {
+    "label": "KingdomOfFrance + Castle",
+    "idle": "https://cdn3.emoji.gg/emojis/855033-kingdomoffrance.png",
+    "click": "https://cdn3.emoji.gg/emojis/2505-castle.gif"
+  },
+  "capital:1": {
+    "label": "innocent + sweetpinkangel",
+    "idle": "https://cdn3.emoji.gg/emojis/564837-innocent.png",
+    "click": "https://cdn3.emoji.gg/emojis/61030-sweetpinkangel.gif"
+  },
+  "capital:2": {
+    "label": "BlueSaplingRoleIcon + sprout",
+    "idle": "https://cdn3.emoji.gg/emojis/987320-bluesaplingroleicon.png",
+    "click": "https://cdn3.emoji.gg/emojis/110794-sprout.gif"
+  },
+  "capital:3": {
+    "label": "YCombinator + Realistic_whitechocolatecookie",
+    "idle": "https://cdn3.emoji.gg/emojis/8320_YCombinator.png",
+    "click": "https://cdn3.emoji.gg/emojis/59569-realistic-whitechocolatecookie.png"
+  },
+  "capital:4": {
+    "label": "Bank + Greenglossytickcheckmark",
+    "idle": "https://cdn3.emoji.gg/emojis/634191-bank.png",
+    "click": "https://cdn3.emoji.gg/emojis/389945-greenglossytickcheckmark.png"
+  },
+  "capital:5": {
+    "label": "Steak + stonks",
+    "idle": "https://cdn3.emoji.gg/emojis/93624-steak.png",
+    "click": "https://cdn3.emoji.gg/emojis/6552-stonks.png"
+  },
+  "capital:6": {
+    "label": "Pacman + shark",
+    "idle": "https://cdn3.emoji.gg/emojis/61058-pacman.png",
+    "click": "https://cdn3.emoji.gg/emojis/459538-shark.gif"
+  },
+  "capital:7": {
+    "label": "hodl + BuyGraph",
+    "idle": "https://cdn3.emoji.gg/emojis/5852_hodl.png",
+    "click": "https://cdn3.emoji.gg/emojis/730336-buygraph.png"
+  },
+  "capital:8": {
+    "label": "Chips + Pengu_PokerChips",
+    "idle": "https://cdn3.emoji.gg/emojis/3172-chips.png",
+    "click": "https://cdn3.emoji.gg/emojis/62539-pengu-pokerchips.gif"
+  },
+  "capital:9": {
+    "label": "Rocket_Shwompy + RobocoDance",
+    "idle": "https://cdn3.emoji.gg/emojis/81681-rocket-shwompy.png",
+    "click": "https://cdn3.emoji.gg/emojis/820273-robocodance.gif"
+  },
+  "capital:10": {
+    "label": "moNOpoly + moNOpoly",
+    "idle": "https://cdn3.emoji.gg/emojis/599944-monopoly.png",
+    "click": "https://cdn3.emoji.gg/emojis/5464-monopoly.gif"
+  },
+  "capital:11": {
+    "label": "house + modern_house",
+    "idle": "https://cdn3.emoji.gg/emojis/277051-house.png",
+    "click": "https://cdn3.emoji.gg/emojis/323149-modern-house.png"
+  },
+  "capital:12": {
+    "label": "LL_Slay + cutesparklestar",
+    "idle": "https://cdn3.emoji.gg/emojis/66093-ll-slay.png",
+    "click": "https://cdn3.emoji.gg/emojis/356623-cutesparklestar.gif"
+  },
+  "capital:13": {
+    "label": "Waifu_Certified_Platinum + LightBulb",
+    "idle": "https://cdn3.emoji.gg/emojis/888148-waifu-certified-platinum.png",
+    "click": "https://cdn3.emoji.gg/emojis/650157-lightbulb.png"
+  },
+  "capital:14": {
+    "label": "Anvil + ww_circle_hammer",
+    "idle": "https://cdn3.emoji.gg/emojis/4719-anvil.png",
+    "click": "https://cdn3.emoji.gg/emojis/3898_ww_circle_hammer.png"
+  },
+  "capital:15": {
+    "label": "chicagoschool + WhiteDogTyping",
+    "idle": "https://cdn3.emoji.gg/emojis/549742-chicagoschool.png",
+    "click": "https://cdn3.emoji.gg/emojis/886702-whitedogtyping.gif"
+  },
+  "capital:16": {
+    "label": "megamind + megamaind",
+    "idle": "https://cdn3.emoji.gg/emojis/19003-megamind.png",
+    "click": "https://cdn3.emoji.gg/emojis/865401-megamaind.png"
+  },
+  "capital:17": {
+    "label": "Globe + Love_Earth",
+    "idle": "https://cdn3.emoji.gg/emojis/50738-globe.png",
+    "click": "https://cdn3.emoji.gg/emojis/385550-love-earth.png"
+  },
+  "capital:18": {
+    "label": "SSShark + UnderwaterFish",
+    "idle": "https://cdn3.emoji.gg/emojis/856794-ssshark.png",
+    "click": "https://cdn3.emoji.gg/emojis/567073-underwaterfish.gif"
+  },
+  "capital:19": {
+    "label": "Rocket + PurpleRocket",
+    "idle": "https://cdn3.emoji.gg/emojis/999748-rocket.png",
+    "click": "https://cdn3.emoji.gg/emojis/160372-purplerocket.gif"
+  },
+  "capital:20": {
+    "label": "stars + GalaxyStars",
+    "idle": "https://cdn3.emoji.gg/emojis/65530-stars.png",
+    "click": "https://cdn3.emoji.gg/emojis/542601-galaxystars.png"
+  },
+  "capital:21": {
+    "label": "pixelmoon + moon_spinning",
+    "idle": "https://cdn3.emoji.gg/emojis/70632-pixelmoon.png",
+    "click": "https://cdn3.emoji.gg/emojis/673534-moon-spinning.gif"
+  },
+  "capital:22": {
+    "label": "spaceship + Rocket",
+    "idle": "https://cdn3.emoji.gg/emojis/5100-spaceship.png",
+    "click": "https://cdn3.emoji.gg/emojis/812522-rocket.gif"
+  },
+  "capital:23": {
+    "label": "ElectricType + LightningCloud",
+    "idle": "https://cdn3.emoji.gg/emojis/679891-electrictype.png",
+    "click": "https://cdn3.emoji.gg/emojis/140753-lightningcloud.gif"
+  },
+  "capital:24": {
+    "label": "DataTech + SanrioComputer",
+    "idle": "https://cdn3.emoji.gg/emojis/716905-datatech.png",
+    "click": "https://cdn3.emoji.gg/emojis/66766-sanriocomputer.gif"
+  },
+  "capital:25": {
+    "label": "Buildings + doge_elonmusk",
+    "idle": "https://cdn3.emoji.gg/emojis/6812_Buildings.png",
+    "click": "https://cdn3.emoji.gg/emojis/8884_doge_elonmusk.png"
+  }
+}

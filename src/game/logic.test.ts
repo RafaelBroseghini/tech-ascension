@@ -390,7 +390,7 @@ describe("emoji.gg art", () => {
         for (const url of [art.idle, art.click]) seen.set(url, (seen.get(url) ?? 0) + 1)
       }
     }
-    for (const count of seen.values()) expect(count).toBeLessThanOrEqual(4)
+    for (const count of seen.values()) expect(count).toBe(1)
     expect(EMOJI_CAPITAL[25].label.toLowerCase()).toMatch(/building|rocket/)
     expect(DESK_CAT_EMOJI).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
     expect(DESK_CAT_TITLE).not.toMatch(DISALLOWED_EMOJI_TITLE)
@@ -413,8 +413,8 @@ describe("emoji.gg art", () => {
       expect(idle).not.toMatch(/\/Error\.png$/i)
       expect(idle.length).toBeGreaterThan(0)
     }
-    expect(emojiIdleUrl("job", frontend?.id ?? 0)).toMatch(/8094-html\.png$/)
-    expect(emojiIdleUrl("job", advisor?.id ?? 0)).toMatch(/158897-crown\.png$/)
+    expect(emojiIdleUrl("job", frontend?.id ?? 0)).toMatch(/10881-unicorn\.png$/)
+    expect(emojiIdleUrl("job", advisor?.id ?? 0)).toMatch(/280352-chess\.png$/)
   })
 })
 

@@ -130,7 +130,7 @@ describe("shop row badges and job art", () => {
     const row = host.querySelector<HTMLElement>("[data-row='job:11']")
     expect(row?.querySelector("h3")?.textContent).toContain("Frontend specialist")
     const src = row?.querySelector("img")?.getAttribute("src") ?? ""
-    expect(src).toMatch(/8094-html\.png$/)
+    expect(src).toMatch(/10881-unicorn\.png$/)
     expect(src).not.toMatch(/Error\.png/i)
     for (const id of [12, 13, 14, 15]) {
       const under = host.querySelector(`[data-row='job:${id}'] img`)?.getAttribute("src") ?? ""
@@ -140,7 +140,7 @@ describe("shop row badges and job art", () => {
     const advisor = host.querySelector<HTMLElement>("[data-row='job:25']")
     expect(advisor?.querySelector("h3")?.textContent).toContain("Board advisor (tech)")
     const advisorSrc = advisor?.querySelector("img")?.getAttribute("src") ?? ""
-    expect(advisorSrc).toMatch(/158897-crown\.png$/)
+    expect(advisorSrc).toMatch(/280352-chess\.png$/)
     expect(advisorSrc).not.toMatch(/Error\.png/i)
   })
 })

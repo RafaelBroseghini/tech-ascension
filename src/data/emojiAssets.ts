@@ -36,31 +36,8 @@ const TABLE: Readonly<Record<EmojiKind, Readonly<Record<number, EmojiArt>>>> = {
   capital: EMOJI_CAPITAL,
 }
 
-/**
- * emoji.gg file that draws the word ERROR. It is a stamp, not catalog art.
- * The manifest is left as assigned; display swaps the stamp for a real emoji.
- */
-const ERROR_STAMP = "https://cdn3.emoji.gg/emojis/Error.png"
-
-/** Crown already used for Lab director. Board advisor (job 25) is the row still stuck on the stamp. */
-const CROWN = "https://cdn3.emoji.gg/emojis/158897-crown.png"
-
-const STAMP_IDLE: Partial<Record<EmojiKind, Readonly<Record<number, string>>>> = {
-  job: { 25: CROWN },
-}
-
-function withoutStamp(kind: EmojiKind, id: number, url: string, other: string): string {
-  if (url !== ERROR_STAMP) return url
-  return STAMP_IDLE[kind]?.[id] ?? (other !== ERROR_STAMP ? other : CROWN)
-}
-
 function rowFor(kind: EmojiKind, id: number): EmojiArt | null {
-  const row = TABLE[kind][id]
-  if (!row) return null
-  if (row.idle !== ERROR_STAMP && row.click !== ERROR_STAMP) return row
-  const idle = withoutStamp(kind, id, row.idle, row.click)
-  const click = withoutStamp(kind, id, row.click, idle)
-  return { ...row, idle, click }
+  return TABLE[kind][id] ?? null
 }
 
 /** Click-reaction image, or null when this row has no emoji yet. */

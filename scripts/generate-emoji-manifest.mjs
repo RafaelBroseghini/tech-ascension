@@ -21,29 +21,14 @@ const PHASES = join(ROOT, "src/data/phases.ts")
 const GEAR = join(ROOT, "src/data/gear.ts")
 const CAPITAL = join(ROOT, "src/data/capital.ts")
 
-/** Manual picks that beat keyword search (kind:id). */
-const PINNED = {
-  "capital:22": {
-    label: "OuterSpace + Petpet_Rocket",
-    idle: "https://cdn3.emoji.gg/emojis/634279-outerspace.png",
-    click: "https://cdn3.emoji.gg/emojis/39253-petpet-rocket.gif",
-  },
-  "capital:23": {
-    label: "Bolt + LightningCloud",
-    idle: "https://cdn3.emoji.gg/emojis/325756-bolt.png",
-    click: "https://cdn3.emoji.gg/emojis/140753-lightningcloud.gif",
-  },
-  "capital:24": {
-    label: "DataTech + SanrioComputer",
-    idle: "https://cdn3.emoji.gg/emojis/716905-datatech.png",
-    click: "https://cdn3.emoji.gg/emojis/66766-sanriocomputer.gif",
-  },
-  "capital:25": {
-    label: "Buildings + PurpleRocket",
-    idle: "https://cdn3.emoji.gg/emojis/6812_Buildings.png",
-    click: "https://cdn3.emoji.gg/emojis/160372-purplerocket.gif",
-  },
-}
+const PINS = join(ROOT, "scripts/emoji-pins.json")
+
+/**
+ * Hand-vetted picks (kind:id), checked by eye against the row name. They beat
+ * keyword search; rows without a pin fall back to the keyword pick below.
+ * @type {Record<string, { label: string, idle: string, click: string }>}
+ */
+const PINNED = JSON.parse(await readFile(PINS, "utf8"))
 
 const STOP = new Set(
   `the and for with you from into your soft habit notes toy intro basics taste kit model one
@@ -291,6 +276,17 @@ async function main() {
   const useCount = new Map([[deskCat.image, 1]])
   for (const url of deskCatClickPool) useCount.set(url, (useCount.get(url) ?? 0) + 1)
 
+  // Reserve every pinned URL first, so keyword and filler picks never take one.
+  const pinnedUrls = new Set()
+  for (const [pinKey, pinned] of Object.entries(PINNED)) {
+    for (const url of [pinned.idle, pinned.click]) {
+      if (unique.has(url)) throw new Error(`Pinned ${pinKey} reuses an emoji URL already assigned (${url})`)
+      unique.add(url)
+      pinnedUrls.add(url)
+      useCount.set(url, 1)
+    }
+  }
+
   /**
    * @param {{ primary: string[], aliases: string[] }} words
    * @param {boolean} wantGif
@@ -305,7 +301,7 @@ async function main() {
       useCount.set(best.image, (useCount.get(best.image) ?? 0) + 1)
       return { emoji: best, matched: true }
     }
-    const avoid = new Set([deskCat.image])
+    const avoid = new Set([deskCat.image, ...pinnedUrls])
     if (sibling) avoid.add(sibling)
     const filler = takeFiller(emojis, avoid, wantGif, useCount)
     useCount.set(filler.image, (useCount.get(filler.image) ?? 0) + 1)
@@ -359,21 +355,15 @@ async function main() {
   )
   const ordered = stage ? [stage, ...rest] : rest
 
+  let pinnedRows = 0
   let matched = 0
   let filled = 0
   for (const row of ordered) {
     const pinKey = `${row.kind}:${row.id}`
     const pinned = PINNED[pinKey]
     if (pinned) {
-      if (unique.has(pinned.idle) || unique.has(pinned.click)) {
-        throw new Error(`Pinned ${pinKey} reuses an emoji URL already assigned`)
-      }
-      unique.add(pinned.idle)
-      unique.add(pinned.click)
-      useCount.set(pinned.idle, (useCount.get(pinned.idle) ?? 0) + 1)
-      useCount.set(pinned.click, (useCount.get(pinned.click) ?? 0) + 1)
       manifest[row.kind][String(row.id)] = pinned
-      matched++
+      pinnedRows++
       continue
     }
     const idleSlot = assignSlot(row.words, false, null)
@@ -398,7 +388,7 @@ async function main() {
   console.log(`Wrote ${MANIFEST} (${counts}; ${unique.size} unique topical URLs, max reuse ${heaviest?.[1] ?? 0})`)
   console.log(`desk cat: ${deskCat.title} ${deskCat.image}`)
   console.log(`desk cat click pool: ${deskCatClickPool.length} URLs → ${DESK_CAT_POOL}`)
-  console.log(`keyword matches: ${matched}, filler: ${filled}`)
+  console.log(`pinned: ${pinnedRows}, keyword matches: ${matched}, filler: ${filled}`)
   const preview = ["0", "1", "2"].map((id) => `skill ${id}: ${manifest.skill[id].label}`)
   const mars = manifest.capital["25"]
   console.log(preview.join("\n"))

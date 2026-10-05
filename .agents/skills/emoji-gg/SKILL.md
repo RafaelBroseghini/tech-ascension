@@ -11,9 +11,10 @@ Art is assigned in `src/data/emojiManifest.json` (generated), read through `src/
 ## Rules
 
 - **License.** emoji.gg allows use where nobody is charged for the emoji and forbids redistributing the files. Store CDN URLs (`https://cdn3.emoji.gg/emojis/<id>-<name>.<ext>`) only. Never commit image bytes. For visual checks, download into the scratchpad directory, never into the repo.
-- **A title is not proof.** The generator matches on the file name only. Authors name things loosely, so a file called `lock` or `bug` can be an unrelated pixel-art mascot or a meme. Current manifest examples: gear `4` is "Lock + pixel toro bloodcough", skill `5` is "web + MONEY". Always look at the image before keeping or pinning it.
+- **A title is not proof.** The generator matches on the file name only. Authors name things loosely, so a file called `lock` or `bug` can be an unrelated pixel-art mascot or a meme. Before the vetted pins, gear `4` (Vertical mouse) was "Lock + pixel toro bloodcough" and skill `5` was "web + MONEY". Always look at the image before keeping or pinning it.
 - Skip NSFW and anything the generator's `DISALLOWED_TITLE` regex blocks. Skip category 9 (NSFW) and 11 (letters).
-- Do not hand-edit `emojiManifest.json`. The next generator run overwrites it. Fix picks with `PINNED` (below).
+- Do not hand-edit `emojiManifest.json`. The next generator run overwrites it. Fix picks in `scripts/emoji-pins.json` (below).
+- Every catalog row is pinned, and every pin was checked by eye. A new row has no pin and gets a keyword or filler pick until someone vets and pins it.
 
 ## Where to search
 
@@ -64,13 +65,15 @@ Exact-title hits are thin for some terms. `docker` has no emoji whose title toke
    curl -s -o "$SCRATCH/probe.png" https://cdn3.emoji.gg/emojis/325756-bolt.png
    ```
    Check: does the picture show the thing the row names (a rocket, a lock, a laptop)? Is it clean at small size? Is it free of text, watermarks and unrelated characters? For a GIF, check the first frame still reads as the right object, since idle uses a still.
-4. Pin the pair in `PINNED` in `scripts/generate-emoji-manifest.mjs`:
-   ```js
-   "capital:22": { label: "OuterSpace + Petpet_Rocket", idle: "<png url>", click: "<gif url>" },
+4. Pin the pair in `scripts/emoji-pins.json` (the generator loads it as `PINNED`):
+   ```json
+   "capital:22": { "label": "spaceship + Rocket", "idle": "<png url>", "click": "<gif url>" },
    ```
-   Key is `<kind>:<id>` (kinds: skill, gig, job, gear, capital). Pinned URLs must not collide with any other assigned URL, or the generator throws. Prefer a still for `idle` and a GIF for `click`.
+   Key is `<kind>:<id>` (kinds: skill, gig, job, gear, capital). Pinned URLs are reserved before any keyword pick runs. A pinned URL that repeats another pin or a desk cat URL makes the generator throw. Prefer a still for `idle` and a GIF for `click`. Accurate or a clear joke both work (a "Fab capacity offtake" row can be a slay emoji, "Ground station dish" a dinner plate), but the picture has to read at shop size.
+   - For many rows at once, render a contact sheet (row name next to its candidates, in a grid) with Pillow in the scratchpad and Read it. That is much faster than opening images one at a time.
+   - Check the first frame of a click GIF too. Some (for example the Clippy set) start on an empty frame, and some images are mostly transparent padding around a tiny glyph.
 5. Run `node scripts/generate-emoji-manifest.mjs` (offline, uses the cache), then `npm test` and `npm run lint`.
-6. Audit the output: `label` is `"<idle title> + <click title>"`. Scan it for rows where the title does not fit the row, and for filler (see below). Spot-check a handful visually.
+6. Audit the output: `label` is `"<idle title> + <click title>"`. The summary line should read `filler: 0` and `max reuse 1`. Look at every new or changed pin.
 
 ## Spotting bad auto-picks
 
