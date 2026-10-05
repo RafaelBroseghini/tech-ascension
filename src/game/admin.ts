@@ -1,4 +1,5 @@
 import { CAPITAL } from "../data/capital.ts"
+import { GOLD_SKILLS } from "../data/gold.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import type { OwnedMap } from "./economy.ts"
 import { persistNow, useGame } from "./store.ts"
@@ -36,7 +37,7 @@ function withOneOfEach(owned: OwnedMap, rows: readonly { id: number }[]): OwnedM
 }
 
 /**
- * Grants every skill, gig, job, gear row and capital row for free, skipping cost and gates. Repeatables get
+ * Grants every skill, gold skill, gig, job, gear row and capital row for free, skipping cost and gates. Repeatables get
  * one copy when they had none. Newly taken jobs pay their one-time XP lump. Money and gig lumps are untouched.
  */
 export function buyEverything(): void {
@@ -48,6 +49,7 @@ export function buyEverything(): void {
       equipment: withOneOfEach(state.equipment, EQUIPMENT),
       owned: withOneOfEach(state.owned, CAPITAL),
       gigs: GIGS.map((gig) => gig.id),
+      gold: GOLD_SKILLS.map((row) => row.id),
       jobs: JOB_TIERS.map((job) => job.id),
       xp: state.xp + lump,
       xpTotal: state.xpTotal + lump,

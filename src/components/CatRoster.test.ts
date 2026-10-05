@@ -105,6 +105,15 @@ describe("cat roster", () => {
     expect(getDeskPrefs().catArt).toBeNull()
   })
 
+  it("sends the chosen cat back to the default when the game is wiped, and keeps the rest of the room", () => {
+    setDeskPref("catArt", CAT_ROSTER[3]!.url)
+    setDeskPref("music", true)
+    useGame.getState().wipe()
+    expect(getDeskPrefs().catArt).toBeNull()
+    expect(getDeskPrefs().music).toBe(true)
+    setDeskPref("music", false)
+  })
+
   it("goes back to the metrics on Escape", () => {
     const onClose = vi.fn()
     mount(createElement(MetricsModal, { onClose }))

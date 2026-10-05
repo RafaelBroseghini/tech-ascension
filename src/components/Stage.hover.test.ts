@@ -79,6 +79,28 @@ describe("hover click", () => {
     expect(useGame.getState().xp).toBe(xpEach * 20)
   })
 
+  it("clicks at the rate of the hover gold skill owned, before the catalog is complete", () => {
+    vi.useFakeTimers()
+    setDeskPref("sounds", false)
+    setDeskPref("hoverClick", true)
+    useGame.setState({ gold: [2], xpTotal: 1e6, event: null })
+    const host = renderStage()
+    expect(host.querySelector("[data-testid='stage']")?.getAttribute("data-auto-click")).toBe("on")
+    hoverEmoji(host)
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpPerClick(useGame.getState().skills) * 2)
+
+    flushSync(() => {
+      useGame.setState({ gold: [2, 5], xp: 0 })
+    })
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpPerClick(useGame.getState().skills) * 5)
+  })
+
   it("does not click until the catalog is complete and the switch is on", () => {
     vi.useFakeTimers()
     setDeskPref("sounds", false)

@@ -7,11 +7,11 @@ import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
-import { MAX_CLICKS_PER_SEC } from "../game/autoClick.ts"
 import { getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
+import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
 
@@ -29,7 +29,7 @@ const TOGGLES: readonly {
   label: string
   Icon?: LucideIcon
   emoji?: string
-  /** Hidden until every catalog row is owned. */
+  /** Hidden until hover clicking is unlocked (a gold hover skill, or every catalog row owned). */
   complete?: boolean
   title?: string
 }[] = [
@@ -41,7 +41,7 @@ const TOGGLES: readonly {
     label: "Hover click",
     Icon: MousePointerClick,
     complete: true,
-    title: `Hover the emoji to click at ${MAX_CLICKS_PER_SEC}/s`,
+    title: "Hover the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
 ]
@@ -118,7 +118,7 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
 export function EditorSettings() {
   const saved = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
-  const catalogComplete = useGame((state) => ownsEverything(state))
+  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
@@ -170,14 +170,14 @@ export function EditorSettings() {
             </p>
             <div className="ide-settings-section-panel">
               <ul className="desk-toggles">
-                {TOGGLES.filter((toggle) => !toggle.complete || catalogComplete).map((toggle) => (
+                {TOGGLES.filter((toggle) => !toggle.complete || hoverPerSec > 0).map((toggle) => (
                   <li key={toggle.key}>
                     <button
                       type="button"
                       className="desk-toggle"
                       data-testid={`desk-${toggle.key}`}
                       aria-pressed={desk[toggle.key]}
-                      title={toggle.title}
+                      title={toggle.key === "hoverClick" ? `Hover the emoji to click at ${hoverPerSec}/s` : toggle.title}
                       onClick={() => setDeskPref(toggle.key, !desk[toggle.key])}
                     >
                       <span className="desk-toggle-label">

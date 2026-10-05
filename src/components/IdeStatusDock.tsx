@@ -6,6 +6,7 @@ import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle } from "../data/ideThemes.ts"
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
 import { getSavedIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
+import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { openRosters, ROSTER_KINDS, ROSTER_LABEL, rosterEntries, type RosterKind } from "../game/rosters.ts"
 import { useGame } from "../game/store.ts"
@@ -184,7 +185,7 @@ function ChipIcon({ Icon, src, alt }: { Icon?: LucideIcon; src?: string; alt?: s
 export const IdeStatusDock = memo(function IdeStatusDock() {
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const savedTheme = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
-  const catalogComplete = useGame((state) => ownsEverything(state))
+  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const catsFound = useGame((state) => state.stats.catsFound.length)
   const [openChip, setOpenChip] = useState<ChipId | null>(null)
   const [roster, setRoster] = useState<OpenRoster>(null)
@@ -214,7 +215,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
         panel={
           <>
             <SettingsSection heading="Sound">
-              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["music", "sounds"]} />
+              <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["music", "sounds"]} />
             </SettingsSection>
             {desk.music ? (
               <SettingsSection heading="Music style">
@@ -228,16 +229,16 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
       <StatusChip
         id="clicks"
         label="Click"
-        active={desk.clicks || (catalogComplete && desk.hoverClick)}
+        active={desk.clicks || (hoverPerSec > 0 && desk.hoverClick)}
         open={openChip === "clicks"}
         onOpen={() => setOpenChip("clicks")}
         onClose={closeChip}
         icon={<ChipIcon Icon={MousePointer2} />}
         panel={
           <>
-            {/* Hover click is listed here once every catalog row is owned; before that the list holds the click sound alone. */}
+            {/* Hover click is listed here once a gold hover skill or every catalog row is owned; before that the list holds the click sound alone. */}
             <SettingsSection heading="Click">
-              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["clicks", "hoverClick"]} />
+              <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["clicks", "hoverClick"]} />
             </SettingsSection>
             {desk.clicks ? (
               <SettingsSection heading="Click kit">
@@ -258,7 +259,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
         icon={<ChipIcon src={desk.catArt ?? DESK_CAT_EMOJI} alt="" />}
         panel={
           <SettingsSection heading="Cat">
-            <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["cat"]} />
+            <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["cat"]} />
             {catsFound > 0 ? (
               <button
                 type="button"

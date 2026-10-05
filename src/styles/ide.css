@@ -242,13 +242,47 @@
 .ide-item-wrap.is-inbox .ide-item-main { color: var(--ide-text); }
 .ide-mail-dot, .ide-slide-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ide-blue); }
 .ide-slide-dot { border-radius: 1px; background: var(--ide-peach); }
-.ide-tree-title {
+.ide-tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
   margin: 0 0 var(--sp-2);
+  padding: 0 var(--sp-2) 0 0;
+  flex: none;
+}
+.ide-tree-title {
+  margin: 0;
   padding: 0 var(--sp-3);
   font-size: var(--fs-2xs);
   letter-spacing: var(--track-caps);
   text-transform: uppercase;
   flex: none;
+}
+.ide-tree-action {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+.ide-tree-action:hover:not(:disabled) {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.ide-tree-action:focus-visible {
+  outline: 1px solid var(--ide-blue);
+  outline-offset: 1px;
+}
+.ide-tree-action:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 .ide-tree-row {
   display: flex;
