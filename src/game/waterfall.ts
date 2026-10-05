@@ -1,7 +1,7 @@
 /** Click waterfall: a developer-icon from the owned pool, falling from the cursor. */
 
 export const WATERFALL_CAP = 14
-export const FALL_MS = 900
+export const FALL_MS = 1400
 
 export type Drop = { id: number; x: number; y: number; dx: number; dy: number; rot: number; size: number; icon: string }
 
