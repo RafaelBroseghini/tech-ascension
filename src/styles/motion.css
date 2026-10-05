@@ -12,10 +12,10 @@
 
 /* Waterfall icon: smaller than the old 48px mark, still readable, fading as it falls. */
 @keyframes drop-fall {
-  0% { transform: translate(0, 0) rotate(0deg) scale(0.85); opacity: 0.82; }
-  25% { transform: translate(calc(var(--dx) * 0.25), calc(var(--dy) * 0.0625)) rotate(calc(var(--rot) * 0.25)) scale(1); opacity: 0.72; }
-  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.25)) rotate(calc(var(--rot) * 0.5)) scale(1); opacity: 0.55; }
-  75% { transform: translate(calc(var(--dx) * 0.75), calc(var(--dy) * 0.5625)) rotate(calc(var(--rot) * 0.75)) scale(0.95); opacity: 0.28; }
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.85); opacity: 1; }
+  25% { transform: translate(calc(var(--dx) * 0.25), calc(var(--dy) * 0.0625)) rotate(calc(var(--rot) * 0.25)) scale(1); opacity: 0.95; }
+  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.25)) rotate(calc(var(--rot) * 0.5)) scale(1); opacity: 0.8; }
+  75% { transform: translate(calc(var(--dx) * 0.75), calc(var(--dy) * 0.5625)) rotate(calc(var(--rot) * 0.75)) scale(0.95); opacity: 0.45; }
   100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.9); opacity: 0; }
 }
 

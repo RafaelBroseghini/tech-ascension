@@ -83,7 +83,7 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
   })
 }
 
-const ICON_PX = 28
+const ICON_PX = 36
 
 /** One random owned logo per spray, dropped from the cursor. */
 function waterfall(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {

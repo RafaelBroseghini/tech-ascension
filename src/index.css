@@ -909,7 +909,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .drop {
   position: absolute;
   z-index: 1;
-  animation: drop-fall 900ms linear forwards;
+  animation: drop-fall 1400ms linear forwards;
 }
 
 .drop .developer-icons,
@@ -917,7 +917,7 @@ img { -webkit-user-drag: none; user-select: none; }
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 45%));
+  filter: brightness(1.25) saturate(1.15) drop-shadow(0 1px 1px rgb(0 0 0 / 45%));
 }
 
 .drop .linkedout-mark {
@@ -931,7 +931,7 @@ img { -webkit-user-drag: none; user-select: none; }
   pointer-events: none;
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 1.7rem;
+  font-size: 1.4rem;
   line-height: 1;
   white-space: nowrap;
   color: var(--text);
@@ -941,7 +941,7 @@ img { -webkit-user-drag: none; user-select: none; }
   animation: loot-fall 500ms linear forwards;
 }
 
-.loot-xp { color: var(--accent-hi); font-size: 1.35rem; }
+.loot-xp { color: var(--accent-hi); font-size: 1.1rem; }
 
 .confetti {
   position: absolute;
