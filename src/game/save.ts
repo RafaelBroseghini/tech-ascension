@@ -179,7 +179,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const away = Math.min(Math.max(0, now - loaded.savedAt), OFFLINE_CAP_MS)
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now)
-  const xpCredit = offlineCredit(xpPerSec(loaded.skills) * fx.xpIdle, loaded.savedAt, now)
+  const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now)
   const elapsed = now - loaded.savedAt
   const save: SaveData = {
     ...loaded,

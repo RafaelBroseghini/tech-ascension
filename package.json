@@ -10,6 +10,7 @@
     "test": "vitest run --config vitest.config.ts",
     "smoke:play": "vitest run --config vitest.smoke.config.ts",
     "play:agent": "node scripts/play-agent.mjs",
+    "pace": "node scripts/pace.mjs",
     "preview": "vite preview",
     "build:pages": "tsc -b && vite build --base=/tech-ascension/",
     "preview:pages": "npm run build:pages && vite preview --base=/tech-ascension/ --host 127.0.0.1 --port 43124 --strictPort",

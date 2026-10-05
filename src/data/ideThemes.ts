@@ -33,7 +33,7 @@ export type IdePalette = {
   mantle: string
   crust: string
   onAccent: string
-  /** Danger, fight HP, and bad event lines. */
+  /** Danger and bad event lines. */
   red: string
 }
 

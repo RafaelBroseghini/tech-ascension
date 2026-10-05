@@ -1,12 +1,10 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import type { Era } from "../data/capital.ts"
-import { clickPower, idlePerSec, jobById, ownedCount, production, xpPerClick, xpPerSec } from "./economy.ts"
+import { clickFlat, clickPower, clickShare, idlePerSec, jobById, ownedCount, production, xpPerClick, xpPerSec } from "./economy.ts"
 import { eventById, previewOffer } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
-import { remainingMs } from "./fight.ts"
-import type { FightOutcome } from "./fight.ts"
 import { itemsOf } from "../data/idePacks.ts"
 import { ideView } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
@@ -18,17 +16,11 @@ import type { Phase } from "./phase.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import { normalizeStats } from "./stats.ts"
 import { readCareerText } from "./ledger.ts"
+import { setMoneyDirect, setXpDirect } from "./admin.ts"
 import { persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
 
-export type FightSnapshot = {
-  enemyId: number
-  hp: number
-  maxHp: number
-  remainingMs: number
-}
-
-export type PopSnapshot = { kind: "click" | "gigClear" | "fightWin" | "unlock"; size: "medium" | "large"; amount: number; label: string }
+export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
 export type EventSnapshot = { eventId: number; name: string; lines: string[] }
 
@@ -83,6 +75,10 @@ export type GameSnapshot = {
   cps: number
   /** Money per click, before activeBoost. Paid once the first job is taken. */
   clickPower: number
+  /** The flat part of clickPower before the boost, without the jobs' share of $/s. */
+  clickFlat: number
+  /** Share of idle $/s each click adds, from jobs held (0.04 = 4%). Already inside clickPower. */
+  clickShare: number
   /** XP per click (1 + skills). In Phase A this is what a click pays. */
   xpPerClick: number
   /** Idle XP/s from skills. */
@@ -108,18 +104,17 @@ export type GameSnapshot = {
   gigs: number[]
   /** `gear` opens with the Job Board. */
   unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }
-  /** The target in the shop banner under the tabs, or null when nothing is left to unlock. */
+  /**
+   * The one thing to chase across the whole game, or null when nothing is left to unlock. Each shop tab banner
+   * shows the same idea scoped to its own panel (`nextUnlock(progress, tab)`).
+   */
   nextUnlock: NextUnlock | null
   era: Era
   /** Art id of the stage sprite: art id of the highest owned capital row, or the art of the furthest skill, gig or job. 1 before the first purchase. */
   spriteTierId: number
   activeBoost: ActiveBoost | null
   savedAt: number
-  /** Running rare-enemy fight, or null when idle. */
-  fight: FightSnapshot | null
-  /** How the most recent fight ended (reward is 0 unless it was a win), or null. */
-  lastFight: { kind: FightOutcome["kind"]; enemyId: number; reward: number } | null
-  /** The most recent money pop (medium on a paying click, large on gig clear, fight win, phase unlock), or null. */
+  /** The most recent money pop (medium on a paying click, large on gig clear and phase unlock), or null. */
   lastPop: PopSnapshot | null
 }
 
@@ -146,11 +141,7 @@ export type GameHarness = {
   setMoney: (n: number) => void
   forceBoost: (mult: number, ms: number) => void
   advanceOffline: (ms: number) => OfflineCatchup
-  /** Start a fight with this enemy id now, bypassing the rare spawn. False for an unknown id. */
-  forceEnemy: (enemyId: number) => boolean
-  /** End the current fight with no reward. */
-  flee: () => void
-  /** Open this event now, without applying it. False for an unknown id or during a fight. Replaces an open event. */
+  /** Open this event now, without applying it. False for an unknown id. Replaces an open event. */
   forceEvent: (eventId: number) => boolean
   /** Take the open deal. False when nothing is open or the cost cannot be paid. */
   acceptEvent: () => boolean
@@ -158,7 +149,7 @@ export type GameHarness = {
   dismissEvent: () => void
   /**
    * Open a 1:1 for the highest job held. Optional prompt id must sit in that job's band.
-   * False with no job, during a fight, or for an unknown prompt. Replaces an open event or review.
+   * False with no job or for an unknown prompt. Replaces an open event or review.
    */
   forceReview: (promptId?: number) => boolean
   /** Take a reply. False when nothing is open, the choice is unknown, or the plan cannot be paid. */
@@ -268,8 +259,10 @@ export function installGameHarness(): GameHarness {
         phase: state.phase,
         cps: idlePerSec(state) * fx.cps,
         clickPower: clickPower(state) * fx.click,
+        clickFlat: clickFlat(state) * fx.click,
+        clickShare: clickShare(state),
         xpPerClick: xpPerClick(state.skills) * fx.click,
-        xpPerSec: xpPerSec(state.skills) * fx.xpIdle,
+        xpPerSec: xpPerSec(state) * fx.xpIdle,
         foreverMult: state.foreverMult,
         tempMults: pruneTemp(state.tempMults, now),
         event: eventSnapshot(state.event, liveEventLines(state)),
@@ -302,17 +295,6 @@ export function installGameHarness(): GameHarness {
         spriteTierId: stage?.artId ?? 1,
         activeBoost: liveBoost(state.activeBoost, now),
         savedAt: readSavedAt(),
-        fight: state.fight
-          ? {
-              enemyId: state.fight.enemyId,
-              hp: state.fight.hp,
-              maxHp: state.fight.maxHp,
-              remainingMs: remainingMs(state.fight, state.now),
-            }
-          : null,
-        lastFight: state.fightResult
-          ? { kind: state.fightResult.kind, enemyId: state.fightResult.enemyId, reward: state.fightResult.reward }
-          : null,
         lastPop: state.pop
           ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label }
           : null,
@@ -345,12 +327,7 @@ export function installGameHarness(): GameHarness {
 
     forceGig: (gigId) => useGame.getState().clearGig(gigId, true),
 
-    setXp: (n) => {
-      if (!Number.isFinite(n)) return
-      const xp = Math.max(0, n)
-      useGame.setState((state) => ({ xp, xpTotal: Math.max(state.xpTotal, xp) }))
-      persistNow()
-    },
+    setXp: setXpDirect,
 
     tick: (ms) => {
       const state = useGame.getState()
@@ -358,11 +335,7 @@ export function installGameHarness(): GameHarness {
       state.tick(state.now + step)
     },
 
-    setMoney: (n) => {
-      if (!Number.isFinite(n)) return
-      useGame.setState({ money: Math.max(0, n) })
-      persistNow()
-    },
+    setMoney: setMoneyDirect,
 
     forceBoost: (mult, ms) => {
       if (!(mult > 0) || !(ms > 0) || !Number.isFinite(mult) || !Number.isFinite(ms)) return
@@ -404,10 +377,6 @@ export function installGameHarness(): GameHarness {
         toast: hydrated.toast,
       }
     },
-
-    forceEnemy: (enemyId) => useGame.getState().forceEnemy(enemyId),
-
-    flee: () => useGame.getState().flee(),
 
     forceEvent: (eventId) => useGame.getState().fireEvent(eventId),
 

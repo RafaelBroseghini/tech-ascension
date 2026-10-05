@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { setDeskPref } from "./desk.ts"
+import { beforeEach, describe, expect, it } from "vitest"
 import { JOB_TIERS } from "../data/phases.ts"
 import { REVIEWS, promptsForJob } from "../data/reviews.ts"
 import { BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
@@ -87,12 +86,7 @@ describe("review stakes", () => {
 
 describe("reviews in the store", () => {
   beforeEach(() => {
-    setDeskPref("enemies", false)
     useGame.getState().wipe()
-  })
-
-  afterEach(() => {
-    setDeskPref("enemies", true)
   })
 
   it("stays quiet until a job is held", () => {
@@ -145,15 +139,13 @@ describe("reviews in the store", () => {
     expect(useGame.getState().lastReview?.choice).toBeNull()
   })
 
-  it("waits out a fight and an open event, and a fight closes the meeting", () => {
+  it("waits out an open event, and an event closes the meeting", () => {
     useGame.setState({ jobs: [1], money: 1_000, xp: 1_000, xpTotal: 1_000, peakMoney: 1_000 })
     expect(useGame.getState().fireReview(1)).toBe(true)
-    expect(useGame.getState().forceEnemy(1)).toBe(true)
-    expect(useGame.getState().review).toBeNull()
-    expect(useGame.getState().fireReview()).toBe(false)
-
-    useGame.getState().flee()
     useGame.getState().fireEvent(2)
+    expect(useGame.getState().review).toBeNull()
+    expect(useGame.getState().event).not.toBeNull()
+
     expect(useGame.getState().fireReview(1)).toBe(true)
     expect(useGame.getState().event).toBeNull()
     expect(useGame.getState().review).not.toBeNull()

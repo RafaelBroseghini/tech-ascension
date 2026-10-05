@@ -114,27 +114,9 @@ await page.getByRole("tab", { name: "Capital" }).click()
 await settle(700)
 await shot("07-phase-d-capital")
 
-await game(() => {
-  const g = window.__GAME__
-  g.flee()
-  g.forceEnemy(11)
-  g.setMoney(1_000)
-})
-await settle()
-await shot("08-fight")
-await game(() => {
-  const g = window.__GAME__
-  g.flee()
-  g.forceEnemy(2)
-  for (let i = 0; i < 400 && g.getState().fight; i++) g.click()
-})
-await page.waitForTimeout(380)
-await shot("09-fight-win-pop")
-await settle(2200)
-
 await page.setViewportSize({ width: 390, height: 800 })
 await settle()
-await shot("10-mobile")
+await shot("08-mobile")
 
 await browser.close()
 if (vite?.pid) process.kill(-vite.pid)

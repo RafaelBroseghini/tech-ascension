@@ -11,7 +11,7 @@ export type ClickKit = {
   wood: { attack: number; decay: number; release: number; hold: number; velocity: number }
   /** A quiet overtone over the body. `ratio` is its pitch against the body. */
   high: { type: OscillatorType; ratio: number; attack: number; decay: number; release: number; hold: number; velocity: number }
-  /** A breath of filtered noise for the wood grain. The filter Q and decay are shared with the room keys. */
+  /** A breath of filtered noise for the wood grain, on the click's own noise voice. */
   grain: { min: number; spread: number; hold: number; velocity: number }
 }
 

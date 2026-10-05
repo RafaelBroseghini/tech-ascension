@@ -9,7 +9,7 @@ import { FOREVER_MULT_MAX, modFactors, pruneTemp } from "./mods.ts"
 import { readCareerText } from "./ledger.ts"
 import { persistNow, useGame } from "./store.ts"
 import { hydrate } from "./save.ts"
-import { production } from "./economy.ts"
+import { clickPower, production } from "./economy.ts"
 
 const ERAS: Era[] = ["early", "mid", "upper", "q3", "end"]
 const RATES: EarningRates = { cps: 0, click: 1, xpPerSec: 0, xpPerClick: 1 }
@@ -23,7 +23,7 @@ describe("events table (v2)", () => {
   it("ships the researcher's 110 rows with unique ids and sane fields", () => {
     expect(EVENTS).toHaveLength(110)
     expect(new Set(EVENTS.map((event) => event.id)).size).toBe(110)
-    expect(EVENT_MEAN_WAIT_MS).toBe(240_000)
+    expect(EVENT_MEAN_WAIT_MS).toBe(600_000)
     for (const event of EVENTS) {
       expect(event.weight).toBeGreaterThan(0)
       expect(event.eras.length).toBeGreaterThan(0)
@@ -212,7 +212,7 @@ describe("advanceEventClock", () => {
     expect(sum / n).toBeLessThan(EVENT_MEAN_WAIT_MS * 1.15)
   })
 
-  it("does not fire during a fight or behind an open modal, and slips past the block", () => {
+  it("does not fire behind an open modal, and slips past the block", () => {
     const blocked = { ...ctx, blocked: true }
     const held = advanceEventClock(10_000, blocked, 20_000, () => 0)
     expect(held.fire).toBeNull()
@@ -258,16 +258,17 @@ describe("events in the store", () => {
     expect(game().event?.id).toBe(2)
   })
 
-  it("holds a due event through a fight and fires it a few seconds after", () => {
+  it("holds a due event behind an open 1:1 and fires it a few seconds after", () => {
     const game = () => useGame.getState()
-    useGame.setState({ peakMoney: 1, gigs: [1] })
+    useGame.setState({ peakMoney: 1, gigs: [1], jobs: [1] })
     game().tick(game().now + 1_000)
     const due = game().nextEventAt ?? 0
-    game().forceEnemy(1)
+    expect(game().fireReview(1)).toBe(true)
     game().tick(due + 1)
     expect(game().event).toBeNull()
-    expect(game().fight).toBeNull()
+    expect(game().review).not.toBeNull()
     expect(game().nextEventAt).toBe(due + 1 + EVENT_AFTER_BLOCK_MS)
+    game().dismissReview()
     game().tick(due + 1 + EVENT_AFTER_BLOCK_MS)
     expect(game().event).not.toBeNull()
   })
@@ -302,17 +303,8 @@ describe("events in the store", () => {
     expect(useGame.getState().nextEventAt).toBeNull()
   })
 
-  it("refuses to fire during a fight and an unknown id", () => {
+  it("refuses an unknown id", () => {
     expect(useGame.getState().fireEvent(99_999)).toBe(false)
-    useGame.getState().forceEnemy(1)
-    expect(useGame.getState().fireEvent(2)).toBe(false)
-    expect(useGame.getState().event).toBeNull()
-  })
-
-  it("a fight starting closes an open event", () => {
-    useGame.getState().fireEvent(2)
-    expect(useGame.getState().event).not.toBeNull()
-    useGame.getState().forceEnemy(1)
     expect(useGame.getState().event).toBeNull()
   })
 
@@ -329,12 +321,13 @@ describe("events in the store", () => {
   it("the timed multiplier applies for its window and then stops", () => {
     useGame.setState({ money: 0, peakMoney: 1, gigs: [1, 5], jobs: [1], xp: 0 })
     const start = useGame.getState().now
+    const base = clickPower(useGame.getState())
     useGame.setState({ tempMults: { click: { mult: 1.2, endsAt: start + 180_000 } } })
-    expect(useGame.getState().click().money).toBeCloseTo(1.2)
+    expect(useGame.getState().click().money).toBeCloseTo(base * 1.2)
     useGame.getState().tick(start + 181_000)
     expect(useGame.getState().tempMults.click).toBeUndefined()
     useGame.setState({ activeBoost: null })
-    expect(useGame.getState().click().money).toBe(1)
+    expect(useGame.getState().click().money).toBeCloseTo(clickPower(useGame.getState()))
   })
 
   it("idle income credits a timed multiplier only for the seconds it ran", () => {

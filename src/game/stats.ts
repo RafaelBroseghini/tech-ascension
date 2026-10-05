@@ -1,3 +1,5 @@
+import { normalizeCatsFound } from "./catRoster.ts"
+
 /** Gap longer than this breaks a click streak and counts toward idle streaks. */
 export const CLICK_STREAK_GAP_MS = 3_000
 
@@ -5,13 +7,14 @@ export type GameStats = {
   totalClicks: number
   longestClickStreak: number
   longestIdleMs: number
-  /** Every dollar credited (clicks, idle, gigs, fights, events, offline). Spending does not reduce this. */
+  /** Every dollar credited (clicks, idle, gigs, events, offline). Spending does not reduce this. */
   lifetimeEarned: number
   moneyFromClicks: number
   moneyFromIdle: number
-  fightWins: number
   /** Wall time while the sim has been ticking (capped per tick like idle). */
   playTimeMs: number
+  /** Cats the desk cat has turned into when tapped, in the order they were first seen. */
+  catsFound: string[]
 }
 
 export type StatsClock = {
@@ -27,8 +30,8 @@ export function emptyStats(): GameStats {
     lifetimeEarned: 0,
     moneyFromClicks: 0,
     moneyFromIdle: 0,
-    fightWins: 0,
     playTimeMs: 0,
+    catsFound: [],
   }
 }
 
@@ -51,8 +54,8 @@ export function normalizeStats(raw: unknown): GameStats {
     lifetimeEarned: Math.max(0, finite(row.lifetimeEarned)),
     moneyFromClicks: Math.max(0, finite(row.moneyFromClicks)),
     moneyFromIdle: Math.max(0, finite(row.moneyFromIdle)),
-    fightWins: Math.max(0, Math.floor(finite(row.fightWins))),
     playTimeMs: Math.max(0, finite(row.playTimeMs)),
+    catsFound: normalizeCatsFound(row.catsFound),
   }
 }
 

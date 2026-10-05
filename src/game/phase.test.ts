@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { CAPITAL_UNLOCK, EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
-import { FIGHT_DURATION_MS } from "../data/enemies.ts"
-import { gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
+import { clickFlat, clickPower, gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
 import {
   canBuyJob,
   capitalUnlocked,
@@ -57,7 +56,7 @@ describe("phase gates", () => {
     expect(phaseOf({ ...EMPTY, peakMoney: 600_000 })).toBe("D")
   })
 
-  it("opens cash events and fights once money exists, but click dollars wait for a job", () => {
+  it("opens cash events once money exists, but click dollars wait for a job", () => {
     expect(moneyMode({ peakMoney: 0, gigs: [], jobs: [] })).toBe(false)
     expect(moneyMode({ peakMoney: 0, gigs: [1], jobs: [] })).toBe(true)
     expect(moneyMode({ peakMoney: 1, gigs: [], jobs: [] })).toBe(true)
@@ -135,8 +134,8 @@ describe("phase tables", () => {
     expect(GIGS.filter((gig) => gig.priorGigs < 3).every((gig) => gig.retainerCps === 0)).toBe(true)
   })
 
-  it("makes large pops for gig clear, fight win and unlock, and a medium pop for a click", () => {
-    expect(MONEY_POP).toEqual({ click: "medium", gigClear: "large", fightWin: "large", unlock: "large" })
+  it("makes large pops for gig clear and unlock, and a medium pop for a click", () => {
+    expect(MONEY_POP).toEqual({ click: "medium", gigClear: "large", unlock: "large" })
   })
 })
 
@@ -200,7 +199,7 @@ describe("phase A: XP only", () => {
     useGame.setState({ jobs: [1], activeBoost: { mult: 5, endsAt: Date.now() + 10_000 } })
     const gain = useGame.getState().click()
     expect(gain.xp).toBe(5)
-    expect(gain.money).toBe(5)
+    expect(gain.money).toBeCloseTo(clickPower(useGame.getState()) * 5)
   })
 
   it("will not sell the next skill until lifetime XP reaches it", () => {
@@ -226,13 +225,6 @@ describe("phase A: XP only", () => {
     useGame.getState().tick(state.now + 1_000)
     expect(useGame.getState().pop?.id).toBe(id)
     expect(useGame.getState().phase).toBe("B")
-  })
-
-  it("does not spawn rare enemies until money exists", () => {
-    const state = useGame.getState()
-    useGame.getState().tick(state.now + 8 * 60 * 60 * 1000)
-    useGame.getState().tick(useGame.getState().now + 8 * 60 * 60 * 1000)
-    expect(useGame.getState().fight).toBeNull()
   })
 })
 
@@ -294,25 +286,6 @@ describe("phase B: gigs", () => {
     useGame.getState().tick(before.now + 10_000)
     expect(useGame.getState().money - before.money).toBeCloseTo(20)
   })
-
-  it("lets a rare enemy spawn once the first gig is cleared, and a win pays dollars with a large pop", () => {
-    useGame.getState().clearGig(1)
-    useGame.getState().tick(useGame.getState().now + 8 * 60 * 60 * 1000)
-    useGame.getState().tick(useGame.getState().now + 8 * 60 * 60 * 1000)
-    expect(useGame.getState().fight).not.toBeNull()
-
-    useGame.getState().flee()
-    useGame.setState({ activeBoost: null })
-    expect(useGame.getState().forceEnemy(2)).toBe(true)
-    const before = useGame.getState().money
-    for (let i = 0; i < 66; i++) useGame.getState().click()
-    const state = useGame.getState()
-    expect(state.fight).toBeNull()
-    expect(state.money - before).toBe(250)
-    expect(state.pop).toMatchObject({ kind: "fightWin", size: "large", amount: 250, label: "Off-by-One Beetle" })
-    expect(state.fightResult).toMatchObject({ kind: "win", reward: 250 })
-    expect(FIGHT_DURATION_MS).toBe(30_000)
-  })
 })
 
 describe("phase C: jobs and equipment", () => {
@@ -346,10 +319,50 @@ describe("phase C: jobs and equipment", () => {
     expect(idlePerSec(useGame.getState())).toBe(8 + 25)
   })
 
+  it("pays a teaching job's lump of XP once, on hire, and lifetime XP rises with it", () => {
+    const internship = jobById(1)!
+    expect(internship.xpLump).toBeGreaterThan(0)
+    const before = useGame.getState()
+    expect(useGame.getState().buyJob(1)).toBe(true)
+    const hired = useGame.getState()
+    expect(hired.xp - before.xp).toBe(internship.xpLump)
+    expect(hired.xpTotal - before.xpTotal).toBe(internship.xpLump)
+    expect(useGame.getState().buyJob(1)).toBe(false)
+    expect(useGame.getState().xp).toBe(hired.xp)
+  })
+
+  it("leaves XP alone for a job with no lump, and lets a lump carry lifetime XP past the next gate", () => {
+    const junior = jobById(2)!
+    expect(junior.xpLump).toBe(0)
+    useGame.setState({ xp: 5, xpTotal: 45_000, money: junior.baseCost })
+    expect(useGame.getState().buyJob(2)).toBe(true)
+    expect(useGame.getState().xp).toBe(5)
+    expect(useGame.getState().xpTotal).toBe(45_000)
+
+    // The mentor-buddy job asks for 50,000 lifetime XP; the internship's lump closes the last 1,400.
+    useGame.getState().wipe()
+    useGame.setState({ xp: 48_600, xpTotal: 48_600, money: 1e6, gigs: [1, 2, 3, 4, 5, 6] })
+    expect(useGame.getState().buyJob(3)).toBe(false)
+    expect(useGame.getState().buyJob(1)).toBe(true)
+    expect(useGame.getState().buyJob(3)).toBe(true)
+  })
+
   it("won't sell a job below its XP requirement even when the money is there", () => {
     useGame.setState({ money: 1e6 })
     expect(useGame.getState().buyJob(5)).toBe(false)
     expect(useGame.getState().buyJob(8)).toBe(false)
+  })
+
+  it("jobs keep a click worth a slice of $/s on top of the flat part", () => {
+    const jobs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    const p = { equipment: {}, owned: { "5": 10 }, jobs, gigs: [] as number[] }
+    const pct = jobs.reduce((sum, id) => sum + jobById(id)!.clickPct, 0)
+    const flat = 1 + jobs.reduce((sum, id) => sum + jobById(id)!.clickBonus, 0)
+    expect(clickFlat(p)).toBe(flat)
+    expect(clickPower(p)).toBeCloseTo(flat + (pct / 100) * idlePerSec(p))
+    // By Senior SWE a click is worth over a fifth of a second of the whole empire's income.
+    expect(clickPower(p) / idlePerSec(p)).toBeGreaterThan(0.2)
+    expect(clickPower({ ...p, jobs: [] })).toBe(1)
   })
 
   it("equipment is repeatable at 1.15 growth and adds click power and idle", () => {
@@ -359,7 +372,10 @@ describe("phase C: jobs and equipment", () => {
     useGame.getState().buyEquipment(1)
     const keyboard = EQUIPMENT[0]?.baseCost ?? 0
     expect(useGame.getState().money).toBe(1_000_000 - keyboard - nextCost(keyboard, 1))
-    expect(useGame.getState().click().money).toBe(1 + 2 * 2)
+    // Base $1, two keyboards at +$2, the intern's +$2, and 1% of the $/s.
+    const intern = jobById(1)!
+    expect(clickFlat(useGame.getState())).toBe(1 + 2 * 2 + intern.clickBonus)
+    expect(useGame.getState().click().money).toBeCloseTo(1 + 2 * 2 + intern.clickBonus + (intern.clickPct / 100) * idlePerSec(useGame.getState()))
     useGame.getState().buyEquipment(17)
     expect(idlePerSec(useGame.getState())).toBe(8 + 2)
   })
@@ -405,7 +421,7 @@ describe("phase D: capital", () => {
     expect(ownedCount(useGame.getState().owned, 1)).toBe(1)
   })
 
-  it("the era (boosts, enemies, accent) stays early until capital is bought", () => {
+  it("the era (boosts, accent) stays early until capital is bought", () => {
     useGame.setState({ money: 600_000 })
     expect(stageOf(useGame.getState())).toBeNull()
     useGame.getState().buy(1)

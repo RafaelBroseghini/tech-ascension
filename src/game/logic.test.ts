@@ -16,6 +16,7 @@ import {
   idlePerSec,
   isRevealed,
   isSkillRevealed,
+  jobById,
   nextCost,
   visibleShopRows,
   ownedSources,
@@ -75,10 +76,26 @@ describe("economy", () => {
 
   it("adds XP per click from skills on top of the base 1, and XP per second", () => {
     expect(xpPerClick({})).toBe(1)
-    expect(xpPerSec({})).toBe(0)
+    expect(xpPerSec({ skills: {}, jobs: [] })).toBe(0)
     const skills = { "1": 2, "2": 5, "14": 1 }
     expect(xpPerClick(skills)).toBe(1 + 2 * 1 + 1 * 3)
-    expect(xpPerSec(skills)).toBeCloseTo(5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[13]?.xpPerSec ?? 0))
+    const fromSkills = 5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[13]?.xpPerSec ?? 0)
+    expect(xpPerSec({ skills, jobs: [] })).toBeCloseTo(fromSkills)
+  })
+
+  it("adds idle XP from the jobs that teach on the job, and from no others", () => {
+    const teaching = JOB_TIERS.filter((job) => job.xpPerSec > 0)
+    const silent = JOB_TIERS.filter((job) => job.xpPerSec === 0)
+    expect(teaching.length).toBeGreaterThan(0)
+    expect(silent.length).toBeGreaterThan(0)
+    // The internship and the mentor buddy teach; the QA rotation does not.
+    expect(jobById(1)?.xpPerSec).toBeGreaterThan(0)
+    expect(jobById(5)?.xpPerSec).toBe(0)
+    const jobs = [1, 3, 5]
+    expect(xpPerSec({ skills: {}, jobs })).toBe((jobById(1)?.xpPerSec ?? 0) + (jobById(3)?.xpPerSec ?? 0))
+    const skills = { "2": 4 }
+    expect(xpPerSec({ skills, jobs })).toBeCloseTo(xpPerSec({ skills, jobs: [] }) + xpPerSec({ skills: {}, jobs }))
+    expect(production({ ...NONE, jobs }, null, 0).xpIdle).toBe(xpPerSec({ skills: {}, jobs }))
   })
 
   it("sums idle $/s from retainers, salaries, equipment and capital", () => {
@@ -167,7 +184,10 @@ describe("save", () => {
     expect(hydrated.save.money).toBe(4 + credit)
     const [sentence, creditLine] = (hydrated.toast ?? "").split("\n")
     expect(sentence?.endsWith(".")).toBe(true)
-    expect(creditLine).toBe(`credited $${formatNumber(credit)}`)
+    // The internship also teaches, so the same away time studies too.
+    const studied = offlineCredit(JOB_TIERS[0]?.xpPerSec ?? 0, savedAt, now)
+    expect(hydrated.save.xp).toBeCloseTo(studied)
+    expect(creditLine).toBe(`credited $${formatNumber(credit)} and studied +${formatNumber(studied)} XP`)
   })
 
   it("credits idle study XP offline and says so", () => {

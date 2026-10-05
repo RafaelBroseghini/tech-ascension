@@ -1,5 +1,5 @@
 /**
- * Random events. Era-weighted. Mean wait is EVENT_MEAN_WAIT_MS (240s).
+ * Random events. Era-weighted. Mean wait is EVENT_MEAN_WAIT_MS (600s).
  *
  * Every row is a choice. A gift only adds money or XP. A trade swaps one for the other
  * (the minutes apply to both sides). Nothing only deducts. The runner prices `minutes`
@@ -42,8 +42,8 @@ export type GameEvent = {
   requires?: EventRequires
 }
 
-/** Proposed: 240s mean (was 150s) — events feel rarer with denser catalogs. */
-export const EVENT_MEAN_WAIT_MS = 240_000
+/** 10 minutes on average (was 240s, and 150s before that), so an event is a surprise, not a chore. */
+export const EVENT_MEAN_WAIT_MS = 600_000
 
 const gift = (resource: EventResource, minutes: number): EventGift => ({ kind: "gift", resource, minutes })
 const trade = (gain: EventResource, minutes: number): EventTrade => ({ kind: "trade", gain, minutes })
