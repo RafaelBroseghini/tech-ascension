@@ -1,5 +1,5 @@
 import { useId, useState, useSyncExternalStore, type FormEvent } from "react"
-import { parseAmount, setMoneyDirect, setXpDirect } from "../game/admin.ts"
+import { buyEverything, parseAmount, setMoneyDirect, setXpDirect } from "../game/admin.ts"
 import { getAdminMode, subscribeAdminMode } from "../game/adminMode.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
@@ -69,6 +69,9 @@ export function AdminSettings({ headingId }: { headingId: string }) {
       <div className="ide-settings-section-panel admin-panel">
         <AdminField id="money" label="Money" prefix="$" current={money} onSet={setMoneyDirect} />
         <AdminField id="xp" label="XP" current={xp} onSet={setXpDirect} />
+        <button type="button" className="admin-action" data-testid="admin-buy-everything" onClick={buyEverything}>
+          Buy everything
+        </button>
       </div>
     </section>
   )

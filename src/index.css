@@ -3859,7 +3859,8 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .admin-field input[aria-invalid="true"] { border-color: var(--ide-red); }
 
-.admin-field button {
+.admin-field button,
+.admin-action {
   flex: 0 0 auto;
   padding: 4px 10px;
   border: var(--stroke) solid var(--ink);
@@ -3873,4 +3874,5 @@ img { -webkit-user-drag: none; user-select: none; }
   cursor: pointer;
 }
 
-.admin-field button:disabled { opacity: 0.45; cursor: not-allowed; }
+.admin-field button:disabled,
+.admin-action:disabled { opacity: 0.45; cursor: not-allowed; }
