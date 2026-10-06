@@ -2,14 +2,32 @@ import { GIGS, SKILL_TIERS } from "../data/phases.ts"
 import type { CareerEntry, CareerType } from "./careerLog.ts"
 import { highestJobId, jobById, ownedCount } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
+import type { Identity } from "./identity.ts"
 
 /**
  * The GitHug profile: the career journal drawn as a contribution graph, and the repos the career has made. Built
- * from progress alone, so it needs nothing of its own in the save.
+ * from progress and the career's name and handle (`identity.ts`), so it needs nothing else in the save.
  */
 
-/** Journal lines that count as a contribution: things you did, not things that happened to you. */
-const CONTRIBUTIONS: ReadonlySet<CareerType> = new Set<CareerType>(["learn", "gig", "hire", "gear", "invest", "perk"])
+/**
+ * Journal lines that count as contributions (things you did, not things that happened to you), and how many commits
+ * each is worth before the career stage multiplies it.
+ */
+const COMMITS: Partial<Record<CareerType, number>> = { learn: 1, gear: 1, perk: 1, gig: 3, invest: 2, hire: 5 }
+
+/**
+ * How much a step counts for at a career stage, read from the lifetime XP the journal line stamped: one more per
+ * tenfold of XP, so a senior engineer's day is far greener than a student's. 1 at zero XP, 5 at 10,000, 9 at 100M.
+ */
+export function stageOf(xpTotal: number): number {
+  return 1 + Math.floor(Math.log10(Math.max(1, xpTotal)))
+}
+
+/** Commits a journal line adds to its day; 0 for lines that are not contributions. */
+export function commitsOf(entry: Pick<CareerEntry, "type" | "xpTotal">): number {
+  const base = COMMITS[entry.type] ?? 0
+  return base * stageOf(entry.xpTotal)
+}
 
 /** A day's square: 0 is empty, 4 is the darkest green. */
 export type GitHugLevel = 0 | 1 | 2 | 3 | 4
@@ -19,6 +37,7 @@ export type GitHugDay = { date: string; count: number; level: GitHugLevel }
 export type GitHugRepo = { name: string; about: string; lang: string; stars: number }
 
 export type GitHugProfile = {
+  name: string
   handle: string
   bio: string
   /** Week columns, oldest first, Sunday on top. The current week stops at today. */
@@ -36,15 +55,10 @@ export type GitHugProfile = {
 /** Weeks the graph shows: half a year. */
 export const GITHUG_WEEKS = 26
 
-/** Fewest contributions for each level: 1-2 light, then 3, 6 and 11 for the darker greens. */
-const LEVEL_FLOOR = [1, 3, 6, 11] as const
-
-export function levelOf(count: number): GitHugLevel {
-  let level: GitHugLevel = 0
-  LEVEL_FLOOR.forEach((floor, index) => {
-    if (count >= floor) level = (index + 1) as GitHugLevel
-  })
-  return level
+/** A day's shade against the busiest day on the graph, in quarters, the way GitHub scales a profile to its owner. */
+export function levelOf(count: number, busiest: number): GitHugLevel {
+  if (count <= 0 || busiest <= 0) return 0
+  return Math.min(4, Math.ceil((4 * count) / busiest)) as GitHugLevel
 }
 
 /** Local calendar day, the way the graph labels it. */
@@ -54,13 +68,14 @@ export function dayKey(at: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-/** Contributions per local day. */
+/** Contributions (commits) per local day. */
 export function contributionsByDay(entries: readonly CareerEntry[]): Map<string, number> {
   const days = new Map<string, number>()
   for (const entry of entries) {
-    if (!CONTRIBUTIONS.has(entry.type)) continue
+    const commits = commitsOf(entry)
+    if (commits === 0) continue
     const key = dayKey(entry.at)
-    days.set(key, (days.get(key) ?? 0) + 1)
+    days.set(key, (days.get(key) ?? 0) + commits)
   }
   return days
 }
@@ -80,10 +95,12 @@ export function contributionWeeks(days: ReadonlyMap<string, number>, now: number
       if (day.getTime() > today.getTime()) break
       const date = dayKey(day.getTime())
       const count = days.get(date) ?? 0
-      column.push({ date, count, level: levelOf(count) })
+      column.push({ date, count, level: 0 })
     }
     columns.push(column)
   }
+  const busiest = Math.max(0, ...columns.flat().map((day) => day.count))
+  for (const day of columns.flat()) day.level = levelOf(day.count, busiest)
   return columns
 }
 
@@ -136,13 +153,14 @@ export function gitHugRepos(p: Pick<Progress, "skills" | "gigs">): GitHugRepo[] 
   return [...fromGigs, ...fromSkills]
 }
 
-export function gitHugProfile(p: Progress & { entries: readonly CareerEntry[]; now: number; weeks?: number }): GitHugProfile {
+export function gitHugProfile(p: Progress & { entries: readonly CareerEntry[]; now: number; identity: Identity; weeks?: number }): GitHugProfile {
   const days = contributionsByDay(p.entries)
   const weeks = contributionWeeks(days, p.now, p.weeks ?? GITHUG_WEEKS)
   const repos = gitHugRepos(p)
   const top = highestJobId(p.jobs)
   return {
-    handle: "you",
+    name: p.identity.name,
+    handle: p.identity.handle,
     bio: top !== null ? (jobById(top)?.name ?? "Developer") : p.gigs.length > 0 ? "Freelance, open to gigs" : "Learning to code",
     weeks,
     total: weeks.flat().reduce((sum, day) => sum + day.count, 0),

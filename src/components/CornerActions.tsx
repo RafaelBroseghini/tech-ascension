@@ -24,7 +24,8 @@ export function ResumeButton() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const [open, setOpen] = useState(false)
-  const doc = useMemo(() => resumeDocument({ skills, equipment, jobs, gigs }), [skills, equipment, jobs, gigs])
+  const name = useGame((state) => state.profile.name)
+  const doc = useMemo(() => resumeDocument({ skills, equipment, jobs, gigs, name }), [skills, equipment, jobs, gigs, name])
   // The profile is a career unlock: it arrives with Portfolio site live.
   const unlocked = useFeatureOpen("linkedout")
   const seeFeature = useGame((state) => state.seeFeature)

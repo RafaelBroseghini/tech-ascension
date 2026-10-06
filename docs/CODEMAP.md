@@ -40,6 +40,7 @@
 | "Open this" requests (a card's Try it, the career log's JSON button) | `src/game/surfaces.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
+| The career's name and handle: random draw, cleaning, save field | `src/game/identity.ts` |
 | GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/CornerActions.tsx`, `src/styles/githug.css` |
 
 Replacing `CAPITAL` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.

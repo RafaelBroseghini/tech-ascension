@@ -71,6 +71,7 @@ getState(): {
   upNext: { id: string; name: string; via: string; fill: number; left: string }[]   // the career log's Up next
  }
  careerLog: { size: number; last: Record<string, number | string | boolean> | null } // journal entries kept, and the newest as JSON
+ profile: { name: string; handle: string } // the career's name and handle on GitHug and LinkedOut, drawn at random for each new career ("Brisk Axolotl", "brisk-axolotl")
 }
 
 click(): { money: number; xp: number }
@@ -99,6 +100,7 @@ previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
 careerLog(): Record<string, number | string | boolean>[]  // every journal entry, oldest first, as the Output tab prints them
 seeFeature(id: string): boolean   // clear a NEW marker, as using the feature does; false for an unknown id
 clearReveals(): void              // drop the reveals waiting to play (NEW markers stay)
+setProfile(name?: string, handle?: string): boolean // rename the career; the handle is cleaned to lowercase letters, digits and hyphens; false for a blank field
 reset(): void
 ```
 
@@ -130,6 +132,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
 - `reset()` wipes the save back to high school.
 - **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has one file, XP and the Skills tab. Used laptop (skill 1) opens the editor, Linux CLI basics (8) the terminal, Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with editor folders, desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()` and the console's Output tab. Admin mode shows the whole desk.
+- **Identity** (`src/game/identity.ts`). Every new career (a fresh save or `reset()`) draws a Tailscale-style name and handle (an adjective and an animal: "Brisk Axolotl", `brisk-axolotl`), saved in an optional `profile` block; an older save gets one at boot. GitHug's edit button renames it, and LinkedOut shows the same name with `linkedout.com/in/<handle>`.
 
 ## Smoke (`npm run smoke:play`)
 

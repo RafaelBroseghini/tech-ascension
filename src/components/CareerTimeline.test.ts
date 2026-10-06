@@ -229,4 +229,28 @@ describe("the GitHug corner", () => {
     expect($$("[data-testid='githug-pinned'] strong").map((el) => el.textContent)).toEqual(["til", "hello-world"])
     expect(useGame.getState().fresh).not.toContain("githug")
   })
+
+  it("shows the career's own name and handle, and renames it in place", () => {
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { name: "Brisk Axolotl", handle: "brisk-axolotl" } })
+    render(GitHugCorner)
+    click($("[data-testid='view-githug']"))
+    expect($("[data-testid='githug-name']")?.textContent).toBe("Brisk Axolotl")
+    expect($("[data-testid='githug-handle']")?.textContent).toContain("@brisk-axolotl")
+    click($("[data-testid='githug-edit-open']"))
+    const type = (testId: string, value: string) => {
+      const input = $(`[data-testid='${testId}']`) as HTMLInputElement
+      flushSync(() => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!
+        setter.call(input, value)
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+    }
+    type("githug-edit-name", "  Ada   Lovelace ")
+    type("githug-edit-handle", "@Ada Lovelace")
+    expect($(".githug-edit-note")?.textContent).toBe("Saves as @ada-lovelace")
+    click($("[data-testid='githug-edit-save']"))
+    expect(useGame.getState().profile).toEqual({ name: "Ada Lovelace", handle: "ada-lovelace" })
+    expect($("[data-testid='githug-name']")?.textContent).toBe("Ada Lovelace")
+    expect($("[data-testid='githug-edit']")).toBeNull()
+  })
 })

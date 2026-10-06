@@ -137,6 +137,8 @@ export type GameSnapshot = {
   features: FeaturesSnapshot
   /** Journal entries kept (the newest 2,000) and the latest one. */
   careerLog: { size: number; last: CareerLogLine | null }
+  /** The career's name and handle, shown on GitHug and LinkedOut. A new career draws one at random. */
+  profile: { name: string; handle: string }
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -215,6 +217,8 @@ export type GameHarness = {
   seeFeature: (id: string) => boolean
   /** Drop the reveals waiting to play. */
   clearReveals: () => void
+  /** Rename the career, as GitHug's edit form does. Blank fields are refused (false) and change nothing. */
+  setProfile: (name?: string, handle?: string) => boolean
   reset: () => void
 }
 
@@ -380,6 +384,7 @@ export function installGameHarness(): GameHarness {
           size: state.journal.entries.length,
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
+        profile: { ...state.profile },
       }
     },
 
@@ -503,6 +508,7 @@ export function installGameHarness(): GameHarness {
     previewEra: (era) => useGame.getState().setPreviewEra(era),
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
+    setProfile: (name, handle) => useGame.getState().setProfile({ ...(name !== undefined ? { name } : {}), ...(handle !== undefined ? { handle } : {}) }),
 
     seeFeature: (id) => {
       if (!isFeatureId(id)) return false

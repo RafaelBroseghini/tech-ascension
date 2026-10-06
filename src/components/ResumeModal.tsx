@@ -44,6 +44,7 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const skills = useGame((state) => state.skills)
+  const handle = useGame((state) => state.profile.handle)
   const dialogRef = useRef<HTMLDivElement>(null)
   const linkedOut = useMemo(() => {
     const names = SKILL_TIERS.filter((row) => ownedCount(skills, row.id) > 0).map((row) => row.name)
@@ -89,6 +90,9 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
           </p>
           <h2 id="resume-doc-title">{doc?.name ?? "You"}</h2>
           <p className="resume-headline">{doc?.headline ?? "Nothing earned yet"}</p>
+          <p className="resume-meta" data-testid="resume-handle">
+            linkedout.com/in/{handle}
+          </p>
           {where ? <p className="resume-meta">{where}</p> : null}
           {doc?.openToWorkBanner ? <p className="resume-otw-banner">{doc.openToWorkBanner}</p> : null}
           <button type="button" className="resume-x" aria-label="Close resume" onClick={onClose}>
