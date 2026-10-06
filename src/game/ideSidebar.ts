@@ -1,0 +1,20 @@
+/** Which view the editor's sidebar shows: the file explorer, or the career log (the Git icon). */
+export type SidebarView = "explorer" | "log"
+
+const listeners = new Set<() => void>()
+let view: SidebarView = "explorer"
+
+export function getSidebarView(): SidebarView {
+  return view
+}
+
+export function setSidebarView(next: SidebarView): void {
+  if (view === next) return
+  view = next
+  for (const listener of listeners) listener()
+}
+
+export function subscribeSidebarView(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}

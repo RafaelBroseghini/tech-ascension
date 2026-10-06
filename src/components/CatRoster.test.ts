@@ -36,6 +36,8 @@ function $(selector: string): HTMLElement | null {
 
 beforeEach(() => {
   useGame.getState().wipe()
+  // The cat and the rosters are career unlocks; these tests start with both on the desk.
+  useGame.setState({ unlocked: ["cat", "rosters"] })
 })
 
 afterEach(() => {

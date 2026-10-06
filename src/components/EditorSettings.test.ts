@@ -54,7 +54,20 @@ describe("hover click setting", () => {
     const host = renderSettings()
     openSettings(host)
     expect(host.querySelector("[data-testid='desk-hoverClick']")).toBeNull()
+    expect(host.querySelector("[data-testid='desk-sounds']")).not.toBeNull()
+  })
+
+  it("offers music and the cat only once the career has unlocked them", () => {
+    const host = renderSettings()
+    openSettings(host)
+    expect(host.querySelector("[data-testid='desk-music']")).toBeNull()
+    expect(host.querySelector("[data-testid='desk-cat']")).toBeNull()
+    flushSync(() => {
+      useGame.setState({ unlocked: ["music", "music:cozy", "cat"] })
+    })
     expect(host.querySelector("[data-testid='desk-music']")).not.toBeNull()
+    expect(host.querySelector("[data-testid='desk-cat']")).not.toBeNull()
+    expect([...host.querySelectorAll("[data-testid^='desk-music-']")].map((row) => row.getAttribute("data-testid"))).toEqual(["desk-music-cozy"])
   })
 
   it("appears once the catalog is complete and saves the switch", () => {

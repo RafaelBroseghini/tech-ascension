@@ -24,7 +24,7 @@ describe("header click rate", () => {
 
   it("does not claim a dollar a click does not pay", () => {
     const host = renderBar()
-    expect(host.querySelector("[data-testid='per-click']")?.textContent).toBe("$0")
+    expect(host.querySelector("[data-testid='per-click']")).toBeNull()
     expect(host.querySelector("[data-testid='xp-per-click']")?.textContent).toBe("1")
   })
 

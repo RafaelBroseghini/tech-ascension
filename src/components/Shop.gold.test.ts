@@ -58,7 +58,8 @@ describe("10x dev skills in the shop", () => {
     useGame.setState({ xpTotal: 8_000, xp: 0, skills: { "1": 1 } })
     const host = renderShop()
     const tabs = [...host.querySelectorAll("[role='tab'][data-view]")]
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Skills", "10x dev"])
+    // The 10x dev tab opened with this XP, so it carries its NEW pill until it is clicked.
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Skills", "10x devNew"])
     expect(host.querySelector(".gold-offer")).toBeNull()
     expect(host.querySelector(".shop-list .offer")).not.toBeNull()
 

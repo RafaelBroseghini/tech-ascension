@@ -31,6 +31,14 @@
 | Loop, purchases, money pops | `src/game/store.ts` |
 | Shop panel, rows and banner | `src/components/Shop.tsx` |
 | Centered score pop and hero squash | `src/components/ScorePop.tsx`, `src/components/HeroMoney.tsx` |
+| Career timeline: what unlocks, its trigger and reveal size (a drop-in table) | `src/data/features.ts` |
+| Timeline gates, tease progress, Up next, the dim outline, earned cosmetics | `src/game/features.ts` |
+| Career journal: entries, JSON lines, the career log's rows | `src/game/careerLog.ts` |
+| Turning progress into journal notes, unlocks, NEW markers and reveals; boot and old saves | `src/game/careerSync.ts` (wired in `src/game/store.ts`) |
+| Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
+| Career log sidebar and the console's Output tab | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
+| "Open this" requests (a card's Try it, the career log's JSON button) | `src/game/surfaces.ts` |
+| Timeline styles | `src/styles/unlocks.css` |
 
 Replacing `CAPITAL` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.
 

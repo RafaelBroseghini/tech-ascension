@@ -4,6 +4,7 @@
 @import "./styles/tokens.css";
 @import "./styles/motion.css";
 @import "./styles/ide.css";
+@import "./styles/unlocks.css";
 
 :root {
   font: 16px/1.4 var(--font-display);

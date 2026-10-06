@@ -3,6 +3,8 @@ import { deskCatEmojiUrl, randomDeskCatReactionUrl } from "../data/emojiAssets.t
 import { EMOJI_CLICK_MS } from "../data/emojiCdn.ts"
 import { getDeskActivity, getDeskPrefs, pokeDesk, subscribeDeskActivity, subscribeDeskPrefs } from "../game/desk.ts"
 import { useGame } from "../game/store.ts"
+import { NewMark } from "./FeatureMarks.tsx"
+import { useFeatureOpen } from "./useFeature.ts"
 
 const SLEEP_MS = 8000
 const HOP_MS = 320
@@ -24,6 +26,8 @@ export function DeskCat() {
   const [reactionSrc, setReactionSrc] = useState<string | null>(null)
   const [fresh, setFresh] = useState(false)
   const reactionTimer = useRef(0)
+  // The cat moves in on the first return after a break.
+  const arrived = useFeatureOpen("cat")
 
   if (activity !== seen) {
     setSeen(activity)
@@ -44,7 +48,7 @@ export function DeskCat() {
     return () => window.clearTimeout(reactionTimer.current)
   }, [])
 
-  if (!on) return null
+  if (!on || !arrived) return null
 
   function onCatPointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return
@@ -54,6 +58,7 @@ export function DeskCat() {
     const url = randomDeskCatReactionUrl()
     setReactionSrc(url)
     setFresh(useGame.getState().discoverCat(url))
+    useGame.getState().seeFeature("cat")
     pokeDesk()
     window.clearTimeout(reactionTimer.current)
     reactionTimer.current = window.setTimeout(() => {
@@ -74,9 +79,11 @@ export function DeskCat() {
       type="button"
       className={className}
       data-testid="desk-cat"
+      data-feature-anchor="cat"
       aria-label="Desk cat"
       onPointerDown={onCatPointerDown}
     >
+      <NewMark id="cat" pill />
       {asleep && !reacting ? <i className="desk-cat-z">z</i> : null}
       {reacting && fresh ? (
         <i className="desk-cat-new" data-testid="desk-cat-new">

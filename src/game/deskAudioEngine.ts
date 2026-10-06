@@ -49,6 +49,8 @@ type Graph = {
   woodHigh: Synth
   blip: PolySynth
   clink: Synth
+  /** The unlock chime: a short bright arpeggio, apart from the room's blips. */
+  chime: PolySynth
   noise: NoiseSynth
   noiseFilter: Filter
   /** The player's click has its own grain, so it never fights the room for the shared noise voice. */
@@ -138,6 +140,10 @@ function build(): Graph | null {
       oscillator: { type: "triangle" },
       envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.03 },
     }).connect(soundGain)
+    const chime = new PolySynth(Synth, {
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.004, decay: 0.22, sustain: 0, release: 0.28 },
+    }).connect(soundGain)
     const noiseFilter = new Filter({ type: "bandpass", frequency: 2000, Q: 0.8 }).connect(soundGain)
     const noise = new NoiseSynth({
       noise: { type: "white" },
@@ -165,6 +171,7 @@ function build(): Graph | null {
       woodHigh,
       blip,
       clink,
+      chime,
       noise,
       noiseFilter,
       clickNoise,
@@ -411,6 +418,23 @@ export function playCozyClick(): void {
   g.clickNoiseFilter.frequency.setValueAtTime(kit.grain.min + Math.random() * kit.grain.spread, grain)
   g.clickNoise.triggerAttackRelease(kit.grain.hold, grain, kit.grain.velocity)
   syncDeskAudio()
+}
+
+/** A rising arpeggio when part of the desk unlocks: two notes for a small one, five and a clink for a big one. */
+export function playUnlockChime(size: "big" | "standard" | "small"): void {
+  const prefs = readPrefs()
+  if (!(prefs.sounds || prefs.clicks) || !canHear()) return
+  const g = build()
+  if (!g || (typeof document !== "undefined" && document.hidden)) return
+  if (!running()) {
+    wake(() => playUnlockChime(size))
+    return
+  }
+  syncDeskAudio()
+  const steps = size === "small" ? [7, 12] : size === "standard" ? [0, 7, 12] : [0, 4, 7, 12, 16]
+  const start = now() + 0.02
+  steps.forEach((semi, index) => g.chime.triggerAttackRelease(freq(semi + 12), 0.12, start + index * 0.07, size === "small" ? 0.32 : 0.45))
+  if (size === "big") g.clink.triggerAttackRelease(freq(31), 0.06, start + steps.length * 0.07, 0.35)
 }
 
 /** Starts or stops the room from the saved switches. Does not touch the audio context until a pointer or key. */

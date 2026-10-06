@@ -5,11 +5,15 @@ import { ensurePythonRuntime, evalPythonRepl, execPythonFile } from "../game/pyR
 import {
   closeIdePythonConsole,
   getIdePythonConsole,
+  setIdeConsoleTab,
   setIdePythonRunBusy,
   subscribeIdePythonConsole,
   toggleIdePythonConsoleExpanded,
 } from "../game/idePythonConsole.ts"
+import { useGame } from "../game/store.ts"
+import { CareerOutput } from "./CareerLog.tsx"
 import { UI_ICON_SM } from "./icons/ui.tsx"
+import { useFeatureOpen } from "./useFeature.ts"
 
 type Entry = { prompt: string; text: string; output: string }
 
@@ -25,6 +29,13 @@ export function IdePythonConsole() {
   const logRef = useRef<HTMLDivElement>(null)
   const history = useRef<string[]>([])
   const historyAt = useRef(-1)
+  const terminalOpen = useFeatureOpen("terminal")
+  const seeFeature = useGame((state) => state.seeFeature)
+
+  // Showing the terminal is using it: its NEW marker goes.
+  useEffect(() => {
+    if (snap.open && snap.tab === "terminal" && terminalOpen) seeFeature("terminal")
+  }, [snap.open, snap.tab, terminalOpen, seeFeature])
 
   useEffect(() => {
     if (!snap.open) return
@@ -144,6 +155,7 @@ export function IdePythonConsole() {
 
   const prompt = pending ? "..." : ">>>"
   const showRunHint = !runHintSeen && entries.length === 0 && !banner
+  const tab = terminalOpen ? snap.tab : "output"
 
   return (
     <section
@@ -152,8 +164,31 @@ export function IdePythonConsole() {
       aria-label="Console"
     >
       <header className="ide-python-console-head">
-        <span className="ide-python-console-title">Console</span>
-        <span className="ide-python-console-file">{ready ? "" : "Starting…"}</span>
+        <div className="ide-console-tabs" role="tablist" aria-label="Console">
+          {terminalOpen ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "terminal"}
+              className={tab === "terminal" ? "ide-console-tab is-active" : "ide-console-tab"}
+              data-testid="console-tab-terminal"
+              onClick={() => setIdeConsoleTab("terminal")}
+            >
+              Terminal
+            </button>
+          ) : null}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "output"}
+            className={tab === "output" ? "ide-console-tab is-active" : "ide-console-tab"}
+            data-testid="console-tab-output"
+            onClick={() => setIdeConsoleTab("output")}
+          >
+            Output
+          </button>
+        </div>
+        <span className="ide-python-console-file">{tab === "terminal" && !ready ? "Starting…" : ""}</span>
         <button
           type="button"
           className="ide-python-console-expand"
@@ -168,7 +203,8 @@ export function IdePythonConsole() {
           <X {...UI_ICON_SM} aria-hidden />
         </button>
       </header>
-      <div ref={logRef} className="ide-python-console-terminal" data-testid="ide-py-terminal">
+      {tab === "output" ? <CareerOutput /> : null}
+      <div ref={logRef} className="ide-python-console-terminal" data-testid="ide-py-terminal" hidden={tab !== "terminal"}>
         {showRunHint ? (
           <p className="ide-repl-hint" data-testid="ide-run-hint">
             Run a .py file with ▶ in the activity bar or Play on a row in the explorer.

@@ -38,6 +38,9 @@ import type { Requirement, ShopTab } from "../game/phase.ts"
 import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
+import { isCosmetic, rowUnlocks } from "../game/features.ts"
+import { NewMark } from "./FeatureMarks.tsx"
+import { useSurface, useUnlockedSet } from "./useFeature.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 function nextLine(next: NextUnlock): string {
@@ -119,6 +122,8 @@ type OfferProps = {
   art?: ReactNode
   /** A gold skill row: gold frame, never a sprite. */
   gold?: boolean
+  /** What buying this row unlocks on the desk, while that is still closed. */
+  unlocks?: readonly { id: string; name: string }[]
 }
 
 function ratio(have: number, need: number): number {
@@ -185,7 +190,7 @@ function OfferProgress({ kind, fill, label, count }: { kind: "unlock" | "money";
   )
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions, art, gold }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions, art, gold, unlocks }: OfferProps) {
   const gated = gate != null && gate.fill < 1
   const pending = !gated && saving && saving.need > 0 && saving.have < saving.need ? saving : null
   return (
@@ -211,6 +216,9 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         <h3>
           {title}
           {fresh ? <span className="new-tag">New</span> : null}
+          {unlocks?.map((feature) => (
+            <UnlockChip key={feature.id} name={feature.name} />
+          ))}
         </h3>
         <p>{children}</p>
         {gated && unlock && unlock.length > 0 ? (
@@ -232,6 +240,15 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         />
       ) : null}
     </article>
+  )
+}
+
+/** "Unlocks Terminal": the row is the way to something new on the desk. */
+function UnlockChip({ name }: { name: string }) {
+  return (
+    <span className="ul-chip" data-testid="unlock-chip">
+      Unlocks {name}
+    </span>
   )
 }
 
@@ -339,8 +356,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     setLastPhase(phase)
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
-  const tab = picked ?? phase
-
   const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
@@ -349,6 +364,28 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     G: equipmentOpen({ xpTotal, equipment }),
     D: capitalUnlocked(gates),
   }
+  // Closed boards stay out of the bar, except the next one to open, which waits there dimmed.
+  const nextLockedTab = (["G", "B", "C", "D"] as const).find((id) => !unlocked[id]) ?? null
+  // A pick saved from another career can point at a board this one has not reached: show the phase instead.
+  const tab = picked && (unlocked[picked] || picked === nextLockedTab) ? picked : phase
+  const unlockedSet = useUnlockedSet()
+  const seeFeature = useGame((s) => s.seeFeature)
+  /** The features a row opens that are still closed. A picker and its first cosmetic arrive together: name the picker. */
+  const teaseFor = (rowKey: string) => {
+    const rows = rowUnlocks(rowKey).filter((row) => !unlockedSet.has(row.id))
+    const main = rows.filter((row) => !isCosmetic(row))
+    return (main.length > 0 ? main : rows).map((row) => ({ id: row.id, name: row.name }))
+  }
+  useSurface("tenx", () => {
+    seeFeature("tenx")
+    setSkillView("tenx")
+    setPicked("A")
+  })
+  useSurface("boardGear", () => {
+    seeFeature("boardGear")
+    setPicked("G")
+  })
+
 
   const skillRows = visibleShopRows(
     SKILL_TIERS,
@@ -501,6 +538,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   }
 
   const tabGlow = PHASE_TAB[tab].glow
+  const nextTease = next ? teaseFor(next.key) : []
 
   useEffect(() => {
     if (tab !== "D") setPickedEra(null)
@@ -543,6 +581,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
       <div className="era-tabs" role="tablist" aria-label="Career phases">
         {SHOP_TABS.map((id) => {
           const locked = !unlocked[id]
+          if (locked && id !== nextLockedTab) return null
           const affordable =
             !locked &&
             ((id === "A" &&
@@ -560,13 +599,18 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               role="tab"
               aria-selected={id === tab}
               data-phase={id}
-              className={["era-tab", id === tab ? "active" : "", locked ? "is-locked" : ""].filter(Boolean).join(" ")}
+              className={["era-tab", id === tab ? "active" : "", locked ? "is-locked is-next" : ""].filter(Boolean).join(" ")}
               style={{ ["--tab-glow" as string]: PHASE_TAB[id].glow }}
-              onClick={() => setPicked(id)}
+              data-feature-anchor={id === "G" ? "boardGear" : undefined}
+              onClick={() => {
+                if (id === "G") seeFeature("boardGear")
+                setPicked(id)
+              }}
             >
               {locked ? <i className="lock-pip" aria-label="Locked" /> : null}
               {PHASE_TAB[id].label}
               {affordable ? <i className="deal-dot" aria-label="Something is available" /> : null}
+              {id === "G" ? <NewMark id="boardGear" pill /> : null}
             </button>
           )
         })}
@@ -583,7 +627,12 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         <span className="next-kicker">Next</span>
         {next ? (
           <>
-            <strong className="next-name">{next.name}</strong>
+            <strong className="next-name">
+              {next.name}
+              {nextTease.map((feature) => (
+                <UnlockChip key={feature.id} name={feature.name} />
+              ))}
+            </strong>
             <span className="next-needs">{nextLine(next)}</span>
           </>
         ) : (
@@ -611,11 +660,16 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             aria-selected={tenx}
             className={tenx ? "era-tab active tenx-tab" : "era-tab tenx-tab"}
             style={{ ["--tab-glow" as string]: "var(--boost-gold)" }}
-            onClick={() => setSkillView("tenx")}
+            data-feature-anchor="tenx"
+            onClick={() => {
+              seeFeature("tenx")
+              setSkillView("tenx")
+            }}
           >
             <Trophy {...UI_ICON_SM} aria-hidden />
             10x dev
             {visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)) ? <i className="deal-dot" aria-label="Something is available" /> : null}
+            <NewMark id="tenx" pill />
           </button>
         </div>
       ) : null}
@@ -671,6 +725,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   locked={!revealed && have === 0}
                   gate={gate}
                   unlock={[`${formatNumber(Math.ceil(row.unlockAtXp - xpTotal))} more lifetime XP`]}
+                  unlocks={have === 0 ? teaseFor(key) : undefined}
                   title={row.name}
                   actions={
                     <>
@@ -879,6 +934,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                             ...(row.unlockJobId > 0 && !jobs.includes(row.unlockJobId) ? [`the ${jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`} job`] : []),
                           ]}
                           saving={revealed && have === 0 ? { have: money, need: cost } : undefined}
+                          unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
                           title={row.name}
                           actions={
                             <>

@@ -459,3 +459,67 @@ test("10x dev (gold) skills: bulk buying, hover clicking and the offline cap ope
   game.reset()
   expect(game.getState().gold).toEqual([])
 })
+
+test("career timeline: the desk is earned piece by piece, logged as JSON, and the cat arrives on a return", () => {
+  game.reset()
+  // Minute zero: one file, XP, the Skills tab. Nothing unlocked, the journal holds the start line.
+  const start = game.getState()
+  expect(start.features.open).toEqual([])
+  expect(start.careerLog.size).toBe(1)
+  expect(start.careerLog.last).toMatchObject({ seq: 1, type: "start" })
+  expect(start.features.upNext.map((row) => row.id)).toEqual(["editor", "terminal", "careerLog"])
+
+  // The first skill boots the editor: logged twice (the skill, the unlock) and queued to reveal.
+  game.setXp(240)
+  expect(game.buySkill(1)).toBe(true)
+  let state = game.getState()
+  expect(state.features.open).toEqual(["editor"])
+  expect(state.features.reveals).toEqual(["editor"])
+  expect(state.features.next?.id).toBe("terminal")
+  expect(game.careerLog().slice(-2).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1", "unlock:editor"])
+
+  // Linux CLI basics opens the terminal, marked NEW until used.
+  game.setXp(2_300)
+  for (let id = 2; id <= 8; id++) game.buySkill(id)
+  state = game.getState()
+  expect(state.features.open).toContain("terminal")
+  expect(state.features.fresh).toContain("terminal")
+  expect(game.seeFeature("terminal")).toBe(true)
+  expect(game.getState().features.fresh).not.toContain("terminal")
+  expect(game.seeFeature("nope")).toBe(false)
+
+  // The first gig opens the board, the dollars and the rosters; the first job, the metrics.
+  game.setXp(60_000)
+  for (let id = 9; id <= 16; id++) game.buySkill(id)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  expect(game.buyJob(1)).toBe(true)
+  state = game.getState()
+  expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
+  expect(state.features.open).not.toContain("cat")
+
+  // Every journal line is one flat JSON object with a time, a type and the balances it left.
+  const lines = game.careerLog()
+  for (const line of lines) {
+    expect(JSON.parse(JSON.stringify(line))).toEqual(line)
+    expect(typeof line.seq).toBe("number")
+    expect(new Date(String(line.time)).toISOString()).toBe(line.time)
+    expect(typeof line.money).toBe("number")
+  }
+  expect(lines.some((line) => line.type === "phase" && line.ref === "phase:B")).toBe(true)
+  expect(lines.some((line) => line.type === "hire" && line.name === "Internship offer")).toBe(true)
+
+  // Coming back after a break logs the return and brings the cat, named on the sticky note.
+  game.clearReveals()
+  const back = game.advanceOffline(30 * 60 * 1000)
+  expect(back.toast).not.toBeNull()
+  state = game.getState()
+  expect(state.features.open).toContain("cat")
+  expect(state.features.reveals).toEqual(["cat"])
+  expect(state.careerLog.last).toMatchObject({ type: "unlock", ref: "cat" })
+  expect(game.careerLog().some((line) => line.type === "return" && line.awayMs === 30 * 60 * 1000)).toBe(true)
+
+  // A wipe starts the timeline over.
+  game.reset()
+  expect(game.getState().features.open).toEqual([])
+  expect(game.getState().careerLog.size).toBe(1)
+})

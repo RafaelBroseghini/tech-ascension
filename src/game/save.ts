@@ -14,6 +14,27 @@ import type { GameStats } from "./stats.ts"
 export const SAVE_VERSION = 5
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
 export const OFFLINE_TOAST_MIN_MS = 5_000
+/** Away at least this long and the next load counts as a return: a career log line, and the desk cat's cue. */
+export const RETURN_BREAK_MS = 10 * 60 * 1000
+/** The journal keeps this many entries at most (the store trims to the same cap). */
+const CAREER_LOG_CAP = 2000
+
+/** One career journal entry: seq, time, type, what it is about, balance, lifetime XP, and optional flat extras. */
+export type SavedCareerEntry =
+  | [seq: number, at: number, type: string, ref: string, money: number, xpTotal: number]
+  | [seq: number, at: number, type: string, ref: string, money: number, xpTotal: number, data: Record<string, number | string | boolean>]
+
+/**
+ * The career timeline: the journal, the unlocks already revealed (so each plays once), the ones still marked NEW,
+ * and how many times the player came back after a break. Checked for shape here; the store checks ids at boot.
+ */
+export type SavedCareer = {
+  seq: number
+  log: SavedCareerEntry[]
+  unlocked: string[]
+  fresh: string[]
+  returns: number
+}
 
 export type SaveData = {
   version: typeof SAVE_VERSION
@@ -49,6 +70,8 @@ export type SaveData = {
   stats?: GameStats
   /** One-time balance / XP joke pops already shown. */
   seenMilestones?: string[]
+  /** The career timeline. Saves from before it have none; the store fills it from what they own. */
+  career?: SavedCareer
 }
 
 export type Hydrated = {
@@ -110,6 +133,43 @@ function normalizeTemp(raw: unknown): TempMults {
   return out
 }
 
+/**
+ * The timeline block, kept with a shallow check only: this file is on the boot path, so the entries, ids and types
+ * are checked by the store at boot (`journalFromSave`, `bootCareer`). Undefined when the save has none.
+ */
+export function normalizeSavedCareer(raw: unknown): SavedCareer | undefined {
+  if (!isRecord(raw) || !Array.isArray(raw.log)) return undefined
+  const strings = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [])
+  return {
+    seq: Math.max(1, Math.floor(finite(raw.seq))),
+    log: raw.log.slice(-CAREER_LOG_CAP) as SavedCareerEntry[],
+    unlocked: strings(raw.unlocked),
+    fresh: strings(raw.fresh),
+    returns: Math.max(0, Math.floor(finite(raw.returns))),
+  }
+}
+
+/** A new career's timeline: one line saying it started. */
+export function freshCareer(now: number): SavedCareer {
+  return { seq: 2, log: [[1, now, "start", "", 0, 0]], unlocked: [], fresh: [], returns: 0 }
+}
+
+/** Notes a return in the journal: how long the player was away and what that paid. */
+function noteReturn(career: SavedCareer, now: number, awayMs: number, money: number, xp: number, balance: number, xpTotal: number): SavedCareer {
+  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
+  const seq = Math.max(career.seq, top + 1)
+  const entry: SavedCareerEntry = [
+    seq,
+    now,
+    "return",
+    "",
+    Math.floor(balance),
+    Math.floor(xpTotal),
+    { awayMs: Math.round(awayMs), creditedMoney: Math.floor(money), creditedXp: Math.floor(xp) },
+  ]
+  return { ...career, seq: seq + 1, log: [...career.log, entry].slice(-CAREER_LOG_CAP), returns: career.returns + 1 }
+}
+
 export function freshSave(now: number): SaveData {
   return {
     version: SAVE_VERSION,
@@ -124,6 +184,7 @@ export function freshSave(now: number): SaveData {
     savedAt: now,
     peakMoney: 0,
     stats: emptyStats(),
+    career: freshCareer(now),
   }
 }
 
@@ -171,6 +232,8 @@ export function parseSave(input: unknown): SaveData | null {
   save.stats = normalizeStats(input.stats)
   const seen = normalizeSeenMilestones(input.seenMilestones)
   if (seen.length > 0) save.seenMilestones = seen
+  const career = normalizeSavedCareer(input.career)
+  if (career) save.career = career
   return save
 }
 
@@ -211,6 +274,10 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     const live = pruneTemp(save.tempMults, now)
     if (Object.keys(live).length > 0) save.tempMults = live
     else delete save.tempMults
+  }
+
+  if (save.career && elapsed >= RETURN_BREAK_MS) {
+    save.career = noteReturn(save.career, now, elapsed, credit, xpCredit, save.money, save.xpTotal)
   }
 
   let toast: string | null = null

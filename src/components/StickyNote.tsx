@@ -10,7 +10,12 @@ export function StickyNote() {
     <button type="button" className="sticky-note" data-testid="sticky-note" onClick={dismissToast}>
       <span className="sticky-note-kicker">While you were out</span>
       <span className="sticky-note-line">{toast.note}</span>
-      <span className="sticky-note-credit">{toast.text}</span>
+      {toast.text ? <span className="sticky-note-credit">{toast.text}</span> : null}
+      {toast.unlocked?.map((name) => (
+        <span key={name} className="sticky-note-unlock" data-testid="sticky-note-unlock">
+          <b aria-hidden="true">+</b> {name}
+        </span>
+      ))}
     </button>
   )
 }

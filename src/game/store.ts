@@ -34,7 +34,7 @@ import type { Era } from "../data/capital.ts"
 import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
-import { freshSave, OFFLINE_CAP_MS, SAVE_VERSION } from "./save.ts"
+import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
 import type { SaveData } from "./save.ts"
 import {
   creditMoney,
@@ -50,6 +50,16 @@ import { setDeskPref } from "./desk.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { MONEY_POP } from "../data/phases.ts"
 import { firstNewMilestone } from "./milestones.ts"
+import { appendNotes, toSavedEntries } from "./careerLog.ts"
+import type { CareerEntry, CareerJournal, CareerNote } from "./careerLog.ts"
+import { bootCareer, newlyOpen, planUnlocks, progressOf, purchaseNotes, seenFresh } from "./careerSync.ts"
+import type { CareerSlice } from "./careerSync.ts"
+import type { FeatureId } from "../data/features.ts"
+import { featureById } from "./features.ts"
+import { freshCareer } from "./save.ts"
+import type { SavedCareerEntry } from "./save.ts"
+import { setMusicAllowed } from "./desk.ts"
+import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -58,6 +68,8 @@ export type ToastMessage = {
   text: string
   /** Diary sentence when this toast is the offline sticky note. `text` is the credit line. */
   note?: string
+  /** On the sticky note: what unlocked while the player was away. */
+  unlocked?: string[]
 }
 
 /** A 1:1 on screen. Nothing is applied until a reply is chosen. */
@@ -142,6 +154,13 @@ type GameState = {
   seenMilestones: string[]
   buyStamp: number
   celebrationNonce: number
+  /** The career timeline: journal, unlocks, NEW markers, returns, and reveals waiting to play. */
+  journal: CareerJournal
+  unlocked: FeatureId[]
+  fresh: FeatureId[]
+  returns: number
+  reveals: FeatureId[]
+  whatsNew: boolean
   click: () => { money: number; xp: number }
   /** Buy a Phase D capital row. */
   buy: (tierId: number, mode?: BuyMode) => void
@@ -175,6 +194,31 @@ type GameState = {
   holdPreview: () => void
   tick: (now: number) => void
   wipe: () => void
+  /** Clears a NEW marker: the player opened or used the thing. Opening a picker clears the items inside it. */
+  seeFeature: (id: FeatureId) => void
+  /** Takes the next reveal off the queue to play it. Null when none is waiting. */
+  takeReveal: () => FeatureId | null
+  /** Drops every waiting reveal (the NEW markers stay). */
+  clearReveals: () => void
+  dismissWhatsNew: () => void
+  /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
+  noteReturn: (awayMs: number) => void
+  /** The big unlock slam: the centred UNLOCKED pop with confetti. */
+  announceUnlock: (label: string) => void
+  /** A one-line toast. Never covers the sticky note. */
+  notify: (text: string) => void
+}
+
+let savedEntriesFor: CareerEntry[] | null = null
+let savedEntries: SavedCareerEntry[] = []
+
+/** The journal as saved tuples. Rebuilt only when the journal changed since the last save. */
+function savedLog(entries: CareerEntry[]): SavedCareerEntry[] {
+  if (entries !== savedEntriesFor) {
+    savedEntriesFor = entries
+    savedEntries = toSavedEntries(entries)
+  }
+  return savedEntries
 }
 
 function toSave(state: GameState, now: number): SaveData {
@@ -198,6 +242,13 @@ function toSave(state: GameState, now: number): SaveData {
   const temp = pruneTemp(state.tempMults, now)
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
+  save.career = {
+    seq: state.journal.seq,
+    log: savedLog(state.journal.entries),
+    unlocked: state.unlocked,
+    fresh: state.fresh,
+    returns: state.returns,
+  }
   if (state.activeBoost && state.activeBoost.endsAt > now) {
     save.activeBoost = state.activeBoost
   }
@@ -226,8 +277,14 @@ function boot() {
   const now = Date.now()
   const { save, toast } = loadCareerForBoot(now)
   lastSaveAt = save.savedAt
-  const message = noteToast(toast, 1)
-  return { save, toast: message, toastSeq: message ? 1 : 0, now }
+  const career = bootCareer(save, now)
+  let message: ToastMessage | null = noteToast(toast, 1)
+  if (career.awayUnlocks.length > 0) {
+    message = message?.note
+      ? { ...message, unlocked: career.awayUnlocks }
+      : { id: 1, text: "", note: "Things changed while you were out.", unlocked: career.awayUnlocks }
+  }
+  return { save, toast: message, toastSeq: message ? 1 : 0, now, career }
 }
 
 const booted = boot()
@@ -270,6 +327,23 @@ function reviewResolution(state: GameState, choice: ReviewChoiceId) {
   return resolveReviewChoice(choice, state.money, state.xp, state.xpTotal, earningRates(state, now))
 }
 
+/** Appends journal notes stamped with the balances they leave behind. */
+function noted(journal: CareerJournal, notes: readonly CareerNote[], at: { money: number; xpTotal: number }): CareerJournal {
+  return appendNotes(journal, notes, at, Date.now())
+}
+
+function freshCareerSlice(now: number): CareerSlice {
+  const career = bootCareer({ ...freshSave(now), career: freshCareer(now) }, now)
+  return {
+    journal: career.journal,
+    unlocked: career.unlocked,
+    fresh: career.fresh,
+    returns: career.returns,
+    reveals: [],
+    whatsNew: false,
+  }
+}
+
 export const useGame = create<GameState>((set, get) => ({
   money: booted.save.money,
   xp: booted.save.xp,
@@ -308,6 +382,12 @@ export const useGame = create<GameState>((set, get) => ({
   seenMilestones: booted.save.seenMilestones ?? [],
   buyStamp: 0,
   celebrationNonce: 0,
+  journal: booted.career.journal,
+  unlocked: booted.career.unlocked,
+  fresh: booted.career.fresh,
+  returns: booted.career.returns,
+  reveals: booted.career.reveals,
+  whatsNew: booted.career.whatsNew,
 
   click: () => {
     const state = get()
@@ -490,6 +570,7 @@ export const useGame = create<GameState>((set, get) => ({
       event: null,
       lastEvent: { ...state.event, lines: resolved.lines },
       nextEventAt: null,
+      journal: noted(state.journal, [{ type: "event", ref: `event:${state.event.eventId}`, data: { accepted: true } }], resolved),
     })
     persistNow()
     return true
@@ -502,6 +583,9 @@ export const useGame = create<GameState>((set, get) => ({
       event: null,
       nextEventAt: null,
       lastEvent: state.event ? { ...state.event, lines: resolved?.lines ?? state.event.lines } : state.lastEvent,
+      journal: state.event
+        ? noted(state.journal, [{ type: "event", ref: `event:${state.event.eventId}`, data: { accepted: false } }], state)
+        : state.journal,
     })
   },
 
@@ -533,6 +617,7 @@ export const useGame = create<GameState>((set, get) => ({
       review: null,
       lastReview: { ...state.review, lines: resolved.lines, choice },
       nextReviewAt: null,
+      journal: noted(state.journal, [{ type: "review", ref: `review:${state.review.promptId}`, data: { choice } }], resolved),
     })
     persistNow()
     return true
@@ -545,6 +630,7 @@ export const useGame = create<GameState>((set, get) => ({
       review: null,
       nextReviewAt: null,
       lastReview: state.review,
+      journal: noted(state.journal, [{ type: "review", ref: `review:${state.review.promptId}` }], state),
     })
   },
 
@@ -692,7 +778,50 @@ export const useGame = create<GameState>((set, get) => ({
       seenMilestones: [],
       buyStamp: 0,
       celebrationNonce: 0,
+      ...freshCareerSlice(now),
     })
+  },
+
+  seeFeature: (id) => {
+    const state = get()
+    const fresh = seenFresh(state.fresh, id)
+    if (fresh === state.fresh) return
+    set({ fresh })
+  },
+
+  takeReveal: () => {
+    const [head, ...rest] = get().reveals
+    if (!head) return null
+    set({ reveals: rest })
+    return head
+  },
+
+  clearReveals: () => {
+    if (get().reveals.length > 0) set({ reveals: [] })
+  },
+
+  dismissWhatsNew: () => {
+    if (get().whatsNew) set({ whatsNew: false })
+  },
+
+  announceUnlock: (label) => {
+    const state = get()
+    set({ ...makePop(state, "unlock", 0, label), celebrationNonce: state.celebrationNonce + 1 })
+  },
+
+  notify: (text) => {
+    const state = get()
+    if (state.toast?.note) return
+    const toastSeq = state.toastSeq + 1
+    set({ toast: { id: toastSeq, text }, toastSeq })
+  },
+
+  noteReturn: (awayMs) => {
+    if (!(awayMs >= RETURN_BREAK_MS)) return
+    const state = get()
+    const away = Math.min(awayMs, offlineCapMs(state.gold, OFFLINE_CAP_MS)) / 1000
+    const data = { awayMs: Math.round(awayMs), creditedMoney: Math.floor(idlePerSec(state) * away), creditedXp: Math.floor(xpPerSec(state) * away) }
+    set({ returns: state.returns + 1, journal: noted(state.journal, [{ type: "return", ref: "", data }], state) })
   },
 }))
 
@@ -704,9 +833,11 @@ useGame.subscribe((state, prev) => {
     new Set(state.seenMilestones),
   )
   if (!hit || state.seenMilestones.includes(hit.id)) return
+  const current = useGame.getState()
   useGame.setState({
     seenMilestones: [...state.seenMilestones, hit.id],
     ...makePop(state, "unlock", 0, hit.label),
+    journal: noted(current.journal, [{ type: "milestone", ref: `milestone:${hit.id}` }], current),
   })
 })
 
@@ -730,6 +861,38 @@ useGame.subscribe((state) => {
     toastSeq,
     ...makePop(state, "unlock", 0, PHASE_UNLOCK_COPY[phase]),
   })
+})
+
+// The career timeline. Registered last, so a phase pop never sees this write mid-update. Each update's transition
+// arrives once: it is diffed for first copies, clears, hires and new phases, and every row whose gate just opened is
+// unlocked, logged and queued. Writes start from the live state, since an earlier listener may have moved it.
+useGame.subscribe((state, prev) => {
+  const notes = purchaseNotes(prev, state)
+  const live = useGame.getState()
+  const rows = newlyOpen(progressOf(live), live.unlocked)
+  if (notes.length === 0 && rows.length === 0) return
+  // While the "while you were out" note is up, what opens is part of the return: one reveal, the rest on the note.
+  const returning = Boolean(live.toast?.note)
+  const plan = rows.length > 0 ? planUnlocks(rows, live, returning) : null
+  const patch: Partial<GameState> = { journal: noted(live.journal, [...notes, ...(plan?.notes ?? [])], live) }
+  if (plan) {
+    patch.unlocked = plan.unlocked
+    patch.fresh = plan.fresh
+    patch.reveals = plan.reveals
+    const names = rows.filter((row) => row.size !== "phase").map((row) => featureById(row.id)?.name ?? row.id)
+    if (returning && live.toast && names.length > 0) patch.toast = { ...live.toast, unlocked: [...(live.toast.unlocked ?? []), ...names] }
+  }
+  useGame.setState(patch)
+})
+
+// Music is a career unlock: the saved switch only plays once the headset is bought (or in admin mode, which shows everything).
+function syncMusicGate() {
+  setMusicAllowed(getAdminMode() || useGame.getState().unlocked.includes("music"))
+}
+syncMusicGate()
+subscribeAdminMode(syncMusicGate)
+useGame.subscribe((state, prev) => {
+  if (state.unlocked !== prev.unlocked) syncMusicGate()
 })
 
 export function persistNow(): void {

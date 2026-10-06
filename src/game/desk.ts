@@ -137,7 +137,16 @@ export function pokeDesk(): void {
   syncDeskAudio()
 }
 
+/** Music is earned in a career (the headset). The saved switch stays the player's; it only plays once allowed. */
+let musicAllowed = true
+
+export function setMusicAllowed(on: boolean): void {
+  if (musicAllowed === on) return
+  musicAllowed = on
+  syncDeskAudio()
+}
+
 bindDeskAudio(() => {
   const prefs = getDeskPrefs()
-  return { music: prefs.music, sounds: prefs.sounds, clicks: prefs.clicks, musicStyle: prefs.musicStyle, clickKit: prefs.clickKit }
+  return { music: prefs.music && musicAllowed, sounds: prefs.sounds, clicks: prefs.clicks, musicStyle: prefs.musicStyle, clickKit: prefs.clickKit }
 })
