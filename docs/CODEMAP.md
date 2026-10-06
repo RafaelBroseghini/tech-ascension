@@ -39,6 +39,10 @@
 | Career log sidebar and the console's Output tab | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it, the career log's JSON button) | `src/game/surfaces.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
+| Output milestones: the copy counts that double a gear or capital row, and the factor (a drop-in table) | `src/data/outputMilestones.ts` |
+| Milestone rules (`effectiveCopies`, next and last milestone, what a purchase crosses) | `src/game/outputMilestones.ts` (read by `src/game/economy.ts`) |
+| A row's next milestone and its cost; the cheapest ones for the banner, Up next and the harness | `src/game/milestoneTargets.ts` |
+| Milestone badge, bar, stamp and pop styles | `src/styles/milestones.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
 | GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/CornerActions.tsx`, `src/styles/githug.css` |

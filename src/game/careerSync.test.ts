@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { featureById } from "./features.ts"
 import type { FeatureRow } from "../data/features.ts"
-import { bootCareer, getsMarker, planUnlocks, purchaseNotes, REVEAL_BATCH_LIMIT, seenFresh } from "./careerSync.ts"
+import { bootCareer, getsMarker, multiplierNotes, planUnlocks, purchaseNotes, REVEAL_BATCH_LIMIT, seenFresh } from "./careerSync.ts"
 import { freshCareer, freshSave } from "./save.ts"
 
 const rows = (...ids: string[]) => ids.map((id) => featureById(id) as FeatureRow)
@@ -35,6 +35,24 @@ describe("purchase notes", () => {
       "phase:phase:D",
     ])
     expect(purchaseNotes(next, { ...next, skills: { "1": 2 } })).toEqual([])
+  })
+
+  it("notes each output milestone a purchase crosses, after the first-copy lines", () => {
+    const before = { ...base, equipment: { "2": 9 }, owned: { "1": 24 } }
+    const after = { ...before, equipment: { "2": 10, "3": 1 }, owned: { "1": 25 } }
+    expect(purchaseNotes(before, after).map((note) => `${note.type}:${note.ref}`)).toEqual(["gear:gear:3", "multiplier:gear:2", "multiplier:capital:1"])
+    expect(multiplierNotes("capital", before.owned, after.owned)).toEqual([{ type: "multiplier", ref: "capital:1", data: { owned: 25, mult: 4 } }])
+  })
+
+  it("logs every milestone a max buy jumps over, and nothing for a buy between them", () => {
+    expect(multiplierNotes("gear", { "2": 8 }, { "2": 55 }).map((note) => note.data)).toEqual([
+      { owned: 10, mult: 2 },
+      { owned: 25, mult: 4 },
+      { owned: 50, mult: 8 },
+    ])
+    expect(multiplierNotes("gear", { "2": 11 }, { "2": 24 })).toEqual([])
+    const same = { "2": 10 }
+    expect(multiplierNotes("gear", same, same)).toEqual([])
   })
 })
 

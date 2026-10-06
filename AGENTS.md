@@ -62,7 +62,7 @@ getState(): {
   restPackId: string
   folders: string[] // unlocked band ids in explorer order; each persists once entered
  }
- lastPop: { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string } | null
+ lastPop: { kind: "click" | "gigClear" | "unlock" | "milestone"; size: "medium" | "large"; amount: number; label: string; mult?: number } | null // mult: a milestone pop's new multiplier
  features: {
   open: string[]      // career timeline rows unlocked so far, in order ("editor", "terminal", "theme:dracula", ...)
   fresh: string[]     // rows still marked NEW (unlocked, not used yet)
@@ -71,6 +71,10 @@ getState(): {
   upNext: { id: string; name: string; via: string; fill: number; left: string }[]   // the career log's Up next
  }
  careerLog: { size: number; last: Record<string, number | string | boolean> | null } // journal entries kept, and the newest as JSON
+ multipliers: {
+  rows: Record<string, number> // gear and capital rows past their first output milestone, keyed like the shop: "gear:2" → 2, "capital:1" → 4
+  next: { key: string; name: string; owned: number; at: number; left: number; mult: number; cost: number }[] // the three cheapest milestones still to reach
+ }
  profile: { handle: string; chosen: boolean } // the career's handle on GitHug and LinkedOut ("quiet-otter"), drawn from word lists; chosen once kept
 }
 
@@ -114,7 +118,9 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - **10x dev skills** (`gold` in the code and the harness: `src/data/gold.ts`, rules in `src/game/gold.ts`). Ten one-off perks bought once with spendable XP, shown in their own "10x dev" sub-tab of the Skills tab with a trophy and a description. A row opens at its lifetime-XP milestone and waits on the earlier row of its family. **Buying** (Bulk Buy ×5, ×10, Max at 8,000 / 60,000 / 600,000 XP) adds amounts to the shop's Buy control; without one, `buy`, `buySkill` and `buyEquipment` always buy one copy whatever `amount` asks for, and with one they buy up to that many. **Hover clicking** (2, 5, 10, 15 clicks/s from 20,000 XP; the endgame 20/s still comes from owning every catalog row) makes `hoverRate` positive. **Time away** raises the offline cap from 8 to 12, 16 and 24 hours. Prices are a quarter of the opening XP, then the 2x scale. Saves keep them in an optional `gold` list.
 - **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point (`peakMoney`, so spending it later does not close the gate). Eras by id: mid 1-5, upper 6-11, q3 12-14, end 15-25. Only `buy(1..25)` is valid. Row 1 costs $200,000 and row 3 costs $4,000,000 after the 2x scale.
 
-- `cps` is idle $/s (retainers + salaries + equipment + capital). Click boosts do not change it.
+- **Output milestones** (`src/data/outputMilestones.ts`, rules in `src/game/outputMilestones.ts`, shop targets in `src/game/milestoneTargets.ts`). Every gear and capital row doubles what all its copies make, idle $/s and click bonus alike, at 10, 25, 50 and 100 copies: ×2, ×4, ×8, ×16. The tenth copy of a row adds eleven copies' worth. Skills, gigs and jobs have none. A capital crossing pops large (`lastPop.kind` `"milestone"`, `mult` the row's new multiplier, `label` the row, `amount` 0); a gear crossing shows a toast. Each crossing is a `multiplier` journal entry with `owned` and `mult`, one per milestone even when a max buy jumps several. `getState().multipliers` lists the rows past one and the three cheapest still to reach. Once Gear or Capital has every row, that tab's banner chases its cheapest milestone.
+
+- `cps` is idle $/s (retainers + salaries + equipment + capital, output milestones included). Click boosts do not change it.
 - `clickPower` is the base $ payout. Every click always pays `xpPerClick × activeBoost.mult` XP; dollars wait until the first job. After that, clicks also pay `clickPower × activeBoost.mult`. Idle $/s still starts at the first retainer.
 - Money mode starts at the first cleared gig (or whenever money already exists, as with a forced balance).
 - Skills cost XP and spending never lowers `xpTotal`. Jobs, equipment and capital cost money. Repeatable items cost `floor(base × 1.15 ^ owned)`.
@@ -130,9 +136,9 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
 - `ide` describes the editor pane: each programming band is an explorer folder (id in `folders`) that stays unlocked; older bands freeze their file tabs at full depth. q3 and end add inbox and deck folders. `ideSelect(i, packId?)` opens item `i` in that folder, or the on-screen pack when `packId` is omitted (false when out of range). `previewEra(era)` shows that era's first pack the way the shop's Capital era tab does (`previewing: true`, `restPackId` is the owned pack); `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era. Picking an owned folder while previewing snaps back.
 - A save from any other `version` is wiped on load. There is no migration.
-- `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
+- `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear, a phase unlock and a capital output milestone.
 - `reset()` wipes the save back to high school.
-- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has one file, XP and the Skills tab. Used laptop (skill 1) opens the editor, Linux CLI basics (8) the terminal, Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with editor folders, desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()` and the console's Output tab. Admin mode shows the whole desk.
+- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has one file, XP and the Skills tab. Used laptop (skill 1) opens the editor, Linux CLI basics (8) the terminal, Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with editor folders, desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, output milestones, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()` and the console's Output tab. Admin mode shows the whole desk.
 - **Identity** (`src/game/identity.ts`, start card in `src/components/IdentityPicker.tsx`). Every new career (a fresh save or `reset()`) draws a Tailscale-style handle (`quiet-otter`) and opens a start card: Reroll draws another, and Start keeps it for good. There is no real name; GitHug and LinkedOut (`linkedout.com/in/<handle>`) both go by the handle. Nothing is ever typed. It is saved in an optional `profile` block with `chosen`; a save is only accepted with a handle the lists can draw. A save from before handles gets one, already kept, with no card. A test scans all 1,024 handles, as shown and run together, for slurs and slang.
 
 ## Smoke (`npm run smoke:play`)
@@ -150,6 +156,7 @@ Vitest + happy-dom, all through `__GAME__`:
 8. **10x dev skills.** A bulk skill is gated by lifetime XP and price, `amount` only works once unlocked, hover rate and offline cap follow the gold owned.
 9. **Events, 1:1s and the IDE.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, a 1:1 waits for a job and its three replies pay, sit or bill you, and the IDE pack follows the owned era.
 10. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens the editor (logged and queued), Linux CLI basics the terminal with a NEW marker that `seeFeature` clears, Git + GitHug hygiene the career log and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return and brings the cat; after a wipe, 15 minutes of `tick` brings it too.
+11. **Output milestones.** Nine cable kits leave the row at ×1 and name the tenth as the cheapest milestone; the tenth adds eleven copies' worth of `cps`, shows up in `multipliers.rows` and logs a `multiplier` line; the tenth Angel syndicate seat does the same with a large `milestone` pop.
 
 ## Free play (`npm run play:agent`)
 
@@ -235,6 +242,20 @@ for (let id = 2; id <= 8; id++) game.buySkill(id) // Linux CLI basics: the termi
 game.seeFeature("terminal")
 game.advanceOffline(30 * 60 * 1000) // a return: logged, and the desk cat moves in
 game.careerLog() // every step as JSON, oldest first
+```
+
+Output milestones:
+
+```js
+const game = window.__GAME__
+game.reset()
+game.setXp(10_000) // the Gear tab
+game.setMoney(1e9) // capital opens at $500K held
+for (let i = 0; i < 9; i++) game.buyEquipment(2) // Cable management kit ×9
+game.getState().multipliers.next[0] // { key: "gear:2", owned: 9, at: 10, left: 1, mult: 2, ... }
+game.buyEquipment(2) // the tenth doubles the row: a toast and a "multiplier" journal line
+for (let i = 0; i < 10; i++) game.buy(1) // the tenth Angel syndicate seat: lastPop { kind: "milestone", mult: 2, label: "Angel syndicate seat" }
+game.getState().multipliers.rows // { "gear:2": 2, "capital:1": 2 }
 ```
 
 Offline sim:

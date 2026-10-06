@@ -47,7 +47,7 @@ const CAPITAL_ROWS: readonly Capital[] = [
   { id: 22, era: "end", artId: 63, name: "Mars precursor ops Co", baseCost: 80000000000000, cps: 6000000000, clickBonus: 0 },
   { id: 23, era: "end", artId: 64, name: "Mars power utility", baseCost: 250000000000000, cps: 15000000000, clickBonus: 0 },
   { id: 24, era: "end", artId: 65, name: "Mars data center REIT", baseCost: 1000000000000000, cps: 50000000000, clickBonus: 200 },
-  { id: 25, era: "end", artId: 66, name: "Mars megacampus Holdings", baseCost: 50000000000000000, cps: 500000000000, clickBonus: 0 },
+  { id: 25, era: "end", artId: 66, name: "Mars megacampus Holdings", baseCost: 12500000000000000, cps: 500000000000, clickBonus: 0 },
 ] as const
 
 export const CAPITAL: readonly Capital[] = CAPITAL_ROWS.map((row) => ({

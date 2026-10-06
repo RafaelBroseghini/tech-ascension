@@ -1,3 +1,4 @@
+import { effectiveCopies } from "./outputMilestones.ts"
 import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
@@ -126,11 +127,11 @@ export function xpPerSec(p: Pick<Progress, "skills" | "jobs">): number {
   return sum
 }
 
-/** Flat money per click: $1 plus gear, capital, and job click bonuses. */
+/** Flat money per click: $1 plus gear, capital, and job click bonuses. Gear and capital count their output milestones. */
 export function clickFlat(p: Pick<Progress, "equipment" | "owned" | "jobs">): number {
   let bonus = 0
-  for (const row of EQUIPMENT) bonus += ownedCount(p.equipment, row.id) * row.clickBonus
-  for (const tier of CAPITAL) bonus += ownedCount(p.owned, tier.id) * tier.clickBonus
+  for (const row of EQUIPMENT) bonus += effectiveCopies(ownedCount(p.equipment, row.id)) * row.clickBonus
+  for (const tier of CAPITAL) bonus += effectiveCopies(ownedCount(p.owned, tier.id)) * tier.clickBonus
   for (const id of p.jobs) bonus += jobById(id)?.clickBonus ?? 0
   return BASE_CLICK + bonus
 }
@@ -158,9 +159,9 @@ export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gi
   let jobs = 0
   for (const id of p.jobs) jobs += jobById(id)?.cps ?? 0
   let equipment = 0
-  for (const row of EQUIPMENT) equipment += ownedCount(p.equipment, row.id) * row.cps
+  for (const row of EQUIPMENT) equipment += effectiveCopies(ownedCount(p.equipment, row.id)) * row.cps
   let capital = 0
-  for (const tier of CAPITAL) capital += ownedCount(p.owned, tier.id) * tier.cps
+  for (const tier of CAPITAL) capital += effectiveCopies(ownedCount(p.owned, tier.id)) * tier.cps
   return { retainers, jobs, equipment, capital }
 }
 
@@ -170,9 +171,9 @@ export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "g
   return parts.retainers + parts.jobs + parts.equipment + parts.capital
 }
 
-/** One capital tier's share of idle $/s. */
+/** One capital tier's share of idle $/s, milestones included. */
 export function capitalIdlePerSec(tier: Capital, owned: OwnedMap): number {
-  return ownedCount(owned, tier.id) * tier.cps
+  return effectiveCopies(ownedCount(owned, tier.id)) * tier.cps
 }
 
 export function highestOwnedCapital(owned: OwnedMap): Capital | null {
@@ -217,7 +218,7 @@ export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" 
   for (const tier of CAPITAL) {
     const count = ownedCount(p.owned, tier.id)
     if (count > 0)
-      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.artId, count, idle: count * tier.cps, xpIdle: 0, click: count * tier.clickBonus })
+      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.artId, count, idle: effectiveCopies(count) * tier.cps, xpIdle: 0, click: effectiveCopies(count) * tier.clickBonus })
   }
   for (const id of p.jobs) {
     const job = jobById(id)
@@ -227,7 +228,7 @@ export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" 
   for (const row of EQUIPMENT) {
     const count = ownedCount(p.equipment, row.id)
     if (count > 0)
-      rows.push({ key: `equipment:${row.id}`, kind: "equipment", id: row.id, name: row.name, artId: artFor(EQUIP_ART, row.id), count, idle: count * row.cps, xpIdle: 0, click: count * row.clickBonus })
+      rows.push({ key: `equipment:${row.id}`, kind: "equipment", id: row.id, name: row.name, artId: artFor(EQUIP_ART, row.id), count, idle: effectiveCopies(count) * row.cps, xpIdle: 0, click: effectiveCopies(count) * row.clickBonus })
   }
   for (const id of p.gigs) {
     const gig = gigById(id)

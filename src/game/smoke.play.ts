@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, EQUIPMENT, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { installGameHarness } from "./harness.ts"
@@ -539,4 +539,38 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.getState().features.open).not.toContain("cat")
   game.tick(60 * 1000)
   expect(game.getState().features.open).toContain("cat")
+})
+
+test("output milestones: the tenth copy of a gear or capital row doubles it, logs it, and names the next one", () => {
+  game.reset()
+  game.setXp(GEAR_TAB_UNLOCK.minXp)
+  game.setMoney(1e9)
+  const cable = EQUIPMENT.find((row) => row.id === 2)
+  const angel = CAPITAL.find((row) => row.id === 1)
+  if (!cable || !angel) throw new Error("missing rows")
+
+  // Nine cable kits: no multiplier yet, and the tenth is the cheapest milestone in reach.
+  for (let count = 0; count < 9; count++) expect(game.buyEquipment(2)).toBe(true)
+  let state = game.getState()
+  expect(state.multipliers.rows).toEqual({})
+  expect(state.multipliers.next[0]).toMatchObject({ key: "gear:2", owned: 9, at: 10, left: 1, mult: 2 })
+
+  // The tenth doubles the whole row: 9 copies' worth becomes 20.
+  let cps = state.cps
+  expect(game.buyEquipment(2)).toBe(true)
+  state = game.getState()
+  expect(state.cps - cps).toBeCloseTo(11 * cable.cps, 6)
+  expect(state.multipliers.rows).toEqual({ "gear:2": 2 })
+  expect(state.careerLog.last).toMatchObject({ type: "multiplier", ref: "gear:2", name: cable.name, owned: 10, mult: 2 })
+  expect(state.lastPop?.kind).not.toBe("milestone")
+
+  // Capital gets the big pop with the row's new multiplier.
+  for (let count = 0; count < 9; count++) expect(game.buy(1)).toBe(true)
+  cps = game.getState().cps
+  expect(game.buy(1)).toBe(true)
+  state = game.getState()
+  expect(state.cps - cps).toBeCloseTo(11 * angel.cps, 6)
+  expect(state.lastPop).toEqual({ kind: "milestone", size: "large", amount: 0, label: angel.name, mult: 2 })
+  expect(state.multipliers.rows).toEqual({ "gear:2": 2, "capital:1": 2 })
+  expect(state.careerLog.last).toMatchObject({ type: "multiplier", ref: "capital:1", owned: 10, mult: 2 })
 })

@@ -5,16 +5,24 @@ import { agoLabel, CAREER_TYPES, careerLine, describeEntry } from "../game/caree
 import type { CareerEntry, CareerType } from "../game/careerLog.ts"
 import { progressOf } from "../game/careerSync.ts"
 import { upNext } from "../game/features.ts"
+import { formatCompact } from "../game/format.ts"
+import { nearestMilestones } from "../game/milestoneTargets.ts"
+import { MILESTONE_FACTOR } from "../data/outputMilestones.ts"
 import { useGame } from "../game/store.ts"
 import { openSurface } from "../game/surfaces.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin } from "./useFeature.ts"
 
-type Tease = { id: string; name: string; via: string; fill: number; left: string; mystery: boolean }
+type Tease = { id: string; name: string; via: string; fill: number; left: string; mystery: boolean; milestone?: boolean }
 
-/** Up next as one string, rounded, so the panel re-renders when a bar visibly moves and not on every tick. */
+const UP_NEXT_ROWS = 3
+
+/**
+ * Up next as one string, rounded, so the panel re-renders when a bar visibly moves and not on every tick. Once the
+ * desk has run out of features to open, the cheapest output milestones fill the list.
+ */
 function upNextKey(state: ReturnType<typeof useGame.getState>): string {
-  const rows = upNext(progressOf(state), new Set(state.unlocked)).map((row) => ({
+  const rows: Tease[] = upNext(progressOf(state), new Set(state.unlocked), UP_NEXT_ROWS).map((row) => ({
     id: row.id,
     name: row.name,
     via: row.via,
@@ -22,6 +30,19 @@ function upNextKey(state: ReturnType<typeof useGame.getState>): string {
     left: row.left,
     mystery: row.mystery,
   }))
+  if (rows.length < UP_NEXT_ROWS) {
+    for (const target of nearestMilestones(state, "all", UP_NEXT_ROWS - rows.length)) {
+      rows.push({
+        id: target.key,
+        name: target.name,
+        via: target.kind === "gear" ? "Gear" : "Capital",
+        fill: Math.floor(target.fill * 50) / 50,
+        left: `${target.left} more · $${formatCompact(target.cost)}`,
+        mystery: false,
+        milestone: true,
+      })
+    }
+  }
   return JSON.stringify(rows)
 }
 
@@ -71,8 +92,11 @@ export function CareerLog() {
             <p className="career-log-sec">Up next</p>
             <ol className="career-log-list is-next" data-testid="career-log-next">
               {up.map((row) => (
-                <li key={row.id} data-feature={row.id}>
-                  <b>{row.mystery ? "???" : row.name}</b>
+                <li key={row.id} data-feature={row.milestone ? undefined : row.id} data-milestone={row.milestone ? row.id : undefined}>
+                  <b>
+                    {row.milestone ? <em>×{MILESTONE_FACTOR}</em> : null}
+                    {row.mystery ? "???" : row.name}
+                  </b>
                   <small>{row.left || row.via}</small>
                   <span className="career-log-bar" aria-hidden="true">
                     <i style={{ width: `${Math.round(row.fill * 100)}%` }} />
@@ -92,7 +116,7 @@ export function CareerLog() {
               return (
                 <li key={entry.seq} data-tone={row.tone} className={index === 0 ? "is-head" : undefined}>
                   <b>
-                    {row.tone === "unlock" ? <em>+</em> : null}
+                    {row.tone === "unlock" ? <em>+</em> : row.tone === "multiplier" ? <em>×{MILESTONE_FACTOR}</em> : null}
                     {row.title}
                     {index === 0 ? <span className="career-log-tag">HEAD</span> : null}
                   </b>

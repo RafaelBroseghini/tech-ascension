@@ -26,8 +26,17 @@ import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
+import { nearestMilestones } from "./milestoneTargets.ts"
+import { outputMult } from "./outputMilestones.ts"
 
-export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
+export type PopSnapshot = {
+  kind: "click" | "gigClear" | "unlock" | "milestone"
+  size: "medium" | "large"
+  amount: number
+  label: string
+  /** A milestone pop's new output multiplier for the row. */
+  mult?: number
+}
 
 export type EventSnapshot = { eventId: number; name: string; lines: string[] }
 
@@ -131,7 +140,7 @@ export type GameSnapshot = {
   spriteTierId: number
   activeBoost: ActiveBoost | null
   savedAt: number
-  /** The most recent money pop (medium on a paying click, large on gig clear and phase unlock), or null. */
+  /** The most recent money pop (medium on a paying click, large on gig clear, phase unlock and capital milestone), or null. */
   lastPop: PopSnapshot | null
   /** The career timeline: what is unlocked, marked NEW, waiting to reveal, and next. */
   features: FeaturesSnapshot
@@ -139,6 +148,18 @@ export type GameSnapshot = {
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
   profile: { handle: string; chosen: boolean }
+  /** Output milestones: gear and capital rows double at 10, 25, 50 and 100 copies. */
+  multipliers: MultipliersSnapshot
+}
+
+/** A row's next output milestone: copies left, the multiplier it reaches, and what those copies cost now. */
+export type MilestoneSnapshot = { key: string; name: string; owned: number; at: number; left: number; mult: number; cost: number }
+
+export type MultipliersSnapshot = {
+  /** Rows past their first milestone, keyed like the shop (`gear:2`, `capital:3`), with their multiplier. */
+  rows: Record<string, number>
+  /** The three cheapest milestones still to reach, cheapest first. */
+  next: MilestoneSnapshot[]
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -322,6 +343,15 @@ function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesS
   }
 }
 
+function multipliersSnapshot(state: ReturnType<typeof useGame.getState>): MultipliersSnapshot {
+  const rows: Record<string, number> = {}
+  for (const [kind, map] of [["gear", state.equipment], ["capital", state.owned]] as const) {
+    for (const [id, count] of Object.entries(map)) if (outputMult(count) > 1) rows[`${kind}:${id}`] = outputMult(count)
+  }
+  const next = nearestMilestones(state).map(({ key, name, owned, at, left, mult, cost }) => ({ key, name, owned, at, left, mult, cost }))
+  return { rows, next }
+}
+
 export function installGameHarness(): GameHarness {
   const api: GameHarness = {
     getState: () => {
@@ -379,13 +409,14 @@ export function installGameHarness(): GameHarness {
         activeBoost: liveBoost(state.activeBoost, now),
         savedAt: readSavedAt(),
         lastPop: state.pop
-          ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label }
+          ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label, ...(state.pop.mult ? { mult: state.pop.mult } : {}) }
           : null,
         features: featuresSnapshot(state),
         careerLog: {
           size: state.journal.entries.length,
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
+        multipliers: multipliersSnapshot(state),
         profile: { ...state.profile },
       }
     },

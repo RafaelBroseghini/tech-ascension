@@ -134,8 +134,8 @@ describe("phase tables", () => {
     expect(GIGS.filter((gig) => gig.priorGigs < 3).every((gig) => gig.retainerCps === 0)).toBe(true)
   })
 
-  it("makes large pops for gig clear and unlock, and a medium pop for a click", () => {
-    expect(MONEY_POP).toEqual({ click: "medium", gigClear: "large", unlock: "large" })
+  it("makes large pops for gig clear, unlock and an output milestone, and a medium pop for a click", () => {
+    expect(MONEY_POP).toEqual({ click: "medium", gigClear: "large", unlock: "large", milestone: "large" })
   })
 })
 

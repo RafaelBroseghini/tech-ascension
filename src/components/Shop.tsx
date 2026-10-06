@@ -1,4 +1,4 @@
-import { ArrowDown, Banknote, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
+import { ArrowDown, Banknote, BriefcaseBusiness, Check, ChevronRight, ChevronsUp, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -39,8 +39,19 @@ import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
+import { nearestMilestones } from "../game/milestoneTargets.ts"
+import type { MilestoneTarget } from "../game/milestoneTargets.ts"
+import { MILESTONE_FACTOR } from "../data/outputMilestones.ts"
+import { effectiveCopies, milestoneStep, outputMult } from "../game/outputMilestones.ts"
+import type { MilestoneStep } from "../game/outputMilestones.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useSurface, useUnlockedSet } from "./useFeature.ts"
+
+/** A milestone in reach reads "to buy 3 more"; one out of reach adds the cash still missing. */
+function milestoneLine(target: MilestoneTarget, money: number): string {
+  const copies = `${target.left} more`
+  return money >= target.cost ? `to buy ${copies}` : `need ${copies} · $${formatCompact(Math.ceil(target.cost - money))}`
+}
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 function nextLine(next: NextUnlock): string {
@@ -62,6 +73,40 @@ function OwnedCount({ value }: { value: number }) {
     <span key={value} className={value !== initial ? "own tick-up" : "own"}>
       {formatNumber(value)}
     </span>
+  )
+}
+
+/** The row's output multiplier from its milestones, next to its name. It lands with a bounce when it grows. */
+function MultBadge({ mult }: { mult: number }) {
+  const [initial] = useState(mult)
+  if (mult <= 1) return null
+  return (
+    <span key={mult} className={mult !== initial ? "mult-badge is-stamped" : "mult-badge"} data-testid="mult-badge" title={`Every copy makes ×${mult}`}>
+      ×{mult}
+    </span>
+  )
+}
+
+/**
+ * The moment a row crosses a milestone: a "×2" sticker slammed over its art, the row flashing, and what the row
+ * makes now rising off it. `output` is the whole row's $/s (or $ per click for a click-only row), milestones in.
+ */
+function MultStamp({ mult, output, unit }: { mult: number; output: number; unit: "/s" | "/click" }) {
+  const [seen, setSeen] = useState({ mult, output, gain: 0 })
+  // Only a rise stamps; a row that loses copies (a wipe with the shop open) drops the last stamp instead of replaying it.
+  if (mult !== seen.mult || output !== seen.output) setSeen({ mult, output, gain: mult > seen.mult ? output - seen.output : mult < seen.mult ? 0 : seen.gain })
+  if (seen.gain <= 0) return null
+  return (
+    <>
+      <span key={`flash-${mult}`} className="mult-flash" aria-hidden="true" />
+      <span key={`stamp-${mult}`} className="mult-stamp" data-testid="mult-stamp" aria-hidden="true">
+        ×{MILESTONE_FACTOR}
+      </span>
+      <span key={`gain-${mult}`} className="mult-gain" data-testid="mult-gain">
+        +${formatCompact(seen.gain)}
+        {unit}
+      </span>
+    </>
   )
 }
 
@@ -124,6 +169,11 @@ type OfferProps = {
   gold?: boolean
   /** What buying this row unlocks on the desk, while that is still closed. */
   unlocks?: readonly { id: string; name: string }[]
+  /** Gear and capital: the output multiplier the row's milestones have reached, and the next one, once it is owned. */
+  mult?: number
+  milestone?: MilestoneStep | null
+  /** What the row makes in all, for the stamp's rising gain. */
+  output?: { value: number; unit: "/s" | "/click" }
 }
 
 function ratio(have: number, need: number): number {
@@ -164,23 +214,31 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
-/** The bar along the bottom of a row: unlock progress, or money saved toward the price. */
-function OfferProgress({ kind, fill, label, count }: { kind: "unlock" | "money"; fill: number; label: ReactNode; count: string }) {
+/** A milestone this many copies away or closer lights its bar up and spells out the count. */
+const NEAR_MILESTONE = 2
+
+const PROGRESS_LABEL = { unlock: "Unlock progress", money: "Saved toward the price", milestone: "Copies toward the next output milestone" } as const
+const PROGRESS_ICON = { unlock: Lock, money: Banknote, milestone: ChevronsUp } as const
+
+/** The bar along the bottom of a row: unlock progress, money saved toward the price, or copies toward the next ×2. */
+function OfferProgress({ kind, fill, label, count, near }: { kind: "unlock" | "money" | "milestone"; fill: number; label: ReactNode; count: ReactNode; near?: boolean }) {
   const percent = Math.floor(Math.max(0, Math.min(1, fill)) * 100)
+  const Icon = PROGRESS_ICON[kind]
   return (
     <div
       className="offer-progress"
       data-kind={kind}
+      data-near={near ? "" : undefined}
       data-testid="offer-progress"
       role="progressbar"
-      aria-label={kind === "unlock" ? "Unlock progress" : "Saved toward the price"}
+      aria-label={PROGRESS_LABEL[kind]}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
       style={{ ["--gate" as string]: String(Math.max(0, fill)) }}
     >
       <span className="offer-progress-label">
-        {kind === "unlock" ? <Lock {...UI_ICON_SM} aria-hidden /> : <Banknote {...UI_ICON_SM} aria-hidden />}
+        <Icon {...UI_ICON_SM} aria-hidden />
         {label}
       </span>
       <span className="offer-progress-count" data-testid="offer-progress-count">
@@ -190,9 +248,10 @@ function OfferProgress({ kind, fill, label, count }: { kind: "unlock" | "money";
   )
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions, art, gold, unlocks }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions, art, gold, unlocks, mult, milestone, output }: OfferProps) {
   const gated = gate != null && gate.fill < 1
   const pending = !gated && saving && saving.need > 0 && saving.have < saving.need ? saving : null
+  const track = !gated && !pending && milestone ? milestone : null
   return (
     <article
       data-row={rowKey}
@@ -215,6 +274,7 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
       <div className="offer-copy">
         <h3>
           {title}
+          {mult ? <MultBadge mult={mult} /> : null}
           {fresh ? <span className="new-tag">New</span> : null}
           {unlocks?.map((feature) => (
             <UnlockBadge key={feature.id} id={feature.id} />
@@ -238,7 +298,16 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
           label={`$${formatCompact(Math.max(0, pending.have))} / $${formatCompact(pending.need)}`}
           count={`$${formatCompact(Math.ceil(pending.need - pending.have))} to go`}
         />
+      ) : track ? (
+        <OfferProgress
+          kind="milestone"
+          fill={track.fill}
+          near={track.left <= NEAR_MILESTONE}
+          label={`${formatNumber(track.owned)} / ${formatNumber(track.at)} owned`}
+          count={`${track.left <= NEAR_MILESTONE ? `${track.left} more · ` : ""}×${MILESTONE_FACTOR} output at ${formatNumber(track.at)}`}
+        />
       ) : null}
+      {mult && output ? <MultStamp mult={mult} output={output.value} unit={output.unit} /> : null}
     </article>
   )
 }
@@ -531,6 +600,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
 
   const tabGlow = PHASE_TAB[tab].glow
   const nextTease = next ? teaseFor(next.key) : []
+  // Once Gear or Capital has every row, the banner chases the cheapest output milestone left on it instead.
+  const nextMilestone = !next && unlocked[tab] && (tab === "G" || tab === "D") ? (nearestMilestones({ equipment, owned }, tab === "G" ? "gear" : "capital", 1)[0] ?? null) : null
 
   useEffect(() => {
     if (tab !== "D") setPickedEra(null)
@@ -612,12 +683,26 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         type="button"
         className="next-unlock"
         data-testid="next-unlock"
-        data-next={next?.key ?? "none"}
-        disabled={!next}
-        onClick={() => next && openNext(next)}
+        data-next={next?.key ?? nextMilestone?.key ?? "none"}
+        data-milestone={nextMilestone ? "" : undefined}
+        disabled={!next && !nextMilestone}
+        onClick={() => {
+          if (next) openNext(next)
+          else if (nextMilestone) openNext({ key: nextMilestone.key, name: nextMilestone.name, tab, needs: [milestoneLine(nextMilestone, money)], either: false })
+        }}
       >
         <span className="next-kicker">Next</span>
-        {next ? (
+        {nextMilestone ? (
+          <>
+            <strong className="next-name">
+              {nextMilestone.name}
+              <span className="mult-chip" data-testid="mult-chip">
+                ×{MILESTONE_FACTOR} output
+              </span>
+            </strong>
+            <span className="next-needs">{milestoneLine(nextMilestone, money)}</span>
+          </>
+        ) : next ? (
           <>
             <strong className="next-name">
               {next.name}
@@ -901,6 +986,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
                       const afford = revealed && canAfford(money, cost)
                       const key = `equip:${row.id}`
+                      const mult = outputMult(have)
                       const gate =
                         revealed || have > 0
                           ? null
@@ -927,6 +1013,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           ]}
                           saving={revealed && have === 0 ? { have: money, need: cost } : undefined}
                           unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
+                          mult={mult}
+                          milestone={milestoneStep(have)}
+                          output={row.cps > 0 ? { value: effectiveCopies(have) * row.cps, unit: "/s" } : { value: effectiveCopies(have) * row.clickBonus, unit: "/click" }}
                           title={row.name}
                           actions={
                             <>
@@ -964,6 +1053,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                 const revealed = isRevealed(tier, owned, peakMoney)
                 const afford = revealed && canAfford(money, cost)
                 const key = `capital:${tier.id}`
+                const mult = outputMult(have)
                 return (
                   <Offer
                     key={tier.id}
@@ -976,6 +1066,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     flash={flashKey === key}
                     fresh={fresh.has(key) && have === 0}
                     saving={have === 0 ? { have: money, need: cost } : undefined}
+                    mult={mult}
+                    milestone={milestoneStep(have)}
+                    output={{ value: effectiveCopies(have) * tier.cps, unit: "/s" }}
                     title={tier.name}
                     actions={
                       <>

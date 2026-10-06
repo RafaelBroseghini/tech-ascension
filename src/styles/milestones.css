@@ -1,0 +1,148 @@
+/* Output milestones: a gear or capital row doubles at 10, 25, 50 and 100 copies. Multipliers wear peach
+   everywhere (badge, bar, stamp, pop, career log), and "×2" is always the step while the badge is the total. */
+
+.mult-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px 2px;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: var(--ide-peach);
+  box-shadow: 0 0 0 1px var(--ink);
+  color: var(--ide-crust);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.mult-badge.is-stamped { animation: mult-badge-in 560ms var(--ease-pop) both; }
+
+/* "×2 output" on the Next banner once a tab has every row. */
+.mult-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 6px 2px;
+  vertical-align: middle;
+  border: 1px solid color-mix(in srgb, var(--ide-peach) 70%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ide-peach) 12%, transparent);
+  color: var(--ide-peach);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.45;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.next-unlock[data-milestone] { border-left-color: var(--ide-peach); }
+.next-unlock[data-milestone] .next-kicker { color: var(--ide-peach); }
+
+/* Copies toward the next ×2: the row's usual bottom bar, in peach. It lights up a copy or two away. */
+.offer-progress[data-kind="milestone"] { --a: var(--ide-peach); }
+
+.offer-progress[data-kind="milestone"][data-near] {
+  border-color: var(--ide-peach);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ide-peach) 40%, transparent), 0 0 12px color-mix(in srgb, var(--ide-peach) 25%, transparent);
+  animation: milestone-near 1.6s var(--ease-in-out) infinite;
+}
+
+/* The crossing: the row flashes, a "×2" sticker slams onto the art, and the row's new income rises off it. */
+/* The row isolates once it has a flash, so the flash sits on its background and under its content. */
+.offer:has(> .mult-flash) { isolation: isolate; }
+
+.mult-flash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ide-peach) 26%, transparent), transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  animation: mult-flash 1600ms var(--ease-out);
+}
+
+.mult-stamp {
+  position: absolute;
+  z-index: 3;
+  left: 26px;
+  top: 50%;
+  padding: 2px 9px 4px;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+  background: var(--ide-peach);
+  box-shadow: 3px 3px 0 var(--ink);
+  color: var(--ide-crust);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0;
+  animation: mult-stamp 1800ms var(--ease-out);
+}
+
+.mult-gain {
+  position: absolute;
+  z-index: 3;
+  right: var(--sp-4);
+  top: 6px;
+  color: var(--ide-peach);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+  text-shadow: 0 1px 0 var(--ink), 0 0 6px var(--ink);
+  opacity: 0;
+  animation: mult-gain 1800ms var(--ease-out);
+}
+
+.score-pop[data-kind="milestone"] .score-pop-kicker { color: var(--ide-peach); }
+
+.career-log-list li[data-tone="multiplier"] { --c: var(--ide-peach); }
+.career-log-list li[data-tone="multiplier"] b em,
+.career-log-list li[data-milestone] b em { color: var(--ide-peach); }
+.career-log-list li[data-milestone] .career-log-bar i { background: var(--ide-peach); }
+
+@keyframes mult-badge-in {
+  0% { transform: scale(2.2) rotate(-10deg); }
+  60% { transform: scale(0.94) rotate(0deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes mult-flash {
+  0%, 45% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes mult-stamp {
+  0% { opacity: 0; transform: translateY(-50%) rotate(-12deg) scale(2.6); }
+  14% { opacity: 1; transform: translateY(-50%) rotate(-12deg) scale(0.94); }
+  24% { transform: translateY(-50%) rotate(-12deg) scale(1.04); }
+  34%, 78% { opacity: 1; transform: translateY(-50%) rotate(-12deg) scale(1); }
+  100% { opacity: 0; transform: translateY(-50%) rotate(-12deg) scale(1); }
+}
+
+@keyframes mult-gain {
+  0% { opacity: 0; transform: translateY(8px); }
+  18%, 70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+
+@keyframes milestone-near {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ide-peach) 40%, transparent), 0 0 6px color-mix(in srgb, var(--ide-peach) 15%, transparent); }
+  50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ide-peach) 55%, transparent), 0 0 14px color-mix(in srgb, var(--ide-peach) 35%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mult-badge.is-stamped,
+  .offer-progress[data-kind="milestone"][data-near] { animation: none; }
+  .mult-flash,
+  .mult-stamp { display: none; }
+  /* The gain still reads, as a plain fade: the global 0.01ms duration would erase it. */
+  .mult-gain { animation: pop-fade 1800ms linear forwards !important; }
+}

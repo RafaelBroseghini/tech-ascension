@@ -31,6 +31,7 @@ import {
 } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { ownsEverything } from "./nextUnlock.ts"
+import { effectiveCopies, nextMilestone } from "./outputMilestones.ts"
 import { canBuyJob, capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigState, jobBoardUnlocked } from "./phase.ts"
 
 const DAY_SECONDS = 86_400
@@ -81,7 +82,7 @@ export const FINAL_CLICK_SHARE = clickShare({ jobs: JOB_TIERS.map((job) => job.i
  * day, and `pace.test.ts` fails if the tables drift far enough to make them wrong. The reinvestor constant
  * only holds for a player who visits at least daily; further apart, use the collector's.
  */
-export const PACE_K = { collector: 21, reinvestor: 8 } as const
+export const PACE_K = { collector: 8.4, reinvestor: 5.3 } as const
 
 /** Multiplier on a full always-open, never-clicking day of income: idle share plus what clicking adds. */
 export function paceOf(profile: PlayProfile): number {
@@ -200,16 +201,26 @@ function spendMoney(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
       if (!best || payback < best.payback || (payback === best.payback && cost < best.cost)) best = { payback, cost, buy }
     }
 
+    // One more copy, or (once the row is owned) every copy up to its next output milestone in one go: a player
+    // who sees "3 more for ×2" weighs the run to it, not each copy alone.
+    const row$ = (row: { baseCost: number; cps: number; clickBonus: number }, map: Record<string, number>, id: number) => {
+      const have = ownedCount(map, id)
+      const each = row.cps * perIdleSecond + row.clickBonus * perClick
+      consider(nextCost(row.baseCost, have), have === 0, each * (effectiveCopies(have + 1) - effectiveCopies(have)), () => (map[String(id)] = have + 1))
+      const goal = have > 0 ? nextMilestone(have) : null
+      if (goal === null || goal <= have + 1) return
+      let cost = 0
+      for (let count = have; count < goal; count++) cost += nextCost(row.baseCost, count)
+      consider(cost, false, each * (effectiveCopies(goal) - effectiveCopies(have)), () => (map[String(id)] = goal))
+    }
     for (const row of GEAR) {
-      const have = ownedCount(s.equipment, row.id)
       if (!equipmentOpen(s) || !isGearRevealed(row, s.equipment, s.peakMoney, s.jobs)) continue
-      consider(nextCost(row.baseCost, have), have === 0, row.cps * perIdleSecond + row.clickBonus * perClick, () => (s.equipment[String(row.id)] = have + 1))
+      row$(row, s.equipment, row.id)
     }
     if (capitalUnlocked(s)) {
       for (const row of CAPITAL) {
-        const have = ownedCount(s.owned, row.id)
         if (!isRevealed(row, s.owned, s.peakMoney)) continue
-        consider(nextCost(row.baseCost, have), have === 0, row.cps * perIdleSecond + row.clickBonus * perClick, () => (s.owned[String(row.id)] = have + 1))
+        row$(row, s.owned, row.id)
       }
     }
 

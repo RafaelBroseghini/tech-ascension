@@ -88,6 +88,7 @@ describe("the career log rows", () => {
       event: "event:1",
       review: "review:1",
       milestone: "milestone:money-1337",
+      multiplier: "capital:1",
     }
     for (const type of CAREER_TYPES) {
       const row = describeEntry({ seq: 1, at, type, ref: refs[type] ?? "", money: 0, xpTotal: 0 })
@@ -98,6 +99,16 @@ describe("the career log rows", () => {
     expect(describeEntry({ seq: 1, at, type: "return", ref: "", money: 0, xpTotal: 0, data: { awayMs: 2 * 3_600_000, creditedMoney: 500 } })).toMatchObject({
       title: "Back after 2h 0m",
       detail: "+$500",
+    })
+  })
+
+  it("names the row that doubled, with its count and its total multiplier", () => {
+    const row = describeEntry({ seq: 1, at, type: "multiplier", ref: "gear:2", money: 0, xpTotal: 0, data: { owned: 25, mult: 4 } })
+    expect(row).toEqual({ title: "Cable management kit", detail: "25 owned · ×4 output", tone: "multiplier" })
+    expect(careerJson({ seq: 1, at, type: "multiplier", ref: "capital:1", money: 0, xpTotal: 0, data: { owned: 10, mult: 2 } })).toMatchObject({
+      name: "Angel syndicate seat",
+      owned: 10,
+      mult: 2,
     })
   })
 

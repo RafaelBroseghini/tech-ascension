@@ -49,8 +49,9 @@ import { addCatFound } from "./catRoster.ts"
 import { setDeskPref } from "./desk.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { MONEY_POP } from "../data/phases.ts"
+import { MILESTONE_FACTOR } from "../data/outputMilestones.ts"
 import { firstNewMilestone } from "./milestones.ts"
-import { appendNotes, toSavedEntries } from "./careerLog.ts"
+import { appendNotes, entryName, toSavedEntries } from "./careerLog.ts"
 import type { CareerEntry, CareerJournal, CareerNote } from "./careerLog.ts"
 import { bootCareer, newlyOpen, planUnlocks, progressOf, purchaseNotes, seenFresh } from "./careerSync.ts"
 import type { CareerSlice } from "./careerSync.ts"
@@ -91,9 +92,11 @@ export type MoneyPop = {
   id: number
   kind: PopKind
   size: PopSize
-  /** Dollars behind the pop. Zero for a phase unlock. */
+  /** Dollars behind the pop. Zero for a phase unlock and a milestone. */
   amount: number
   label: string
+  /** A milestone pop's new output multiplier for the row. */
+  mult?: number
 }
 
 /** What a caller asks for. The store never buys more than the gold skills allow (see `clampBuyAmount`). */
@@ -298,9 +301,9 @@ function boot() {
 
 const booted = boot()
 
-function makePop(state: Pick<GameState, "popSeq">, kind: PopKind, amount: number, label: string) {
+function makePop(state: Pick<GameState, "popSeq">, kind: PopKind, amount: number, label: string, mult?: number) {
   const popSeq = state.popSeq + 1
-  const pop: MoneyPop = { id: popSeq, kind, size: MONEY_POP[kind], amount, label }
+  const pop: MoneyPop = { id: popSeq, kind, size: MONEY_POP[kind], amount, label, ...(mult ? { mult } : {}) }
   return { pop, popSeq }
 }
 
@@ -890,9 +893,22 @@ useGame.subscribe((state) => {
   })
 })
 
+/** The highest output multiplier one update reached on a kind of row: the one that gets the pop or the toast. */
+function topMultiplier(notes: readonly CareerNote[], kind: "gear" | "capital"): { name: string; mult: number; owned: number } | null {
+  let top: { name: string; mult: number; owned: number } | null = null
+  for (const note of notes) {
+    if (note.type !== "multiplier" || !note.ref.startsWith(`${kind}:`)) continue
+    const mult = typeof note.data?.mult === "number" ? note.data.mult : 0
+    const owned = typeof note.data?.owned === "number" ? note.data.owned : 0
+    if (!top || mult > top.mult) top = { name: entryName(note), mult, owned }
+  }
+  return top
+}
+
 // The career timeline. Registered last, so a phase pop never sees this write mid-update. Each update's transition
-// arrives once: it is diffed for first copies, clears, hires and new phases, and every row whose gate just opened is
-// unlocked, logged and queued. Writes start from the live state, since an earlier listener may have moved it.
+// arrives once: it is diffed for first copies, clears, hires, new phases and output milestones, and every row whose
+// gate just opened is unlocked, logged and queued. Writes start from the live state, since an earlier listener may
+// have moved it.
 useGame.subscribe((state, prev) => {
   const notes = purchaseNotes(prev, state)
   const live = useGame.getState()
@@ -908,6 +924,15 @@ useGame.subscribe((state, prev) => {
     patch.reveals = plan.reveals
     const names = rows.filter((row) => row.size !== "phase").map((row) => featureById(row.id)?.name ?? row.id)
     if (returning && live.toast && names.length > 0) patch.toast = { ...live.toast, unlocked: [...(live.toast.unlocked ?? []), ...names] }
+  }
+  // A capital row doubling its output gets the big centred pop; a gear row, a line in the corner.
+  const capital = topMultiplier(notes, "capital")
+  if (capital) Object.assign(patch, makePop(live, "milestone", 0, capital.name, capital.mult))
+  const gear = topMultiplier(notes, "gear")
+  if (gear && !returning) {
+    const toastSeq = live.toastSeq + 1
+    patch.toast = { id: toastSeq, text: `${gear.name} hit ${gear.owned}: ×${MILESTONE_FACTOR} output` }
+    patch.toastSeq = toastSeq
   }
   useGame.setState(patch)
 })

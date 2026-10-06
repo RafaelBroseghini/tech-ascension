@@ -28,6 +28,7 @@ export const CAREER_TYPES = [
   "event",
   "review",
   "milestone",
+  "multiplier",
 ] as const
 
 export type CareerType = (typeof CAREER_TYPES)[number]
@@ -184,6 +185,8 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
       return reviewById(idOf(entry.ref))?.question ?? entry.ref
     case "milestone":
       return BALANCE_MILESTONES.find((row) => `milestone:${row.id}` === entry.ref)?.label ?? entry.ref
+    case "multiplier":
+      return entry.ref.startsWith("gear:") ? (equipById(idOf(entry.ref))?.name ?? entry.ref) : (capitalById(idOf(entry.ref))?.name ?? entry.ref)
     case "start":
     case "return":
       return ""
@@ -218,7 +221,7 @@ export function careerLine(entry: CareerEntry): string {
 }
 
 /** Marker colour in the career log. */
-export type CareerTone = "unlock" | "career" | "work" | "buy" | "away" | "event"
+export type CareerTone = "unlock" | "career" | "work" | "buy" | "away" | "event" | "multiplier"
 
 export type CareerRow = { title: string; detail: string; tone: CareerTone }
 
@@ -273,6 +276,13 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: "1:1", detail: typeof data.choice === "string" ? `answered: ${data.choice}` : "left without a reply", tone: "event" }
     case "milestone":
       return { title: name, detail: "milestone", tone: "career" }
+    case "multiplier":
+      // The log row prints "×2" in front, the way an unlock prints "+"; the detail carries the row's total.
+      return {
+        title: name || "Output milestone",
+        detail: [typeof data.owned === "number" ? `${data.owned} owned` : "", typeof data.mult === "number" ? `×${data.mult} output` : "output doubled"].filter(Boolean).join(" · "),
+        tone: "multiplier",
+      }
   }
 }
 

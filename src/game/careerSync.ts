@@ -9,6 +9,7 @@ import type { OwnedMap, Progress } from "./economy.ts"
 import { featureById, isCosmetic, isFeatureId, openFeatureIds, triggerMet } from "./features.ts"
 import type { FeatureProgress } from "./features.ts"
 import { phaseOf, phaseRank, PHASES } from "./phase.ts"
+import { milestonesCrossed, outputMult } from "./outputMilestones.ts"
 import type { SaveData } from "./save.ts"
 
 /** The timeline's slice of the store. */
@@ -59,6 +60,18 @@ function newIds(before: readonly number[], after: readonly number[]): number[] {
   return after.filter((id) => !before.includes(id))
 }
 
+/** A row's output doubling at 10, 25, 50 and 100 copies: one note per milestone crossed. */
+export function multiplierNotes(kind: "gear" | "capital", before: OwnedMap, after: OwnedMap): CareerNote[] {
+  if (before === after) return []
+  const notes: CareerNote[] = []
+  for (const [key, count] of Object.entries(after)) {
+    for (const at of milestonesCrossed(before[key] ?? 0, count)) {
+      notes.push({ type: "multiplier", ref: `${kind}:${key}`, data: { owned: at, mult: outputMult(at) } })
+    }
+  }
+  return notes
+}
+
 const ERA_ORDER: readonly Era[] = ["mid", "upper", "q3", "end"]
 
 function erasHeld(owned: OwnedMap): Set<Era> {
@@ -77,6 +90,7 @@ export function purchaseNotes(prev: PurchaseState, next: PurchaseState): CareerN
   for (const id of newIds(prev.jobs, next.jobs)) notes.push({ type: "hire", ref: `job:${id}` })
   for (const id of newKeys(prev.equipment, next.equipment)) notes.push({ type: "gear", ref: `gear:${id}` })
   for (const id of newKeys(prev.owned, next.owned)) notes.push({ type: "invest", ref: `capital:${id}` })
+  notes.push(...multiplierNotes("gear", prev.equipment, next.equipment), ...multiplierNotes("capital", prev.owned, next.owned))
   if (prev.owned !== next.owned) {
     const before = erasHeld(prev.owned)
     const after = erasHeld(next.owned)

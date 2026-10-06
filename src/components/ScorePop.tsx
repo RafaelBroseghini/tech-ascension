@@ -9,10 +9,17 @@ const KICKER: Record<MoneyPop["kind"], string> = {
   click: "",
   gigClear: "Gig cleared",
   unlock: "Unlocked",
+  milestone: "Output doubled",
+}
+
+/** The big line: dollars for a payout, the new multiplier for an output milestone, else the label itself. */
+function headline(pop: MoneyPop): string | null {
+  if (pop.kind === "milestone") return `×${formatNumber(pop.mult ?? 2)}`
+  return pop.amount > 0 ? `+$${formatNumber(pop.amount)}` : null
 }
 
 /**
- * The big centered Balatro pop. It only shows for large pops (gig clear, phase unlock);
+ * The big centered Balatro pop. It only shows for large pops (gig clear, phase unlock, output milestone);
  * a medium click pop is just the hero total squashing, and idle ticks never get here.
  */
 export function ScorePop() {
@@ -36,19 +43,20 @@ export function ScorePop() {
   }, [])
 
   if (!live) return null
+  const big = headline(live)
   return (
     <div className="score-pop" role="status" data-testid="score-pop" data-kind={live.kind} key={live.id}>
       <span className="score-pop-kicker">{KICKER[live.kind]}</span>
-      {live.amount > 0 ? (
-        <span className="score-pop-amount" data-text={`+$${formatNumber(live.amount)}`}>
-          +${formatNumber(live.amount)}
+      {big ? (
+        <span className="score-pop-amount" data-text={big}>
+          {big}
         </span>
       ) : (
         <span className="score-pop-amount is-title" data-text={live.label}>
           {live.label}
         </span>
       )}
-      {live.amount > 0 && live.label ? <span className="score-pop-label">{live.label}</span> : null}
+      {big && live.label ? <span className="score-pop-label">{live.label}</span> : null}
     </div>
   )
 }

@@ -13,7 +13,7 @@ import type { Identity } from "./identity.ts"
  * Journal lines that count as contributions (things you did, not things that happened to you), and how many commits
  * each is worth before the career stage multiplies it.
  */
-const COMMITS: Partial<Record<CareerType, number>> = { learn: 1, gear: 1, perk: 1, gig: 3, invest: 2, hire: 5 }
+const COMMITS: Partial<Record<CareerType, number>> = { learn: 1, gear: 1, perk: 1, gig: 3, invest: 2, multiplier: 2, hire: 5 }
 
 /**
  * How much a step counts for at a career stage, read from the lifetime XP the journal line stamped: one more per

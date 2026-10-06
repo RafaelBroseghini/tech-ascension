@@ -317,7 +317,7 @@ export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map((row) => ({
   xpLump: row.xpLump ?? 0,
 }))
 
-/** Balatro pops: big on gig/unlock; medium on click. */
-export const MONEY_POP = { click: "medium", gigClear: "large", unlock: "large" } as const;
+/** Balatro pops: big on gig clear, unlock and a capital output milestone; medium on click. */
+export const MONEY_POP = { click: "medium", gigClear: "large", unlock: "large", milestone: "large" } as const;
 
 export const BASE_XP_PER_CLICK = 1;
