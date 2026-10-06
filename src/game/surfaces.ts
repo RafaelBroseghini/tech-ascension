@@ -6,6 +6,7 @@ export type Surface =
   | "terminal"
   | "output"
   | "careerLog"
+  | "githug"
   | "linkedout"
   | "metrics"
   | "rosters"

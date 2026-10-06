@@ -24,14 +24,15 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   const second = SKILL_TIERS[1]
   if (!first || !second) throw new Error("missing skills")
   let guard = 0
-  while (game.getState().xp < first.baseXpCost) {
+  while (game.getState().xp < (first.firstXpCost ?? first.baseXpCost)) {
     const gain = game.click()
     expect(gain.money).toBe(0)
     expect(gain.xp).toBe(1)
     guard += 1
     if (guard > 5_000) throw new Error("clicks did not pay for the first skill")
   }
-  expect(guard).toBeGreaterThan(100)
+  // The used laptop's first copy is cheap on purpose: one XP per click, 90 clicks. Later copies cost the full curve.
+  expect(guard).toBe(90)
   expect(game.getState().money).toBe(0)
   expect(game.getState().lastPop).toBeNull()
 
@@ -39,7 +40,7 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   expect(game.buy(26)).toBe(false)
   expect(game.buySkill(1)).toBe(true)
   const bought = game.getState()
-  expect(bought.xp).toBe(ready.xp - first.baseXpCost)
+  expect(bought.xp).toBe(ready.xp - 90)
   expect(bought.xpTotal).toBe(ready.xpTotal)
   expect(bought.xpPerClick).toBe(ready.xpPerClick + first.xpPerClick)
   expect(bought.money).toBe(ready.money)
@@ -470,7 +471,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(start.features.upNext.map((row) => row.id)).toEqual(["editor", "terminal", "careerLog"])
 
   // The first skill boots the editor: logged twice (the skill, the unlock) and queued to reveal.
-  game.setXp(240)
+  game.setXp(90)
   expect(game.buySkill(1)).toBe(true)
   let state = game.getState()
   expect(state.features.open).toEqual(["editor"])
@@ -494,7 +495,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()
-  expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
+  expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "githug", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
   expect(state.features.open).not.toContain("cat")
 
   // Every journal line is one flat JSON object with a time, a type and the balances it left.
@@ -522,4 +523,10 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   game.reset()
   expect(game.getState().features.open).toEqual([])
   expect(game.getState().careerLog.size).toBe(1)
+
+  // Without ever leaving, a quarter of an hour at the desk brings the cat too.
+  game.tick(14 * 60 * 1000)
+  expect(game.getState().features.open).not.toContain("cat")
+  game.tick(60 * 1000)
+  expect(game.getState().features.open).toContain("cat")
 })

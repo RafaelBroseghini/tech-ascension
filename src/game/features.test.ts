@@ -80,10 +80,12 @@ describe("gates", () => {
     expect(triggerMet({ kind: "board", board: "capital" }, p)).toBe(false)
   })
 
-  it("brings the cat on a return, or after an hour of play without one", () => {
-    expect(triggerMet({ kind: "return" }, progress())).toBe(false)
-    expect(triggerMet({ kind: "return" }, progress({ returns: 1 }))).toBe(true)
-    expect(triggerMet({ kind: "return" }, progress({ playTimeMs: 60 * 60 * 1000 }))).toBe(true)
+  it("brings the cat after a quarter of an hour at the desk, or sooner on a return", () => {
+    expect(triggerMet({ kind: "settled" }, progress())).toBe(false)
+    expect(triggerMet({ kind: "settled" }, progress({ playTimeMs: 15 * 60 * 1000 - 1 }))).toBe(false)
+    expect(triggerMet({ kind: "settled" }, progress({ playTimeMs: 15 * 60 * 1000 }))).toBe(true)
+    expect(triggerMet({ kind: "settled" }, progress({ returns: 1 }))).toBe(true)
+    expect(triggerProgress({ kind: "settled" }, progress({ playTimeMs: 5 * 60 * 1000 }))).toEqual({ fill: 1 / 3, left: "10 min to go" })
   })
 
   it("counts an era as reached once any row of that era or a later one is owned", () => {
@@ -96,7 +98,7 @@ describe("teasing", () => {
   it("lists the next closed rows in table order, skipping cosmetics", () => {
     expect(upNext(progress(), none).map((row) => row.id)).toEqual(["editor", "terminal", "careerLog"])
     const later = upNext(progress({ skills: { "1": 1 } }), new Set(["editor"]))
-    expect(later.map((row) => row.id)).toEqual(["terminal", "careerLog", "linkedout"])
+    expect(later.map((row) => row.id)).toEqual(["terminal", "careerLog", "githug"])
   })
 
   it("stands one row in its place: the first closed one with a slot on screen", () => {

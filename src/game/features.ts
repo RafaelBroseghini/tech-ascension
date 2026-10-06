@@ -1,11 +1,11 @@
 import { CAPITAL } from "../data/capital.ts"
 import type { Era } from "../data/capital.ts"
-import { BASE_CLICK_KIT, BASE_THEMES, CAT_PLAYTIME_MS, FEATURES } from "../data/features.ts"
+import { BASE_CLICK_KIT, BASE_THEMES, CAT_DESK_MS, FEATURES } from "../data/features.ts"
 import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { IDE_PACKS } from "../data/idePacks.ts"
 import { GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, CAPITAL_UNLOCK } from "../data/phases.ts"
-import { canAfford, equipById, isGearRevealed, jobById, nextCost, ownedCount, skillById } from "./economy.ts"
+import { canAfford, equipById, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { goldSectionOpen, hoverRate } from "./gold.ts"
@@ -74,8 +74,8 @@ export function triggerMet(trigger: FeatureTrigger, p: FeatureProgress): boolean
       return folderReached(p, trigger.packId)
     case "era":
       return reachedEra(p, trigger.era)
-    case "return":
-      return p.returns > 0 || p.playTimeMs >= CAT_PLAYTIME_MS
+    case "settled":
+      return p.returns > 0 || p.playTimeMs >= CAT_DESK_MS
   }
 }
 
@@ -113,8 +113,8 @@ export function triggerLabel(trigger: FeatureTrigger): string {
       return `the ${IDE_PACKS.find((row) => row.id === trigger.packId)?.label ?? trigger.packId} folder`
     case "era":
       return `the ${trigger.era === "q3" ? "scale" : trigger.era} era`
-    case "return":
-      return "come back after a break"
+    case "settled":
+      return `${CAT_DESK_MS / 60_000} minutes at the desk, or a break`
   }
 }
 
@@ -174,7 +174,7 @@ function skillProgress(p: FeatureProgress, id: number): TriggerProgress {
   const row = skillById(id)
   if (!row) return { fill: 0, left: "" }
   if (p.xpTotal < row.unlockAtXp) return { fill: ratio(p.xpTotal, row.unlockAtXp) * 0.5, left: xpLeft(p.xpTotal, row.unlockAtXp) }
-  const cost = nextCost(row.baseXpCost, 0)
+  const cost = skillCost(row, 0)
   if (canAfford(p.xp, cost)) return { fill: 1, left: "ready to learn" }
   return { fill: 0.5 + ratio(p.xp, cost) * 0.5, left: `${formatNumber(Math.ceil(cost - p.xp))} XP to go` }
 }
@@ -235,8 +235,11 @@ export function triggerProgress(trigger: FeatureTrigger, p: FeatureProgress): Tr
     case "folder":
     case "era":
       return { fill: 0, left: "" }
-    case "return":
-      return { fill: 0, left: "come back after a break" }
+    case "settled": {
+      if (p.returns > 0) return { fill: 1, left: "" }
+      const minutes = Math.ceil(Math.max(0, CAT_DESK_MS - p.playTimeMs) / 60_000)
+      return { fill: ratio(p.playTimeMs, CAT_DESK_MS), left: minutes > 0 ? `${minutes} min to go` : "" }
+    }
   }
 }
 
@@ -263,7 +266,7 @@ function teaseOf(row: FeatureRow, p: FeatureProgress): FeatureTease {
     via: triggerLabel(row.trigger),
     fill: progress.fill,
     left: progress.left,
-    mystery: row.trigger.kind === "return",
+    mystery: row.trigger.kind === "settled",
   }
 }
 

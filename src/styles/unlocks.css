@@ -178,20 +178,28 @@
 .ul-chip {
   display: inline-flex;
   align-items: center;
-  margin-left: 8px;
-  padding: 1px 6px 2px;
+  justify-content: center;
+  gap: 4px;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 7px;
+  padding: 0 3px;
   border: 1px solid color-mix(in srgb, var(--ide-green) 70%, transparent);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--ide-green) 12%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ide-green) 14%, transparent);
   color: var(--ide-green);
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help;
+}
+.ul-chip:focus-visible { outline: 2px solid var(--ide-green); outline-offset: 1px; }
+/* On the Next banner there is room for the name. */
+.ul-chip.is-named { padding: 0 6px 0 4px; cursor: inherit; }
+.ul-chip-name {
   font-family: var(--font-mono);
   font-size: var(--fs-2xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.45;
-  text-transform: uppercase;
-  vertical-align: middle;
-  white-space: nowrap;
+  line-height: 1;
 }
 
 /* ---------- the moment: the card beside the unlock ---------- */

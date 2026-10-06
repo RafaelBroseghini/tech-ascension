@@ -12,7 +12,7 @@ import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, visibleShopRows } from "../game/economy.ts"
+import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
 import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, visibleGold } from "../game/gold.ts"
 import type { BuyAmount } from "../game/gold.ts"
 import { formatCompact, formatNumber } from "../game/format.ts"
@@ -39,7 +39,7 @@ import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
-import { NewMark } from "./FeatureMarks.tsx"
+import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useSurface, useUnlockedSet } from "./useFeature.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
@@ -217,7 +217,7 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
           {title}
           {fresh ? <span className="new-tag">New</span> : null}
           {unlocks?.map((feature) => (
-            <UnlockChip key={feature.id} name={feature.name} />
+            <UnlockBadge key={feature.id} id={feature.id} />
           ))}
         </h3>
         <p>{children}</p>
@@ -243,21 +243,13 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
   )
 }
 
-/** "Unlocks Terminal": the row is the way to something new on the desk. */
-function UnlockChip({ name }: { name: string }) {
-  return (
-    <span className="ul-chip" data-testid="unlock-chip">
-      Unlocks {name}
-    </span>
-  )
-}
-
 /** `Learn 480 XP` for one copy; `Learn ×5 2,400 XP` when a gold amount is set and the budget covers more than one. */
-function buyLabel(verb: string, currency: "xp" | "money", baseCost: number, have: number, budget: number, amount: BuyAmount): string {
+function buyLabel(verb: string, currency: "xp" | "money", baseCost: number, have: number, budget: number, amount: BuyAmount, firstCost?: number): string {
   const price = (n: number) => (currency === "money" ? `$${formatNumber(n)}` : `${formatNumber(n)} XP`)
-  if (amount === 1) return `${verb} ${price(nextCost(baseCost, have))}`
-  const quote = quotePurchase(budget, baseCost, have, amount)
-  if (quote.count <= 1) return `${verb} ${price(nextCost(baseCost, have))}`
+  const one = have === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, have)
+  if (amount === 1) return `${verb} ${price(one)}`
+  const quote = quotePurchase(budget, baseCost, have, amount, firstCost)
+  if (quote.count <= 1) return `${verb} ${price(one)}`
   return `${verb} ×${quote.count} ${price(quote.total)}`
 }
 
@@ -585,7 +577,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           const affordable =
             !locked &&
             ((id === "A" &&
-              (skillRows.some((row) => canAfford(xp, nextCost(row.baseXpCost, ownedCount(skills, row.id)))) ||
+              (skillRows.some((row) => canAfford(xp, skillCost(row, ownedCount(skills, row.id)))) ||
                 visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)))) ||
               (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
               (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost))) ||
@@ -630,7 +622,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             <strong className="next-name">
               {next.name}
               {nextTease.map((feature) => (
-                <UnlockChip key={feature.id} name={feature.name} />
+                <UnlockBadge key={feature.id} id={feature.id} named />
               ))}
             </strong>
             <span className="next-needs">{nextLine(next)}</span>
@@ -706,7 +698,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           <>
             {skillRows.map((row, index) => {
               const have = ownedCount(skills, row.id)
-              const cost = nextCost(row.baseXpCost, have)
+              const cost = skillCost(row, have)
               const revealed = isSkillRevealed(row, skills, xpTotal)
               const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
@@ -730,7 +722,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, buyAmount))}>
-                        {buyLabel("Learn", "xp", row.baseXpCost, have, xp, buyAmount)}
+                        {buyLabel("Learn", "xp", row.baseXpCost, have, xp, buyAmount, row.firstXpCost)}
                       </button>
                     </>
                   }

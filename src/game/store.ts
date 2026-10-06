@@ -454,7 +454,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const have = ownedCount(state.skills, skill.id)
     if (have === 0 && state.xpTotal < skill.unlockAtXp) return
-    const quote = quotePurchase(state.xp, skill.baseXpCost, have, allowedMode(state, mode))
+    const quote = quotePurchase(state.xp, skill.baseXpCost, have, allowedMode(state, mode), skill.firstXpCost)
     if (quote.count <= 0) return
 
     const prevBest = highestOwnedSkill(state.skills)

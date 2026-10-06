@@ -88,6 +88,7 @@ export function quotePurchase(
   baseCost: number,
   owned: number,
   mode: "one" | "max" | number,
+  firstCost?: number,
 ): { count: number; total: number } {
   const limit = mode === "max" ? 5000 : mode === "one" ? 1 : Math.max(1, Math.min(5000, Math.floor(mode)))
   let count = 0
@@ -95,7 +96,7 @@ export function quotePurchase(
   let pool = budget
   let have = owned
   for (let i = 0; i < limit; i++) {
-    const cost = nextCost(baseCost, have)
+    const cost = have === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, have)
     if (!(cost > 0) || !Number.isFinite(cost) || !canAfford(pool, cost)) break
     pool -= cost
     total += cost
@@ -103,6 +104,11 @@ export function quotePurchase(
     count += 1
   }
   return { count, total }
+}
+
+/** A skill's next copy, in XP. The first copy can sit below the curve (`firstXpCost`: the used laptop). */
+export function skillCost(row: Pick<SkillTier, "baseXpCost" | "firstXpCost">, owned: number): number {
+  return owned === 0 && row.firstXpCost !== undefined ? row.firstXpCost : nextCost(row.baseXpCost, owned)
 }
 
 /** XP per click from skills, before any boost. Base 1 plus every owned copy's xpPerClick. */

@@ -26,6 +26,7 @@ const POP_HOLD_MS = 1_600
 const ACTION: Partial<Record<FeatureId, Surface | "music" | "hoverClick">> = {
   terminal: "terminal",
   careerLog: "careerLog",
+  githug: "githug",
   linkedout: "linkedout",
   tenx: "tenx",
   boardGear: "boardGear",
