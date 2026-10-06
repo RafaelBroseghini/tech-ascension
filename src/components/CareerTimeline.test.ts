@@ -12,6 +12,7 @@ import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { onSurface } from "../game/surfaces.ts"
 import { CareerLog, CareerOutput } from "./CareerLog.tsx"
+import { GitHugCorner } from "./CornerActions.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { Shop } from "./Shop.tsx"
 import { UnlockReveals } from "./UnlockReveals.tsx"
@@ -157,7 +158,7 @@ describe("the career log and the Output tab", () => {
     const history = $$("[data-testid='career-log-history'] li")
     expect(history[0]?.textContent).toContain("HEAD")
     expect(history.at(-1)?.textContent).toContain("init: high school")
-    expect($$("[data-testid='career-log-next'] li").map((li) => li.dataset.feature)).toEqual(["terminal", "careerLog", "linkedout"])
+    expect($$("[data-testid='career-log-next'] li").map((li) => li.dataset.feature)).toEqual(["terminal", "careerLog", "githug"])
   })
 
   it("opens the JSON from the career log", () => {
@@ -197,7 +198,35 @@ describe("the shop teases what is next", () => {
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
     expect($$("[data-row='skill:8'] [data-testid='unlock-chip']").map((chip) => chip.textContent)).toEqual(["Unlocks Terminal"])
     expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.textContent).toBe("Unlocks Terminal")
+    // A row wears the feature's icon and keeps the name for the tooltip and screen readers; the banner prints it.
+    const badge = $("[data-row='skill:8'] [data-testid='unlock-chip']")!
+    expect(badge.dataset.feature).toBe("terminal")
+    expect(badge.querySelector("svg")).not.toBeNull()
+    expect(badge.querySelector(".ul-chip-name")).toBeNull()
+    expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.classList.contains("is-named")).toBe(true)
     // Owned rows have nothing left to tease.
     expect($("[data-row='skill:1'] [data-testid='unlock-chip']")).toBeNull()
+  })
+})
+
+describe("the GitHug corner", () => {
+  it("stays off the desk, real star included, until Git + GitHug hygiene", () => {
+    useGame.setState({ skills: { "1": 1 } })
+    render(GitHugCorner)
+    expect($("[data-testid='github-star']")).toBeNull()
+    expect($("[data-testid='view-githug']")).toBeNull()
+  })
+
+  it("opens a profile with this career's contribution graph and pinned repos", () => {
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["editor", "careerLog", "githug"], fresh: ["githug"] })
+    render(GitHugCorner)
+    expect($("[data-testid='github-star']")).not.toBeNull()
+    click($("[data-testid='view-githug']"))
+    expect($("[data-testid='githug-modal']")).not.toBeNull()
+    // 25 full weeks, then this week up to today.
+    const days = $$("[data-testid='githug-graph'] .githug-day")
+    expect(days.length).toBe(25 * 7 + new Date().getDay() + 1)
+    expect($$("[data-testid='githug-pinned'] strong").map((el) => el.textContent)).toEqual(["til", "hello-world"])
+    expect(useGame.getState().fresh).not.toContain("githug")
   })
 })

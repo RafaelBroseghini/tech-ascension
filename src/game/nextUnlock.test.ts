@@ -23,7 +23,7 @@ describe("next unlock teaser", () => {
       key: `skill:${first.id}`,
       name: first.name,
       tab: "A",
-      needs: [`${formatNumber(first.baseXpCost)} XP`],
+      needs: [`${formatNumber(first.firstXpCost ?? first.baseXpCost)} XP`],
       either: false,
     })
     const grinding = nextUnlock({ ...EMPTY, xpTotal: first.baseXpCost, xp: 0, skills: { "1": 1 } })
@@ -69,9 +69,9 @@ describe("next unlock teaser", () => {
       key: "skill:1",
       name: "Used laptop",
       tab: "A",
-      needs: [`${SKILL_TIERS[0]?.baseXpCost ?? 0} XP`],
+      needs: [`${SKILL_TIERS[0]?.firstXpCost ?? 0} XP`],
     })
-    expect(nextUnlock({ ...open, xp: SKILL_TIERS[0]?.baseXpCost ?? 0 })).toMatchObject({
+    expect(nextUnlock({ ...open, xp: SKILL_TIERS[0]?.firstXpCost ?? 0 })).toMatchObject({
       key: "skill:1",
       needs: ["to buy it"],
     })

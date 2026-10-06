@@ -107,6 +107,19 @@ describe("career timeline", () => {
     expect(back?.data?.awayMs).toBe(30 * 60 * 1000)
   })
 
+  it("a quarter of an hour at the desk brings the cat without ever leaving", () => {
+    learn(1)
+    useGame.getState().clearReveals()
+    const start = useGame.getState().now
+    useGame.getState().tick(start + 14 * 60 * 1000)
+    expect(useGame.getState().unlocked).not.toContain("cat")
+    useGame.getState().tick(start + 15 * 60 * 1000)
+    const state = useGame.getState()
+    expect(state.returns).toBe(0)
+    expect(state.unlocked).toContain("cat")
+    expect(state.reveals).toEqual(["cat"])
+  })
+
   it("logs events and 1:1s with the choice made", () => {
     useGame.getState().fireEvent(1)
     useGame.getState().dismissEvent()

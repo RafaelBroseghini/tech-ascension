@@ -28,8 +28,8 @@ export type FeatureTrigger =
   | { kind: "folder"; packId: string }
   /** The first capital row of an era. */
   | { kind: "era"; era: Era }
-  /** The first time the player comes back after a break. */
-  | { kind: "return" }
+  /** A quarter of an hour at the desk (`CAT_DESK_MS`, tab open counts, in front or behind), or coming back after a break, whichever is first. */
+  | { kind: "settled" }
 
 /**
  * How loud the reveal is. `big` gets the centred UNLOCKED slam, confetti and a card; `standard` lights up where it
@@ -42,6 +42,7 @@ export type FeatureId =
   | "editor"
   | "terminal"
   | "careerLog"
+  | "githug"
   | "linkedout"
   | "tenx"
   | "boardGear"
@@ -103,6 +104,14 @@ export const FEATURES: readonly FeatureRow[] = [
     size: "big",
     trigger: { kind: "skill", id: 10 },
     action: "Open it",
+  },
+  {
+    id: "githug",
+    name: "GitHug profile",
+    blurb: "A green square for every day you ship something, the repos you pinned, and a star for the real one.",
+    size: "standard",
+    trigger: { kind: "skill", id: 10 },
+    action: "View it",
   },
   {
     id: "linkedout",
@@ -205,9 +214,9 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "cat",
     name: "Desk cat",
-    blurb: "A cat moved onto your desk while you were out. Tap it to meet another.",
+    blurb: "A cat wandered onto your desk and decided to stay. Tap it to meet another.",
     size: "big",
-    trigger: { kind: "return" },
+    trigger: { kind: "settled" },
     ghost: false,
   },
 
@@ -235,5 +244,8 @@ export const BASE_THEMES: readonly string[] = ["mocha", "latte"]
 /** The click sound every career starts with. */
 export const BASE_CLICK_KIT = "thock"
 
-/** A career that plays this long without ever leaving still gets the cat. */
-export const CAT_PLAYTIME_MS = 60 * 60 * 1000
+/**
+ * The cat moves in after this long at the desk: clicking, idling, or with the tab left open in the background. A
+ * break of 10 minutes or more (`RETURN_BREAK_MS`) brings it sooner, waiting on the desk when you come back.
+ */
+export const CAT_DESK_MS = 15 * 60 * 1000

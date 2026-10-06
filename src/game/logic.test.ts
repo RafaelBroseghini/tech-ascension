@@ -316,6 +316,7 @@ describe("catalog tables", () => {
   it("doubles purchase prices and leaves payouts and gig lumps alone", () => {
     expect(PURCHASE_COST_SCALE).toBe(2)
     expect(SKILL_TIERS[0]?.baseXpCost).toBe(240)
+    expect(SKILL_TIERS[0]?.firstXpCost).toBe(90)
     expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
     expect(JOB_TIERS[0]?.baseCost).toBe(0)
     expect(JOB_TIERS[1]?.baseCost).toBe(1_000)

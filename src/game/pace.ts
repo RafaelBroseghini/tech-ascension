@@ -25,6 +25,7 @@ import {
   isSkillRevealed,
   nextCost,
   ownedCount,
+  skillCost,
   xpPerClick,
   xpPerSec,
 } from "./economy.ts"
@@ -229,7 +230,7 @@ function spendXp(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
     for (const row of SKILL_TIERS) {
       const have = ownedCount(s.skills, row.id)
       if (!isSkillRevealed(row, s.skills, s.xpTotal)) continue
-      const cost = nextCost(row.baseXpCost, have)
+      const cost = skillCost(row, have)
       if (!canAfford(s.xp, cost)) continue
       const gain = row.xpPerSec * cad.idleShare + row.xpPerClick * cad.clicksPerWallSecond
       const payback = gain > 0 ? cost / gain : Number.POSITIVE_INFINITY

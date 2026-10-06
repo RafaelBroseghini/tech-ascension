@@ -1,0 +1,128 @@
+/* The GitHug profile (src/components/GitHugModal.tsx): the career journal as a contribution graph. Greens are the
+   editor's green at four strengths, so every theme gets its own graph. */
+
+.githug-modal { width: min(36rem, 100%); }
+
+.githug-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: center;
+  padding: var(--sp-4) calc(var(--sp-5) + 36px) var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+}
+.githug-head h2 { margin: 2px 0 0; font-size: var(--fs-xl); line-height: 1.1; }
+.githug-avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ide-green) 30%, var(--surface-2));
+  color: var(--ide-crust);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+.githug-handle,
+.githug-meta { margin: 2px 0 0; color: var(--text-dim); font-family: var(--font-mono); font-size: var(--fs-xs); }
+.githug-meta b { color: var(--text); }
+
+.githug-sec {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.githug-streak { display: inline-flex; align-items: center; gap: 4px; color: var(--ide-peach); }
+
+.githug-graph {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, auto);
+  grid-template-columns: 24px repeat(var(--weeks, 26), minmax(0, 14px));
+  gap: 3px;
+}
+.githug-weekday { align-self: center; color: var(--text-faint); font-family: var(--font-mono); font-size: 9px; line-height: 1; }
+.githug-day {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ide-text) 9%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--ide-text) 6%, transparent);
+  outline-offset: -1px;
+}
+.githug-day[data-level="1"] { background: color-mix(in srgb, var(--ide-green) 32%, transparent); }
+.githug-day[data-level="2"] { background: color-mix(in srgb, var(--ide-green) 55%, transparent); }
+.githug-day[data-level="3"] { background: color-mix(in srgb, var(--ide-green) 78%, transparent); }
+.githug-day[data-level="4"] { background: var(--ide-green); }
+.githug-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin: var(--sp-2) 0 0;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.githug-legend .githug-day { width: 10px; }
+.githug-legend i:first-of-type { margin-left: 4px; }
+.githug-legend i:last-of-type { margin-right: 4px; }
+
+.githug-pinned {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.githug-pinned li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+.githug-pinned strong { color: var(--ide-blue); font-family: var(--font-mono); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.githug-pinned p { flex: 1; margin: 0; color: var(--text-dim); font-size: var(--fs-xs); line-height: 1.35; }
+.githug-repo-meta { display: inline-flex; align-items: center; gap: 5px; color: var(--text-faint); font-family: var(--font-mono); font-size: 10.5px; }
+.githug-repo-meta i { width: 9px; height: 9px; border-radius: 50%; }
+.githug-repo-meta svg { margin-left: 6px; }
+
+.githug-real {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.githug-real p { margin: 0; }
+.githug-real a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #24292f;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.githug-real a:hover { background: #eef1f4; }

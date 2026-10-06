@@ -156,7 +156,7 @@ describe("phase A: XP only", () => {
   })
 
   it("buys skills with XP only and keeps lifetime XP when spending", () => {
-    const skillCost = SKILL_TIERS[0]?.baseXpCost ?? 0
+    const skillCost = SKILL_TIERS[0]?.firstXpCost ?? 0
     useGame.setState({ money: 0, xp: skillCost, xpTotal: skillCost })
     useGame.getState().buySkill(1)
     let state = useGame.getState()

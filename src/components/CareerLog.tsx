@@ -73,12 +73,10 @@ export function CareerLog() {
               {up.map((row) => (
                 <li key={row.id} data-feature={row.id}>
                   <b>{row.mystery ? "???" : row.name}</b>
-                  <small>{row.mystery ? row.via : row.left || row.via}</small>
-                  {row.mystery ? null : (
-                    <span className="career-log-bar" aria-hidden="true">
-                      <i style={{ width: `${Math.round(row.fill * 100)}%` }} />
-                    </span>
-                  )}
+                  <small>{row.left || row.via}</small>
+                  <span className="career-log-bar" aria-hidden="true">
+                    <i style={{ width: `${Math.round(row.fill * 100)}%` }} />
+                  </span>
                 </li>
               ))}
             </ol>

@@ -4,7 +4,7 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { canAfford, isGearRevealed, jobById, nextCost, ownedCount, skillById } from "./economy.ts"
+import { canAfford, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
@@ -180,7 +180,7 @@ function skillTarget(p: Progression, skill: SkillTier): NextUnlock {
   const needs: string[] = []
   if (p.xpTotal < skill.unlockAtXp) needs.push(xpLeft(p.xpTotal, skill.unlockAtXp))
   else {
-    const cost = nextCost(skill.baseXpCost, 0)
+    const cost = skillCost(skill, 0)
     if (!canAfford(study(p), cost)) needs.push(xpShort(study(p), cost))
     else needs.push("to buy it")
   }

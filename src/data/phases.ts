@@ -18,7 +18,16 @@ export const GEAR_TAB_UNLOCK = { minXp: 10000 } as const;
 export { GEAR as EQUIPMENT } from "./gear.ts";
 export type { GearItem as Equip } from "./gear.ts";
 
-export type SkillTier = { id: number; name: string; baseXpCost: number; xpPerClick: number; xpPerSec: number; unlockAtXp: number };
+export type SkillTier = {
+  id: number
+  name: string
+  baseXpCost: number
+  /** The first copy's price when it sits below the curve. Later copies follow `baseXpCost` as usual. */
+  firstXpCost?: number
+  xpPerClick: number
+  xpPerSec: number
+  unlockAtXp: number
+};
 const SKILL_ROWS: readonly SkillTier[] = [
   { id: 1, name: "Used laptop", baseXpCost: 10, xpPerClick: 1, xpPerSec: 0, unlockAtXp: 0 },
   { id: 2, name: "Stack Overblow lurker", baseXpCost: 12, xpPerClick: 0, xpPerSec: 0.1, unlockAtXp: 6 },
@@ -136,6 +145,13 @@ function earlyGrind(id: number): number {
   return 12 * (1 / 12) ** t
 }
 
+/**
+ * The used laptop's first copy is cheap: about 45 seconds of clicking. It opens the editor, which shows the loop
+ * (click, learn, unlock) before the grind starts. Its later copies and every skill gate after it keep the grind
+ * price, so only the first minute gets faster.
+ */
+export const FIRST_SKILL_XP = 90
+
 let nextSkillUnlockAt = 0
 export const SKILL_TIERS: readonly SkillTier[] = SKILL_ROWS.map((row, index) => {
   const ordinal = index + 1
@@ -144,6 +160,7 @@ export const SKILL_TIERS: readonly SkillTier[] = SKILL_ROWS.map((row, index) => 
   nextSkillUnlockAt = unlockAtXp + baseXpCost * 1.65
   return {
     ...row,
+    ...(ordinal === 1 ? { firstXpCost: FIRST_SKILL_XP } : {}),
     baseXpCost,
     unlockAtXp,
     xpPerSec: ordinal <= 8 ? row.xpPerSec * 0.25 : row.xpPerSec,

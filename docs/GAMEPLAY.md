@@ -4,7 +4,7 @@ The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, 
 
 | Phase | Pays in | You buy | Opens when |
 | --- | --- | --- | --- |
-| **A Skill grind** | XP per click, no $/s | 104 skills (XP/click, XP/s). Early ones take a lot of clicks | start |
+| **A Skill grind** | XP per click, no $/s | 104 skills (XP/click, XP/s). The used laptop is 90 XP; the ones after it take a lot of clicks | start |
 | **B Gigs** | first $ | 65 gigs: lump $ on clear, some add a retainer $/s | 14,000 lifetime XP and Portfolio (#15) + React (#16) owned |
 | **C Jobs** | salary $/s, and XP/s on some | 31 jobs (held once) | 40,000 lifetime XP and 6 gigs cleared |
 | **Gear** (shop tab, not a phase) | click bonus, $/s | 110 repeatable infra items (desk, Pi lab, GPUs, racks, cloud, Mars) | 10,000 lifetime XP. A row then shows once you have held its `unlockMoney` and, on later rows, its job |
@@ -37,35 +37,38 @@ The desk is earned, not handed over. A new career starts with one file, the XP c
 
 | When | What appears | Trigger | Reveal |
 | --- | --- | --- | --- |
-| 2 min | The editor: activity bar, explorer, every file tab | Used laptop (skill 1) | big |
-| 8 min | Terminal and Run | Linux CLI basics (skill 8) | standard |
-| 8 min | Career log (the Git icon) | Git + GitHug hygiene (skill 10) | big |
-| 9 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
-| 10 min | 10x dev skills | the first 10x dev row in reach (8,000 lifetime XP) | standard |
-| 10 min | Gear tab | 10,000 lifetime XP | standard |
-| 10 min | Gig Board | its gate | the phase pop |
-| 10 min | Dollars: the $ counters | the first dollar | small |
-| 10 min | Rosters | the first gig | standard |
-| 11 min | Job Board | its gate | the phase pop |
-| 11 min | Metrics | the first job | standard |
-| 12 min | Click sounds, editor themes | Thocky keyboard, Drawing tablet (UI) | small |
+| 45 s | The editor: activity bar, explorer, every file tab | Used laptop (skill 1): its first copy is 90 XP | big |
+| 6 min | Terminal and Run | Linux CLI basics (skill 8) | standard |
+| 7 min | Career log (the Git icon) | Git + GitHug hygiene (skill 10) | big |
+| 7 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 10) | standard |
+| 8 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
+| 8 min | 10x dev skills | the first 10x dev row in reach (8,000 lifetime XP) | standard |
+| 8 min | Gear tab | 10,000 lifetime XP | standard |
+| 9 min | Gig Board | its gate | the phase pop |
+| 9 min | Dollars: the $ counters | the first dollar | small |
+| 9 min | Rosters | the first gig | standard |
+| 10 min | Job Board | its gate | the phase pop |
+| 10 min | Metrics | the first job | standard |
+| 10 min | Click sounds, editor themes | Thocky keyboard, Drawing tablet (UI) | small |
 | on a 10x dev skill | Hover click | a hover skill (or every catalog row) | standard |
-| ~30 min | Music | Noise-cancelling headset | standard |
-| second visit | Desk cat | the first return after a break (10 minutes away), or an hour of play | big |
+| 15 min | Desk cat | 15 minutes at the desk (clicking, idling or with the tab in the background), or sooner on a return after a break (10 minutes away) | big |
+| ~28 min | Music | Noise-cancelling headset | standard |
 | second visit | Capital | its gate | the phase pop |
 
 Cosmetics keep coming after that: a new editor theme with each new editor folder from the Internship folder on (Catppuccin Mocha and Latte are there from the start), a click sound with the Vertical mouse, Ergo chair and Split ergo keyboard, and a music style with the mid, upper and end eras. A cosmetic that opens before its picker arrives with the picker. Pickers list what the career has earned plus whatever is in use; a choice from an earlier run stays usable. Music only plays once the headset is bought.
 
 **How an unlock is shown.** Every row goes through the same four steps.
 
-1. **Before.** The shop row that opens something carries a green `Unlocks Terminal` tag, and so does the Next banner when it names that row. The next closed row with a place on screen stands there as a dim dashed outline with a lock and a ring that fills as it gets close; hover or focus says what opens it. One outline at a time. Closed boards are hidden from the tab bar, except the next one, which waits there dimmed.
+1. **Before.** The shop row that opens something carries a small green badge wearing that feature's icon (hover or focus it for `Unlocks Terminal` and what it does), and the Next banner, which has room, prints the name beside the icon. The next closed row with a place on screen stands there as a dim dashed outline with a lock and a ring that fills as it gets close; hover or focus says what opens it. One outline at a time. Closed boards are hidden from the tab bar, except the next one, which waits there dimmed.
 2. **The moment.** `big`: the UNLOCKED slam, confetti and a chime, then a card. `standard`: the thing lights up where it lives and a card beside it says what it does, with a button that opens it ("Try it", "Open it"). `small`: a toast and a glow. Cards never take focus or cover the stage, and tuck away after 8 seconds (Esc closes them).
 3. **After.** A green NEW dot or pill stays on the thing until it is used once. Inside a menu, the menu's button carries it too.
 4. **Remember.** Every unlock is a line in the career log.
 
 Reveals play one at a time, wait for events, 1:1s and money pops, and leave a short gap between them (longer after a card that timed out). A batch of four or more (an admin grant, a test jump) and anything that opens during a return play only the loudest; the rest keep their NEW markers. Unlocks earned while away are listed on the sticky note. Admin mode shows the whole desk.
 
-**Career log.** The Git icon switches the sidebar from the explorer to the career log: Up next (the next three closed rows with progress bars, and `???` for the cat), then the history, newest on top, one line per step: skills learned, gigs cleared, jobs taken, gear and capital first bought, boards and eras opened, 10x dev skills claimed, unlocks, returns, events and 1:1s, and the joke milestones. The journal keeps the newest 2,000 entries in the save.
+**GitHug profile.** The GitHug button in the corner opens a parody GitHub profile built from the career itself (`src/game/githug.ts`): a contribution graph of the last 20 weeks with one square per day, shaded by how many skills, gigs, jobs, first copies and perks you logged that day, your streak, followers that grow with the career, and four pinned repos (`hello-world`, `dotfiles`, `til` and `portfolio` from skills, then one per cleared gig, newest first). Its footer, and the Star pill beside the button, link to the real repo; neither is on screen before the unlock.
+
+**Career log.** The Git icon switches the sidebar from the explorer to the career log: Up next (the next three closed rows with progress bars; the cat shows as `???` with its countdown), then the history, newest on top, one line per step: skills learned, gigs cleared, jobs taken, gear and capital first bought, boards and eras opened, 10x dev skills claimed, unlocks, returns, events and 1:1s, and the joke milestones. The journal keeps the newest 2,000 entries in the save.
 
 **Output tab.** The console has two tabs, Terminal and Output. Output prints the same journal as JSON lines, one flat object per step (`seq`, `time`, `type`, `ref`, `name`, extras like `awayMs` or `accepted`, then `money` and `xpTotal`), filterable by type, with Copy and Save `.jsonl`. The career log's braces button opens it. Through `__GAME__`: `getState().features`, `getState().careerLog`, `careerLog()`, `seeFeature(id)`, `clearReveals()`.
 
