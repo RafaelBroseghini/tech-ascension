@@ -9,6 +9,7 @@ import { createPortal } from "react-dom"
 import type { ResumeDoc, ResumeEntry, ResumeGroup } from "../game/resumeDoc.ts"
 import { LINKEDOUT_TAGLINE } from "./icons/LinkedOut.tsx"
 import { LinkedOut } from "./LinkedOut.tsx"
+import { nameSlug } from "../game/identity.ts"
 
 function Entry({ entry, heading }: { entry: ResumeEntry; heading: "h3" | "h4" }) {
   const Title = heading
@@ -44,7 +45,7 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const skills = useGame((state) => state.skills)
-  const handle = useGame((state) => state.profile.handle)
+  const name = useGame((state) => state.profile.name)
   const dialogRef = useRef<HTMLDivElement>(null)
   const linkedOut = useMemo(() => {
     const names = SKILL_TIERS.filter((row) => ownedCount(skills, row.id) > 0).map((row) => row.name)
@@ -91,7 +92,7 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
           <h2 id="resume-doc-title">{doc?.name ?? "You"}</h2>
           <p className="resume-headline">{doc?.headline ?? "Nothing earned yet"}</p>
           <p className="resume-meta" data-testid="resume-handle">
-            linkedout.com/in/{handle}
+            linkedout.com/in/{nameSlug(name)}
           </p>
           {where ? <p className="resume-meta">{where}</p> : null}
           {doc?.openToWorkBanner ? <p className="resume-otw-banner">{doc.openToWorkBanner}</p> : null}

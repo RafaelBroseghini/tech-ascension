@@ -7,7 +7,7 @@ const now = new Date(2026, 9, 7, 12).getTime()
 const DAY = 86_400_000
 let seq = 0
 const entry = (type: CareerType, at: number, ref = "", xpTotal = 0): CareerEntry => ({ seq: ++seq, at, type, ref, money: 0, xpTotal })
-const identity = { name: "Brisk Axolotl", handle: "brisk-axolotl" }
+const identity = { name: "Maya Chen", handle: "brisk-axolotl" }
 
 describe("the contribution graph", () => {
   it("counts what you did per day, not what happened to you", () => {
@@ -77,7 +77,7 @@ describe("the profile", () => {
     const early = gitHugProfile({ entries: [], skills: {}, gigs: [], jobs: [], xpTotal: 0, identity, now })
     const later = gitHugProfile({ entries: [], skills: {}, gigs: [1], jobs: [1], xpTotal: 40_000, identity, now })
     expect(early.bio).toBe("Learning to code")
-    expect(early).toMatchObject({ name: "Brisk Axolotl", handle: "brisk-axolotl" })
+    expect(early).toMatchObject({ name: "Maya Chen", handle: "brisk-axolotl" })
     expect(later.bio).toBe("Internship offer")
     expect(later.followers).toBeGreaterThan(early.followers)
   })

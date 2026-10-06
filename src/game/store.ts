@@ -60,7 +60,7 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
-import { randomIdentity } from "./identity.ts"
+import { randomHandle, randomIdentity, randomName } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
@@ -205,8 +205,8 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
-  /** Draw another name and handle from the word lists. Only before the player keeps one; false after. */
-  rerollProfile: () => boolean
+  /** Draw another name, handle, or both, from the word lists. Only before the player keeps them; false after. */
+  rerollProfile: (part?: "name" | "handle") => boolean
   /** Keep the current name and handle for the rest of the career. */
   keepProfile: () => void
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
@@ -812,10 +812,12 @@ export const useGame = create<GameState>((set, get) => ({
     if (get().reveals.length > 0) set({ reveals: [] })
   },
 
-  rerollProfile: () => {
+  rerollProfile: (part) => {
     const { profile } = get()
     if (profile.chosen) return false
-    set({ profile: { ...randomIdentity(Math.random, profile), chosen: false } })
+    const name = part === "handle" ? profile.name : randomName(Math.random, profile.name)
+    const handle = part === "name" ? profile.handle : randomHandle(Math.random, profile.handle)
+    set({ profile: { name, handle, chosen: false } })
     persistNow()
     return true
   },

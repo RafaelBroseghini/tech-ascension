@@ -519,10 +519,12 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(state.careerLog.last).toMatchObject({ type: "unlock", ref: "cat" })
   expect(game.careerLog().some((line) => line.type === "return" && line.awayMs === 30 * 60 * 1000)).toBe(true)
 
-  // The career has a drawn name and handle for GitHug and LinkedOut: rerolled from the word lists until kept.
+  // The career has a drawn name (the same on every profile) and a separate handle, each rerolled from the word lists
+  // until kept.
   const drawn = game.getState().profile
-  expect(drawn).toMatchObject({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/) })
-  expect(game.rerollProfile()).toBe(true)
+  expect(drawn).toMatchObject({ chosen: false, name: expect.stringMatching(/^[A-Z][a-z]+ [A-Z][a-z]+$/), handle: expect.stringMatching(/^[a-z]+-[a-z]+$/) })
+  expect(game.rerollProfile("handle")).toBe(true)
+  expect(game.getState().profile).toMatchObject({ name: drawn.name, chosen: false })
   expect(game.getState().profile.handle).not.toBe(drawn.handle)
   game.keepProfile()
   expect(game.getState().profile.chosen).toBe(true)

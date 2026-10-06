@@ -232,28 +232,35 @@ describe("the GitHug corner", () => {
   })
 
   it("shows the career's own name and handle, with nothing to edit", () => {
-    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { name: "Brisk Axolotl", handle: "brisk-axolotl", chosen: true } })
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { name: "Maya Chen", handle: "brisk-axolotl", chosen: true } })
     render(GitHugCorner)
     click($("[data-testid='view-githug']"))
-    expect($("[data-testid='githug-name']")?.textContent).toBe("Brisk Axolotl")
+    expect($("[data-testid='githug-name']")?.textContent).toBe("Maya Chen")
     expect($("[data-testid='githug-handle']")?.textContent).toContain("@brisk-axolotl")
     expect($("[data-testid='githug-modal'] input")).toBeNull()
   })
 })
 
 describe("the start card", () => {
-  it("offers the drawn name, rerolls it, and keeps it on Start", () => {
+  it("offers the drawn name and handle, rerolls each on its own, and keeps both on Start", () => {
     render(IdentityPicker)
     const first = useGame.getState().profile
+    expect($("[data-testid='identity-name']")?.textContent).toBe(first.name)
     expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${first.handle}`)
     expect($("[data-testid='identity-picker'] input")).toBeNull()
-    click($("[data-testid='identity-reroll']"))
+    click($("[data-testid='identity-reroll-handle']"))
+    expect(useGame.getState().profile.name).toBe(first.name)
+    expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${useGame.getState().profile.handle}`)
+    click($("[data-testid='identity-reroll-name']"))
     const second = useGame.getState().profile
-    expect(second.handle).not.toBe(first.handle)
-    expect($("[data-testid='identity-name']")?.textContent).toBe(second.name)
+    expect(second.name).not.toBe(first.name)
     expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as ${second.name}`)
+    click($("[data-testid='identity-reroll']"))
+    const third = useGame.getState().profile
+    expect(third.name).not.toBe(second.name)
+    expect(third.handle).not.toBe(second.handle)
     click($("[data-testid='identity-keep']"))
-    expect(useGame.getState().profile).toEqual({ ...second, chosen: true })
+    expect(useGame.getState().profile).toEqual({ ...third, chosen: true })
     expect($("[data-testid='identity-picker']")).toBeNull()
   })
 
