@@ -217,8 +217,8 @@ export type GameHarness = {
   seeFeature: (id: string) => boolean
   /** Drop the reveals waiting to play. */
   clearReveals: () => void
-  /** Draw another name and handle, as the start card's Reroll does. False once one is kept. */
-  rerollProfile: () => boolean
+  /** Draw another name, handle, or both, as the start card's buttons do. False once they are kept. */
+  rerollProfile: (part?: "name" | "handle") => boolean
   /** Keep the current name and handle, as the start card's Start does. */
   keepProfile: () => void
   reset: () => void
@@ -510,7 +510,7 @@ export function installGameHarness(): GameHarness {
     previewEra: (era) => useGame.getState().setPreviewEra(era),
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
-    rerollProfile: () => useGame.getState().rerollProfile(),
+    rerollProfile: (part) => useGame.getState().rerollProfile(part),
     keepProfile: () => useGame.getState().keepProfile(),
 
     seeFeature: (id) => {

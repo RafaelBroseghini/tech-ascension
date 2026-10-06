@@ -120,20 +120,24 @@ describe("career timeline", () => {
     expect(state.reveals).toEqual(["cat"])
   })
 
-  it("draws a name and handle for each new career, rerolls it until kept, and saves it", () => {
+  it("draws a name and a handle for each new career, rerolls either until kept, and saves them", () => {
     const first = useGame.getState().profile
     expect(first.chosen).toBe(false)
-    expect(first.handle).toMatch(/^[a-z]+-[a-z]+$/)
-    expect(useGame.getState().rerollProfile()).toBe(true)
-    const second = useGame.getState().profile
-    expect(second.handle).not.toBe(first.handle)
+    expect(useGame.getState().rerollProfile("handle")).toBe(true)
+    expect(useGame.getState().profile).toMatchObject({ name: first.name, chosen: false })
+    expect(useGame.getState().profile.handle).not.toBe(first.handle)
+    const handle = useGame.getState().profile.handle
+    expect(useGame.getState().rerollProfile("name")).toBe(true)
+    expect(useGame.getState().profile.name).not.toBe(first.name)
+    expect(useGame.getState().profile.handle).toBe(handle)
+    const kept = useGame.getState().profile
     useGame.getState().keepProfile()
-    expect(useGame.getState().profile).toEqual({ ...second, chosen: true })
+    expect(useGame.getState().profile).toEqual({ ...kept, chosen: true })
     expect(useGame.getState().rerollProfile()).toBe(false)
-    expect(useGame.getState().profile.handle).toBe(second.handle)
+    expect(useGame.getState().profile.name).toBe(kept.name)
     persistNow()
     const saved = parseSave(JSON.parse(readCareerText() ?? "null"))
-    expect(saved?.profile).toEqual({ ...second, chosen: true })
+    expect(saved?.profile).toEqual({ ...kept, chosen: true })
     useGame.getState().wipe()
     expect(useGame.getState().profile.chosen).toBe(false)
   })
