@@ -36,6 +36,7 @@ import {
 import { revealIn } from "../game/ideScroll.ts"
 import { readCollapsedFolders, writeCollapsedFolders } from "../game/ideTreePrefs.ts"
 import { useGame } from "../game/store.ts"
+import { HackathonLauncher } from "./Hackathon.tsx"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
 
 const FADE_MS = 260
@@ -266,6 +267,7 @@ export const IdeChrome = memo(function IdeChrome() {
             <Icon className={`ide-activity-icon ide-activity-icon-${id}`} {...UI_ICON} />
           </span>
         ))}
+        <HackathonLauncher />
         <div className="ide-activity-pair ide-activity-bottom">
           <button
             type="button"

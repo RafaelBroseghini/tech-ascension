@@ -54,3 +54,35 @@ The stage shows the highest capital tier you own, else the furthest job, gig or 
 - Events never overlap. A due one waits behind an open modal or 1:1 and fires 5 seconds after.
 
 Through `__GAME__`: `forceEvent(id)`, `acceptEvent()`, `dismissEvent()`.
+
+## Hackathon (weekend card run)
+
+A Balatro-style roguelike run played with your own career. Every skill you hold is a card. Table: `src/data/hackathon.ts`. Rules: `src/game/hackathon.ts`, with the unlock and prizes in `src/game/hackathonEconomy.ts`. Overlay: `src/components/Hackathon.tsx`.
+
+- **Opening.** Hackathons open with the Gig Board, once you hold 12 skills, and stay open after the first run. The medal in the editor's activity bar opens the overlay; its dot is green while registration is open, peach while a run waits and mauve when results wait. Until the first run, a toast says registration is open once a session, and clicking it opens the overlay.
+- **Cards.** A card's suit is its stack: Frontend, Backend, Ops, Data & AI or Craft, each with its theme color and icon (`SKILL_STACK` puts all 104 skills in one). Its chips are `3 + 2 × tier + 3 × (level − 1)`: the tier is the skill's band of 13 rows (1 to 8), and the level is `1 + floor(log2(copies))`, up to 5. Later skills and more copies make a stronger deck. The deck is frozen at registration.
+- **A weekend.** Three rounds: Friday kickoff, Saturday crunch and Sunday demo. Each deals 7 cards with 4 ships and 3 refactors. A ship is 1 to 5 cards. A refactor tosses 1 to 5 and draws as many. When the draw pile runs dry, the shipped and tossed cards shuffle back in. The round ends the moment its target falls. Running out of ships below it ends the run.
+- **Hands.** A ship is read by stack, and only the cards that form the hand score. Selected cards outside it are kickers: they leave your hand and score nothing, and the table dims them before you ship.
+
+  | Hand | Stacks | Chips × mult |
+  | --- | --- | --- |
+  | Specialist | five from one stack | 60 × 5 |
+  | Platform team | four from one stack | 50 × 4 |
+  | Full stack | one from each of the five stacks | 40 × 4 |
+  | Tiger team | three from one stack, two from another | 35 × 3 |
+  | Squad | three from one stack | 30 × 3 |
+  | Code review | two pairs | 20 × 2 |
+  | Pair programming | two from one stack | 10 × 2 |
+  | Hotfix | your best single card | 5 × 1 |
+
+  Score = (hand chips + each scoring card's chips) × hand mult, after swag.
+- **Swag.** Before each round you take one of three sponsor perks (20 in the table, rare ones a third as likely), three per run: flat chips or mult, mult per card of a stack, chips per card, extra ships, refactors or hand size, and multipliers for a hand type, the first or last ship, small ships, distinct stacks or cards held. Swag that fires on a card applies with that card. Flat swag applies next, then multiplying swag, each in slot order.
+- **Sunday's judge.** Drawn at registration and shown from the first draft, so you can plan around it. One of nine: five mute a stack (its cards still form hands but score nothing), the VC raises Sunday's target 1.5×, the CTO deals one card fewer, the Staff Engineer takes the refactors, and the PM scores each hand type once.
+- **Targets and leagues.** Campus targets are 500, 800 and 1,300. Each league multiplies them by 1.5, rounded to two figures. Winning Sunday moves you up a league (Campus, City, National, Global, Orbital, then Orbital +1 and up); a loss keeps your league.
+- **Prizes.** Each round won pays at once, priced like an event from what you earn now: Friday 3 minutes of XP, Saturday 5 and Sunday 8 minutes of money, at least 1% of the balance held. Money prizes pay XP until money exists. Prizes grow a quarter per league, up to ×2 at Orbital.
+- **Cooldown.** Registration reopens 20 minutes after a run ends, won or lost. A run in progress waits as long as you like: close the overlay and it is there when you come back, saved card by card.
+- **Feel.** Each ship replays as a scoring cascade: the hand's base, each card's chips and the swag it fires, then flat and multiplying swag, the total landing, and the round score counting up, with a rising tick per beat (the click or desk sounds switch). A click or Space skips it. `prefers-reduced-motion` skips it too.
+- **Keys.** `1`-`9` pick cards, `Enter` ships, `R` refactors, `S` sorts by stack or chips, `H` shows the hands, `1`-`3` take swag, `Esc` closes.
+- **Quiet while you play.** Random events and 1:1s wait while the overlay is open, and hover clicking pauses.
+
+Through `__GAME__`: `getState().hackathon`, `openHackathon()`, `startHackathon(seed?)`, `forceHackathon(seed?)`, `hackPick(slot)`, `hackShip(indices)`, `hackRefactor(indices)`, `hackPreview(indices)`, `hackSort(sort)`, `finishHackathon()`.

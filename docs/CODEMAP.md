@@ -13,6 +13,11 @@
 | Syntax colours and the lexer | `src/data/overlays.ts` |
 | IDE navigation and the shop-era preview that snaps back | `src/game/ide.ts` |
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
+| Hackathon table (stacks, skill → stack, hands, swag, judges, rounds, leagues) | `src/data/hackathon.ts` |
+| Hackathon rules: seeded deal, hand reading, scoring steps, run state, targets, save checks | `src/game/hackathon.ts` |
+| When hackathons open (the Gig Board) and what a round pays (event stakes), kept off the boot chunk | `src/game/hackathonEconomy.ts` |
+| Hackathon scoring replay beats (pure, tested) | `src/game/hackReplay.ts` |
+| Hackathon overlay (launcher, lobby, draft, table, summary) and its cards, swag tiles and hand guide | `src/components/Hackathon.tsx`, `src/components/HackathonParts.tsx`, `src/styles/hackathon.css` |
 | The IDE chrome (activity bar, tree, tabs, statusline) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |

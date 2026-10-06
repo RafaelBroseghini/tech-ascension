@@ -23,6 +23,20 @@ import { advanceEventClock, eventById, resolveOffer } from "./events.ts"
 import { canBuyGold, clampBuyAmount, goldById, offlineCapMs, toBuyAmount } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import type { EarningRates, EventLine } from "./events.ts"
+import {
+  freshHackMeta,
+  hackReady,
+  isFreshHackMeta,
+  normalizeHackMeta,
+  pickPerk,
+  refactorCards,
+  setHandSort,
+  settleRun,
+  shipCards,
+  startRun,
+} from "./hackathon.ts"
+import type { HackMeta, HackPrize, HackSort } from "./hackathon.ts"
+import { hackUnlocked, roundPrize } from "./hackathonEconomy.ts"
 import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
@@ -58,6 +72,8 @@ export type ToastMessage = {
   text: string
   /** Diary sentence when this toast is the offline sticky note. `text` is the credit line. */
   note?: string
+  /** Clicking the toast opens this instead of only dismissing it. */
+  action?: "hackathon"
 }
 
 /** A 1:1 on screen. Nothing is applied until a reply is chosen. */
@@ -142,6 +158,10 @@ type GameState = {
   seenMilestones: string[]
   buyStamp: number
   celebrationNonce: number
+  /** Hackathon league, record, cooldown and the run in progress. */
+  hack: HackMeta
+  /** The hackathon overlay is on screen. Events and 1:1s wait while it is. */
+  hackOpen: boolean
   click: () => { money: number; xp: number }
   /** Buy a Phase D capital row. */
   buy: (tierId: number, mode?: BuyMode) => void
@@ -169,6 +189,23 @@ type GameState = {
   answerReview: (choice: ReviewChoiceId) => boolean
   /** Leave the 1:1. Balances stay put. */
   dismissReview: () => void
+  /** Show the hackathon overlay. False while hackathons are still locked. */
+  openHackathon: () => boolean
+  closeHackathon: () => void
+  /**
+   * Register for the next hackathon. False when locked, on cooldown, or a run is already on. `seed` fixes the deal.
+   * `force` skips the unlock and the cooldown and closes a finished run (harness only); a run being played still wins.
+   */
+  startHackathon: (seed?: number, force?: boolean) => boolean
+  /** Take swag `slot` from the draft and deal the round. */
+  hackPick: (slot: number) => boolean
+  /** Ship the cards at these hand positions. Pays the round prize when the target falls. */
+  hackShip: (indices: readonly number[]) => boolean
+  /** Toss the cards at these hand positions and draw as many. */
+  hackRefactor: (indices: readonly number[]) => boolean
+  hackSort: (sort: HackSort) => void
+  /** Close a won or lost run. The cooldown already started when it ended. */
+  finishHackathon: () => boolean
   selectIde: (packId: string, index: number) => void
   setPreviewEra: (era: Era | null) => void
   /** Keep a browsed era alive while the shop or the IDE is being used. */
@@ -201,6 +238,8 @@ function toSave(state: GameState, now: number): SaveData {
   if (state.activeBoost && state.activeBoost.endsAt > now) {
     save.activeBoost = state.activeBoost
   }
+  // The replay of the last ship is screen state; the run itself is saved card by card.
+  if (!isFreshHackMeta(state.hack)) save.hackathon = { ...state.hack, run: state.hack.run ? { ...state.hack.run, shot: null } : null }
   return save
 }
 
@@ -215,6 +254,8 @@ function allowedMode(state: Pick<GameState, "gold">, mode: BuyMode): BuyAmount {
 
 let lastSaveAt = 0
 let statsClock: StatsClock = emptyStatsClock()
+/** The "registration is open" nudge shows once a session until the first hackathon is played. */
+let hackNudged = false
 
 function applyClickStats(stats: GameStats, now: number): GameStats {
   const next = recordClick(stats, statsClock, now)
@@ -264,6 +305,23 @@ function resolutionOf(state: GameState) {
   return resolveOffer(state.money, state.xp, state.xpTotal, def.offer, earningRates(state, now))
 }
 
+/** Credit a round prize: money counts as earned, XP lifts lifetime XP too. */
+function paidPrize(state: GameState, prize: HackPrize) {
+  return {
+    money: state.money + prize.money,
+    xp: state.xp + prize.xp,
+    xpTotal: state.xpTotal + prize.xp,
+    stats: prize.money > 0 ? creditMoney(state.stats, prize.money, "other") : state.stats,
+  }
+}
+
+function hackNudge(state: GameState): ToastMessage | null {
+  if (hackNudged || state.toast || state.event || state.review || state.hackOpen) return null
+  if (state.hack.runs > 0 || !hackUnlocked(state, state.hack)) return null
+  hackNudged = true
+  return { id: state.toastSeq + 1, text: "Hackathon registration is open", action: "hackathon" }
+}
+
 function reviewResolution(state: GameState, choice: ReviewChoiceId) {
   if (!state.review) return null
   const now = Math.max(Date.now(), state.now)
@@ -308,6 +366,9 @@ export const useGame = create<GameState>((set, get) => ({
   seenMilestones: booted.save.seenMilestones ?? [],
   buyStamp: 0,
   celebrationNonce: 0,
+  // The save checked the numbers; the run is checked against the hackathon tables here, in the app chunk.
+  hack: normalizeHackMeta(booted.save.hackathon),
+  hackOpen: false,
 
   click: () => {
     const state = get()
@@ -548,6 +609,84 @@ export const useGame = create<GameState>((set, get) => ({
     })
   },
 
+  openHackathon: () => {
+    const state = get()
+    if (!hackUnlocked(state, state.hack)) return false
+    set({ hackOpen: true })
+    return true
+  },
+
+  closeHackathon: () => set({ hackOpen: false }),
+
+  startHackathon: (seed, force = false) => {
+    const state = get()
+    const now = Date.now()
+    const stage = state.hack.run?.stage
+    if (force ? stage === "draft" || stage === "play" : !hackUnlocked(state, state.hack) || !hackReady(state.hack, now)) return false
+    const run = startRun({ league: state.hack.league, skills: state.skills, seed: seed ?? Math.floor(Math.random() * 0x100000000) })
+    if (!run) return false
+    set({ hack: { ...state.hack, runs: state.hack.runs + 1, run }, now })
+    persistNow()
+    return true
+  },
+
+  hackPick: (slot) => {
+    const state = get()
+    const run = state.hack.run ? pickPerk(state.hack.run, slot) : null
+    if (!run) return false
+    set({ hack: { ...state.hack, run } })
+    persistNow()
+    return true
+  },
+
+  hackShip: (indices) => {
+    const state = get()
+    const shipped = state.hack.run ? shipCards(state.hack.run, indices) : null
+    if (!shipped) return false
+    const now = Math.max(Date.now(), state.now)
+    let { run } = shipped
+    const outcome = shipped.shot.outcome
+    let balance = {}
+    if (outcome === "cleared" || outcome === "won") {
+      const round = state.hack.run?.round ?? 0
+      const prize = roundPrize(round, run.league, earningRates(state, now), { money: state.money, xp: state.xp }, moneyMode(state))
+      balance = paidPrize(state, prize)
+      run = {
+        ...run,
+        earned: { money: run.earned.money + prize.money, xp: run.earned.xp + prize.xp },
+        cleared: { round, ...prize },
+      }
+    }
+    const over = outcome === "won" || outcome === "lost"
+    set({ ...balance, hack: over ? settleRun(state.hack, run, now) : { ...state.hack, run } })
+    persistNow()
+    return true
+  },
+
+  hackRefactor: (indices) => {
+    const state = get()
+    const run = state.hack.run ? refactorCards(state.hack.run, indices) : null
+    if (!run) return false
+    set({ hack: { ...state.hack, run } })
+    persistNow()
+    return true
+  },
+
+  hackSort: (sort) => {
+    const state = get()
+    if (!state.hack.run) return
+    set({ hack: { ...state.hack, run: setHandSort(state.hack.run, sort) } })
+  },
+
+  finishHackathon: () => {
+    const state = get()
+    const stage = state.hack.run?.stage
+    if (stage !== "won" && stage !== "lost") return false
+    set({ hack: { ...state.hack, run: null }, hackOpen: false })
+    persistNow()
+    return true
+  },
+
   selectIde: (packId, index) => {
     const held = get().previewEra
     set({
@@ -590,7 +729,7 @@ export const useGame = create<GameState>((set, get) => ({
       {
         era,
         paying: moneyMode(state),
-        blocked: state.event !== null || state.review !== null,
+        blocked: state.event !== null || state.review !== null || state.hackOpen,
         owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
       },
       now,
@@ -605,7 +744,7 @@ export const useGame = create<GameState>((set, get) => ({
       state.nextReviewAt,
       {
         jobId: reviewJob,
-        blocked: state.event !== null || state.review !== null || fired !== null,
+        blocked: state.event !== null || state.review !== null || state.hackOpen || fired !== null,
       },
       now,
       Math.random,
@@ -617,6 +756,7 @@ export const useGame = create<GameState>((set, get) => ({
         ? { id: reviewSeq, promptId: reviewFired.id, jobId: reviewJob, lines: [], choice: null }
         : null
     const review: ActiveReview | null = openedReview ?? (fired ? null : state.review)
+    const nudge = fired || openedReview ? null : hackNudge(state)
     set({
       money: balance.money,
       peakMoney: Math.max(state.peakMoney, balance.money),
@@ -638,6 +778,7 @@ export const useGame = create<GameState>((set, get) => ({
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
       idleSince: advanced.clock.idleSince,
+      ...(nudge ? { toast: nudge, toastSeq: nudge.id } : {}),
     })
 
     if (now - lastSaveAt >= SAVE_EVERY_MS) {
@@ -652,6 +793,7 @@ export const useGame = create<GameState>((set, get) => ({
     writeCareer(save)
     lastSaveAt = now
     statsClock = emptyStatsClock()
+    hackNudged = false
     // The roster is found cat by cat, so the cat on the desk goes back to the default with the run. The
     // rest of the room (music, sounds, theme) is the player's and stays.
     setDeskPref("catArt", null)
@@ -692,6 +834,8 @@ export const useGame = create<GameState>((set, get) => ({
       seenMilestones: [],
       buyStamp: 0,
       celebrationNonce: 0,
+      hack: freshHackMeta(),
+      hackOpen: false,
     })
   },
 }))

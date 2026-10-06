@@ -65,7 +65,7 @@ To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visi
 - Time away pays idle income and idle XP, up to the offline cap, once, when you return.
 - You take every gig and job as soon as it opens, and buy a first copy of anything as soon as you can afford it.
 - A second copy of a skill, gear row or capital row is bought only if it earns itself back within the player's payback limit (an hour for the collector, two days for the reinvestor), best payback first.
-- Random events and click boosts are left out, so this is an estimate with no luck in it. They would move the real number, by how much is not modeled.
+- Random events, click boosts and hackathon prizes are left out, so this is an estimate with no luck in it. They would move the real number, by how much is not modeled. A hackathon pays at most 3 minutes of XP and 13 of money at Campus (twice that at Orbital) every 20 minutes of cooldown, and only to someone who sits down and plays the cards.
 
 ## How far to trust it
 

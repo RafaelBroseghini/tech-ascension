@@ -17,6 +17,8 @@ Everything is pixel art, drawn in code from one shared 16-colour sheet (`src/pix
 
 To change a sprite, edit its entry in `DRAW` in `src/pixel/art.ts`; `npm test` checks the size, colour count and outline of every sprite.
 
+- **Hackathon cards.** A card is the skill's own shop art (the emoji.gg idle still, so no new images) on a card face tinted by its stack. The stacks take five editor palette roles, so every theme recolors them: Frontend blue, Backend green, Ops peach, Data & AI mauve, Craft rosewater, each with a lucide icon too (layout, server, cloud, brain, book) so color is never the only cue. Chips are the theme's blue and mult its red, as on a Balatro table; swag tiles wear the color of what they do (chips blue, mult red, multipliers peach, rule changes green, a stack's swag its stack color). The overlay is the roster's character-select panel: accent border, striped crust, italic display title, hard ink offsets. If a card's art fails to load, its stack icon stands in.
+
 ## Motion
 
 Clicks register on pointer-down. The sprite bumps up, tips slightly away from the click point and settles with a tiny jitter (~260ms, restarted instantly on every click), flashes brighter, and sends out a flat ring, square sparks, a `$` / XP payout that pops up and then drops so rapid clicks stack, and the click waterfall.
@@ -27,4 +29,5 @@ Clicks register on pointer-down. The sprite bumps up, tips slightly away from th
 - **Boost.** An active click boost adds a chip over the sprite, a rotating rim light, bigger payouts, and a lit metrics cell.
 - **Buying** sweeps the row and ticks the money and owned figures. A new highest tier remounts the art with a reveal burst. New shop rows slide in with a `New` tag.
 - **Eras.** Moving to a new era cross-fades the accent and wipes it across the stage, and the editor buffer cross-fades to the next snippet (260ms) while the IDE chrome stays put.
+- **Hackathon.** Cards deal in with a short drop and tilt, staggered. A ship replays as beats: each scoring card lifts with a `+chips` tag, swag tiles bump with `+mult` or `×mult`, the total slams in, the round score counts up and the meter fills, and a round result gets a banner. Beats speed up as they go (about two seconds for a full ship), and a click or Space skips them. A won weekend bursts stack-colored confetti from the trophy.
 - **Reduced motion.** `prefers-reduced-motion` kills CSS animation globally, hides the particles and the waterfall and skips the bump, keeping a short click flash.

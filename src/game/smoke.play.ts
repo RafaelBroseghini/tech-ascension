@@ -459,3 +459,78 @@ test("10x dev (gold) skills: bulk buying, hover clicking and the offline cap ope
   game.reset()
   expect(game.getState().gold).toEqual([])
 })
+
+/** Ships the best hand each turn (every subset of up to five cards, through hackPreview) and takes the first swag. */
+function playWeekend() {
+  for (let guard = 0; guard < 80; guard++) {
+    const run = game.getState().hackathon.run
+    if (!run || run.stage === "won" || run.stage === "lost") return run
+    if (run.stage === "draft") {
+      expect(game.hackPick(0)).toBe(true)
+      continue
+    }
+    let best: { idx: number[]; score: number } | null = null
+    for (let mask = 1; mask < 1 << run.hand.length; mask++) {
+      const idx = run.hand.map((_, i) => i).filter((i) => mask & (1 << i))
+      if (idx.length > 5) continue
+      const preview = game.hackPreview(idx)
+      if (preview && (!best || preview.score > best.score)) best = { idx, score: preview.score }
+    }
+    if (!best) throw new Error("no ship")
+    expect(game.hackShip(best.idx)).toBe(true)
+  }
+  throw new Error("the weekend never ended")
+}
+
+test("hackathon: the Gig Board opens a card run that pays per round and climbs a league", () => {
+  game.reset()
+  expect(game.getState().hackathon).toMatchObject({ unlocked: false, ready: false, run: null })
+  expect(game.openHackathon()).toBe(false)
+  expect(game.startHackathon(1)).toBe(false)
+
+  // Twenty skills fill the deck; Portfolio and React open the Gig Board. A cleared gig means money exists.
+  game.setXp(1_000_000)
+  for (let id = 1; id <= 20; id++) expect(game.buySkill(id)).toBe(true)
+  expect(game.forceGig(1)).toBe(true)
+  expect(game.getState().hackathon).toMatchObject({ unlocked: true, ready: true, league: 0, leagueName: "Campus", runs: 0 })
+
+  expect(game.startHackathon(2024)).toBe(true)
+  expect(game.startHackathon(2025)).toBe(false)
+  const draft = game.getState().hackathon.run
+  expect(draft?.stage).toBe("draft")
+  expect(draft?.offer).toHaveLength(3)
+  expect(draft?.judge.name).not.toBe("")
+
+  // A greedy player wins Campus: Friday pays XP, Saturday and Sunday pay dollars, and the league goes up.
+  const before = game.getState()
+  const won = playWeekend()
+  expect(won?.stage).toBe("won")
+  const after = game.getState()
+  expect(after.hackathon).toMatchObject({ league: 1, leagueName: "City", wins: 1, runs: 1 })
+  expect(won?.earned.xp).toBeGreaterThan(0)
+  expect(won?.earned.money).toBeGreaterThan(0)
+  expect(after.money).toBeCloseTo(before.money + (won?.earned.money ?? 0))
+  expect(after.hackathon.best).toBeGreaterThan(0)
+
+  // The cooldown started when Sunday ended; closing the results frees the slot but not the calendar.
+  expect(game.finishHackathon()).toBe(true)
+  expect(game.getState().hackathon).toMatchObject({ ready: false, run: null })
+  expect(game.getState().hackathon.opensInMs).toBeGreaterThan(19 * 60_000)
+  expect(game.startHackathon()).toBe(false)
+
+  // Forced, a City run: targets grow 1.5×, a preview is exactly what the ship scores, and a refactor costs one.
+  expect(game.forceHackathon(7)).toBe(true)
+  expect(game.hackPick(1)).toBe(true)
+  expect(game.getState().hackathon.run).toMatchObject({ stage: "play", round: 1, target: 750, ships: 4, refactors: 3 })
+  const preview = game.hackPreview([0, 1, 2])
+  expect(game.hackShip([0, 1, 2])).toBe(true)
+  const shipped = game.getState().hackathon.run
+  expect(shipped?.score).toBe(preview?.score)
+  expect(shipped?.last).toMatchObject({ score: preview?.score, hand: preview?.hand })
+  if (shipped?.stage === "play") {
+    expect(game.hackRefactor([0])).toBe(true)
+    expect(game.getState().hackathon.run?.refactors).toBe(2)
+  }
+  game.reset()
+  expect(game.getState().hackathon).toMatchObject({ unlocked: false, runs: 0, league: 0, run: null })
+})

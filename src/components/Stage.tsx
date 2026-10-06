@@ -323,7 +323,7 @@ export function Stage() {
     const id = window.setInterval(() => {
       if (!hoverRef.current || document.hidden) return
       const state = useGame.getState()
-      if (state.event || state.review || !getDeskPrefs().hoverClick || hoverRate(state.gold, ownsEverything(state)) <= 0) return
+      if (state.event || state.review || state.hackOpen || !getDeskPrefs().hoverClick || hoverRate(state.gold, ownsEverything(state)) <= 0) return
       const point = pointRef.current
       fireRef.current(point?.x ?? null, point?.y ?? null)
     }, hoverStepMs(hoverPerSec))

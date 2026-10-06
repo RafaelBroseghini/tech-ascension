@@ -6,6 +6,7 @@ import type { OwnedMap } from "./economy.ts"
 import { offlineToastText } from "./offlineNote.ts"
 import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
+import type { Json } from "./ledger.ts"
 import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
@@ -49,6 +50,24 @@ export type SaveData = {
   stats?: GameStats
   /** One-time balance / XP joke pops already shown. */
   seenMilestones?: string[]
+  /** Hackathon league, record, cooldown and the run in progress. Omitted until the first run. */
+  hackathon?: SavedHack
+}
+
+/**
+ * The hackathon record as saved. Its numbers are checked here. The run is checked card by card against the
+ * hackathon tables when the app boots (`normalizeHackMeta` in hackathon.ts), so this layer, which loads before the
+ * app, never pulls them in.
+ */
+export type SavedHack = {
+  league: number
+  runs: number
+  wins: number
+  best: number
+  topLeague: number
+  nextAt: number
+  /** As read from JSON; unchecked until the app boots. */
+  run?: Json
 }
 
 export type Hydrated = {
@@ -108,6 +127,23 @@ function normalizeTemp(raw: unknown): TempMults {
     if (mult > 0 && endsAt > 0) out[target] = { mult, endsAt }
   }
   return out
+}
+
+function normalizeSavedHack(raw: unknown): SavedHack | undefined {
+  if (!isRecord(raw)) return undefined
+  const count = (value: unknown) => Math.max(0, Math.floor(finite(value)))
+  const top = raw.topLeague
+  const hack: SavedHack = {
+    league: count(raw.league),
+    runs: count(raw.runs),
+    wins: count(raw.wins),
+    best: count(raw.best),
+    topLeague: typeof top === "number" && Number.isFinite(top) ? Math.max(-1, Math.floor(top)) : -1,
+    nextAt: count(raw.nextAt),
+  }
+  if (isRecord(raw.run)) hack.run = raw.run as Json
+  const fresh = !hack.run && hack.runs === 0 && hack.wins === 0 && hack.best === 0 && hack.league === 0 && hack.nextAt === 0
+  return fresh ? undefined : hack
 }
 
 export function freshSave(now: number): SaveData {
@@ -171,6 +207,8 @@ export function parseSave(input: unknown): SaveData | null {
   save.stats = normalizeStats(input.stats)
   const seen = normalizeSeenMilestones(input.seenMilestones)
   if (seen.length > 0) save.seenMilestones = seen
+  const hackathon = normalizeSavedHack(input.hackathon)
+  if (hackathon) save.hackathon = hackathon
   return save
 }
 

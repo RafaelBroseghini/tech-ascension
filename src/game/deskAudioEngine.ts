@@ -413,6 +413,46 @@ export function playCozyClick(): void {
   syncDeskAudio()
 }
 
+const PENTATONIC = [0, 2, 4, 7, 9] as const
+
+function scoreAudible(): Graph | null {
+  const prefs = readPrefs()
+  if (!(prefs.clicks || prefs.sounds) || !canHear()) return null
+  if (typeof document !== "undefined" && document.hidden) return null
+  return build()
+}
+
+/** One beat of a hackathon score: a soft tick that climbs a pentatonic step per beat. Mult beats sit higher. */
+export function playScoreBeat(step: number, tone: "chips" | "mult" | "x"): void {
+  const g = scoreAudible()
+  if (!g) return
+  if (!running()) {
+    wake(() => playScoreBeat(step, tone))
+    return
+  }
+  const index = Math.max(0, Math.min(14, Math.floor(step)))
+  const semis = (PENTATONIC[index % 5] ?? 0) + 12 * Math.floor(index / 5)
+  const root = tone === "chips" ? 392 : tone === "mult" ? 523.25 : 659.25
+  const time = now()
+  g.blip.triggerAttackRelease(root * 2 ** (semis / 12), tone === "x" ? 0.09 : 0.05, time, tone === "x" ? 0.07 : 0.045)
+  if (tone === "x") g.clink.triggerAttackRelease(root * 2, 0.05, noiseStart(g.clink, time + 0.04), 0.03)
+  syncDeskAudio()
+}
+
+/** A round result: three notes up when a target falls, two down when the ships run out. */
+export function playScoreChime(win: boolean): void {
+  const g = scoreAudible()
+  if (!g) return
+  if (!running()) {
+    wake(() => playScoreChime(win))
+    return
+  }
+  const notes = win ? [523.25, 659.25, 783.99] : [392, 293.66]
+  const time = now()
+  notes.forEach((note, index) => g.blip.triggerAttackRelease(note, win ? 0.12 : 0.18, time + index * 0.09, 0.06))
+  syncDeskAudio()
+}
+
 /** Starts or stops the room from the saved switches. Does not touch the audio context until a pointer or key. */
 export function syncDeskAudio(): void {
   if (!canHear()) return

@@ -1,8 +1,23 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import type { Era } from "../data/capital.ts"
-import { clickFlat, clickPower, clickShare, idlePerSec, jobById, ownedCount, production, xpPerClick, xpPerSec } from "./economy.ts"
+import { clickFlat, clickPower, clickShare, idlePerSec, jobById, ownedCount, production, skillById, xpPerClick, xpPerSec } from "./economy.ts"
 import { eventById, previewOffer } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
+import { HACK_ROUNDS, stackOfSkill } from "../data/hackathon.ts"
+import type { HandId, StackId } from "../data/hackathon.ts"
+import {
+  evaluate,
+  handById,
+  handSizeOf,
+  hackReady,
+  judgeById,
+  leagueName,
+  perkById,
+  runCard,
+  targetOf,
+} from "./hackathon.ts"
+import type { HackSort, HackStage } from "./hackathon.ts"
+import { hackUnlocked } from "./hackathonEconomy.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { itemsOf } from "../data/idePacks.ts"
@@ -64,6 +79,49 @@ export type IdeSnapshot = {
   restPackId: string
   /** Unlocked folder ids in explorer order (each band persists once entered). */
   folders: string[]
+}
+
+export type HackCardSnapshot = { skillId: number; name: string; stack: StackId; chips: number; level: number }
+
+export type HackRunSnapshot = {
+  stage: HackStage
+  /** 1 Friday, 2 Saturday, 3 Sunday. */
+  round: number
+  roundName: string
+  league: number
+  target: number
+  score: number
+  ships: number
+  refactors: number
+  handSize: number
+  /** Cards left in the draw pile. */
+  deckLeft: number
+  judge: { id: number; name: string; rule: string }
+  perks: { id: number; name: string }[]
+  /** Swag on the table during a draft. */
+  offer: { id: number; name: string; blurb: string; rare: boolean }[]
+  hand: HackCardSnapshot[]
+  /** The last ship. */
+  last: { hand: HandId; handName: string; chips: number; mult: number; score: number; outcome: "continue" | "cleared" | "won" | "lost" } | null
+  /** Prizes paid so far this run. */
+  earned: { money: number; xp: number }
+}
+
+export type HackSnapshot = {
+  unlocked: boolean
+  /** Registration is open: no run in progress and the cooldown is over. */
+  ready: boolean
+  /** Milliseconds until registration reopens. 0 when it is open or a run is on. */
+  opensInMs: number
+  /** The overlay is on screen. */
+  open: boolean
+  league: number
+  leagueName: string
+  runs: number
+  wins: number
+  /** Best single ship ever. */
+  best: number
+  run: HackRunSnapshot | null
 }
 
 export type GameSnapshot = {
@@ -129,6 +187,8 @@ export type GameSnapshot = {
   savedAt: number
   /** The most recent money pop (medium on a paying click, large on gig clear and phase unlock), or null. */
   lastPop: PopSnapshot | null
+  /** Weekend hackathon: league, record and the run in progress. */
+  hackathon: HackSnapshot
 }
 
 export type OfflineCatchup = {
@@ -182,6 +242,24 @@ export type GameHarness = {
   ideSelect: (index: number, packId?: string) => boolean
   /** Preview an era's pack as the shop era tab does, or null to snap back to the owned one. */
   previewEra: (era: Era | null) => void
+  /** Show the hackathon overlay. False while hackathons are locked. */
+  openHackathon: () => boolean
+  closeHackathon: () => void
+  /** Register through the normal gates (unlocked, cooldown over, no run on). `seed` fixes the deal. */
+  startHackathon: (seed?: number) => boolean
+  /** Register now: skips the unlock and the cooldown, and closes a finished run. False while a run is still being played. */
+  forceHackathon: (seed?: number) => boolean
+  /** Take swag `slot` (0-2) from the draft table. */
+  hackPick: (slot: number) => boolean
+  /** Ship the cards at these hand positions (1-5 of them). */
+  hackShip: (indices: number[]) => boolean
+  /** Toss the cards at these hand positions and draw as many. */
+  hackRefactor: (indices: number[]) => boolean
+  /** What shipping these hand positions would score, without playing them. */
+  hackPreview: (indices: number[]) => { hand: HandId; handName: string; chips: number; mult: number; score: number } | null
+  hackSort: (sort: HackSort) => void
+  /** Close a won or lost run. */
+  finishHackathon: () => boolean
   reset: () => void
 }
 
@@ -266,6 +344,54 @@ function eventSnapshot(
   return { eventId: event.eventId, name: eventById(event.eventId)?.name ?? "", lines }
 }
 
+function hackSnapshot(state: ReturnType<typeof useGame.getState>, now: number): HackSnapshot {
+  const meta = state.hack
+  const run = meta.run
+  const unlocked = hackUnlocked(state, meta)
+  const card = (skillId: number): HackCardSnapshot => {
+    const view = run ? runCard(run, skillId) : null
+    return { skillId, name: skillById(skillId)?.name ?? "", stack: stackOfSkill(skillId), chips: view?.chips ?? 0, level: view?.level ?? 1 }
+  }
+  const judge = run ? judgeById(run.judge) : undefined
+  const shot = run?.shot ?? null
+  return {
+    unlocked,
+    ready: unlocked && hackReady(meta, now),
+    opensInMs: unlocked && !meta.run ? Math.max(0, meta.nextAt - now) : 0,
+    open: state.hackOpen,
+    league: meta.league,
+    leagueName: leagueName(meta.league),
+    runs: meta.runs,
+    wins: meta.wins,
+    best: meta.best,
+    run: run
+      ? {
+          stage: run.stage,
+          round: run.round + 1,
+          roundName: HACK_ROUNDS[run.round]?.name ?? "",
+          league: run.league,
+          target: targetOf(run),
+          score: run.score,
+          ships: run.ships,
+          refactors: run.refactors,
+          handSize: handSizeOf(run),
+          deckLeft: run.draw.length,
+          judge: { id: run.judge, name: judge?.name ?? "", rule: judge?.blurb ?? "" },
+          perks: run.perks.map((id) => ({ id, name: perkById(id)?.name ?? "" })),
+          offer: run.offer.map((id) => {
+            const perk = perkById(id)
+            return { id, name: perk?.name ?? "", blurb: perk?.blurb ?? "", rare: perk?.rare ?? false }
+          }),
+          hand: run.hand.map(card),
+          last: shot
+            ? { hand: shot.hand, handName: handById(shot.hand).name, chips: shot.chips, mult: shot.mult, score: shot.score, outcome: shot.outcome }
+            : null,
+          earned: { ...run.earned },
+        }
+      : null,
+  }
+}
+
 export function installGameHarness(): GameHarness {
   const api: GameHarness = {
     getState: () => {
@@ -325,6 +451,7 @@ export function installGameHarness(): GameHarness {
         lastPop: state.pop
           ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label }
           : null,
+        hackathon: hackSnapshot(state, now),
       }
     },
 
@@ -445,6 +572,32 @@ export function installGameHarness(): GameHarness {
     },
 
     previewEra: (era) => useGame.getState().setPreviewEra(era),
+
+    openHackathon: () => useGame.getState().openHackathon(),
+
+    closeHackathon: () => useGame.getState().closeHackathon(),
+
+    startHackathon: (seed) => useGame.getState().startHackathon(seed),
+
+    forceHackathon: (seed) => useGame.getState().startHackathon(seed, true),
+
+    hackPick: (slot) => useGame.getState().hackPick(slot),
+
+    hackShip: (indices) => useGame.getState().hackShip(indices),
+
+    hackRefactor: (indices) => useGame.getState().hackRefactor(indices),
+
+    hackPreview: (indices) => {
+      const run = useGame.getState().hack.run
+      if (!run || run.stage !== "play") return null
+      const result = evaluate(run, indices)
+      if (!result) return null
+      return { hand: result.hand, handName: handById(result.hand).name, chips: result.chips, mult: result.mult, score: result.score }
+    },
+
+    hackSort: (sort) => useGame.getState().hackSort(sort),
+
+    finishHackathon: () => useGame.getState().finishHackathon(),
 
     reset: () => {
       useGame.getState().wipe()

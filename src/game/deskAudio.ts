@@ -88,6 +88,26 @@ export function playCozyClick(): void {
   })
 }
 
+/**
+ * Hackathon scoring ticks and the round chime, with either sound switch on. A beat that lands while the engine is
+ * still loading is dropped: a late burst of ticks would land after the numbers it belongs to.
+ */
+export function playScoreBeat(step: number, tone: "chips" | "mult" | "x"): void {
+  const { sounds, clicks } = readPrefs()
+  if (!(sounds || clicks) || !canHear()) return
+  gestureHeard = true
+  if (engine) engine.playScoreBeat(step, tone)
+  else void loadEngine()
+}
+
+export function playScoreChime(win: boolean): void {
+  const { sounds, clicks } = readPrefs()
+  if (!(sounds || clicks) || !canHear()) return
+  gestureHeard = true
+  if (engine) engine.playScoreChime(win)
+  else void loadEngine().then((mod) => mod?.playScoreChime(win))
+}
+
 /** Starts or stops the room from the saved switches. Does not touch the audio context until a pointer or key. */
 export function syncDeskAudio(): void {
   if (!canHear()) return

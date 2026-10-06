@@ -63,6 +63,35 @@ getState(): {
   folders: string[] // unlocked band ids in explorer order; each persists once entered
  }
  lastPop: { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string } | null
+ hackathon: {
+  unlocked: boolean   // Gig Board open and 12 skills held; latches once a run was played
+  ready: boolean      // registration open: no run on and the cooldown over
+  opensInMs: number   // until registration reopens (0 when open or a run is on)
+  open: boolean       // the overlay is on screen
+  league: number      // 0 Campus, 1 City, 2 National, 3 Global, 4 Orbital, then Orbital +N
+  leagueName: string
+  runs: number
+  wins: number
+  best: number        // best single ship ever
+  run: {
+   stage: "draft" | "play" | "won" | "lost"
+   round: number       // 1 Friday, 2 Saturday, 3 Sunday
+   roundName: string
+   league: number
+   target: number
+   score: number       // this round
+   ships: number       // left this round
+   refactors: number   // left this round
+   handSize: number
+   deckLeft: number    // cards in the draw pile
+   judge: { id: number; name: string; rule: string } // Sunday's judge, drawn at registration
+   perks: { id: number; name: string }[]               // swag held
+   offer: { id: number; name: string; blurb: string; rare: boolean }[] // swag on the draft table
+   hand: { skillId: number; name: string; stack: "front" | "back" | "ops" | "data" | "craft"; chips: number; level: number }[]
+   last: { hand: string; handName: string; chips: number; mult: number; score: number; outcome: "continue" | "cleared" | "won" | "lost" } | null
+   earned: { money: number; xp: number } // prizes paid so far this run
+  } | null
+ }
 }
 
 click(): { money: number; xp: number }
@@ -88,6 +117,16 @@ answerReview(choice: "exceeds" | "meets" | "pip"): boolean // meets changes noth
 dismissReview(): void
 ideSelect(index: number, packId?: string): boolean
 previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
+openHackathon(): boolean          // show the overlay; false while hackathons are locked
+closeHackathon(): void            // hide it; a run in progress waits
+startHackathon(seed?: number): boolean  // register through the gates; `seed` fixes the deal and the judge
+forceHackathon(seed?: number): boolean  // register now, skipping unlock and cooldown; false while a run is being played
+hackPick(slot: number): boolean   // take swag 0-2 from the draft table, which deals the round
+hackShip(indices: number[]): boolean      // ship 1-5 cards by hand position; pays the round prize when the target falls
+hackRefactor(indices: number[]): boolean  // toss 1-5 cards and draw as many; costs a refactor
+hackPreview(indices: number[]): { hand: string; handName: string; chips: number; mult: number; score: number } | null
+hackSort(sort: "stack" | "chips"): void
+finishHackathon(): boolean        // close a won or lost run
 reset(): void
 ```
 
@@ -118,6 +157,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - A save from any other `version` is wiped on load. There is no migration.
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
 - `reset()` wipes the save back to high school.
+- **Hackathon** (rules in `src/game/hackathon.ts`, unlock and prizes in `src/game/hackathonEconomy.ts`, table in `src/data/hackathon.ts`, overlay in `src/components/Hackathon.tsx`). A Balatro-style card run played with your skills: every skill held is a card, its stack (Frontend, Backend, Ops, Data & AI, Craft) is the suit, and its chips come from its band in the skill table (`3 + 2 × tier`, tier = 13 skills) plus 3 per level (level `1 + floor(log2(copies))`, max 5). It opens with the Gig Board once 12 skills are held (latched after the first run); the launcher is the medal in the editor's activity bar, and a toast says so once a session until the first run. A run is three rounds (Friday 500, Saturday 800, Sunday 1,300 at Campus, ×1.5 per league, two significant figures). Each round deals 7 cards with 4 ships and 3 refactors; a ship of 1-5 cards scores `(hand chips + scoring cards' chips) × hand mult`, only the cards that form the hand score, and the round ends the moment its target falls. Hands by stack: Specialist (5 of one) 60×5, Platform team (4) 50×4, Full stack (all five) 40×4, Tiger team (3+2) 35×3, Squad (3) 30×3, Code review (2+2) 20×2, Pair programming (2) 10×2, Hotfix (best card) 5×1. Sponsor swag (`PERKS`, 20 rows, rare ones a third as likely) is drafted one of three before every round, three per run; flat swag applies before multiplying swag, in slot order. Sunday's judge (`JUDGES`, 9 rows) is drawn at registration and bends one rule: mute a stack, ×1.5 target, one card fewer, no refactors, or no repeated hand types. Winning a round pays minutes of current income with event stakes (Friday 3 min of XP, Saturday 5 and Sunday 8 min of money, XP before money exists), ×1.25 per league up to ×2. A win moves the league up one, a loss keeps it. Registration reopens 20 minutes after a run ends. The deck, draws and swag come from a seeded mulberry32 kept in the run, so a reload deals the same cards. While the overlay is up, events and 1:1s wait and hover clicking pauses.
 
 ## Smoke (`npm run smoke:play`)
 
@@ -133,6 +173,7 @@ Vitest + happy-dom, all through `__GAME__`:
 7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The toast is a diary sentence plus that credit.
 8. **10x dev skills.** A bulk skill is gated by lifetime XP and price, `amount` only works once unlocked, hover rate and offline cap follow the gold owned.
 9. **Events, 1:1s and the IDE.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, a 1:1 waits for a job and its three replies pay, sit or bill you, and the IDE pack follows the owned era.
+10. **Hackathon.** Locked before the Gig Board, open with twenty skills; a greedy player (best `hackPreview` each turn) wins a seeded Campus weekend, Friday pays XP and the weekend pays money, the league moves to City, the cooldown blocks a new registration, and on a forced City run a preview is exactly what the ship scores.
 
 ## Free play (`npm run play:agent`)
 
@@ -203,6 +244,21 @@ game.forceBoost(5, 10_000)
 const before = game.getState()
 game.click()
 // money increased by before.clickPower * 5; cps unchanged
+```
+
+Hackathon (a seeded run, played through the harness):
+
+```js
+const game = window.__GAME__
+game.reset()
+game.setXp(1_000_000)
+for (let id = 1; id <= 20; id++) game.buySkill(id) // a deck, and Portfolio + React open the Gig Board
+game.forceGig(1) // money exists, so Saturday and Sunday pay dollars
+game.startHackathon(2024) // the judge and the first swag table are drawn from the seed
+game.hackPick(0) // take swag, deal Friday
+game.hackPreview([0, 1, 2]) // what shipping those cards would score
+game.hackShip([0, 1, 2])
+game.getState().hackathon.run // score, ships left, the last hand
 ```
 
 Offline sim:
