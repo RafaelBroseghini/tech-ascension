@@ -137,8 +137,8 @@ export type GameSnapshot = {
   features: FeaturesSnapshot
   /** Journal entries kept (the newest 2,000) and the latest one. */
   careerLog: { size: number; last: CareerLogLine | null }
-  /** The career's name and handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
-  profile: { name: string; handle: string; chosen: boolean }
+  /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
+  profile: { handle: string; chosen: boolean }
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -217,9 +217,9 @@ export type GameHarness = {
   seeFeature: (id: string) => boolean
   /** Drop the reveals waiting to play. */
   clearReveals: () => void
-  /** Draw another name, handle, or both, as the start card's buttons do. False once they are kept. */
-  rerollProfile: (part?: "name" | "handle") => boolean
-  /** Keep the current name and handle, as the start card's Start does. */
+  /** Draw another handle, as the start card's Reroll does. False once it is kept. */
+  rerollProfile: () => boolean
+  /** Keep the current handle, as the start card's Start does. */
   keepProfile: () => void
   reset: () => void
 }
@@ -510,7 +510,7 @@ export function installGameHarness(): GameHarness {
     previewEra: (era) => useGame.getState().setPreviewEra(era),
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
-    rerollProfile: (part) => useGame.getState().rerollProfile(part),
+    rerollProfile: () => useGame.getState().rerollProfile(),
     keepProfile: () => useGame.getState().keepProfile(),
 
     seeFeature: (id) => {

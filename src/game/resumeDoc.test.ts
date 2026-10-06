@@ -15,8 +15,8 @@ describe("resume document", () => {
     expect(doc?.openToWorkBanner).toBeNull()
   })
 
-  it("carries the career's name, the one GitHug shows", () => {
-    expect(resumeDocument({ ...none, gigs: [1], name: "Maya Chen" })?.name).toBe("Maya Chen")
+  it("goes by the career's handle, the one GitHug shows", () => {
+    expect(resumeDocument({ ...none, gigs: [1], handle: "quiet-otter" })?.name).toBe("quiet-otter")
   })
 
   it("lists skills and tools before any job", () => {

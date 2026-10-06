@@ -96,7 +96,7 @@ export function LinkedOut() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const skills = useGame((state) => state.skills)
-  const name = useGame((state) => state.profile.name)
+  const handle = useGame((state) => state.profile.handle)
   const [experienceOpen, setExperienceOpen] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const profile = useMemo(() => {
@@ -117,11 +117,11 @@ export function LinkedOut() {
           in
         </span>
         <div className={profile.openToWork ? "lo-avatar is-open" : "lo-avatar"} aria-hidden="true">
-          {initialOf(name)}
+          {initialOf(handle)}
         </div>
         <div className="lo-id">
           <h3>
-            {name} <span>LinkedOut</span>
+            {handle} <span>LinkedOut</span>
           </h3>
           <p>{profile.headline}</p>
           <p className="lo-meta">

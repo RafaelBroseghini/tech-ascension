@@ -75,7 +75,7 @@ export type SaveData = {
   /** The career timeline. Saves from before it have none; the store fills it from what they own. */
   career?: SavedCareer
   /**
-   * The name and handle on the GitHug and LinkedOut profiles, drawn from word lists, and whether the player kept it
+   * The handle on the GitHug and LinkedOut profiles, drawn from word lists, and whether the player kept it
    * (until then the start card offers a reroll). Saves from before it get a random one at boot.
    */
   profile?: SavedIdentity

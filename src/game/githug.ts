@@ -6,7 +6,7 @@ import type { Identity } from "./identity.ts"
 
 /**
  * The GitHug profile: the career journal drawn as a contribution graph, and the repos the career has made. Built
- * from progress and the career's name and handle (`identity.ts`), so it needs nothing else in the save.
+ * from progress and the career's handle (`identity.ts`), so it needs nothing else in the save.
  */
 
 /**
@@ -37,7 +37,6 @@ export type GitHugDay = { date: string; count: number; level: GitHugLevel }
 export type GitHugRepo = { name: string; about: string; lang: string; stars: number }
 
 export type GitHugProfile = {
-  name: string
   handle: string
   bio: string
   /** Week columns, oldest first, Sunday on top. The current week stops at today. */
@@ -159,7 +158,6 @@ export function gitHugProfile(p: Progress & { entries: readonly CareerEntry[]; n
   const repos = gitHugRepos(p)
   const top = highestJobId(p.jobs)
   return {
-    name: p.identity.name,
     handle: p.identity.handle,
     bio: top !== null ? (jobById(top)?.name ?? "Developer") : p.gigs.length > 0 ? "Freelance, open to gigs" : "Learning to code",
     weeks,
