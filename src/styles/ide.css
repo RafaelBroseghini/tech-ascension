@@ -372,7 +372,10 @@
 .code-enter { animation: code-in 260ms linear; }
 .code-leave { animation: code-out 260ms linear forwards; }
 
+/* A theme swap restyles every span in the file. Off-screen lines skip that work (content-visibility), and the pre is as wide as its longest line so paint containment never clips a long one. */
 .code {
+  width: max-content;
+  min-width: 100%;
   margin: 0;
   opacity: 0.62;
   color: var(--ide-text);
@@ -382,7 +385,12 @@
   tab-size: 4;
   white-space: pre;
 }
-.code-line { display: block; min-height: 1.65em; }
+.code-line {
+  display: block;
+  min-height: 1.65em;
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 1.65em;
+}
 .code-num {
   display: inline-block;
   width: 3ch;

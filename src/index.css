@@ -72,11 +72,7 @@ img { -webkit-user-drag: none; user-select: none; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition:
-    --accent var(--dur-slow) var(--ease-out),
-    --accent-hi var(--dur-slow) var(--ease-out),
-    --accent-lo var(--dur-slow) var(--ease-out),
-    --accent-deep var(--dur-slow) var(--ease-out);
+  /* No accent transition: tweening four inherited custom properties restyles the whole page every frame, so a theme hover lagged. */
 }
 
 .eyebrow {
