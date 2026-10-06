@@ -15,6 +15,10 @@ describe("resume document", () => {
     expect(doc?.openToWorkBanner).toBeNull()
   })
 
+  it("carries the career's name, the one GitHug shows", () => {
+    expect(resumeDocument({ ...none, gigs: [1], name: "Brisk Axolotl" })?.name).toBe("Brisk Axolotl")
+  })
+
   it("lists skills and tools before any job", () => {
     const doc = resumeDocument({ ...none, skills: { "1": 1 }, equipment: { "1": 1 } })
     expect(doc?.headline).toBe("Self-taught")

@@ -9,6 +9,8 @@ import type { TempMults } from "./mods.ts"
 import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
+import { normalizeIdentity, randomIdentity } from "./identity.ts"
+import type { Identity } from "./identity.ts"
 
 /** Catalog ids grew in v4. Any other version wipes; there is no migration. */
 export const SAVE_VERSION = 5
@@ -72,6 +74,8 @@ export type SaveData = {
   seenMilestones?: string[]
   /** The career timeline. Saves from before it have none; the store fills it from what they own. */
   career?: SavedCareer
+  /** The name and handle on the GitHug and LinkedOut profiles. Saves from before it get a random one at boot. */
+  profile?: Identity
 }
 
 export type Hydrated = {
@@ -185,6 +189,7 @@ export function freshSave(now: number): SaveData {
     peakMoney: 0,
     stats: emptyStats(),
     career: freshCareer(now),
+    profile: randomIdentity(),
   }
 }
 
@@ -234,6 +239,8 @@ export function parseSave(input: unknown): SaveData | null {
   if (seen.length > 0) save.seenMilestones = seen
   const career = normalizeSavedCareer(input.career)
   if (career) save.career = career
+  const profile = normalizeIdentity(input.profile)
+  if (profile) save.profile = profile
   return save
 }
 

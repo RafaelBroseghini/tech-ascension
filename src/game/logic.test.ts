@@ -243,7 +243,9 @@ describe("save", () => {
     for (const payload of [old, { ...old, version: SAVE_VERSION - 1 }, { ...old, version: SAVE_VERSION + 1 }, { money: 9, owned: [2, 0, 3], savedAt: 50 }, [], "text", 7]) {
       expect(parseSave(payload)).toBeNull()
       const hydrated = hydrate(JSON.stringify(payload), 10_000)
-      expect(hydrated.save).toEqual(freshSave(10_000))
+      // A new career draws its own random name and handle; everything else is the fresh save.
+      expect({ ...hydrated.save, profile: undefined }).toEqual({ ...freshSave(10_000), profile: undefined })
+      expect(hydrated.save.profile?.handle).toMatch(/^[a-z]+-[a-z]+$/)
       expect(hydrated.toast).toMatch(/unreadable/)
     }
   })

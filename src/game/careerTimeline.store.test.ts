@@ -120,6 +120,18 @@ describe("career timeline", () => {
     expect(state.reveals).toEqual(["cat"])
   })
 
+  it("draws a name and handle for each new career, and renames it cleanly", () => {
+    const first = useGame.getState().profile
+    expect(first.handle).toMatch(/^[a-z]+-[a-z]+$/)
+    expect(useGame.getState().setProfile({ name: "Ada", handle: "Ada L" })).toBe(true)
+    expect(useGame.getState().profile).toEqual({ name: "Ada", handle: "ada-l" })
+    expect(useGame.getState().setProfile({ handle: "!!!" })).toBe(false)
+    expect(useGame.getState().profile.handle).toBe("ada-l")
+    persistNow()
+    const saved = parseSave(JSON.parse(readCareerText() ?? "null"))
+    expect(saved?.profile).toEqual({ name: "Ada", handle: "ada-l" })
+  })
+
   it("logs events and 1:1s with the choice made", () => {
     useGame.getState().fireEvent(1)
     useGame.getState().dismissEvent()

@@ -38,6 +38,8 @@ type Owners = {
   equipment: OwnedMap
   jobs: readonly number[]
   gigs: readonly number[]
+  /** The career's display name (the store's `profile.name`). */
+  name?: string
 }
 
 function when(start: string, end: string, duration: string): string {
@@ -93,7 +95,7 @@ export function resumeDocument(owned: Owners): ResumeDoc | null {
   }))
 
   return {
-    name: "You",
+    name: owned.name ?? "You",
     headline: profile?.headline ?? "Self-taught",
     location: profile?.location ?? "",
     openToWork: profile?.openToWork ?? skills.length > 0,

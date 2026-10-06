@@ -60,6 +60,8 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
+import { cleanHandle, cleanName, randomIdentity } from "./identity.ts"
+import type { Identity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -156,6 +158,8 @@ type GameState = {
   celebrationNonce: number
   /** The career timeline: journal, unlocks, NEW markers, returns, and reveals waiting to play. */
   journal: CareerJournal
+  /** The name and handle on the GitHug and LinkedOut profiles. */
+  profile: Identity
   unlocked: FeatureId[]
   fresh: FeatureId[]
   returns: number
@@ -201,6 +205,8 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
+  /** Rename the career. Each field is cleaned; false (and no change) when a given field is left blank. */
+  setProfile: (next: Partial<Identity>) => boolean
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
   noteReturn: (awayMs: number) => void
   /** The big unlock slam: the centred UNLOCKED pop with confetti. */
@@ -242,6 +248,7 @@ function toSave(state: GameState, now: number): SaveData {
   const temp = pruneTemp(state.tempMults, now)
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
+  save.profile = state.profile
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -383,6 +390,7 @@ export const useGame = create<GameState>((set, get) => ({
   buyStamp: 0,
   celebrationNonce: 0,
   journal: booted.career.journal,
+  profile: booted.save.profile ?? randomIdentity(),
   unlocked: booted.career.unlocked,
   fresh: booted.career.fresh,
   returns: booted.career.returns,
@@ -779,6 +787,7 @@ export const useGame = create<GameState>((set, get) => ({
       buyStamp: 0,
       celebrationNonce: 0,
       ...freshCareerSlice(now),
+      profile: randomIdentity(),
     })
   },
 
@@ -798,6 +807,18 @@ export const useGame = create<GameState>((set, get) => ({
 
   clearReveals: () => {
     if (get().reveals.length > 0) set({ reveals: [] })
+  },
+
+  setProfile: (next) => {
+    const state = get()
+    const name = next.name === undefined ? state.profile.name : cleanName(next.name)
+    const handle = next.handle === undefined ? state.profile.handle : cleanHandle(next.handle)
+    if (!name || !handle) return false
+    if (name !== state.profile.name || handle !== state.profile.handle) {
+      set({ profile: { name, handle } })
+      persistNow()
+    }
+    return true
   },
 
   dismissWhatsNew: () => {

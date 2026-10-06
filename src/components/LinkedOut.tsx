@@ -2,6 +2,7 @@ import { SKILL_TIERS } from "../data/phases.ts"
 import { ownedCount } from "../game/economy.ts"
 import { linkedOutProfile } from "../game/linkedout.ts"
 import type { CompanyStint, LinkedRole, SideProject } from "../game/linkedout.ts"
+import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { useMemo, useState } from "react"
 
@@ -95,6 +96,7 @@ export function LinkedOut() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const skills = useGame((state) => state.skills)
+  const name = useGame((state) => state.profile.name)
   const [experienceOpen, setExperienceOpen] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const profile = useMemo(() => {
@@ -115,11 +117,11 @@ export function LinkedOut() {
           in
         </span>
         <div className={profile.openToWork ? "lo-avatar is-open" : "lo-avatar"} aria-hidden="true">
-          Y
+          {initialOf(name)}
         </div>
         <div className="lo-id">
           <h3>
-            You <span>LinkedOut</span>
+            {name} <span>LinkedOut</span>
           </h3>
           <p>{profile.headline}</p>
           <p className="lo-meta">
