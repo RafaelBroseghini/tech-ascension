@@ -13,6 +13,7 @@ import { useGame } from "../game/store.ts"
 import { onSurface } from "../game/surfaces.ts"
 import { CareerLog, CareerOutput } from "./CareerLog.tsx"
 import { GitHugCorner } from "./CornerActions.tsx"
+import { IdentityPicker } from "./IdentityPicker.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { Shop } from "./Shop.tsx"
 import { UnlockReveals } from "./UnlockReveals.tsx"
@@ -230,27 +231,35 @@ describe("the GitHug corner", () => {
     expect(useGame.getState().fresh).not.toContain("githug")
   })
 
-  it("shows the career's own name and handle, and renames it in place", () => {
-    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { name: "Brisk Axolotl", handle: "brisk-axolotl" } })
+  it("shows the career's own name and handle, with nothing to edit", () => {
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { name: "Brisk Axolotl", handle: "brisk-axolotl", chosen: true } })
     render(GitHugCorner)
     click($("[data-testid='view-githug']"))
     expect($("[data-testid='githug-name']")?.textContent).toBe("Brisk Axolotl")
     expect($("[data-testid='githug-handle']")?.textContent).toContain("@brisk-axolotl")
-    click($("[data-testid='githug-edit-open']"))
-    const type = (testId: string, value: string) => {
-      const input = $(`[data-testid='${testId}']`) as HTMLInputElement
-      flushSync(() => {
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!
-        setter.call(input, value)
-        input.dispatchEvent(new Event("input", { bubbles: true }))
-      })
-    }
-    type("githug-edit-name", "  Ada   Lovelace ")
-    type("githug-edit-handle", "@Ada Lovelace")
-    expect($(".githug-edit-note")?.textContent).toBe("Saves as @ada-lovelace")
-    click($("[data-testid='githug-edit-save']"))
-    expect(useGame.getState().profile).toEqual({ name: "Ada Lovelace", handle: "ada-lovelace" })
-    expect($("[data-testid='githug-name']")?.textContent).toBe("Ada Lovelace")
-    expect($("[data-testid='githug-edit']")).toBeNull()
+    expect($("[data-testid='githug-modal'] input")).toBeNull()
+  })
+})
+
+describe("the start card", () => {
+  it("offers the drawn name, rerolls it, and keeps it on Start", () => {
+    render(IdentityPicker)
+    const first = useGame.getState().profile
+    expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${first.handle}`)
+    expect($("[data-testid='identity-picker'] input")).toBeNull()
+    click($("[data-testid='identity-reroll']"))
+    const second = useGame.getState().profile
+    expect(second.handle).not.toBe(first.handle)
+    expect($("[data-testid='identity-name']")?.textContent).toBe(second.name)
+    expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as ${second.name}`)
+    click($("[data-testid='identity-keep']"))
+    expect(useGame.getState().profile).toEqual({ ...second, chosen: true })
+    expect($("[data-testid='identity-picker']")).toBeNull()
+  })
+
+  it("never shows for a career that already kept its name", () => {
+    useGame.getState().keepProfile()
+    render(IdentityPicker)
+    expect($("[data-testid='identity-picker']")).toBeNull()
   })
 })

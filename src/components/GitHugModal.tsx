@@ -1,11 +1,10 @@
-import { Flame, Pencil, Star, X } from "lucide-react"
+import { Flame, Star, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { gitHugProfile } from "../game/githug.ts"
 import type { GitHugDay } from "../game/githug.ts"
 import { formatNumber } from "../game/format.ts"
-import { cleanHandle, cleanName, initialOf } from "../game/identity.ts"
-import type { Identity } from "../game/identity.ts"
+import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 
@@ -29,57 +28,6 @@ function dayTitle(day: GitHugDay): string {
   return `${day.count === 0 ? "No" : day.count} contribution${day.count === 1 ? "" : "s"} on ${when}`
 }
 
-/** Rename the career: the name and handle GitHug and LinkedOut both show. Enter saves, Esc backs out. */
-function EditIdentity({ identity, onDone }: { identity: Identity; onDone: () => void }) {
-  const setProfile = useGame((state) => state.setProfile)
-  const [name, setName] = useState(identity.name)
-  const [handle, setHandle] = useState(identity.handle)
-  const nameOk = cleanName(name) !== null
-  const handleOk = cleanHandle(handle) !== null
-  const preview = cleanHandle(handle)
-  const save = () => {
-    if (setProfile({ name, handle })) onDone()
-  }
-  return (
-    <form
-      className="githug-edit"
-      data-testid="githug-edit"
-      onSubmit={(submit) => {
-        submit.preventDefault()
-        save()
-      }}
-      onKeyDown={(key) => {
-        if (key.key !== "Escape") return
-        // Esc leaves the form, not the profile.
-        key.preventDefault()
-        key.stopPropagation()
-        onDone()
-      }}
-    >
-      <label>
-        Name
-        <input value={name} maxLength={40} autoFocus aria-invalid={!nameOk} data-testid="githug-edit-name" onChange={(change) => setName(change.target.value)} />
-      </label>
-      <label>
-        Handle
-        <span className="githug-edit-handle">
-          @
-          <input value={handle} maxLength={40} aria-invalid={!handleOk} data-testid="githug-edit-handle" onChange={(change) => setHandle(change.target.value)} />
-        </span>
-      </label>
-      <p className="githug-edit-note">{handleOk && preview !== handle ? `Saves as @${preview}` : "Letters, numbers and hyphens. LinkedOut uses it too."}</p>
-      <div className="githug-edit-actions">
-        <button type="submit" className="githug-btn is-primary" disabled={!nameOk || !handleOk} data-testid="githug-edit-save">
-          Save
-        </button>
-        <button type="button" className="githug-btn" onClick={onDone}>
-          Cancel
-        </button>
-      </div>
-    </form>
-  )
-}
-
 /** The parody GitHub profile: a green square per day you shipped something, pinned repos, and the real repo's star. */
 export function GitHugModal({ stars, onClose }: { stars: number | null; onClose: () => void }) {
   const entries = useGame((state) => state.journal.entries)
@@ -89,7 +37,6 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
   const xpTotal = useGame((state) => state.xpTotal)
   const identity = useGame((state) => state.profile)
   const dialogRef = useRef<HTMLDivElement>(null)
-  const [editing, setEditing] = useState(false)
   // The graph ends on the day the profile was opened.
   const [openedAt] = useState(() => Date.now())
   const profile = useMemo(
@@ -100,7 +47,7 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true })
     const onKey = (key: KeyboardEvent) => {
-      if (key.key === "Escape" && !key.defaultPrevented) onClose()
+      if (key.key === "Escape") onClose()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -124,21 +71,12 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
           </span>
           <div className="githug-who">
             <p className="event-kicker">GitHug</p>
-            {editing ? (
-              <EditIdentity identity={identity} onDone={() => setEditing(false)} />
-            ) : (
-              <>
-                <h2 id="githug-name" data-testid="githug-name">
-                  {profile.name}
-                  <button type="button" className="githug-edit-open" aria-label="Edit name and handle" data-testid="githug-edit-open" onClick={() => setEditing(true)}>
-                    <Pencil {...UI_ICON_SM} aria-hidden />
-                  </button>
-                </h2>
-                <p className="githug-handle" data-testid="githug-handle">
-                  @{profile.handle} · {profile.bio}
-                </p>
-              </>
-            )}
+            <h2 id="githug-name" data-testid="githug-name">
+              {profile.name}
+            </h2>
+            <p className="githug-handle" data-testid="githug-handle">
+              @{profile.handle} · {profile.bio}
+            </p>
             <p className="githug-meta" data-testid="githug-meta">
               <b>{formatNumber(profile.followers)}</b> followers · <b>{profile.repos}</b> repos · <b>{formatNumber(profile.stars)}</b> stars
             </p>
