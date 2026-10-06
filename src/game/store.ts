@@ -60,7 +60,7 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
-import { randomHandle, randomIdentity, randomName } from "./identity.ts"
+import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
@@ -158,7 +158,7 @@ type GameState = {
   celebrationNonce: number
   /** The career timeline: journal, unlocks, NEW markers, returns, and reveals waiting to play. */
   journal: CareerJournal
-  /** The name and handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
+  /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
   profile: SavedIdentity
   unlocked: FeatureId[]
   fresh: FeatureId[]
@@ -205,9 +205,9 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
-  /** Draw another name, handle, or both, from the word lists. Only before the player keeps them; false after. */
-  rerollProfile: (part?: "name" | "handle") => boolean
-  /** Keep the current name and handle for the rest of the career. */
+  /** Draw another handle from the word lists. Only before the player keeps it; false after. */
+  rerollProfile: () => boolean
+  /** Keep the current handle for the rest of the career. */
   keepProfile: () => void
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
   noteReturn: (awayMs: number) => void
@@ -812,12 +812,10 @@ export const useGame = create<GameState>((set, get) => ({
     if (get().reveals.length > 0) set({ reveals: [] })
   },
 
-  rerollProfile: (part) => {
+  rerollProfile: () => {
     const { profile } = get()
     if (profile.chosen) return false
-    const name = part === "handle" ? profile.name : randomName(Math.random, profile.name)
-    const handle = part === "name" ? profile.handle : randomHandle(Math.random, profile.handle)
-    set({ profile: { name, handle, chosen: false } })
+    set({ profile: { handle: randomHandle(Math.random, profile.handle), chosen: false } })
     persistNow()
     return true
   },

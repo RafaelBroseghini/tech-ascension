@@ -71,7 +71,7 @@ getState(): {
   upNext: { id: string; name: string; via: string; fill: number; left: string }[]   // the career log's Up next
  }
  careerLog: { size: number; last: Record<string, number | string | boolean> | null } // journal entries kept, and the newest as JSON
- profile: { name: string; handle: string; chosen: boolean } // the career's name, the same on GitHug and LinkedOut ("Maya Chen"), and its separate web handle ("quiet-otter"), both drawn from word lists; chosen once kept
+ profile: { handle: string; chosen: boolean } // the career's handle on GitHug and LinkedOut ("quiet-otter"), drawn from word lists; chosen once kept
 }
 
 click(): { money: number; xp: number }
@@ -100,7 +100,7 @@ previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
 careerLog(): Record<string, number | string | boolean>[]  // every journal entry, oldest first, as the Output tab prints them
 seeFeature(id: string): boolean   // clear a NEW marker, as using the feature does; false for an unknown id
 clearReveals(): void              // drop the reveals waiting to play (NEW markers stay)
-rerollProfile(part?: "name" | "handle"): boolean // draw another name, handle, or both, as the start card does; false once kept
+rerollProfile(): boolean          // draw another handle, as the start card's Reroll does; false once kept
 keepProfile(): void               // keep the current one for good, as the start card's Start (agents: call it to clear the card)
 reset(): void
 ```
@@ -133,7 +133,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
 - `reset()` wipes the save back to high school.
 - **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has one file, XP and the Skills tab. Used laptop (skill 1) opens the editor, Linux CLI basics (8) the terminal, Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with editor folders, desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()` and the console's Output tab. Admin mode shows the whole desk.
-- **Identity** (`src/game/identity.ts`, start card in `src/components/IdentityPicker.tsx`). Every new career (a fresh save or `reset()`) draws a person's name from first and last name lists ("Maya Chen", the same on every profile) and, apart from it, a Tailscale-style web handle (`quiet-otter`), and opens a start card: one die rerolls the name, one the handle, "Reroll both" both, and Start keeps them for good. Nothing is ever typed. They are saved in an optional `profile` block with `chosen`; a save is only accepted with a name and a handle the lists can draw. A save from before names gets one, already kept, with no card. GitHug shows the name and `@handle`; LinkedOut shows the name and `linkedout.com/in/<name-slug>`. A test scans all 1,024 names and 1,024 handles, as shown and run together, for slurs, slang and prank names ("Mike Hunt", "Ben Dover").
+- **Identity** (`src/game/identity.ts`, start card in `src/components/IdentityPicker.tsx`). Every new career (a fresh save or `reset()`) draws a Tailscale-style handle (`quiet-otter`) and opens a start card: Reroll draws another, and Start keeps it for good. There is no real name; GitHug and LinkedOut (`linkedout.com/in/<handle>`) both go by the handle. Nothing is ever typed. It is saved in an optional `profile` block with `chosen`; a save is only accepted with a handle the lists can draw. A save from before handles gets one, already kept, with no card. A test scans all 1,024 handles, as shown and run together, for slurs and slang.
 
 ## Smoke (`npm run smoke:play`)
 

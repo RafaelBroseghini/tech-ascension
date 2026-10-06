@@ -60,22 +60,22 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
         className="resume-modal githug-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="githug-name"
+        aria-labelledby="githug-handle"
         tabIndex={-1}
         data-testid="githug-modal"
         onClick={(click) => click.stopPropagation()}
       >
         <header className="githug-head">
           <span className="githug-avatar" aria-hidden="true">
-            {initialOf(profile.name)}
+            {initialOf(profile.handle)}
           </span>
           <div className="githug-who">
             <p className="event-kicker">GitHug</p>
-            <h2 id="githug-name" data-testid="githug-name">
-              {profile.name}
+            <h2 id="githug-handle" data-testid="githug-handle">
+              {profile.handle}
             </h2>
-            <p className="githug-handle" data-testid="githug-handle">
-              @{profile.handle} · {profile.bio}
+            <p className="githug-bio" data-testid="githug-bio">
+              {profile.bio}
             </p>
             <p className="githug-meta" data-testid="githug-meta">
               <b>{formatNumber(profile.followers)}</b> followers · <b>{profile.repos}</b> repos · <b>{formatNumber(profile.stars)}</b> stars
