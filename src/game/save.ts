@@ -10,7 +10,7 @@ import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
-import type { Identity } from "./identity.ts"
+import type { SavedIdentity } from "./identity.ts"
 
 /** Catalog ids grew in v4. Any other version wipes; there is no migration. */
 export const SAVE_VERSION = 5
@@ -74,8 +74,11 @@ export type SaveData = {
   seenMilestones?: string[]
   /** The career timeline. Saves from before it have none; the store fills it from what they own. */
   career?: SavedCareer
-  /** The name and handle on the GitHug and LinkedOut profiles. Saves from before it get a random one at boot. */
-  profile?: Identity
+  /**
+   * The name and handle on the GitHug and LinkedOut profiles, drawn from word lists, and whether the player kept it
+   * (until then the start card offers a reroll). Saves from before it get a random one at boot.
+   */
+  profile?: SavedIdentity
 }
 
 export type Hydrated = {
@@ -189,7 +192,7 @@ export function freshSave(now: number): SaveData {
     peakMoney: 0,
     stats: emptyStats(),
     career: freshCareer(now),
-    profile: randomIdentity(),
+    profile: { ...randomIdentity(), chosen: false },
   }
 }
 

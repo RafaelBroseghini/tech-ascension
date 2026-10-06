@@ -519,11 +519,14 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(state.careerLog.last).toMatchObject({ type: "unlock", ref: "cat" })
   expect(game.careerLog().some((line) => line.type === "return" && line.awayMs === 30 * 60 * 1000)).toBe(true)
 
-  // The career has a drawn name and handle for GitHug and LinkedOut, and renaming cleans the handle.
-  expect(game.getState().profile.handle).toMatch(/^[a-z]+-[a-z]+$/)
-  expect(game.setProfile("Ada Lovelace", "@Ada Lovelace")).toBe(true)
-  expect(game.getState().profile).toEqual({ name: "Ada Lovelace", handle: "ada-lovelace" })
-  expect(game.setProfile("   ")).toBe(false)
+  // The career has a drawn name and handle for GitHug and LinkedOut: rerolled from the word lists until kept.
+  const drawn = game.getState().profile
+  expect(drawn).toMatchObject({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/) })
+  expect(game.rerollProfile()).toBe(true)
+  expect(game.getState().profile.handle).not.toBe(drawn.handle)
+  game.keepProfile()
+  expect(game.getState().profile.chosen).toBe(true)
+  expect(game.rerollProfile()).toBe(false)
 
   // A wipe starts the timeline over.
   game.reset()

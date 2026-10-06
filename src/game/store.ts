@@ -60,8 +60,8 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
-import { cleanHandle, cleanName, randomIdentity } from "./identity.ts"
-import type { Identity } from "./identity.ts"
+import { randomIdentity } from "./identity.ts"
+import type { SavedIdentity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -158,8 +158,8 @@ type GameState = {
   celebrationNonce: number
   /** The career timeline: journal, unlocks, NEW markers, returns, and reveals waiting to play. */
   journal: CareerJournal
-  /** The name and handle on the GitHug and LinkedOut profiles. */
-  profile: Identity
+  /** The name and handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
+  profile: SavedIdentity
   unlocked: FeatureId[]
   fresh: FeatureId[]
   returns: number
@@ -205,8 +205,10 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
-  /** Rename the career. Each field is cleaned; false (and no change) when a given field is left blank. */
-  setProfile: (next: Partial<Identity>) => boolean
+  /** Draw another name and handle from the word lists. Only before the player keeps one; false after. */
+  rerollProfile: () => boolean
+  /** Keep the current name and handle for the rest of the career. */
+  keepProfile: () => void
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
   noteReturn: (awayMs: number) => void
   /** The big unlock slam: the centred UNLOCKED pop with confetti. */
@@ -390,7 +392,8 @@ export const useGame = create<GameState>((set, get) => ({
   buyStamp: 0,
   celebrationNonce: 0,
   journal: booted.career.journal,
-  profile: booted.save.profile ?? randomIdentity(),
+  // A save from before names were drawn is a career already under way: it gets one, kept, with no start card.
+  profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
   unlocked: booted.career.unlocked,
   fresh: booted.career.fresh,
   returns: booted.career.returns,
@@ -787,7 +790,7 @@ export const useGame = create<GameState>((set, get) => ({
       buyStamp: 0,
       celebrationNonce: 0,
       ...freshCareerSlice(now),
-      profile: randomIdentity(),
+      profile: { ...randomIdentity(), chosen: false },
     })
   },
 
@@ -809,16 +812,19 @@ export const useGame = create<GameState>((set, get) => ({
     if (get().reveals.length > 0) set({ reveals: [] })
   },
 
-  setProfile: (next) => {
-    const state = get()
-    const name = next.name === undefined ? state.profile.name : cleanName(next.name)
-    const handle = next.handle === undefined ? state.profile.handle : cleanHandle(next.handle)
-    if (!name || !handle) return false
-    if (name !== state.profile.name || handle !== state.profile.handle) {
-      set({ profile: { name, handle } })
-      persistNow()
-    }
+  rerollProfile: () => {
+    const { profile } = get()
+    if (profile.chosen) return false
+    set({ profile: { ...randomIdentity(Math.random, profile), chosen: false } })
+    persistNow()
     return true
+  },
+
+  keepProfile: () => {
+    const { profile } = get()
+    if (profile.chosen) return
+    set({ profile: { ...profile, chosen: true } })
+    persistNow()
   },
 
   dismissWhatsNew: () => {
