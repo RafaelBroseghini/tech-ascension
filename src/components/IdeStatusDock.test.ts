@@ -34,6 +34,8 @@ const chips = () => [...document.body.querySelectorAll<HTMLElement>("[data-statu
 
 beforeEach(() => {
   useGame.getState().wipe()
+  // Every chip is a career unlock; these tests start with all of them on the desk.
+  useGame.setState({ unlocked: ["music", "music:cozy", "clickKits", "cat", "rosters", "themes"] })
   setDeskPref("music", false)
   setDeskPref("sounds", true)
   setDeskPref("clicks", true)
@@ -45,6 +47,24 @@ afterEach(() => {
   host.remove()
   document.body.replaceChildren()
   useGame.getState().wipe()
+})
+
+describe("status dock before the career unlocks anything", () => {
+  it("holds no chips at minute zero, only the outline of the next one", () => {
+    useGame.setState({ unlocked: [] })
+    mount()
+    expect(chips()).toEqual([])
+    expect(document.body.querySelectorAll("[data-testid='feature-ghost']").length).toBeLessThanOrEqual(1)
+  })
+
+  it("shows a chip once its feature unlocks, marked NEW until it is opened", () => {
+    useGame.setState({ unlocked: ["rosters"], fresh: ["rosters"] })
+    mount()
+    expect(chips()).toEqual(["rosters"])
+    expect(document.body.querySelector("[data-status-chip='rosters'] [data-testid='new-mark']")).not.toBeNull()
+    hover("rosters")
+    expect(useGame.getState().fresh).not.toContain("rosters")
+  })
 })
 
 describe("status dock sound and click chips", () => {

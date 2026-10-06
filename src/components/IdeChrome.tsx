@@ -9,17 +9,21 @@ import {
   Mail,
   Play,
   Presentation,
-  Search,
   Terminal,
 } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   closeIdePythonConsole,
   getIdePythonConsole,
+  openIdeOutput,
   openIdePythonConsole,
   queueIdePythonRun,
   subscribeIdePythonConsole,
 } from "../game/idePythonConsole.ts"
+import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
+import { CareerLog } from "./CareerLog.tsx"
+import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
+import { useFeatureOpen, useSurface } from "./useFeature.ts"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import { itemsOf } from "../data/idePacks.ts"
 import type { IdePack } from "../data/idePacks.ts"
@@ -41,12 +45,6 @@ import { IdeStatusDock } from "./IdeStatusDock.tsx"
 const FADE_MS = 260
 const KIND_TITLE = { files: "Explorer", inbox: "Inbox", deck: "Slides" } as const
 const KIND_MODE = { files: "NORMAL", inbox: "MAIL", deck: "SLIDES" } as const
-
-const IDE_ACTIVITY = [
-  { id: "files", Icon: Files },
-  { id: "search", Icon: Search },
-  { id: "git", Icon: GitBranch },
-] as const
 
 function runPythonFile(file: { path: string; code: string; lang: Lang }) {
   if (file.lang !== "python") return
@@ -152,6 +150,11 @@ export const IdeChrome = memo(function IdeChrome() {
   const holdPreview = useGame((state) => state.holdPreview)
 
   const loreUnlocked = useSyncExternalStore(subscribeIdeLore, readIdeLoreUnlocked, readIdeLoreUnlocked)
+  const terminalOpen = useFeatureOpen("terminal")
+  const logOpen = useFeatureOpen("careerLog")
+  const seeFeature = useGame((state) => state.seeFeature)
+  const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
+  const showLog = logOpen && sidebar === "log"
   const view = useMemo(
     () => ideView({ skills, owned, jobs, gigs, ideSel, previewEra, loreUnlocked }),
     [skills, owned, jobs, gigs, ideSel, previewEra, loreUnlocked],
@@ -246,6 +249,19 @@ export const IdeChrome = memo(function IdeChrome() {
     openIdePythonConsole(activeFile?.lang === "python" ? { path: activeFile.path, code: activeFile.code } : null)
   }, [activeFile])
 
+  const openLog = () => {
+    setSidebarView("log")
+    seeFeature("careerLog")
+  }
+
+  // A reveal card's "Try it": run the open file when it is Python, else just open the terminal.
+  useSurface("terminal", () => {
+    if (activeFile?.lang === "python" && !consoleBusy) runPythonFile(activeFile)
+    else openIdePythonConsole(null)
+  })
+  useSurface("output", openIdeOutput)
+  useSurface("careerLog", openLog)
+
   return (
     <div
       className="ide"
@@ -261,37 +277,75 @@ export const IdeChrome = memo(function IdeChrome() {
       onPointerMove={holdPreview}
     >
       <nav className="ide-activity" aria-label="Activity bar">
-        {IDE_ACTIVITY.map(({ id, Icon }) => (
-          <span key={id} className="ide-activity-icon-wrap" aria-hidden="true">
-            <Icon className={`ide-activity-icon ide-activity-icon-${id}`} {...UI_ICON} />
-          </span>
-        ))}
+        <button
+          type="button"
+          className={showLog ? "ide-activity-btn" : "ide-activity-btn is-active"}
+          data-testid="ide-view-explorer"
+          aria-label="Explorer"
+          title="Explorer"
+          aria-pressed={!showLog}
+          onClick={() => setSidebarView("explorer")}
+        >
+          <Files className="ide-activity-icon ide-activity-icon-files" {...UI_ICON} aria-hidden />
+        </button>
+        {logOpen ? (
+          <button
+            type="button"
+            className={showLog ? "ide-activity-btn is-active" : "ide-activity-btn"}
+            data-testid="ide-view-log"
+            data-feature-anchor="careerLog"
+            aria-label="Career log"
+            title="Career log"
+            aria-pressed={showLog}
+            onClick={() => (showLog ? setSidebarView("explorer") : openLog())}
+          >
+            <GitBranch className="ide-activity-icon ide-activity-icon-git" {...UI_ICON} aria-hidden />
+            <NewMark id="careerLog" />
+          </button>
+        ) : (
+          <FeatureGhost id="careerLog" className="ide-activity-btn">
+            <GitBranch className="ide-activity-icon ide-activity-icon-git" {...UI_ICON} aria-hidden />
+          </FeatureGhost>
+        )}
         <div className="ide-activity-pair ide-activity-bottom">
-          <button
-            type="button"
-            className={consoleBusy ? "ide-activity-btn is-busy" : "ide-activity-btn"}
-            data-testid="ide-run-active"
-            aria-label="Run Python file"
-            title="Run Python file"
-            disabled={!canRunActive}
-            onClick={runActiveFile}
-          >
-            <Play className="ide-activity-icon ide-activity-icon-run" {...UI_ICON} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={consoleOpen ? "ide-activity-btn ide-activity-console is-active" : "ide-activity-btn ide-activity-console"}
-            data-testid="ide-console-open"
-            aria-label="Show Python console"
-            title="Python console"
-            aria-pressed={consoleOpen}
-            onClick={showPythonConsole}
-          >
-            <Terminal className="ide-activity-icon ide-activity-icon-console" {...UI_ICON} aria-hidden />
-          </button>
+          {terminalOpen ? (
+            <>
+              <button
+                type="button"
+                className={consoleBusy ? "ide-activity-btn is-busy" : "ide-activity-btn"}
+                data-testid="ide-run-active"
+                aria-label="Run Python file"
+                title="Run Python file"
+                disabled={!canRunActive}
+                onClick={runActiveFile}
+              >
+                <Play className="ide-activity-icon ide-activity-icon-run" {...UI_ICON} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={consoleOpen ? "ide-activity-btn ide-activity-console is-active" : "ide-activity-btn ide-activity-console"}
+                data-testid="ide-console-open"
+                data-feature-anchor="terminal"
+                aria-label="Show console"
+                title="Console"
+                aria-pressed={consoleOpen}
+                onClick={showPythonConsole}
+              >
+                <Terminal className="ide-activity-icon ide-activity-icon-console" {...UI_ICON} aria-hidden />
+                <NewMark id="terminal" />
+              </button>
+            </>
+          ) : (
+            <FeatureGhost id="terminal" className="ide-activity-btn">
+              <Terminal className="ide-activity-icon ide-activity-icon-console" {...UI_ICON} aria-hidden />
+            </FeatureGhost>
+          )}
         </div>
       </nav>
-      <aside className="ide-tree" aria-label="Explorer">
+      <aside className="ide-tree" aria-label={showLog ? "Career log" : "Explorer"} data-feature-anchor="editor">
+        {showLog ? <CareerLog /> : null}
+        {showLog ? null : (
+        <>
         <div className="ide-tree-head">
           <p className="ide-tree-title">Explorer</p>
           <button
@@ -345,7 +399,7 @@ export const IdeChrome = memo(function IdeChrome() {
                       const selected = isActiveFolder && row === index
                       const file =
                         folder.kind === "files" && folder.pack.kind === "files" ? folder.pack.files[row] : undefined
-                      const isPython = file?.lang === "python"
+                      const isPython = terminalOpen && file?.lang === "python"
                       const wrapClass = [
                         "ide-item-wrap",
                         `is-${folder.kind}`,
@@ -364,7 +418,7 @@ export const IdeChrome = memo(function IdeChrome() {
                             onClick={(event) => pick(folder.id, row, event.shiftKey)}
                             onDoubleClick={(event) => {
                               event.preventDefault()
-                              if (folder.kind !== "files") return
+                              if (folder.kind !== "files" || !terminalOpen) return
                               if (!file) return
                               pick(folder.id, row, event.shiftKey, true)
                               runPythonFile(file)
@@ -405,6 +459,8 @@ export const IdeChrome = memo(function IdeChrome() {
             )
           })}
         </div>
+        </>
+        )}
       </aside>
       <header ref={tabsRef} className="ide-tabs" role="tablist" aria-label={`${pack.label} ${pack.kind === "files" ? "files" : pack.kind === "inbox" ? "emails" : "slides"}`}>
         {items.map((item, row) => (
@@ -418,7 +474,7 @@ export const IdeChrome = memo(function IdeChrome() {
             title={item.detail}
             onClick={() => pick(pack.id, row)}
             onDoubleClick={() => {
-              if (pack.kind !== "files") return
+              if (pack.kind !== "files" || !terminalOpen) return
               const file = pack.files[row]
               if (!file) return
               runPythonFile(file)

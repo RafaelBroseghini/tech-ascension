@@ -48,10 +48,12 @@ export function MetricsBar() {
             <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
           </div>
         ) : null}
-        <div className="m-rate">
-          <dt>$/click</dt>
-          <dd data-testid="per-click">${formatNumber(paidClick)}</dd>
-        </div>
+        {clickPaysMoney({ jobs }) ? (
+          <div className="metric-in m-rate">
+            <dt>$/click</dt>
+            <dd data-testid="per-click">${formatNumber(paidClick)}</dd>
+          </div>
+        ) : null}
         <div className="m-xp-rate">
           <dt>XP/click</dt>
           <dd data-testid="xp-per-click">{formatNumber(rates.xpClick * rates.mult)}</dd>

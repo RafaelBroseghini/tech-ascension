@@ -8,7 +8,9 @@ import type { DeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, previewIdeTheme, setIdeTheme } from "../game/ideTheme.ts"
+import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
+import { NewMark } from "./FeatureMarks.tsx"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
@@ -93,12 +95,19 @@ export function DeskToggleList({ desk, hoverPerSec, keys }: DeskToggleListProps)
 
 type MusicStyleListProps = {
   desk: DeskPrefs
+  /** The career's unlocked rows. Only styles, kits and themes it has earned are listed (plus the one in use). */
+  unlocked: ReadonlySet<string>
 }
 
-export function MusicStyleList({ desk }: MusicStyleListProps) {
+/** The picks a career has earned, in table order, plus the saved one so a choice never disappears. */
+function earned<T extends string>(ids: readonly T[], allowed: readonly string[], current: string): T[] {
+  return ids.filter((id) => allowed.includes(id) || id === current)
+}
+
+export function MusicStyleList({ desk, unlocked }: MusicStyleListProps) {
   return (
     <div className="desk-toggles" role="listbox" aria-label="Music styles">
-      {MUSIC_STYLE_IDS.map((id) => (
+      {earned(MUSIC_STYLE_IDS, musicChoices(unlocked), desk.musicStyle).map((id) => (
         <button
           key={id}
           type="button"
@@ -109,16 +118,17 @@ export function MusicStyleList({ desk }: MusicStyleListProps) {
           onClick={() => setDeskPref("musicStyle", id)}
         >
           <span className="ide-theme-name">{MUSIC_STYLES[id].label}</span>
+          <NewMark id={`music:${id}`} pill />
         </button>
       ))}
     </div>
   )
 }
 
-export function ClickKitList({ desk }: MusicStyleListProps) {
+export function ClickKitList({ desk, unlocked }: MusicStyleListProps) {
   return (
     <div className="desk-toggles" role="listbox" aria-label="Click sounds">
-      {CLICK_KIT_IDS.map((id) => (
+      {earned(CLICK_KIT_IDS, clickKitChoices(unlocked), desk.clickKit).map((id) => (
         <button
           key={id}
           type="button"
@@ -129,6 +139,7 @@ export function ClickKitList({ desk }: MusicStyleListProps) {
           onClick={() => setDeskPref("clickKit", id)}
         >
           <span className="ide-theme-name">{CLICK_KITS[id].label}</span>
+          <NewMark id={`kit:${id}`} pill />
         </button>
       ))}
     </div>
@@ -137,17 +148,21 @@ export function ClickKitList({ desk }: MusicStyleListProps) {
 
 type EditorThemeListProps = {
   savedThemeId: string
+  unlocked: ReadonlySet<string>
   onPreviewEnd?: () => void
 }
 
-export function EditorThemeList({ savedThemeId, onPreviewEnd }: EditorThemeListProps) {
+export function EditorThemeList({ savedThemeId, unlocked, onPreviewEnd }: EditorThemeListProps) {
+  const allowed = themeChoices(unlocked)
   return (
     <>
       {THEME_GROUPS.map((group) => (
         <div key={group.kind}>
           <p className="ide-theme-group">{group.label}</p>
           <div className="desk-toggles" role="listbox" aria-label={`${group.label} editor themes`}>
-            {ideThemesOf(group.kind).map((entry) => (
+            {ideThemesOf(group.kind)
+              .filter((entry) => allowed.includes(entry.id) || entry.id === savedThemeId)
+              .map((entry) => (
               <button
                 key={entry.id}
                 type="button"
@@ -170,6 +185,7 @@ export function EditorThemeList({ savedThemeId, onPreviewEnd }: EditorThemeListP
                   <i style={{ background: "var(--ide-blue)" }} />
                 </span>
                 <span className="ide-theme-name">{entry.name}</span>
+                <NewMark id={`theme:${entry.id}`} pill />
               </button>
             ))}
           </div>

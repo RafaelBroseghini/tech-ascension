@@ -22,6 +22,10 @@ import { readCareerText } from "./ledger.ts"
 import { setMoneyDirect, setXpDirect } from "./admin.ts"
 import { persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
+import { careerJson, journalFromSave } from "./careerLog.ts"
+import { progressOf } from "./careerSync.ts"
+import { isFeatureId, nextGhost, upNext } from "./features.ts"
+import type { FeatureTease } from "./features.ts"
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
@@ -129,6 +133,29 @@ export type GameSnapshot = {
   savedAt: number
   /** The most recent money pop (medium on a paying click, large on gig clear and phase unlock), or null. */
   lastPop: PopSnapshot | null
+  /** The career timeline: what is unlocked, marked NEW, waiting to reveal, and next. */
+  features: FeaturesSnapshot
+  /** Journal entries kept (the newest 2,000) and the latest one. */
+  careerLog: { size: number; last: CareerLogLine | null }
+}
+
+/** A closed timeline row: what opens it and how close it is. */
+export type TeaseSnapshot = { id: string; name: string; via: string; fill: number; left: string }
+
+/** One career journal entry as the console's Output tab prints it. */
+export type CareerLogLine = Record<string, number | string | boolean>
+
+export type FeaturesSnapshot = {
+  /** Rows unlocked so far, in the order they opened. */
+  open: string[]
+  /** Rows still marked NEW. */
+  fresh: string[]
+  /** Reveals waiting to play. */
+  reveals: string[]
+  /** The row standing in its future place as a dim outline. */
+  next: TeaseSnapshot | null
+  /** The career log's Up next. */
+  upNext: TeaseSnapshot[]
 }
 
 export type OfflineCatchup = {
@@ -182,7 +209,17 @@ export type GameHarness = {
   ideSelect: (index: number, packId?: string) => boolean
   /** Preview an era's pack as the shop era tab does, or null to snap back to the owned one. */
   previewEra: (era: Era | null) => void
+  /** Every career journal entry, oldest first, as the Output tab prints them. */
+  careerLog: () => CareerLogLine[]
+  /** Clear a NEW marker, as using the feature does. False for an unknown id. */
+  seeFeature: (id: string) => boolean
+  /** Drop the reveals waiting to play. */
+  clearReveals: () => void
   reset: () => void
+}
+
+function teaseSnapshot(tease: FeatureTease): TeaseSnapshot {
+  return { id: tease.id, name: tease.name, via: tease.via, fill: tease.fill, left: tease.left }
 }
 
 function readSavedAt(): number {
@@ -266,6 +303,19 @@ function eventSnapshot(
   return { eventId: event.eventId, name: eventById(event.eventId)?.name ?? "", lines }
 }
 
+function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesSnapshot {
+  const progress = progressOf(state)
+  const open = new Set<string>(state.unlocked)
+  const ghost = nextGhost(progress, open)
+  return {
+    open: [...state.unlocked],
+    fresh: [...state.fresh],
+    reveals: [...state.reveals],
+    next: ghost ? teaseSnapshot(ghost) : null,
+    upNext: upNext(progress, open).map(teaseSnapshot),
+  }
+}
+
 export function installGameHarness(): GameHarness {
   const api: GameHarness = {
     getState: () => {
@@ -325,6 +375,11 @@ export function installGameHarness(): GameHarness {
         lastPop: state.pop
           ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label }
           : null,
+        features: featuresSnapshot(state),
+        careerLog: {
+          size: state.journal.entries.length,
+          last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
+        },
       }
     },
 
@@ -404,6 +459,7 @@ export function installGameHarness(): GameHarness {
         xpTotal: hydrated.save.xpTotal,
         stats: normalizeStats(hydrated.save.stats),
         owned: hydrated.save.owned,
+        ...(hydrated.save.career ? { journal: journalFromSave(hydrated.save.career), returns: hydrated.save.career.returns } : {}),
         tempMults: hydrated.save.tempMults ?? {},
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
@@ -445,6 +501,16 @@ export function installGameHarness(): GameHarness {
     },
 
     previewEra: (era) => useGame.getState().setPreviewEra(era),
+
+    careerLog: () => useGame.getState().journal.entries.map(careerJson),
+
+    seeFeature: (id) => {
+      if (!isFeatureId(id)) return false
+      useGame.getState().seeFeature(id)
+      return true
+    },
+
+    clearReveals: () => useGame.getState().clearReveals(),
 
     reset: () => {
       useGame.getState().wipe()

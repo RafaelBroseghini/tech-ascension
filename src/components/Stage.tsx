@@ -26,6 +26,8 @@ import { IdePythonConsole } from "./IdePythonConsole.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
+import { useFeatureOpen } from "./useFeature.ts"
+import { getSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 
 type Loot = { id: number; x: number; y: number; dx: number; dy: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
@@ -161,6 +163,9 @@ export function Stage() {
 
   const stage = stageOf({ skills, owned, jobs, gigs })
   const accent = ERA_ACCENT[eraOf({ owned })]
+  // Before the first laptop the editor is a single file: no activity bar, no explorer.
+  const editorOpen = useFeatureOpen("editor")
+  const logOpen = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView) === "log"
   const stageName = stage?.name ?? "High school"
 
   useEffect(() => {
@@ -359,7 +364,7 @@ export function Stage() {
   return (
     <section
       ref={stagePanelRef}
-      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : ""].filter(Boolean).join(" ")}
+      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : "", editorOpen ? "" : "is-bare", logOpen ? "is-log-open" : ""].filter(Boolean).join(" ")}
       aria-label="Click stage"
       onWheel={scrollIdeEditor}
     >

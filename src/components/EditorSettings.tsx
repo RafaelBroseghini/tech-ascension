@@ -14,6 +14,8 @@ import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, s
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
+import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
+import { useFeatureOpen, useUnlockedSet } from "./useFeature.ts"
 
 const GROUPS = [
   { kind: "dark", label: "Dark" },
@@ -122,6 +124,21 @@ export function EditorSettings() {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
+  // Settings only offer what the career has unlocked: music after the headset, the cat after it moves in, and the
+  // styles, kits and themes earned so far (plus whichever one is in use).
+  const music = useFeatureOpen("music")
+  const cat = useFeatureOpen("cat")
+  const kits = useFeatureOpen("clickKits")
+  const unlocked = useUnlockedSet()
+  const styles = musicChoices(unlocked)
+  const kitIds = clickKitChoices(unlocked)
+  const themeIds = themeChoices(unlocked)
+  const toggles = TOGGLES.filter((toggle) => {
+    if (toggle.complete && hoverPerSec <= 0) return false
+    if (toggle.key === "music" && !music) return false
+    if (toggle.key === "cat" && !cat) return false
+    return true
+  })
 
   const close = () => {
     clearIdeThemePreview()
@@ -170,7 +187,7 @@ export function EditorSettings() {
             </p>
             <div className="ide-settings-section-panel">
               <ul className="desk-toggles">
-                {TOGGLES.filter((toggle) => !toggle.complete || hoverPerSec > 0).map((toggle) => (
+                {toggles.map((toggle) => (
                   <li key={toggle.key}>
                     <button
                       type="button"
@@ -195,13 +212,14 @@ export function EditorSettings() {
               </ul>
             </div>
           </section>
+          {music ? (
           <section className="ide-settings-section" aria-labelledby={`${menuId}-music-style`}>
             <p className="ide-theme-heading" id={`${menuId}-music-style`}>
               Music style
             </p>
             <div className="ide-settings-section-panel">
               <ul role="listbox" aria-label="Music styles">
-                {MUSIC_STYLE_IDS.map((id) => (
+                {MUSIC_STYLE_IDS.filter((id) => styles.includes(id) || id === desk.musicStyle).map((id) => (
                   <li key={id} role="presentation">
                     <button
                       type="button"
@@ -218,14 +236,15 @@ export function EditorSettings() {
               </ul>
             </div>
           </section>
-          {desk.clicks ? (
+          ) : null}
+          {desk.clicks && kits ? (
             <section className="ide-settings-section" aria-labelledby={`${menuId}-click-kit`}>
               <p className="ide-theme-heading" id={`${menuId}-click-kit`}>
                 Click kit
               </p>
               <div className="ide-settings-section-panel">
                 <ul role="listbox" aria-label="Click sounds">
-                  {CLICK_KIT_IDS.map((id) => (
+                  {CLICK_KIT_IDS.filter((id) => kitIds.includes(id) || id === desk.clickKit).map((id) => (
                     <li key={id} role="presentation">
                       <button
                         type="button"
@@ -252,7 +271,9 @@ export function EditorSettings() {
                 <div key={group.kind}>
                   <p className="ide-theme-group">{group.label}</p>
                   <ul role="listbox" aria-label={`${group.label} editor themes`}>
-                    {ideThemesOf(group.kind).map((entry) => (
+                    {ideThemesOf(group.kind)
+                      .filter((entry) => themeIds.includes(entry.id) || entry.id === saved.id)
+                      .map((entry) => (
                       <li key={entry.id} role="presentation">
                         <button
                           type="button"

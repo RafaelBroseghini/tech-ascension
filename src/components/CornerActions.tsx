@@ -7,6 +7,8 @@ import { CatRosterButton } from "./CatRosterButton.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
 import { MetricsButton } from "./MetricsButton.tsx"
 import { ResumeModal } from "./ResumeModal.tsx"
+import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
+import { useFeatureOpen, useSurface } from "./useFeature.ts"
 
 const REPO = "https://github.com/RafaelBroseghini/tech-ascension"
 
@@ -24,7 +26,22 @@ export function ResumeButton() {
   const gigs = useGame((state) => state.gigs)
   const [open, setOpen] = useState(false)
   const doc = useMemo(() => resumeDocument({ skills, equipment, jobs, gigs }), [skills, equipment, jobs, gigs])
+  // The profile is a career unlock: it arrives with Portfolio site live.
+  const unlocked = useFeatureOpen("linkedout")
+  const seeFeature = useGame((state) => state.seeFeature)
+  const show = () => {
+    seeFeature("linkedout")
+    setOpen(true)
+  }
+  useSurface("linkedout", show)
 
+  if (!unlocked) {
+    return (
+      <FeatureGhost id="linkedout" place="below" className="ide-settings">
+        <ScrollText {...UI_ICON} aria-hidden />
+      </FeatureGhost>
+    )
+  }
   if (!doc) return null
 
   return (
@@ -33,12 +50,14 @@ export function ResumeButton() {
         type="button"
         className="ide-settings"
         data-testid="view-resume"
+        data-feature-anchor="linkedout"
         aria-label="View your LinkedOut profile"
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen(true)}
+        onClick={show}
       >
         <ScrollText {...UI_ICON} aria-hidden />
+        <NewMark id="linkedout" />
       </button>
       {open ? <ResumeModal doc={doc} onClose={() => setOpen(false)} /> : null}
     </>

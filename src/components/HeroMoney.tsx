@@ -7,6 +7,7 @@ import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { useDeskMoneyHeroDrag } from "./useDeskMoneyHeroDrag.ts"
+import { useFeatureOpen } from "./useFeature.ts"
 
 const COUNT_UP_MS = 720
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -100,6 +101,8 @@ function HeroMoneyBody() {
   const fullXp = formatFullNumber(shownXp)
   const showFullMoney = shownMoney >= RAW_DIGITS_BELOW
   const paysClickMoney = clickPaysMoney({ jobs })
+  // Until the first dollar the card is about XP: no "$0" for money that cannot be earned yet.
+  const moneyOpen = useFeatureOpen("money")
   const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
 
   useEffect(() => {
@@ -143,12 +146,27 @@ function HeroMoneyBody() {
     )
   }, [pop])
 
+  if (!moneyOpen) {
+    return (
+      <>
+        <span className="hero-money-value hero-xp-value" data-testid="hero-xp">
+          {formatNumber(shownXp)} XP
+        </span>
+        {shownXp >= RAW_DIGITS_BELOW ? <span className="hero-money-full hero-money-full-xp">{fullXp} XP</span> : null}
+        <span className="hero-money-sub">
+          <MousePointerClick className="hero-money-click-icon" {...UI_ICON} aria-hidden />+{formatNumber(rates.xpClick * rates.mult)} XP per click
+        </span>
+      </>
+    )
+  }
+
   return (
     <>
       <span
         key={buyStamp}
         ref={valueRef}
         data-testid="money"
+        data-feature-anchor="money"
         className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", moneyText.length > 11 ? "is-long" : ""]
           .filter(Boolean)
           .join(" ")}

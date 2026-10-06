@@ -88,6 +88,16 @@ export function playCozyClick(): void {
   })
 }
 
+/**
+ * The unlock chime. Only once the engine is loaded and the player has interacted: a chime that arrives late, after
+ * the card it belongs to, is worse than none.
+ */
+export function playUnlockChime(size: "big" | "standard" | "small"): void {
+  const { sounds, clicks } = readPrefs()
+  if (!(sounds || clicks) || !canHear() || !gestureHeard || !engine) return
+  engine.playUnlockChime(size)
+}
+
 /** Starts or stops the room from the saved switches. Does not touch the audio context until a pointer or key. */
 export function syncDeskAudio(): void {
   if (!canHear()) return

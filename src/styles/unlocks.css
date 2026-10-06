@@ -1,0 +1,689 @@
+/*
+ * The career timeline on screen: the bare editor before the first laptop, the dim outline of the next unlock, the
+ * reveal card, NEW markers, the career log in the sidebar and the console's Output tab. Green means new here, the
+ * way added lines are green in a diff. Colors come from the editor theme.
+ */
+
+/* ---------- the bare editor: no activity bar or explorer until the first laptop ---------- */
+
+@property --ide-activity {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 44px;
+}
+@property --ide-tree {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 168px;
+}
+
+.stage-panel {
+  /* Recomputed here, so the rail follows the two widths as they animate. */
+  --ide-rail: calc(var(--ide-activity) + var(--ide-tree));
+  transition:
+    --ide-activity 520ms var(--ease-out),
+    --ide-tree 680ms var(--ease-out);
+}
+.stage-panel.is-bare {
+  --ide-activity: 0px;
+  --ide-tree: 0px;
+}
+.stage-panel.is-bare .ide-activity,
+.stage-panel.is-bare .ide-tree {
+  visibility: hidden;
+}
+.ide-tree {
+  overflow: hidden;
+}
+
+/* ---------- activity bar: real buttons now ---------- */
+
+.ide-activity > .ide-activity-btn {
+  position: relative;
+  color: var(--ide-overlay);
+}
+.ide-activity > .ide-activity-btn:hover:not(:disabled) {
+  color: var(--ide-text);
+}
+.ide-activity > .ide-activity-btn.is-active {
+  color: var(--ide-text);
+}
+.ide-activity > .ide-activity-btn.is-active::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--ide-mauve);
+}
+.ide-activity-pair .ide-activity-btn,
+.ide-settings,
+.ide-status-chip {
+  position: relative;
+}
+
+/* ---------- before: the next unlock as a dim outline with a ring ---------- */
+
+.ul-ghost {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ide-overlay);
+  border: 1.5px dashed color-mix(in srgb, var(--ide-text) 28%, transparent) !important;
+  background: transparent !important;
+  cursor: help;
+  pointer-events: auto;
+}
+.ul-ghost > svg:not(.ul-ring),
+.ul-ghost > span:not(.ul-lock) {
+  opacity: 0.38;
+}
+.ul-ghost:focus-visible {
+  outline: 2px solid var(--ide-green);
+  outline-offset: 3px;
+}
+.ul-ring {
+  position: absolute;
+  inset: -5px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  overflow: visible;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.ul-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+.ul-ring-bg {
+  stroke: color-mix(in srgb, var(--ide-text) 12%, transparent);
+}
+.ul-ring-fg {
+  stroke: var(--ide-green);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 500ms var(--ease-out);
+}
+.ul-lock {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--ide-crust);
+  color: var(--ide-text);
+}
+.ide-status-chip.ul-ghost .ul-ring {
+  inset: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+}
+.ide-status-chip.ul-ghost .ul-lock {
+  right: -3px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+}
+
+.ul-tip {
+  position: fixed;
+  z-index: 27;
+  max-width: 280px;
+  padding: 7px 10px 8px;
+  border: 1px solid color-mix(in srgb, var(--ide-text) 22%, transparent);
+  border-radius: 5px;
+  background: var(--ide-crust);
+  color: var(--ide-text);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  font: 500 11.5px/1.45 var(--font-mono);
+  pointer-events: none;
+  animation: ul-tip-in 140ms var(--ease-out);
+}
+.ul-tip b {
+  font-weight: 700;
+}
+.ul-tip i {
+  font-style: normal;
+  color: var(--ide-green);
+}
+.ul-tip small {
+  display: block;
+  margin-top: 2px;
+  opacity: 0.72;
+  font-size: 10.5px;
+}
+@keyframes ul-tip-in {
+  from { opacity: 0; }
+}
+
+/* The next closed board waits in the tab bar, dimmed. */
+.era-tab.is-next {
+  opacity: 0.55;
+}
+.era-tab.is-next::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  border-bottom: 2px dashed color-mix(in srgb, var(--ide-text) 30%, transparent);
+}
+
+/* "Unlocks Terminal" on the row that opens it. */
+.ul-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 6px 2px;
+  border: 1px solid color-mix(in srgb, var(--ide-green) 70%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ide-green) 12%, transparent);
+  color: var(--ide-green);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.45;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ---------- the moment: the card beside the unlock ---------- */
+
+.ul-card {
+  position: fixed;
+  z-index: 26;
+  width: min(290px, calc(100vw - 20px));
+  padding: 12px 14px 13px;
+  border: var(--stroke, 2px) solid var(--ink);
+  border-radius: var(--radius, 6px);
+  background: var(--ide-mantle);
+  color: var(--ide-text);
+  box-shadow:
+    var(--lift-3),
+    inset 0 0 0 1px color-mix(in srgb, var(--ide-green) 55%, transparent);
+  pointer-events: auto;
+  animation: ul-card-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards;
+}
+.ul-card.is-measuring {
+  visibility: hidden;
+  left: 0;
+  top: 0;
+}
+.ul-card::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--ide-mantle);
+  border: 0 solid var(--ink);
+  transform: rotate(45deg);
+}
+.ul-card.from-right::before {
+  left: -8px;
+  top: calc(50% - 6px);
+  border-left-width: 2px;
+  border-bottom-width: 2px;
+}
+.ul-card.from-left::before {
+  right: -8px;
+  top: calc(50% - 6px);
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.ul-card.from-below::before {
+  top: -8px;
+  left: calc(50% - 6px);
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.ul-card.from-above::before {
+  bottom: -8px;
+  left: calc(50% - 6px);
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+.ul-card.from-right { --ul-from: translateX(-12px); }
+.ul-card.from-left { --ul-from: translateX(12px); }
+.ul-card.from-below { --ul-from: translateY(-10px); }
+.ul-card.from-above { --ul-from: translateY(10px); }
+@keyframes ul-card-in {
+  from {
+    opacity: 0;
+    transform: var(--ul-from, none) scale(0.96);
+  }
+}
+.ul-card.is-leaving {
+  animation: ul-card-out 300ms var(--ease-in-out, ease-in) forwards;
+}
+@keyframes ul-card-out {
+  to {
+    opacity: 0;
+    transform: var(--ul-from, none) scale(0.9);
+  }
+}
+.ul-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ide-green);
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.ul-kicker::before {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--ide-green);
+  color: var(--ide-crust);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.ul-title {
+  margin: 7px 0 4px;
+  font: 700 21px/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+}
+.ul-body {
+  margin: 0;
+  color: color-mix(in srgb, var(--ide-text) 82%, transparent);
+  font: 500 12px/1.5 var(--font-mono);
+}
+.ul-from {
+  margin: 7px 0 0;
+  color: color-mix(in srgb, var(--ide-text) 55%, transparent);
+  font: 500 10.5px/1.3 var(--font-mono);
+}
+.ul-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 11px;
+}
+.ul-btn {
+  padding: 5px 12px 6px;
+  border: 2px solid color-mix(in srgb, var(--ide-text) 25%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ide-text);
+  font: 700 12px/1 var(--font-mono);
+  cursor: pointer;
+}
+.ul-btn:hover {
+  border-color: color-mix(in srgb, var(--ide-text) 45%, transparent);
+}
+.ul-btn.is-primary {
+  border-color: var(--ink);
+  background: var(--ide-green);
+  color: var(--ide-crust);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.ul-btn.is-primary:hover {
+  filter: brightness(1.06);
+}
+.ul-btn:focus-visible {
+  outline: 2px solid var(--ide-green);
+  outline-offset: 2px;
+}
+.ul-key {
+  margin-left: auto;
+  opacity: 0.5;
+  font: 500 10px var(--font-mono);
+}
+
+/* The unlock itself glows while its card is up; a small one glows once. */
+.ul-lit {
+  color: var(--ide-green) !important;
+  animation: ul-lit 1.3s ease-out infinite;
+}
+.ide-tree.ul-lit {
+  animation: ul-lit-inset 1.3s ease-out infinite;
+}
+@keyframes ul-lit {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ide-green) 70%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+@keyframes ul-lit-inset {
+  0%, 100% { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ide-green) 30%, transparent); }
+  50% { box-shadow: inset 0 0 0 2px var(--ide-green); }
+}
+.ul-glow {
+  animation: ul-lit 1.1s ease-out 2;
+}
+
+/* ---------- after: NEW until it is used ---------- */
+
+.ul-dot {
+  position: absolute;
+  z-index: 2;
+  top: 1px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ide-green);
+  box-shadow: 0 0 0 2px var(--ide-crust);
+  animation: ul-dot 1.8s ease-in-out infinite;
+}
+@keyframes ul-dot {
+  50% { box-shadow: 0 0 0 2px var(--ide-crust), 0 0 0 6px color-mix(in srgb, var(--ide-green) 25%, transparent); }
+}
+.ul-pill {
+  position: absolute;
+  z-index: 2;
+  top: -6px;
+  right: -6px;
+  padding: 1px 4px 2px;
+  border-radius: 3px;
+  background: var(--ide-green);
+  color: var(--ide-crust);
+  box-shadow: 0 0 0 2px var(--ide-crust);
+  font: 800 8.5px/1.2 var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ide-theme-option .ul-pill,
+.desk-toggle .ul-pill {
+  position: static;
+  margin-left: auto;
+  box-shadow: none;
+}
+.era-tab .ul-pill {
+  top: 3px;
+  right: 2px;
+  padding: 0 3px 1px;
+  font-size: 7.5px;
+}
+.desk-cat .ul-pill {
+  top: 4px;
+  right: auto;
+  left: 8px;
+}
+
+/* ---------- the sticky note lists what unlocked while you were away ---------- */
+
+.sticky-note-unlock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+  font-weight: 700;
+}
+.sticky-note-unlock + .sticky-note-unlock {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: 0;
+}
+.sticky-note-unlock b {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--ide-green);
+  color: var(--ide-crust);
+  font-size: 11px;
+}
+
+/* ---------- remember: the career log in the sidebar ---------- */
+
+.career-log {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  pointer-events: auto;
+}
+.career-log-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 10px 14px 12px;
+  scrollbar-width: thin;
+}
+.career-log-sec {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0 7px;
+  color: var(--ide-overlay);
+  font-size: 10px;
+  letter-spacing: var(--track-caps, 0.12em);
+  text-transform: uppercase;
+}
+.career-log-list {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.career-log-list::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: color-mix(in srgb, var(--ide-text) 14%, transparent);
+}
+.career-log-list li {
+  --c: var(--ide-overlay);
+  position: relative;
+  padding: 0 0 8px 19px;
+  color: var(--ide-text);
+  line-height: 1.35;
+}
+.career-log-list li::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 3px;
+  width: 6px;
+  height: 6px;
+  border: 2px solid var(--c);
+  border-radius: 50%;
+  background: var(--ide-base);
+}
+.career-log-list li[data-tone="unlock"] { --c: var(--ide-green); }
+.career-log-list li[data-tone="career"] { --c: var(--ide-mauve); }
+.career-log-list li[data-tone="work"] { --c: var(--ide-blue); }
+.career-log-list li[data-tone="buy"] { --c: var(--ide-peach); }
+.career-log-list li[data-tone="event"] { --c: var(--ide-sky); }
+.career-log-list li.is-head::before {
+  background: var(--c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent);
+}
+.career-log-list b {
+  display: block;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.career-log-list b em {
+  margin-right: 4px;
+  color: var(--ide-green);
+  font-style: normal;
+}
+.career-log-list small {
+  display: block;
+  color: var(--ide-overlay);
+  font-size: 10.5px;
+}
+.career-log-tag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--c);
+  color: var(--ide-crust);
+  font-size: 9px;
+  font-weight: 800;
+  vertical-align: 1px;
+}
+.career-log-list.is-next::before {
+  background: repeating-linear-gradient(color-mix(in srgb, var(--ide-text) 16%, transparent) 0 4px, transparent 4px 8px);
+}
+.career-log-list.is-next li::before {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ide-text) 40%, transparent);
+  background: transparent;
+}
+.career-log-bar {
+  display: block;
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ide-text) 12%, transparent);
+}
+.career-log-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ide-green);
+  transition: width 400ms var(--ease-out);
+}
+.career-log-more {
+  margin: 4px 0 0 19px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--ide-text) 22%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ide-text);
+  font: 600 10.5px var(--font-mono);
+  cursor: pointer;
+}
+
+/* ---------- the console: Terminal and Output tabs ---------- */
+
+.ide-console-tabs {
+  display: flex;
+  gap: 2px;
+}
+.ide-console-tab {
+  padding: 4px 8px 5px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.ide-console-tab:hover {
+  color: var(--text);
+}
+.ide-console-tab.is-active {
+  border-bottom-color: var(--accent-hi);
+  color: var(--accent-hi);
+}
+
+.career-output {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-0);
+}
+.career-output-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px var(--sp-3);
+  border-bottom: 1px solid var(--surface-2);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+}
+.career-output-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.career-output-filter select {
+  padding: 2px 4px;
+  border: 1px solid var(--surface-2);
+  border-radius: 4px;
+  background: var(--surface-1);
+  color: var(--text);
+  font: inherit;
+}
+.career-output-count {
+  margin-right: auto;
+}
+.career-output-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--surface-2);
+  border-radius: 4px;
+  background: var(--surface-1);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.career-output-btn:hover {
+  border-color: var(--accent-hi);
+}
+.career-output-lines {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  line-height: 1.55;
+}
+.out-line {
+  display: flex;
+  gap: 1.2ch;
+  white-space: nowrap;
+}
+.out-line code {
+  font: inherit;
+}
+.out-time {
+  flex: none;
+  color: var(--text-dim);
+  user-select: none;
+}
+.out-punc {
+  color: var(--text-dim);
+}
+
+/* Narrow screens hide the explorer column. The career log takes one while it is open. */
+@media (max-width: 860px) {
+  .stage-panel.is-log-open:not(.is-bare) {
+    --ide-tree: min(250px, 62vw);
+    --ide-rail: calc(var(--ide-activity) + var(--ide-tree));
+  }
+  .stage-panel.is-log-open .ide-tree {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-panel {
+    transition: none;
+  }
+  .ul-lit,
+  .ul-glow,
+  .ul-dot {
+    animation: none;
+  }
+  .ul-lit {
+    box-shadow: 0 0 0 2px var(--ide-green);
+  }
+}
