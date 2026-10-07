@@ -39,6 +39,7 @@ describe("desk diagram", () => {
     expect(card?.dataset.interview).toBe("hello-server")
     expect(card?.textContent).toContain(interview("hello-server").brief)
     expect(card?.textContent).toContain("whiteboard button")
+    expect(card?.textContent).toContain("Next interview · Hello server")
     expect($("[data-testid='desk-diagram']")).toBeNull()
   })
 
