@@ -439,7 +439,7 @@
   align-items: center;
   gap: var(--sp-2);
 }
-.studio-submit {
+.studio .studio-submit {
   padding: var(--sp-2) var(--sp-3);
   border: 0;
   border-radius: 6px;
