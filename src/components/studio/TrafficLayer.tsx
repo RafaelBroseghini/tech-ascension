@@ -18,7 +18,7 @@ function lanesOf(root: HTMLElement, flows: Readonly<Record<string, number>>): La
     for (let i = 0; i + 1 < numbers.length; i += 2) points.push({ x: numbers[i], y: numbers[i + 1] })
     const length = [0]
     for (let i = 1; i < points.length; i++) length.push(length[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y))
-    lanes.push({ points, length, total: length[length.length - 1] || 1, dots: Math.max(1, Math.min(12, Math.round(share * 12))) })
+    lanes.push({ points, length, total: length[length.length - 1] || 1, dots: Math.max(1, Math.min(8, Math.round(share * 8))) })
   }
   return lanes
 }
