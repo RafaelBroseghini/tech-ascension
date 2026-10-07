@@ -10,6 +10,7 @@ import {
   readPref,
   resetLedgerForTests,
   sealImage,
+  storedJson,
   stageCareer,
   writeCareer,
   writePref,
@@ -133,7 +134,7 @@ describe("career ledger", () => {
   it("seeds the career clock from the stored revision instead of starting at 1", async () => {
     const port = createMemoryPort()
     const disk = { ...freshSave(10), money: 7 }
-    await port.casPut({ id: "career", rev: 40, body: disk })
+    await port.casPut({ id: "career", rev: 40, body: storedJson(disk) })
     sealImage(disk, null, 40, [{ id: "theme", rev: 3, body: "dracula" }], port)
     expect(readPref("theme")).toBe("dracula")
     writeCareer({ ...freshSave(11), money: 8 })
@@ -145,7 +146,7 @@ describe("career ledger", () => {
 
   it("writes a shop-tab tombstone without clearing the other prefs", async () => {
     const port = createMemoryPort()
-    await port.casPut({ id: "career", rev: 4, body: freshSave(1) })
+    await port.casPut({ id: "career", rev: 4, body: storedJson(freshSave(1)) })
     sealImage(freshSave(1), null, 4, [], port)
     writePref("desk", "room")
     writePref("shopTab", "G")
