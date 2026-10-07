@@ -8,7 +8,7 @@ import type { Era } from "./capital.ts"
  * slot on screen shows there as a dim outline, and the career log's Up next lists the first closed rows.
  */
 
-/** What opens a row. Ids point at the live tables (skills, gear, IDE folders, capital eras). */
+/** What opens a row. Ids point at the live tables (skills, gear, stage art tiers, capital eras). */
 export type FeatureTrigger =
   | { kind: "skill"; id: number }
   | { kind: "gear"; id: number }
@@ -24,8 +24,8 @@ export type FeatureTrigger =
   | { kind: "gold" }
   /** Hover clicking: a hover 10x dev skill, or every catalog row. */
   | { kind: "hover" }
-  /** An editor folder entered for the first time (an `IDE_PACKS` id). */
-  | { kind: "folder"; packId: string }
+  /** The stage art reaching a tier for the first time (`stageOf(p).artId`). */
+  | { kind: "art"; tier: number }
   /** The first capital row of an era. */
   | { kind: "era"; era: Era }
   /** A quarter of an hour at the desk (`CAT_DESK_MS`, tab open counts, in front or behind), or coming back after a break, whichever is first. */
@@ -39,8 +39,7 @@ export type FeatureTrigger =
 export type FeatureSize = "big" | "standard" | "small" | "phase"
 
 export type FeatureId =
-  | "editor"
-  | "terminal"
+  | "studio"
   | "careerLog"
   | "githug"
   | "linkedout"
@@ -82,20 +81,12 @@ export type FeatureRow = {
 
 export const FEATURES: readonly FeatureRow[] = [
   {
-    id: "editor",
-    name: "Your editor",
-    blurb: "Every file you unlock lands in the explorer. Old folders stay as your career moves on.",
+    id: "studio",
+    name: "Studio",
+    blurb: "Your whiteboard for job interviews.",
     size: "big",
     trigger: { kind: "skill", id: 1 },
     ghost: false,
-  },
-  {
-    id: "terminal",
-    name: "Terminal",
-    blurb: "Run the Python file you have open. The output prints right here.",
-    size: "standard",
-    trigger: { kind: "skill", id: 8 },
-    action: "Try it",
   },
   {
     id: "careerLog",
@@ -184,7 +175,7 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "themes",
     name: "Editor themes",
-    blurb: "Repaint the editor. A new theme arrives with each new folder.",
+    blurb: "Repaint the desk. A new theme arrives as your career climbs.",
     size: "small",
     trigger: { kind: "gear", id: 11 },
   },
@@ -225,13 +216,13 @@ export const FEATURES: readonly FeatureRow[] = [
   { id: "kit:pillow", name: "Pillow clicks", blurb: "The quietest click.", size: "small", trigger: { kind: "gear", id: 9 }, parent: "clickKits" },
   { id: "kit:marimba", name: "Marimba clicks", blurb: "Every click a note.", size: "small", trigger: { kind: "gear", id: 13 }, parent: "clickKits" },
   { id: "theme:dracula", name: "Dracula", blurb: "An editor theme.", size: "small", trigger: { kind: "gear", id: 11 }, parent: "themes" },
-  { id: "theme:solarized-light", name: "Solarized Light", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "debounce" }, parent: "themes" },
-  { id: "theme:tokyo-night", name: "Tokyo Night", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "search" }, parent: "themes" },
-  { id: "theme:monokai", name: "Monokai", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "workers" }, parent: "themes" },
-  { id: "theme:gruvbox", name: "Gruvbox", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "finetune" }, parent: "themes" },
-  { id: "theme:github-light", name: "GitHub Light", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "ratelimit" }, parent: "themes" },
-  { id: "theme:gruvbox-light", name: "Gruvbox Light", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "lru" }, parent: "themes" },
-  { id: "theme:synthwave", name: "Synthwave '84", blurb: "An editor theme.", size: "small", trigger: { kind: "folder", packId: "frontier" }, parent: "themes" },
+  { id: "theme:solarized-light", name: "Solarized Light", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 19 }, parent: "themes" },
+  { id: "theme:tokyo-night", name: "Tokyo Night", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 23 }, parent: "themes" },
+  { id: "theme:monokai", name: "Monokai", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 27 }, parent: "themes" },
+  { id: "theme:gruvbox", name: "Gruvbox", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 31 }, parent: "themes" },
+  { id: "theme:github-light", name: "GitHub Light", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 34 }, parent: "themes" },
+  { id: "theme:gruvbox-light", name: "Gruvbox Light", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 37 }, parent: "themes" },
+  { id: "theme:synthwave", name: "Synthwave '84", blurb: "An editor theme.", size: "small", trigger: { kind: "art", tier: 50 }, parent: "themes" },
   { id: "music:cozy", name: "Cozy", blurb: "A music style.", size: "small", trigger: { kind: "gear", id: 10 }, parent: "music" },
   { id: "music:lofi", name: "Lofi", blurb: "A music style.", size: "small", trigger: { kind: "era", era: "mid" }, parent: "music" },
   { id: "music:synth", name: "Synth", blurb: "A music style.", size: "small", trigger: { kind: "era", era: "upper" }, parent: "music" },

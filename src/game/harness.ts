@@ -5,8 +5,6 @@ import { eventById, previewOffer } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
-import { itemsOf } from "../data/idePacks.ts"
-import { ideView } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
@@ -54,22 +52,6 @@ export type LastReviewSnapshot = {
   lines: string[]
 }
 
-export type IdeSnapshot = {
-  /** Era of the pack on screen. */
-  era: Era
-  packId: string
-  kind: "files" | "inbox" | "deck"
-  /** File names, email subjects or slide titles, in tab order. */
-  items: string[]
-  index: number
-  /** True while a shop era tab is previewing a pack other than the owned one. */
-  previewing: boolean
-  /** The pack progress alone would show. */
-  restPackId: string
-  /** Unlocked folder ids in explorer order (each band persists once entered). */
-  folders: string[]
-}
-
 export type GameSnapshot = {
   money: number
   /** Spendable XP. Skills cost XP. */
@@ -102,7 +84,6 @@ export type GameSnapshot = {
   review: ReviewSnapshot | null
   /** The most recent 1:1. choice is null when it was left without a reply. */
   lastReview: LastReviewSnapshot | null
-  ide: IdeSnapshot
   /** Phase D capital tiers, keyed by tier id ("26"). */  owned: Record<string, number>
   skills: Record<string, number>
   equipment: Record<string, number>
@@ -144,7 +125,7 @@ export type GameSnapshot = {
 /** A closed timeline row: what opens it and how close it is. */
 export type TeaseSnapshot = { id: string; name: string; via: string; fill: number; left: string }
 
-/** One career journal entry as the console's Output tab prints it. */
+/** One career journal entry as one flat JSON object. */
 export type CareerLogLine = Record<string, number | string | boolean>
 
 export type FeaturesSnapshot = {
@@ -207,11 +188,9 @@ export type GameHarness = {
   answerReview: (choice: ReviewChoiceId) => boolean
   /** Leave the 1:1. Balances stay put. */
   dismissReview: () => void
-  /** Open file, email or slide `index` in `packId`, or the pack on screen when omitted. */
-  ideSelect: (index: number, packId?: string) => boolean
-  /** Preview an era's pack as the shop era tab does, or null to snap back to the owned one. */
+  /** Preview an era as the shop's era tab does, or null to snap back to the owned one. */
   previewEra: (era: Era | null) => void
-  /** Every career journal entry, oldest first, as the Output tab prints them. */
+  /** Every career journal entry, oldest first, one flat JSON object each. */
   careerLog: () => CareerLogLine[]
   /** Clear a NEW marker, as using the feature does. False for an unknown id. */
   seeFeature: (id: string) => boolean
@@ -329,7 +308,6 @@ export function installGameHarness(): GameHarness {
       const now = Date.now()
       const stage = stageOf(state)
       const fx = modFactors(modsOf(state), now, now)
-      const view = ideView(state)
       return {
         money: state.money,
         xp: state.xp,
@@ -347,16 +325,6 @@ export function installGameHarness(): GameHarness {
         lastEvent: eventSnapshot(state.lastEvent, null),
         review: reviewSnapshot(state),
         lastReview: lastReviewSnapshot(state.lastReview),
-        ide: {
-          era: view.pack.era,
-          packId: view.pack.id,
-          kind: view.pack.kind,
-          items: itemsOf(view.pack).map((item) => item.label),
-          index: view.index,
-          previewing: view.previewing,
-          restPackId: view.restPack.id,
-          folders: view.folders.map((folder) => folder.id),
-        },
         owned: { ...state.owned },
         skills: { ...state.skills },
         equipment: { ...state.equipment },
@@ -494,18 +462,6 @@ export function installGameHarness(): GameHarness {
     answerReview: (choice) => useGame.getState().answerReview(choice),
 
     dismissReview: () => useGame.getState().dismissReview(),
-
-    ideSelect: (index, packId) => {
-      const state = useGame.getState()
-      const view = ideView(state)
-      const target = packId ?? view.pack.id
-      const folder = view.folders.find((row) => row.id === target)
-      if (!folder) return false
-      const count = itemsOf(folder.pack).length
-      if (!Number.isInteger(index) || index < 0 || index >= count) return false
-      useGame.getState().selectIde(target, index)
-      return true
-    },
 
     previewEra: (era) => useGame.getState().setPreviewEra(era),
 

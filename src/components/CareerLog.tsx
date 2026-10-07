@@ -1,13 +1,8 @@
-import { Braces } from "lucide-react"
-import { memo, useEffect, useLayoutEffect, useRef, useState } from "react"
-import type { ReactNode } from "react"
-import { agoLabel, CAREER_TYPES, careerLine, describeEntry } from "../game/careerLog.ts"
-import type { CareerEntry, CareerType } from "../game/careerLog.ts"
+import { useEffect, useState } from "react"
+import { agoLabel, describeEntry } from "../game/careerLog.ts"
 import { progressOf } from "../game/careerSync.ts"
 import { upNext } from "../game/features.ts"
 import { useGame } from "../game/store.ts"
-import { openSurface } from "../game/surfaces.ts"
-import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin } from "./useFeature.ts"
 
 type Tease = { id: string; name: string; via: string; left: string; mystery: boolean }
@@ -36,10 +31,7 @@ function useMinuteClock(): number {
 
 const HISTORY_STEP = 150
 
-/**
- * The Git view of the sidebar: what unlocks next, then the career as commits, newest on top. The braces button
- * opens the same entries as JSON in the console's Output tab.
- */
+/** The Git view of the sidebar: what unlocks next, then the career as commits, newest on top. */
 export function CareerLog() {
   const entries = useGame((state) => state.journal.entries)
   const admin = useAdmin()
@@ -53,16 +45,6 @@ export function CareerLog() {
     <div className="career-log" data-testid="career-log">
       <div className="ide-tree-head">
         <p className="ide-tree-title">Career log</p>
-        <button
-          type="button"
-          className="ide-tree-action"
-          data-testid="career-log-json"
-          aria-label="Open the career log as JSON"
-          title="JSON, in the console's Output tab"
-          onClick={() => openSurface("output")}
-        >
-          <Braces {...UI_ICON_SM} aria-hidden />
-        </button>
       </div>
       <div className="career-log-scroll">
         {up.length > 0 ? (
@@ -111,136 +93,3 @@ export function CareerLog() {
   )
 }
 
-/** JSON coloured with the editor's own token colours: keys blue, strings green, numbers peach. */
-function colorJson(line: string): ReactNode[] {
-  const out: ReactNode[] = []
-  const re = /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|(true|false|null)|([{}[\],:])/g
-  let last = 0
-  let key = 0
-  for (let match = re.exec(line); match; match = re.exec(line)) {
-    if (match.index > last) out.push(line.slice(last, match.index))
-    const [text, str, colon, num, bool] = match
-    if (str) {
-      out.push(
-        <span key={key++} className={colon ? "tok-fn" : "tok-str"}>
-          {str}
-        </span>,
-      )
-      if (colon) out.push(<span key={key++} className="out-punc">{colon}</span>)
-    } else if (num) out.push(<span key={key++} className="tok-num">{num}</span>)
-    else if (bool) out.push(<span key={key++} className="tok-kw">{bool}</span>)
-    else out.push(<span key={key++} className="out-punc">{text}</span>)
-    last = match.index + text.length
-  }
-  if (last < line.length) out.push(line.slice(last))
-  return out
-}
-
-function clock(at: number): string {
-  const date = new Date(at)
-  return [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part).padStart(2, "0")).join(":")
-}
-
-const OutputLine = memo(function OutputLine({ entry }: { entry: CareerEntry }) {
-  return (
-    <div className="out-line" data-testid="output-line" data-type={entry.type}>
-      <span className="out-time">{clock(entry.at)}</span>
-      <code>{colorJson(careerLine(entry))}</code>
-    </div>
-  )
-})
-
-const OUTPUT_WINDOW = 300
-
-/**
- * The console's Output tab: the career journal as JSON lines, one object per step, newest at the bottom. Filter by
- * type, copy the lot, or save it as a .jsonl file.
- */
-export function CareerOutput() {
-  const entries = useGame((state) => state.journal.entries)
-  const [filter, setFilter] = useState<CareerType | "all">("all")
-  const [everything, setEverything] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const listRef = useRef<HTMLDivElement>(null)
-  const pinned = useRef(true)
-  const rows = filter === "all" ? entries : entries.filter((entry) => entry.type === filter)
-  const shown = everything ? rows : rows.slice(-OUTPUT_WINDOW)
-
-  useLayoutEffect(() => {
-    const list = listRef.current
-    if (list && pinned.current) list.scrollTop = list.scrollHeight
-  }, [shown.length, filter])
-
-  useEffect(() => {
-    if (!copied) return
-    const id = window.setTimeout(() => setCopied(false), 1400)
-    return () => window.clearTimeout(id)
-  }, [copied])
-
-  const text = () => `${rows.map(careerLine).join("\n")}\n`
-
-  return (
-    <div className="career-output" data-testid="career-output">
-      <div className="career-output-bar">
-        <label className="career-output-filter">
-          <span>Show</span>
-          <select value={filter} data-testid="output-filter" onChange={(event) => setFilter(event.target.value as CareerType | "all")}>
-            <option value="all">every line</option>
-            {CAREER_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="career-output-count" data-testid="output-count">
-          {rows.length} {rows.length === 1 ? "line" : "lines"}
-        </span>
-        <button
-          type="button"
-          className="career-output-btn"
-          data-testid="output-copy"
-          onClick={() => {
-            void navigator.clipboard?.writeText(text()).then(() => setCopied(true), () => {})
-          }}
-        >
-          {copied ? "Copied" : "Copy"}
-        </button>
-        <button
-          type="button"
-          className="career-output-btn"
-          data-testid="output-download"
-          onClick={() => {
-            const url = URL.createObjectURL(new Blob([text()], { type: "application/x-ndjson" }))
-            const link = document.createElement("a")
-            link.href = url
-            link.download = "career-log.jsonl"
-            link.click()
-            window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-          }}
-        >
-          Save .jsonl
-        </button>
-      </div>
-      <div
-        ref={listRef}
-        className="career-output-lines"
-        data-testid="output-lines"
-        onScroll={(event) => {
-          const list = event.currentTarget
-          pinned.current = list.scrollHeight - list.scrollTop - list.clientHeight < 24
-        }}
-      >
-        {!everything && rows.length > shown.length ? (
-          <button type="button" className="career-log-more" onClick={() => setEverything(true)}>
-            Show {rows.length - shown.length} older lines
-          </button>
-        ) : null}
-        {shown.map((entry) => (
-          <OutputLine key={entry.seq} entry={entry} />
-        ))}
-        {rows.length === 0 ? <p className="ide-repl-hint">Nothing of that type yet.</p> : null}
-      </div>
-    </div>
-  )
-}

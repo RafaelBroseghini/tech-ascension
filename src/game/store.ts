@@ -27,7 +27,6 @@ import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
-import type { IdeSelection } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
@@ -145,8 +144,7 @@ type GameState = {
   lastReview: ActiveReview | null
   reviewSeq: number
   nextReviewAt: number | null
-  ideSel: IdeSelection
-  /** Era the shop is browsing, shown in the IDE pane until it snaps back. Null means the owned era. */
+  /** Era the shop is browsing, named in the desk status bar until it snaps back. Null means the owned era. */
   previewEra: Era | null
   previewUntil: number
   toast: ToastMessage | null
@@ -192,9 +190,8 @@ type GameState = {
   answerReview: (choice: ReviewChoiceId) => boolean
   /** Leave the 1:1. Balances stay put. */
   dismissReview: () => void
-  selectIde: (packId: string, index: number) => void
   setPreviewEra: (era: Era | null) => void
-  /** Keep a browsed era alive while the shop or the IDE is being used. */
+  /** Keep a browsed era alive while the shop or the desk is being used. */
   holdPreview: () => void
   tick: (now: number) => void
   wipe: () => void
@@ -381,7 +378,6 @@ export const useGame = create<GameState>((set, get) => ({
   lastReview: null,
   reviewSeq: 0,
   nextReviewAt: null,
-  ideSel: { packId: "", index: 0 },
   previewEra: null,
   previewUntil: 0,
   toast: booted.toast,
@@ -644,14 +640,6 @@ export const useGame = create<GameState>((set, get) => ({
     })
   },
 
-  selectIde: (packId, index) => {
-    const held = get().previewEra
-    set({
-      ideSel: { packId, index },
-      ...(held ? { previewUntil: Math.max(Date.now(), get().now) + PREVIEW_HOLD_MS } : {}),
-    })
-  },
-
   setPreviewEra: (era) =>
     set({ previewEra: era, previewUntil: era ? Math.max(Date.now(), get().now) + PREVIEW_HOLD_MS : 0 }),
 
@@ -779,7 +767,6 @@ export const useGame = create<GameState>((set, get) => ({
       lastReview: null,
       reviewSeq: 0,
       nextReviewAt: null,
-      ideSel: { packId: "", index: 0 },
       previewEra: null,
       previewUntil: 0,
       toast: null,
