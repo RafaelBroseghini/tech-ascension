@@ -62,12 +62,19 @@ getState(): {
  }
  careerLog: { size: number; last: Record<string, number | string | boolean> | null } // journal entries kept, and the newest as JSON
  profile: { handle: string; chosen: boolean } // the career's handle on GitHug and LinkedOut ("quiet-otter"), drawn from word lists; chosen once kept
+ interviews: {
+  open: string[]    // interview ids whose job has the lifetime XP and waits on a passed whiteboard
+  passed: string[]  // passed by a submission, forceInterview, or holding the job or a later gated one
+  lastVerdict: { interviewId: string; verdict: "noHire" | "hire" | "strongHire"; missed: string[]; lines: string[]; penalty: number } | null // this session's latest submission
+ }
 }
 
 click(): { money: number; xp: number }
 buy(tierId: number, amount?: 1 | 5 | 10 | "max"): boolean   // phase D capital row (ids 1-25)
 buySkill(skillId: number, amount?: 1 | 5 | 10 | "max"): boolean
-buyJob(jobId: number): boolean
+buyJob(jobId: number): boolean      // a job with an interview needs it passed first
+submitWhiteboard(interviewId: string, design: { nodes: { id: string; kind: string; replicas: number }[]; edges: { from: string; to: string }[] }): lastVerdict | false // false unless the interview is in `open`
+forceInterview(interviewId: string): boolean // records a pass, bypassing every gate; false for an unknown or already passed id
 buyEquipment(equipId: number, amount?: 1 | 5 | 10 | "max"): boolean   // a Gear tab row
 buyGold(goldId: number): boolean      // gold skill, paid in spendable XP; normal gates
 forceGold(goldId: number): boolean    // grants a gold skill, bypassing XP, order and price
@@ -99,6 +106,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - **A Skill grind.** 104 skills, bought with XP only. The used laptop's first copy (skill 1, `firstXpCost`) costs 90 XP so the first unlock comes within a minute; later copies and the skills after it cost a lot of clicks, and the next one stays locked until lifetime XP climbs past the last purchase. There is no $/s.
 - **B Gigs.** Gig Board opens at 14,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned (`GIG_BOARD_UNLOCK`). 65 gigs, each cleared once for a lump $ and an optional `retainerCps`. Each gig requires every earlier gig plus a skill set that grows by one skill each time (gig 1 needs skills 1–6), capped at the skill table. Gig 1 also needs 12,000 lifetime XP. Gig 8 ("Site maintenance retainer", 2 $/s) is the first retainer; gigs 1-7 pay a lump only.
 - **C Jobs.** Job Board opens at 40,000 lifetime XP and 6 cleared gigs (`JOB_BOARD_UNLOCK`). 31 jobs (each held once, salary $/s; twelve of them, the learning, teaching and research roles, also add idle XP/s through `xpPerSec` in `src/data/phases.ts`, and eleven pay a one-time lump of XP on hire through `xpLump`, added to both `xp` and `xpTotal`). Taking a job costs spendable XP (`xpCost`: a quarter of its `xpReq`, then the purchase scale; the Internship is free), never money. Job 1 (Internship offer) needs 35,000 lifetime XP; job 14 (Senior SWE) needs 160,000 XP.
+- **Whiteboard interviews** (catalog in `src/data/studio/challenges.ts`, rules in `src/game/studio/interviews.ts`). Twelve jobs (1, 2, 6, 7, 10, 12, 14, 16, 19, 20, 22, 24) also need a passed system design interview. Once lifetime XP reaches the job's `xpReq`, the job sits at `interview` (the Jobs row reads "Interview") and `buyJob` returns false until it is passed. `submitWhiteboard(id, design)` judges the design once against the interview's scenario and targets. Hire or Strong hire latches the pass for good. A No hire costs 5% of the job's `xpReq` in spendable XP (1,750 for the internship, 2,250 for Junior SWE), never below 0, never touching `xpTotal`, and keeps the design. Holding a gated job counts its interview and every interview at or below it as passed, so a save from before interviews never re-locks; a job with no interview never latches one. `getState().nextUnlock` names a job at `interview` with `needs: ["pass the whiteboard"]`. Tests and automated runs call `forceInterview(id)` before `buyJob` on a gated job. A design is `{ nodes: [{ id, kind, replicas }], edges: [{ from, to }] }` with kinds from `src/data/studio/components.ts`; each interview ships a `reference` that passes and `naive` designs that miss a named target. The save keeps an optional `interviews` block (`docs/SAVE.md`), and the journal logs each pass and each No hire with its missed targets.
 - **Gear** (its own shop tab, between Jobs and Capital; table in `src/data/gear.ts`). Opens at 10,000 lifetime XP. 110 repeatable items bought with `buyEquipment`. Later rows also wait on a job id.
 - **10x dev skills** (`gold` in the code and the harness: `src/data/gold.ts`, rules in `src/game/gold.ts`). Ten one-off perks bought once with spendable XP, shown in their own "10x dev" sub-tab of the Skills tab with a trophy and a description. A row opens at its lifetime-XP milestone and waits on the earlier row of its family. **Buying** (Bulk Buy ×5, ×10, Max at 8,000 / 60,000 / 600,000 XP) adds amounts to the shop's Buy control; without one, `buy`, `buySkill` and `buyEquipment` always buy one copy whatever `amount` asks for, and with one they buy up to that many. **Hover clicking** (2, 5, 10, 15 clicks/s from 20,000 XP; the endgame 20/s still comes from owning every catalog row) makes `hoverRate` positive. **Time away** raises the offline cap from 8 to 12, 16 and 24 hours. Prices are a quarter of the opening XP, then the purchase scale. Saves keep them in an optional `gold` list.
 - **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point (`peakMoney`, so spending it later does not close the gate). Eras by id: mid 1-5, upper 6-11, q3 12-14, end 15-25. Only `buy(1..25)` is valid. Row 1 costs $85,000 and row 3 costs $1,700,000 after the scale.
@@ -121,7 +129,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - A save from any other `version` is wiped on load. There is no migration.
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
 - `reset()` wipes the save back to high school.
-- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has XP and the Skills tab. Used laptop (skill 1) opens the studio (the activity bar and the status bar; the interview whiteboard comes later), Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with stage art tiers (from the Internship band on), desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()`. Admin mode shows the whole desk.
+- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has XP and the Skills tab. Used laptop (skill 1) opens the studio (the activity bar and the status bar; the interview whiteboard comes later), Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with stage art tiers (from the Internship band on), desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, whiteboard interviews, milestones) is a journal entry, printed as JSON lines by `careerLog()`. Admin mode shows the whole desk.
 - **Identity** (`src/game/identity.ts`, start card in `src/components/IdentityPicker.tsx`). Every new career (a fresh save or `reset()`) draws a Tailscale-style handle (`quiet-otter`) and opens a start card: Reroll draws another, and Start keeps it for good. There is no real name; GitHug and LinkedOut (`linkedout.com/in/<handle>`) both go by the handle. Nothing is ever typed. It is saved in an optional `profile` block with `chosen`; a save is only accepted with a handle the lists can draw. A save from before handles gets one, already kept, with no card. A test scans all 1,024 handles, as shown and run together, for slurs and slang.
 
 ## Smoke (`npm run smoke:play`)
@@ -131,7 +139,8 @@ Vitest + happy-dom, all through `__GAME__`:
 1. **Phase A.** Click until the first skill is affordable. Clicks pay XP only, money and $/s stay 0, `buySkill` spends XP and keeps `xpTotal`, skills study while idle.
 2. **A to B.** `setXp` and buy Portfolio and React: the Gig Board opens (not before both), `completeGig` is gated, the first clear pays the lump (clicks stay XP-only until a job), `lastPop` is large.
 3. **B.** The first retainer gig is the first `$/s`.
-4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash.
+4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), the internship waits on its interview until `forceInterview`, an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash.
+   **Interviews.** An interview gates the Junior SWE job: `submitWhiteboard` is refused below 45,000 lifetime XP, a No hire costs 2,250 spendable XP and leaves `xpTotal` alone, a pass opens the job, and `nextUnlock` says "pass the whiteboard".
    **Gear.** Gear and `buyEquipment` stay shut until 10,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
 5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
@@ -188,10 +197,13 @@ Jobs and capital:
 ```js
 const game = window.__GAME__
 game.reset()
-game.setXp(60_000)
+game.setXp(200_000)
 for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job Board
+game.forceInterview("hello-server") // the internship waits on its whiteboard interview
 game.buyJob(1) // free internship (needs 35K XP), salary $/s
-game.setMoney(500_000) // or take a senior job (id 14, costs spendable XP): capital opens either way
+game.forceInterview("read-heavy-feed") // Senior SWE's interview
+game.buyJob(14) // 34,000 spendable XP: capital opens with no cash (holding $500,000 opens it too)
+game.setMoney(85_000)
 game.buy(1) // $85,000 after the scale; buy(19) and up cost trillions
 ```
 
@@ -202,6 +214,7 @@ const game = window.__GAME__
 game.reset()
 game.setXp(40_000)
 for (let id = 1; id <= 6; id++) game.forceGig(id)
+game.forceInterview("hello-server")
 game.buyJob(1) // dollars per click wait for the first job; without one a click pays XP only
 game.setMoney(7e6)
 game.buy(3) // $4,000,000: the capital gate opens at $500K held

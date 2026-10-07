@@ -239,6 +239,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const owned = useGame((s) => s.owned)
   const jobs = useGame((s) => s.jobs)
   const gigs = useGame((s) => s.gigs)
+  const interviews = useGame((s) => s.interviews)
   const gold = useGame((s) => s.gold)
   const buyAmount = useGame((s) => s.buyAmount)
   const setBuyAmount = useGame((s) => s.setBuyAmount)
@@ -276,7 +277,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     setLastPhase(phase)
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
-  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
+  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, interviews }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
@@ -780,7 +781,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : status === "interview" ? "Interview" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
                     </button>
                   }
                 >
