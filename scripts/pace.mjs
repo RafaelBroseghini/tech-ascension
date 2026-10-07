@@ -82,6 +82,19 @@ for (const { name, profile, cad, pace, cells } of rows) {
   )
 }
 
+if (!custom) {
+  // Least squares on the relative error of `k / pace` against the model, over the schedules that visit at least
+  // daily (the reinvestor's constant only holds there). This is the number to put in `PACE_K`.
+  const daily = rows.filter((r) => r.profile.visitsPerDay >= 1)
+  const fit = PLAYERS.map((player, index) => {
+    const a = daily.map((r) => 1 / (r.pace * r.cells[index].run.days))
+    const k = a.reduce((sum, x) => sum + x, 0) / a.reduce((sum, x) => sum + x * x, 0)
+    return `${player.name} ${k.toFixed(1)}`
+  })
+  console.log("")
+  console.log(`Best-fit K over the schedules that visit at least daily: ${fit.join(", ")}`)
+}
+
 if (custom) {
   console.log("")
   console.log("Day each milestone is reached:")
