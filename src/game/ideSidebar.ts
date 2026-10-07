@@ -1,8 +1,8 @@
-/** Which view the editor's sidebar shows: the file explorer, or the career log (the Git icon). */
-export type SidebarView = "explorer" | "log"
+/** Whether the desk sidebar is closed or shows the career log (the Git icon). */
+export type SidebarView = "closed" | "log"
 
 const listeners = new Set<() => void>()
-let view: SidebarView = "explorer"
+let view: SidebarView = "closed"
 
 export function getSidebarView(): SidebarView {
   return view

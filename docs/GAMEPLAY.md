@@ -33,12 +33,11 @@ The logic is `nextUnlock(progress, tab)` in `src/game/nextUnlock.ts`. Without a 
 
 ## Career timeline
 
-The desk is earned, not handed over. A new career starts with one file, the XP counter and the Skills tab; everything else arrives at a career moment that explains it. The table is `src/data/features.ts` (a drop-in file), the gates are `src/game/features.ts`. Times are for a player clicking twice a second.
+The desk is earned, not handed over. A new career starts with the XP counter and the Skills tab; everything else arrives at a career moment that explains it. The table is `src/data/features.ts` (a drop-in file), the gates are `src/game/features.ts`. Times are for a player clicking twice a second.
 
 | When | What appears | Trigger | Reveal |
 | --- | --- | --- | --- |
-| 45 s | The editor: activity bar, explorer, every file tab | Used laptop (skill 1): its first copy is 90 XP | big |
-| 6 min | Terminal and Run | Linux CLI basics (skill 8) | standard |
+| 45 s | The studio: the activity bar and the status bar (the interview whiteboard lands here later) | Used laptop (skill 1): its first copy is 90 XP | big |
 | 7 min | Career log (the Git icon) | Git + GitHug hygiene (skill 10) | big |
 | 7 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 10) | standard |
 | 8 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
@@ -55,11 +54,11 @@ The desk is earned, not handed over. A new career starts with one file, the XP c
 | ~28 min | Music | Noise-cancelling headset | standard |
 | second visit | Capital | its gate | the phase pop |
 
-Cosmetics keep coming after that: a new editor theme with each new editor folder from the Internship folder on (Catppuccin Mocha and Latte are there from the start), a click sound with the Vertical mouse, Ergo chair and Split ergo keyboard, and a music style with the mid, upper and end eras. A cosmetic that opens before its picker arrives with the picker. Pickers list what the career has earned plus whatever is in use; a choice from an earlier run stays usable. Music only plays once the headset is bought.
+Cosmetics keep coming after that: a new editor theme with each new stage band from the Internship band on (stage art tiers 19, 23, 27, 31, 34, 37 and 50) (Catppuccin Mocha and Latte are there from the start), a click sound with the Vertical mouse, Ergo chair and Split ergo keyboard, and a music style with the mid, upper and end eras. A cosmetic that opens before its picker arrives with the picker. Pickers list what the career has earned plus whatever is in use; a choice from an earlier run stays usable. Music only plays once the headset is bought.
 
 **How an unlock is shown.** Every row goes through the same four steps.
 
-1. **Before.** The shop row that opens something carries a small green badge wearing that feature's icon (hover or focus it for `Unlocks Terminal` and what it does), and the Next banner, which has room, prints the name beside the icon. The next closed row with a place on screen stands there as a dim dashed outline with a lock and a ring that fills as it gets close; hover or focus says what opens it. One outline at a time. Closed boards are hidden from the tab bar, except the next one, which waits there dimmed.
+1. **Before.** The shop row that opens something carries a small green badge wearing that feature's icon (hover or focus it for `Unlocks Career log` and what it does), and the Next banner, which has room, prints the name beside the icon. The next closed row with a place on screen stands there as a dim dashed outline with a lock and a ring that fills as it gets close; hover or focus says what opens it. One outline at a time. Closed boards are hidden from the tab bar, except the next one, which waits there dimmed.
 2. **The moment.** `big`: the UNLOCKED slam, confetti and a chime, then a card. `standard`: the thing lights up where it lives and a card beside it says what it does, with a button that opens it ("Try it", "Open it"). `small`: a toast and a glow. Cards never take focus or cover the stage, and tuck away after 8 seconds (Esc closes them).
 3. **After.** A green NEW dot or pill stays on the thing until it is used once. Inside a menu, the menu's button carries it too.
 4. **Remember.** Every unlock is a line in the career log.
@@ -68,13 +67,13 @@ Reveals play one at a time, wait for events, 1:1s and money pops, and leave a sh
 
 **GitHug profile.** The GitHug button in the corner opens a parody GitHub profile built from the career itself (`src/game/githug.ts`). It goes by the career's handle: a new career draws a Tailscale-style one (`quiet-otter`) from an adjective list and an animal list (`src/game/identity.ts`), and there is no real name anywhere. A start card shows it: Reroll draws another, and Start keeps it for the rest of the career. Handles are never typed, and a test scans every handle the lists can draw for slurs and slang. LinkedOut goes by the same handle, at `linkedout.com/in/<handle>`. Below that, a contribution graph of 26 columns of five squares, spanning the modal's full width. A square is a run of eight contributing career steps, not a calendar day, so the graph fills with progress and the empty squares at the end are what is left to do. Each logged skill, gig, job, first copy and perk counts as a step; each square is shaded against your busiest one (the numbers on its repo lines are made up, between 1 and 50, and steady for a given square), and hovering one reads like GitHub: `3 contributions in til`, one line per public repo, and a lock icon with `private repositories` for the rest (jobs and capital are private; skills, gigs, gear and perks go to public repos). Then the count of filled squares, followers, repos and stars that all keep growing with the career (jobs and capital rows each add a private repo and followers, and stars scale with lifetime XP), and four pinned repos (`hello-world`, `dotfiles`, `til` and `portfolio` from skills, then one per cleared gig, newest first). Its footer, and the Star pill beside the button, link to the real repo; neither is on screen before the unlock.
 
-**Career log.** The Git icon switches the sidebar from the explorer to the career log: Up next (the next three closed rows, each with a short phrase for what it needs and no bar; the cat shows as `???`), then the history, newest on top, one line per step: skills learned, gigs cleared, jobs taken, gear and capital first bought, boards and eras opened, 10x dev skills claimed, unlocks, returns, events and 1:1s, and the joke milestones. The journal keeps the newest 2,000 entries in the save.
+**Career log.** The Git icon opens and closes the career log sidebar: Up next (the next three closed rows, each with a short phrase for what it needs and no bar; the cat shows as `???`), then the history, newest on top, one line per step: skills learned, gigs cleared, jobs taken, gear and capital first bought, boards and eras opened, 10x dev skills claimed, unlocks, returns, events and 1:1s, and the joke milestones. The journal keeps the newest 2,000 entries in the save.
 
-**Output tab.** The console has two tabs, Terminal and Output. Output prints the same journal as JSON lines, one flat object per step (`seq`, `time`, `type`, `ref`, `name`, extras like `awayMs` or `accepted`, then `money` and `xpTotal`), filterable by type, with Copy and Save `.jsonl`. The career log's braces button opens it. Through `__GAME__`: `getState().features`, `getState().careerLog`, `careerLog()`, `seeFeature(id)`, `clearReveals()`.
+**JSON journal.** `__GAME__.careerLog()` prints the same journal as JSON lines, one flat object per step (`seq`, `time`, `type`, `ref`, `name`, extras like `awayMs` or `accepted`, then `money` and `xpTotal`). Through `__GAME__`: `getState().features`, `getState().careerLog`, `careerLog()`, `seeFeature(id)`, `clearReveals()`.
 
 ## Stage
 
-The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of a fixed Catppuccin Mocha IDE whose editor buffer changes with progress (see [ART.md](ART.md)). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.
+The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of the desk: an activity bar, the career log sidebar and a status bar that names the career's band (see [ART.md](ART.md)). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.
 
 ## Money pops (Balatro feel)
 

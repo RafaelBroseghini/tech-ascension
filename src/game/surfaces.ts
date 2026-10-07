@@ -3,8 +3,6 @@
  * listens for its own name, so the caller never needs to know where the thing lives.
  */
 export type Surface =
-  | "terminal"
-  | "output"
   | "careerLog"
   | "githug"
   | "linkedout"
