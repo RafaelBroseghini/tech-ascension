@@ -249,6 +249,11 @@ const IMAGE_UPLOAD = interview({
       ),
     ),
     naive(
+      "Skip the resize",
+      "success",
+      board({ users: "users", lb: "lb", api: ["api", 8], cache: "cache", files: "blob" }, "users>lb>api>cache>files", "api>files"),
+    ),
+    naive(
       "One minion",
       "lag",
       board(
@@ -276,7 +281,7 @@ const READ_HEAVY_FEED = interview({
   name: "Read-heavy feed",
   jobId: 14,
   prompt:
-    "A news feed serves 5,000 requests a second and 96% of them are reads. The cache answers 60% of reads and the edge answers half. One read replica reboots during the interview.",
+    "A news feed serves 5,000 requests a second and 96% of them are reads. A cache would answer 60% of reads, and a CDN half of them. One read replica reboots during the interview.",
   scenario: scenario(
     [
       { name: "Morning scroll", seconds: 60, ...FEED_PHASE },
@@ -368,20 +373,18 @@ const NOTIFICATION_FANOUT = interview({
 
 const CHAT_PHASE = { rps: 3000, mix: { message: 1 } }
 
-const chatBoard = (parts: { socket?: number; lb?: boolean; queue?: boolean; oncall?: boolean }): Design => {
-  const { socket = 2, lb = true, queue = true, oncall = true } = parts
+const chatBoard = (parts: { socket?: number; lb?: boolean; queue?: boolean; kv?: number }): Design => {
+  const { socket = 2, lb = true, queue = true, kv = 1 } = parts
   const head = lb ? "users>lb>socket" : "users>socket"
   return board(
     {
       users: "users",
       ...(lb ? { lb: "lb" } : {}),
       socket: ["socket", socket],
-      ...(queue ? { queue: ["queue", 3] } : {}),
-      workers: ["worker", 10],
-      kv: "kv",
-      ...(oncall ? { oncall: "oncall" } : {}),
+      ...(queue ? { queue: ["queue", 4] } : {}),
+      kv: ["kv", kv],
     },
-    queue ? `${head}>queue>workers>kv` : `${head}>workers>kv`,
+    queue ? `${head}>queue>kv` : `${head}>kv`,
   )
 }
 
@@ -390,24 +393,22 @@ const WHATSAPP = interview({
   name: "WhatsApp",
   jobId: 19,
   prompt:
-    "A chat app delivers 3,000 messages a second over open connections. Many phones are offline, so messages wait in line until they reconnect. When everyone wakes up, traffic jumps fivefold for 12 seconds.",
+    "A chat app delivers 3,000 messages a second over open connections. Many phones are offline, so messages wait in line until they reconnect. When everyone's phone reconnects, traffic jumps sixfold for 10 seconds.",
   scenario: scenario([
     { name: "Group chat o'clock", seconds: 60, ...CHAT_PHASE },
-    { name: "Phones reconnect", seconds: 12, ...CHAT_PHASE, fault: { kind: "spike", multiplier: 5 } },
+    { name: "Phones reconnect", seconds: 10, ...CHAT_PHASE, fault: { kind: "spike", multiplier: 6 } },
   ]),
-  targets: { successRate: 0.99, p95Ms: 60, maxLagSeconds: 10, availability: 0.999, budgetPerMonth: 2400 },
+  targets: { successRate: 0.99, p95Ms: 60, maxLagSeconds: 10, availability: 0.999, budgetPerMonth: 1100 },
   reference: chatBoard({}),
   naive: [
     naive(
       "HTTP polling, no Socket Puppet",
       "success",
-      board(
-        { users: "users", lb: "lb", api: ["api", 6], queue: ["queue", 3], workers: ["worker", 10], kv: "kv" },
-        "users>lb>api>queue>workers>kv",
-      ),
+      board({ users: "users", lb: "lb", api: ["api", 6], queue: ["queue", 4], kv: "kv" }, "users>lb>api>queue>kv"),
     ),
     naive("Deliver inline, no queue", "faults", chatBoard({ queue: false })),
-    naive("One socket, no balancer", "availability", chatBoard({ socket: 1, lb: false, oncall: false })),
+    naive("Size the store for the peak", "budget", chatBoard({ queue: false, kv: 4 })),
+    naive("One socket, no balancer", "availability", chatBoard({ socket: 1, lb: false })),
   ],
 })
 

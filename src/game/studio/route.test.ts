@@ -39,4 +39,31 @@ describe("route", () => {
     const shares = routed.leaves.reduce((sum, leaf) => sum + leaf.share, 0)
     expect(shares).toBeCloseTo(1)
   })
+
+  it("an upload reaches the bucket only through a worker", () => {
+    const uploads: Traffic = { ...traffic, mix: { upload: 1 } }
+    const nodes = [
+      { id: "users", kind: "users", replicas: 1 },
+      { id: "api", kind: "api", replicas: 1 },
+      { id: "workers", kind: "worker", replicas: 1 },
+      { id: "files", kind: "blob", replicas: 1 },
+    ] as const
+    const direct: Design = {
+      nodes: nodes.filter((n) => n.id !== "workers"),
+      edges: [
+        { from: "users", to: "api" },
+        { from: "api", to: "files" },
+      ],
+    }
+    const processed: Design = {
+      nodes,
+      edges: [
+        { from: "users", to: "api" },
+        { from: "api", to: "workers" },
+        { from: "workers", to: "files" },
+      ],
+    }
+    expect(route(direct, uploads).unrouted).toEqual(["upload"])
+    expect(route(processed, uploads).unrouted).toEqual([])
+  })
 })
