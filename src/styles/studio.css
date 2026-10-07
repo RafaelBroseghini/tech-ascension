@@ -24,6 +24,12 @@
   transform-origin: 50% 40%;
 }
 
+/* The whiteboard covers the desk, so the desk skips style, layout and paint once the panel has faded in. It keeps earning. */
+#root[inert] {
+  content-visibility: hidden;
+  transition: content-visibility 0s linear 0.4s allow-discrete;
+}
+
 .studio:focus {
   outline: none;
 }
