@@ -23,6 +23,7 @@ The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, 
 
 - **Whiteboard interviews.** Twelve jobs, from the internship to Fellow, need a passed system design interview on top of their lifetime XP (`src/data/studio/challenges.ts`, rules in `src/game/studio/interviews.ts`). Once lifetime XP reaches the job's requirement the row reads "Interview" instead of its price. Each submission is judged once: a Hire or Strong hire opens the job for good, and a No hire costs 5% of the job's lifetime XP requirement in spendable XP (never below 0, and lifetime XP never falls), and keeps the design for the next try. Holding a gated job counts its interview, and every interview below it, as passed. The other nineteen jobs keep their old gates.
 - **The whiteboard.** The Interview button on a job row, or the whiteboard icon at the top of the activity bar, opens a full-screen board over the desk; the desk keeps earning underneath. The interviews are listed on the left with their job, the verdict so far and why a closed one is closed. The board is in the middle, and the brief, the live monthly bill and the Submit button are on the right. The palette under the board shows only the components this career has unlocked (`src/data/studio/unlocks.ts`). Drag a tile onto the board, or press it to drop one in the middle. Wire a node by dragging from its right handle to another node's left handle (a handle catches a wire within 40 px), or by clicking one handle and then the other. Nodes snap to a 16 px grid. The stepper on a node sets its replicas, and the x button or the Delete key removes it. Before you submit, a warning names any request type the board leaves unrouted. "Submit to interviewer" shows what a No hire would cost beside it. A Submit plays 2.5 seconds of traffic along the wires, printing each phase and its fault line in the run log; a click skips it. Then the verdict appears with the interviewer's line for each missed target and one meter per constraint (money, performance, availability, fault tolerance). The busiest nodes show their load, an overloaded one turns red, and each single point of failure gets a dashed outline. A Hire's "Back to the Job Board" (or Escape) lands on the Jobs tab with the job's row lit. A No hire shows the XP it took and keeps the board. Escape or the close button shuts the whiteboard and keeps every interview's board as it was. At phone width the interview picker and the brief stack above the board and the palette stays pinned to the bottom.
+- **The desk drawing.** The backdrop behind the click target, where the editor buffer used to be, draws your last passed whiteboard: the design as you submitted it, laid out left to right from The Users, with slow dots drifting along the wires that carry traffic. A newer pass replaces it. Before the first pass it shows the next interview instead: its name and job on one line, and on a wider screen a dim card with the interviewer's prompt and a hint that the whiteboard button on the activity bar opens it. The backdrop takes no clicks, so every click still lands on the emoji, and its dots stop while the tab is hidden or the whiteboard is open.
 
 ## Shop
 
@@ -40,7 +41,7 @@ The desk is earned, not handed over. A new career starts with the XP counter and
 
 | When | What appears | Trigger | Reveal |
 | --- | --- | --- | --- |
-| 45 s | The studio: the activity bar with the whiteboard icon, and the status bar | Used laptop (skill 1): its first copy is 90 XP | big |
+| 45 s | The studio: the activity bar with the whiteboard icon, the status bar, and the next interview on the desk backdrop. Its card's Try it opens the whiteboard | Used laptop (skill 1): its first copy is 90 XP | big |
 | 7 min | Career log (the Git icon) | Git + GitHug hygiene (skill 10) | big |
 | 7 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 10) | standard |
 | 8 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
@@ -76,7 +77,7 @@ Reveals play one at a time, wait for events, 1:1s and money pops, and leave a sh
 
 ## Stage
 
-The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of the desk: an activity bar, the career log sidebar and a status bar that names the career's band (see [ART.md](ART.md)). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.
+The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of the desk: an activity bar, the career log sidebar, the drawing of your last passed whiteboard and a status bar that names the career's band (see [ART.md](ART.md)). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.
 
 ## Money pops (Balatro feel)
 
