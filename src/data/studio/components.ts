@@ -4,7 +4,7 @@ import type { Component, ComponentKind, Fault } from "../../game/studio/types.ts
 export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   users: {
     name: "The Users",
-    goal: "Thousands of people refreshing at once.",
+    goal: "Every request starts here. Thousands of people refreshing at once.",
     capacity: null,
     writeCapacity: null,
     latencyMs: 0,
@@ -14,7 +14,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   api: {
     name: "Hamster Wheel API",
-    goal: "Runs your code. Stateless, so add more wheels.",
+    goal: "The app server. Runs your code. Stateless, so add more wheels.",
     capacity: 500,
     writeCapacity: null,
     latencyMs: 20,
@@ -24,7 +24,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   sql: {
     name: "PostgreSloth",
-    goal: "One source of truth. Strong, slow and single.",
+    goal: "The SQL database. One source of truth. Strong, slow and single.",
     capacity: 1000,
     writeCapacity: 300,
     latencyMs: 10,
@@ -34,7 +34,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   lb: {
     name: "Round Robin Hood",
-    goal: "Takes from busy servers, gives to idle ones, skips dead ones.",
+    goal: "Load balancer. Takes from busy servers, gives to idle ones, skips dead ones.",
     capacity: 20_000,
     writeCapacity: null,
     latencyMs: 1,
@@ -44,7 +44,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   cache: {
     name: "Redish",
-    goal: "Remembers hot answers. Forgets everything when it restarts.",
+    goal: "A cache. Remembers hot answers, forgets everything when it restarts.",
     capacity: 20_000,
     writeCapacity: null,
     latencyMs: 1,
@@ -84,7 +84,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   blob: {
     name: "Bucket of Bits",
-    goal: "Stores files forever, for pennies, at a leisurely pace.",
+    goal: "Blob storage. Keeps files forever, for pennies, at a leisurely pace.",
     capacity: 5000,
     writeCapacity: null,
     latencyMs: 30,
@@ -104,7 +104,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   worker: {
     name: "Cron Job Minions",
-    goal: "Drain the queue in the background and never complain.",
+    goal: "Background workers. They drain the queue and never complain.",
     capacity: 300,
     writeCapacity: null,
     latencyMs: 30,
@@ -114,7 +114,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   kv: {
     name: "WebScale KV",
-    goal: "Scales out forever. No joins, no feelings.",
+    goal: "A key-value store. Scales out forever. No joins, no feelings.",
     capacity: 5000,
     writeCapacity: null,
     latencyMs: 5,
@@ -134,7 +134,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   bouncer: {
     name: "Bouncer.js",
-    goal: "Turns bots away at the door before they cost you.",
+    goal: "A rate limiter. Turns bots away at the door before they cost you.",
     capacity: 50_000,
     writeCapacity: null,
     latencyMs: 1,
@@ -154,7 +154,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   breaker: {
     name: "Rage Quit Breaker",
-    goal: "Gives up on a slow dependency fast, so one outage stays one outage.",
+    goal: "A circuit breaker. Drops a slow dependency fast, so one outage stays one.",
     capacity: null,
     writeCapacity: null,
     latencyMs: 1,
@@ -174,7 +174,7 @@ export const COMPONENTS: Readonly<Record<ComponentKind, Component>> = {
   },
   oncall: {
     name: "On-Call Intern",
-    goal: "Notices outages sooner. Raises uptime, lowers morale.",
+    goal: "Monitoring. Notices outages sooner. Raises uptime, lowers morale.",
     capacity: null,
     writeCapacity: null,
     latencyMs: 0,
