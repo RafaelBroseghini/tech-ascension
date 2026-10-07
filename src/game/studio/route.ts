@@ -54,7 +54,8 @@ const ANSWERS_ALL = (types: readonly RequestType[], type: RequestType): Step =>
 
 const ASYNC_WORK: readonly RequestType[] = ["write", "fanout", "upload", "message"]
 
-function step(effect: Effect, type: RequestType, traffic: Traffic): Step {
+/** `processed` is whether a worker has already handled this request on its way here. */
+function step(effect: Effect, type: RequestType, traffic: Traffic, processed: boolean): Step {
   switch (effect.kind) {
     case "source":
     case "failover":
@@ -75,6 +76,8 @@ function step(effect: Effect, type: RequestType, traffic: Traffic): Step {
       if (type === "static") return { kind: "pass", answered: effect.staticHitRate }
       return type === "read" ? { kind: "pass", answered: traffic.edgeHitRate } : { kind: "refuse" }
     case "store":
+      // An upload is stored only after a worker has processed it, or a bucket would make every pipeline optional.
+      if (type === "upload" && !processed) return { kind: "refuse" }
       return ANSWERS_ALL(["read", "write", "static", "upload"], type)
     case "buffer":
       return ASYNC_WORK.includes(type) ? { kind: "enqueue", holdSeconds: effect.holdSeconds } : { kind: "refuse" }
@@ -129,6 +132,7 @@ interface Walk {
   readonly sync: number | null
   readonly fanFrom: number | null
   readonly holdSeconds: number | null
+  readonly processed: boolean
 }
 
 export function route(design: Design, traffic: Traffic): Routing {
@@ -159,14 +163,18 @@ export function route(design: Design, traffic: Traffic): Routing {
   }
 
   const visit = (node: DesignNode, from: Walk) => {
-    const walk: Walk = { ...from, nodes: [...from.nodes, node.id] }
+    const walk: Walk = {
+      ...from,
+      nodes: [...from.nodes, node.id],
+      processed: from.processed || COMPONENTS[node.kind].effect.kind === "consume",
+    }
     const flow = flows.get(node.id) ?? { total: 0, writes: 0 }
     const load = walk.share * (1 + walk.bots) * walk.fan
     flow.total += load
     if (isWrite(walk.type)) flow.writes += load
     flows.set(node.id, flow)
 
-    const here = step(COMPONENTS[node.kind].effect, walk.type, traffic)
+    const here = step(COMPONENTS[node.kind].effect, walk.type, traffic, walk.processed)
     if (here.kind === "answer") return end(walk, true)
     const answered = here.kind === "pass" ? here.answered : 0
     end(walk, true, walk.share * answered)
@@ -192,7 +200,7 @@ export function route(design: Design, traffic: Traffic): Routing {
   const nextHop = (node: DesignNode, walk: Walk): DesignNode[] => {
     const takers: DesignNode[] = []
     for (const target of out.get(node.id) ?? []) {
-      if (step(COMPONENTS[target.kind].effect, walk.type, traffic).kind === "refuse") continue
+      if (step(COMPONENTS[target.kind].effect, walk.type, traffic, walk.processed).kind === "refuse") continue
       const seen = walk.nodes.indexOf(target.id)
       if (seen >= 0) {
         const loop = [...walk.nodes.slice(seen), target.id]
@@ -212,7 +220,17 @@ export function route(design: Design, traffic: Traffic): Routing {
   for (const type of REQUEST_TYPES) {
     const share = traffic.mix[type] ?? 0
     if (share <= 0) continue
-    const start: Walk = { type, share, bots: traffic.bots, fan: 1, nodes: [], sync: null, fanFrom: null, holdSeconds: null }
+    const start: Walk = {
+      type,
+      share,
+      bots: traffic.bots,
+      fan: 1,
+      nodes: [],
+      sync: null,
+      fanFrom: null,
+      holdSeconds: null,
+      processed: false,
+    }
     if (sources.length === 0) {
       end(start, false)
       continue
