@@ -1,4 +1,4 @@
-import { GitBranch } from "lucide-react"
+import { GitBranch, Presentation } from "lucide-react"
 import { memo, useMemo, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
@@ -8,6 +8,8 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
+import { loadStudio, openStudio } from "./studio/launcher.ts"
+import { StudioHost } from "./studio/StudioHost.tsx"
 
 /** The desk shell behind the stage: the activity bar, the career log sidebar and the status bar. The palette is the saved theme. */
 export const IdeChrome = memo(function IdeChrome() {
@@ -20,6 +22,7 @@ export const IdeChrome = memo(function IdeChrome() {
   const seeFeature = useGame((state) => state.seeFeature)
 
   const logOpen = useFeatureOpen("careerLog")
+  const studioOpen = useFeatureOpen("studio")
   const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
   const showLog = logOpen && sidebar === "log"
   const { band, previewing } = useMemo(
@@ -32,6 +35,11 @@ export const IdeChrome = memo(function IdeChrome() {
     seeFeature("careerLog")
   }
   useSurface("careerLog", openLog)
+  const openWhiteboard = () => {
+    seeFeature("studio")
+    openStudio()
+  }
+  useSurface("studio", openWhiteboard)
 
   return (
     <div
@@ -45,6 +53,21 @@ export const IdeChrome = memo(function IdeChrome() {
       onPointerMove={holdPreview}
     >
       <nav className="ide-activity" aria-label="Activity bar" data-feature-anchor="studio">
+        {studioOpen ? (
+          <button
+            type="button"
+            className="ide-activity-btn"
+            data-testid="ide-view-studio"
+            aria-label="Whiteboard"
+            title="Whiteboard"
+            onPointerEnter={() => void loadStudio()}
+            onFocus={() => void loadStudio()}
+            onClick={openWhiteboard}
+          >
+            <Presentation className="ide-activity-icon" {...UI_ICON} aria-hidden />
+            <NewMark id="studio" />
+          </button>
+        ) : null}
         {logOpen ? (
           <button
             type="button"
@@ -79,6 +102,7 @@ export const IdeChrome = memo(function IdeChrome() {
         <span className="ide-status-gap" />
         <IdeStatusDock />
       </footer>
+      <StudioHost />
     </div>
   )
 })
