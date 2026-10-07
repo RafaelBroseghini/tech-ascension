@@ -286,6 +286,11 @@
 .studio-stepper button:hover:not(:disabled) {
   background: var(--ide-surface);
 }
+/* Chrome sends no mouseup to a disabled button, and React Flow ends a wire on mouseup: a wire dropped on a node's
+   greyed "−" stuck to the pointer. Let the pointer fall through to the node instead. */
+.studio-stepper button:disabled {
+  pointer-events: none;
+}
 .studio-stepper output {
   min-width: 30px;
   text-align: center;
