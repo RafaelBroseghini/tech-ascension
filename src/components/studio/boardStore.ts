@@ -32,6 +32,7 @@ export interface Run {
 interface Sheet {
   readonly nodes: BoardNode[]
   readonly edges: BoardEdge[]
+  /** The design's version: unique across every sheet, so one number names one design. Moves keep it. */
   readonly edits: number
   readonly run: Run | null
 }
@@ -43,6 +44,9 @@ interface BoardState extends Sheet {
 }
 
 export const useBoard = create<BoardState>(() => ({ interviewId: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
+
+let version = 0
+const nextEdit = () => ++version
 
 const snap = (v: number) => Math.round(v / GRID) * GRID
 
@@ -88,8 +92,11 @@ export function showInterview(interviewId: string, seed: Design | null): void {
   useBoard.setState((s) => {
     if (s.interviewId === interviewId) return s
     const sheets = s.interviewId ? { ...s.sheets, [s.interviewId]: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run } } : s.sheets
-    const sheet = sheets[interviewId] ?? { ...layout(seed && seed.nodes.length > 0 ? seed : EMPTY), edits: 0, run: null }
-    return { interviewId, sheets, ...sheet }
+    const kept = sheets[interviewId]
+    const edits = nextEdit()
+    if (!kept) return { interviewId, sheets, ...layout(seed && seed.nodes.length > 0 ? seed : EMPTY), edits, run: null }
+    const run = kept.run && kept.run.edits === kept.edits ? { ...kept.run, edits } : kept.run
+    return { interviewId, sheets, nodes: kept.nodes, edges: kept.edges, edits, run }
   })
 }
 
@@ -98,23 +105,23 @@ export const designOf = (nodes: readonly BoardNode[], edges: readonly BoardEdge[
   edges: edges.map((e) => ({ from: e.source, to: e.target })),
 })
 
-let draft: { interviewId: string | null; edits: number; design: Design } | null = null
+let draft: { edits: number; design: Design } | null = null
 
 /** The design on the board, as one object per edit: a move or a selection returns the same one. */
 export function draftOf(s: BoardState): Design {
-  if (draft?.interviewId !== s.interviewId || draft.edits !== s.edits) draft = { interviewId: s.interviewId, edits: s.edits, design: designOf(s.nodes, s.edges) }
+  if (draft?.edits !== s.edits) draft = { edits: s.edits, design: designOf(s.nodes, s.edges) }
   return draft.design
 }
 
 /** Moves and selection keep the run on screen; anything that changes the design counts as an edit. */
 export function onNodesChange(changes: NodeChange<BoardNode>[]): void {
   const edit = changes.some((c) => c.type === "remove" || c.type === "add" || c.type === "replace")
-  useBoard.setState((s) => ({ nodes: applyNodeChanges(changes, s.nodes), edits: edit ? s.edits + 1 : s.edits }))
+  useBoard.setState((s) => ({ nodes: applyNodeChanges(changes, s.nodes), edits: edit ? nextEdit() : s.edits }))
 }
 
 export function onEdgesChange(changes: EdgeChange<BoardEdge>[]): void {
   const edit = changes.some((c) => c.type === "remove" || c.type === "add" || c.type === "replace")
-  useBoard.setState((s) => ({ edges: applyEdgeChanges(changes, s.edges), edits: edit ? s.edits + 1 : s.edits }))
+  useBoard.setState((s) => ({ edges: applyEdgeChanges(changes, s.edges), edits: edit ? nextEdit() : s.edits }))
 }
 
 export function canConnect(c: Pick<Connection, "source" | "target">): boolean {
@@ -126,7 +133,7 @@ export function canConnect(c: Pick<Connection, "source" | "target">): boolean {
 
 export function onConnect(c: Connection): void {
   if (!canConnect(c)) return
-  useBoard.setState((s) => ({ edges: [...s.edges, edgeOf(c.source, c.target)], edits: s.edits + 1 }))
+  useBoard.setState((s) => ({ edges: [...s.edges, edgeOf(c.source, c.target)], edits: nextEdit() }))
 }
 
 export function addNode(kind: ComponentKind, at: XYPosition): string {
@@ -136,7 +143,7 @@ export function addNode(kind: ComponentKind, at: XYPosition): string {
   const id = `${kind}-${n}`
   useBoard.setState((s) => ({
     nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, at), selected: true }],
-    edits: s.edits + 1,
+    edits: nextEdit(),
   }))
   return id
 }
@@ -147,7 +154,7 @@ export function setReplicas(id: string, replicas: number): void {
   const next = Math.max(1, Math.min(MAX_REPLICAS, Math.floor(replicas)))
   useBoard.setState((s) => ({
     nodes: s.nodes.map((n) => (n.id === id && n.data.replicas !== next ? { ...n, data: { ...n.data, replicas: next } } : n)),
-    edits: s.edits + 1,
+    edits: nextEdit(),
   }))
 }
 
@@ -157,7 +164,7 @@ export function removeNode(id: string): void {
     return {
       nodes: s.nodes.filter((n) => n.id !== id),
       edges: s.edges.filter((e) => e.source !== id && e.target !== id),
-      edits: s.edits + 1,
+      edits: nextEdit(),
     }
   })
 }
