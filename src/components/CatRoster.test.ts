@@ -68,14 +68,18 @@ describe("desk cat discoveries", () => {
 describe("cat roster", () => {
   const cells = () => [...document.body.querySelectorAll<HTMLElement>("[data-testid='roster-cell']")]
 
-  it("counts discoveries in the metrics and opens the roster with the rest blacked out", () => {
+  it("counts discoveries in the metrics", () => {
     const found = [CAT_ROSTER[2]!.url, CAT_ROSTER[0]!.url]
     useGame.setState({ stats: { ...emptyStats(), catsFound: found } })
     mount(createElement(MetricsModal, { onClose: () => {} }))
     expect($("[data-testid='stats-cats']")?.textContent).toBe(`2 / ${CAT_ROSTER.length}`)
+    expect($("[data-testid='open-cat-roster']")).toBeNull()
+  })
 
-    act(() => $("[data-testid='open-cat-roster']")!.click())
-    expect($("[data-testid='stats-modal']")).toBeNull()
+  it("shows the roster with the rest blacked out", () => {
+    const found = [CAT_ROSTER[2]!.url, CAT_ROSTER[0]!.url]
+    useGame.setState({ stats: { ...emptyStats(), catsFound: found } })
+    mount(createElement(CatRosterModal, { onClose: () => {} }))
     expect($("[data-testid='roster-count']")?.textContent).toContain(`2 / ${CAT_ROSTER.length}`)
 
     // The sleeping desk cat leads the grid and is always unlocked.
@@ -114,16 +118,6 @@ describe("cat roster", () => {
     expect(getDeskPrefs().catArt).toBeNull()
     expect(getDeskPrefs().music).toBe(true)
     setDeskPref("music", false)
-  })
-
-  it("goes back to the metrics on Escape", () => {
-    const onClose = vi.fn()
-    mount(createElement(MetricsModal, { onClose }))
-    act(() => $("[data-testid='open-cat-roster']")!.click())
-    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })))
-    expect($("[data-testid='roster']")).toBeNull()
-    expect($("[data-testid='stats-modal']")).not.toBeNull()
-    expect(onClose).not.toHaveBeenCalled()
   })
 
   it("shows the top bar button once the first cat is found", () => {

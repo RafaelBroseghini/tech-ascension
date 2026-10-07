@@ -600,6 +600,28 @@ img { -webkit-user-drag: none; user-select: none; }
   color: var(--accent-ink);
 }
 
+.ide-howto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.ide-howto:hover { background: var(--surface-2); }
+
+.howto-modal { max-width: 460px; text-align: left; }
+.howto-steps { margin: 0 0 var(--sp-3); padding-left: 1.3em; display: grid; gap: 6px; font-size: var(--fs-sm); }
+.howto-end { margin: 0 0 var(--sp-3); padding: var(--sp-2); border: 1px dashed var(--line-strong); border-radius: var(--radius); font-size: var(--fs-sm); }
+
 .ide-wipe:hover { filter: brightness(1.08); }
 .ide-wipe:active { transform: translateY(1px); }
 
@@ -1970,71 +1992,6 @@ img { -webkit-user-drag: none; user-select: none; }
   height: var(--art);
 }
 
-/* A locked row gets a slim bar along its bottom edge in the tab's color. It fills as XP or money closes
-   the gate, and it is gone once the row unlocks. */
-/* The row's progress bar, full width under the row, with its own counter inside. */
-.offer-progress {
-  position: relative;
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  height: 16px;
-  margin-top: calc(var(--sp-1, 4px) * -1);
-  padding: 0 6px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--a) 45%, transparent);
-  border-radius: 4px;
-  /* Quarter ticks, so a glance says how far along it is. */
-  background:
-    linear-gradient(to right, transparent calc(25% - 1px), color-mix(in srgb, var(--text) 16%, transparent) calc(25% - 1px) 25%, transparent 25%) no-repeat,
-    linear-gradient(to right, transparent calc(50% - 1px), color-mix(in srgb, var(--text) 16%, transparent) calc(50% - 1px) 50%, transparent 50%) no-repeat,
-    linear-gradient(to right, transparent calc(75% - 1px), color-mix(in srgb, var(--text) 16%, transparent) calc(75% - 1px) 75%, transparent 75%) no-repeat,
-    color-mix(in srgb, var(--a) 10%, transparent);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.offer-progress::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: calc(var(--gate, 0) * 100%);
-  background: color-mix(in srgb, var(--a) 58%, transparent);
-  transition: width 400ms var(--ease-out);
-}
-
-/* A money bar is about cash in hand, so it fills in a stripe pattern to set it apart from an unlock. */
-.offer-progress[data-kind="money"]::before {
-  background: repeating-linear-gradient(
-    -45deg,
-    color-mix(in srgb, var(--a) 58%, transparent) 0 6px,
-    color-mix(in srgb, var(--a) 44%, transparent) 6px 12px
-  );
-}
-
-.offer-progress-label,
-.offer-progress-count {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  text-shadow: 0 0 3px var(--surface-0);
-}
-
-.offer-progress-label svg { flex: 0 0 auto; }
-
-@media (prefers-reduced-motion: reduce) {
-  .offer-progress::before { transition: none; }
-}
-
 .offer .offer-unlock {
   display: flex;
   align-items: center;
@@ -2745,27 +2702,6 @@ img { -webkit-user-drag: none; user-select: none; }
 @media (prefers-reduced-motion: reduce) {
   .stats-backdrop { animation: none; }
 }
-
-.stats-roster {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin: 0 var(--sp-4) var(--sp-4);
-  padding: 8px 12px;
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--radius);
-  background: var(--surface-1);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.stats-roster:hover { background: var(--surface-2); }
 
 /* ---------- rosters: a character select screen in the editor theme ---------- */
 

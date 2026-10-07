@@ -524,9 +524,8 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     if (!job || !canBuyJob(state, job)) return false
     set({
-      money: Math.max(0, state.money - job.baseCost),
-      // A job that teaches pays its lump of XP once, on hire. Lifetime XP rises with it.
-      xp: state.xp + job.xpLump,
+      // A job costs spendable XP, then a job that teaches pays its lump of XP once, on hire. Lifetime XP rises with the lump.
+      xp: Math.max(0, state.xp - job.xpCost) + job.xpLump,
       xpTotal: state.xpTotal + job.xpLump,
       jobs: [...state.jobs, job.id].sort((a, b) => a - b),
       now: Date.now(),

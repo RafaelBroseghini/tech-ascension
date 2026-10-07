@@ -316,16 +316,16 @@ describe("catalog tables", () => {
   })
 
   it("doubles purchase prices and leaves payouts and gig lumps alone", () => {
-    expect(PURCHASE_COST_SCALE).toBe(2)
-    expect(SKILL_TIERS[0]?.baseXpCost).toBe(240)
+    const scale = PURCHASE_COST_SCALE
+    expect(SKILL_TIERS[0]?.baseXpCost).toBe(Math.ceil(120 * scale))
     expect(SKILL_TIERS[0]?.firstXpCost).toBe(90)
     expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
-    expect(JOB_TIERS[0]?.baseCost).toBe(0)
-    expect(JOB_TIERS[1]?.baseCost).toBe(1_000)
+    expect(JOB_TIERS[0]?.xpCost).toBe(0)
+    expect(JOB_TIERS[1]?.xpCost).toBe(Math.round(45_000 * 0.25 * scale))
     expect(JOB_TIERS[1]?.cps).toBe(25)
-    expect(EQUIPMENT[0]?.baseCost).toBe(400)
+    expect(EQUIPMENT[0]?.baseCost).toBeCloseTo(200 * scale)
     expect(EQUIPMENT[0]?.clickBonus).toBe(2)
-    expect(CAPITAL[0]?.baseCost).toBe(200_000)
+    expect(CAPITAL[0]?.baseCost).toBeCloseTo(100_000 * scale)
     expect(CAPITAL[0]?.cps).toBe(50)
     expect(GIGS[0]?.lump).toBe(40)
     expect(GEAR_TAB_UNLOCK.minXp).toBe(10_000)

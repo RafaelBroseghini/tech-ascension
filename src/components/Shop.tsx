@@ -1,4 +1,4 @@
-import { ArrowDown, Banknote, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
+import { ArrowDown, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { ReactNode } from "react"
@@ -15,7 +15,7 @@ import type { Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
 import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, visibleGold } from "../game/gold.ts"
 import type { BuyAmount } from "../game/gold.ts"
-import { formatCompact, formatNumber } from "../game/format.ts"
+import { formatNumber } from "../game/format.ts"
 import { nextUnlock, shopFocus } from "../game/nextUnlock.ts"
 import type { NextUnlock } from "../game/nextUnlock.ts"
 import {
@@ -106,15 +106,8 @@ type OfferProps = {
   fresh?: boolean
   locked?: boolean
   done?: boolean
-  /** The part of a closed reveal gate holding the row shut: the bar along the bottom fills as it closes and says where it stands. Null when the gate is open. */
-  gate?: Gate | null
-  /** What is still missing, as counts that fall while you earn. Shown under the row's attributes until the gate opens. */
+  /** What is still missing, in words with no counts. Shown under the row's attributes until the gate opens. */
   unlock?: string[]
-  /**
-   * Once a row is open but its price is not in hand yet: the balance you have and the price. The bottom bar turns
-   * into a money bar with both amounts and what is left, counting down as you earn. Ignored while the gate is shut.
-   */
-  saving?: { have: number; need: number }
   title: string
   children: ReactNode
   actions: ReactNode
@@ -124,33 +117,6 @@ type OfferProps = {
   gold?: boolean
   /** What buying this row unlocks on the desk, while that is still closed. */
   unlocks?: readonly { id: string; name: string }[]
-}
-
-function ratio(have: number, need: number): number {
-  if (!(need > 0)) return 1
-  return Math.max(0, Math.min(1, have / need))
-}
-
-/** One requirement behind a closed gate: what you have, what it takes, and what it is counted in. */
-type GatePart = { have: number; need: number; unit: "lifetime XP" | "gigs" | "skills" | "job" | "$" }
-type Gate = GatePart & { fill: number }
-
-/** The part furthest from done holds the whole gate shut, so the bar tracks it. Null once every part is met. */
-function gateOf(parts: GatePart[]): Gate | null {
-  let worst: Gate | null = null
-  for (const part of parts) {
-    const fill = ratio(part.have, part.need)
-    if (fill < 1 && (!worst || fill < worst.fill)) worst = { ...part, fill }
-  }
-  return worst
-}
-
-/** `1,200 / 6,000 lifetime XP`, the reading inside an unlock bar. */
-function gateLabel({ have, need, unit }: GatePart): string {
-  const count = (n: number) => formatNumber(Math.floor(n))
-  if (unit === "$") return `$${count(have)} / $${count(need)}`
-  const noun = need === 1 && (unit === "gigs" || unit === "skills") ? unit.slice(0, -1) : unit
-  return `${count(have)} / ${count(need)} ${noun}`
 }
 
 function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
@@ -164,35 +130,7 @@ function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
   list.scrollTop = Math.max(0, top)
 }
 
-/** The bar along the bottom of a row: unlock progress, or money saved toward the price. */
-function OfferProgress({ kind, fill, label, count }: { kind: "unlock" | "money"; fill: number; label: ReactNode; count: string }) {
-  const percent = Math.floor(Math.max(0, Math.min(1, fill)) * 100)
-  return (
-    <div
-      className="offer-progress"
-      data-kind={kind}
-      data-testid="offer-progress"
-      role="progressbar"
-      aria-label={kind === "unlock" ? "Unlock progress" : "Saved toward the price"}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent}
-      style={{ ["--gate" as string]: String(Math.max(0, fill)) }}
-    >
-      <span className="offer-progress-label">
-        {kind === "unlock" ? <Lock {...UI_ICON_SM} aria-hidden /> : <Banknote {...UI_ICON_SM} aria-hidden />}
-        {label}
-      </span>
-      <span className="offer-progress-count" data-testid="offer-progress-count">
-        {count}
-      </span>
-    </div>
-  )
-}
-
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, gate, unlock, saving, title, children, actions, art, gold, unlocks }: OfferProps) {
-  const gated = gate != null && gate.fill < 1
-  const pending = !gated && saving && saving.need > 0 && saving.have < saving.need ? saving : null
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, unlock, title, children, actions, art, gold, unlocks }: OfferProps) {
   return (
     <article
       data-row={rowKey}
@@ -221,7 +159,7 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
           ))}
         </h3>
         <p>{children}</p>
-        {gated && unlock && unlock.length > 0 ? (
+        {locked && unlock && unlock.length > 0 ? (
           <p className="offer-unlock" data-testid="offer-unlock">
             <Lock {...UI_ICON_SM} aria-label="Locked" role="img" />
             <span>{unlock.join(" + ")}</span>
@@ -229,16 +167,6 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         ) : null}
       </div>
       <div className="offer-actions">{actions}</div>
-      {gated ? (
-        <OfferProgress kind="unlock" fill={gate.fill} label={gateLabel(gate)} count={`${Math.floor(Math.max(0, gate.fill) * 100)}%`} />
-      ) : pending ? (
-        <OfferProgress
-          kind="money"
-          fill={pending.have / pending.need}
-          label={`$${formatCompact(Math.max(0, pending.have))} / $${formatCompact(pending.need)}`}
-          count={`$${formatCompact(Math.ceil(pending.need - pending.have))} to go`}
-        />
-      ) : null}
     </article>
   )
 }
@@ -580,7 +508,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               (skillRows.some((row) => canAfford(xp, skillCost(row, ownedCount(skills, row.id)))) ||
                 visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)))) ||
               (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-              (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(money, job.baseCost))) ||
+              (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(xp, job.xpCost))) ||
               (id === "G" && equipRows.some((row) => canAfford(money, nextCost(row.baseCost, ownedCount(equipment, row.id))))) ||
               (id === "D" &&
                 [...revealedByEra.values()].flat().some((tier) => canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))))))
@@ -702,7 +630,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const revealed = isSkillRevealed(row, skills, xpTotal)
               const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
-              const gate = revealed || have > 0 ? null : gateOf([{ have: xpTotal, need: row.unlockAtXp, unit: "lifetime XP" }])
               return (
                 <Offer
                   key={row.id}
@@ -715,14 +642,13 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   flash={flashKey === key}
                   fresh={fresh.has(key) && have === 0}
                   locked={!revealed && have === 0}
-                  gate={gate}
-                  unlock={[`${formatNumber(Math.ceil(row.unlockAtXp - xpTotal))} more lifetime XP`]}
+                  unlock={["More lifetime XP"]}
                   unlocks={have === 0 ? teaseFor(key) : undefined}
                   title={row.name}
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, buyAmount))}>
-                        {buyLabel("Learn", "xp", row.baseXpCost, have, xp, buyAmount, row.firstXpCost)}
+                        {!revealed && have === 0 ? "Locked" : buyLabel("Learn", "xp", row.baseXpCost, have, xp, buyAmount, row.firstXpCost)}
                       </button>
                     </>
                   }
@@ -755,7 +681,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const revealed = isGoldRevealed(row, { xpTotal, gold })
               const afford = canBuyGold({ xp, xpTotal, gold }, row)
               const key = `gold:${row.id}`
-              const gate = revealed ? null : gateOf([{ have: xpTotal, need: row.unlockXp, unit: "lifetime XP" }])
               return (
                 <Offer
                   key={row.id}
@@ -769,8 +694,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   locked={!revealed && !owns}
                   done={owns}
                   gold
-                  gate={gate}
-                  unlock={[`${formatNumber(Math.ceil(row.unlockXp - xpTotal))} more lifetime XP`]}
+                  unlock={["More lifetime XP"]}
                   title={row.name}
                   art={<GoldArt row={row} />}
                   actions={
@@ -780,7 +704,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       </button>
                     ) : (
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buyGold(row.id))}>
-                        {`Claim ${formatNumber(row.cost)} XP`}
+                        {!revealed && !owns ? "Locked" : `Claim ${formatNumber(row.cost)} XP`}
                       </button>
                     )
                   }
@@ -800,19 +724,10 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
               const status = gigState(gates, gig)
               const key = `gig:${gig.id}`
               const gap = [
-                xpTotal < gig.xpReq ? `${formatNumber(Math.ceil(gig.xpReq - xpTotal))} more XP` : "",
-                gigs.length < gig.priorGigs ? `${gig.priorGigs - gigs.length} more ${gig.priorGigs - gigs.length === 1 ? "gig" : "gigs"} cleared` : "",
-                gigSkillGap(gates, gig) ?? "",
+                xpTotal < gig.xpReq ? "More XP" : "",
+                gigs.length < gig.priorGigs ? "Earlier gigs cleared" : "",
+                gigSkillGap(gates, gig) !== null ? "More skills" : "",
               ].filter(Boolean)
-              const skillMet = gig.skillIds.filter((id) => ownedCount(skills, id) > 0).length
-              const gate =
-                status === "locked"
-                  ? gateOf([
-                      { have: xpTotal, need: gig.xpReq, unit: "lifetime XP" },
-                      { have: gigs.length, need: gig.priorGigs, unit: "gigs" },
-                      { have: skillMet, need: gig.skillIds.length, unit: "skills" },
-                    ])
-                  : null
               return (
                 <Offer
                   key={gig.id}
@@ -825,7 +740,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   flash={flashKey === key}
                   locked={status === "locked"}
                   done={status === "done"}
-                  gate={gate}
                   unlock={gap}
                   title={gig.name}
                   actions={
@@ -848,9 +762,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           unlocked.C ? (
             jobRows.map((job, index) => {
               const status = jobState(gates, job)
-              const afford = status === "ready" && canAfford(money, job.baseCost)
+              const afford = status === "ready" && canAfford(xp, job.xpCost)
               const key = `job:${job.id}`
-              const gate = status === "locked" ? gateOf([{ have: xpTotal, need: job.xpReq, unit: "lifetime XP" }]) : null
               return (
                 <Offer
                   key={job.id}
@@ -863,13 +776,11 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   flash={flashKey === key}
                   locked={status === "locked"}
                   done={status === "owned"}
-                  gate={gate}
-                  unlock={[`${formatNumber(Math.ceil(job.xpReq - xpTotal))} more XP`]}
-                  saving={status === "ready" && job.baseCost > 0 ? { have: money, need: job.baseCost } : undefined}
+                  unlock={["More XP"]}
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                      {status === "owned" ? "Hired" : job.baseCost > 0 ? `Take $${formatNumber(job.baseCost)}` : "Accept"}
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
                     </button>
                   }
                 >
@@ -901,13 +812,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
                       const afford = revealed && canAfford(money, cost)
                       const key = `equip:${row.id}`
-                      const gate =
-                        revealed || have > 0
-                          ? null
-                          : gateOf([
-                              { have: peakMoney, need: row.unlockMoney, unit: "$" },
-                              { have: row.unlockJobId > 0 && jobs.includes(row.unlockJobId) ? 1 : 0, need: row.unlockJobId > 0 ? 1 : 0, unit: "job" },
-                            ])
                       return (
                         <Offer
                           key={row.id}
@@ -920,18 +824,16 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           flash={flashKey === key}
                           fresh={fresh.has(key) && have === 0}
                           locked={!revealed && have === 0}
-                          gate={gate}
                           unlock={[
-                            ...(peakMoney < row.unlockMoney ? [`Reach a $${formatNumber(row.unlockMoney)} balance`] : []),
+                            ...(peakMoney < row.unlockMoney ? ["A bigger balance"] : []),
                             ...(row.unlockJobId > 0 && !jobs.includes(row.unlockJobId) ? [`the ${jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`} job`] : []),
                           ]}
-                          saving={revealed && have === 0 ? { have: money, need: cost } : undefined}
                           unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
                           title={row.name}
                           actions={
                             <>
                               <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, buyAmount))}>
-                                {buyLabel("Buy", "money", row.baseCost, have, money, buyAmount)}
+                                {!revealed && have === 0 ? "Locked" : buyLabel("Buy", "money", row.baseCost, have, money, buyAmount)}
                               </button>
                             </>
                           }
@@ -975,7 +877,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     afford={afford}
                     flash={flashKey === key}
                     fresh={fresh.has(key) && have === 0}
-                    saving={have === 0 ? { have: money, need: cost } : undefined}
                     title={tier.name}
                     actions={
                       <>

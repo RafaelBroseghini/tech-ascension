@@ -23,7 +23,7 @@ describe("next unlock teaser", () => {
       key: `skill:${first.id}`,
       name: first.name,
       tab: "A",
-      needs: [`${formatNumber(first.firstXpCost ?? first.baseXpCost)} XP`],
+      needs: ["more XP"],
       either: false,
     })
     const grinding = nextUnlock({ ...EMPTY, xpTotal: first.baseXpCost, xp: 0, skills: { "1": 1 } })
@@ -40,7 +40,7 @@ describe("next unlock teaser", () => {
       key: "board:gear",
       name: "Gear",
       tab: "G",
-      needs: ["10,000 more XP"],
+      needs: ["more XP"],
       either: false,
     })
     const gigBoard = nextUnlock({ ...EMPTY, xpTotal: 12_000, skills: ALL_SKILLS })
@@ -49,12 +49,12 @@ describe("next unlock teaser", () => {
 
   it("moves to the Job Board with the XP and gig gaps, then to Capital", () => {
     const gigs = { ...EMPTY, xpTotal: 20_000, skills: ALL_SKILLS, gigs: [1, 2, 3] }
-    expect(nextUnlock(gigs)).toMatchObject({ key: "board:job", name: "Job Board", tab: "C", needs: ["20,000 more XP", "3 more gigs"] })
-    expect(nextUnlock({ ...gigs, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5] })?.needs).toEqual(["1 more gig"])
+    expect(nextUnlock(gigs)).toMatchObject({ key: "board:job", name: "Job Board", tab: "C", needs: ["more XP", "more gigs"] })
+    expect(nextUnlock({ ...gigs, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5] })?.needs).toEqual(["more gigs"])
 
     const capital = nextUnlock({ ...EMPTY, xpTotal: 100_000, skills: ALL_SKILLS, gigs: [1, 2, 3, 4, 5, 6], peakMoney: 120_000 })
     expect(capital).toMatchObject({ key: "board:capital", tab: "D", either: true })
-    expect(capital?.needs).toEqual(["Senior SWE (60,000 more XP)", "a $500,000 balance"])
+    expect(capital?.needs).toEqual(["Senior SWE (more XP)", "a bigger balance"])
   })
 
   it("with every board open, walks catalog order and stops at the first unbought row", () => {
@@ -62,14 +62,14 @@ describe("next unlock teaser", () => {
       key: "job:2",
       name: "Junior SWE",
       tab: "C",
-      needs: ["5,000 more XP"],
+      needs: ["more XP"],
     })
     const open = { ...EMPTY, xpTotal: 40_000, skills: { "15": 1, "16": 1 }, gigs: ALL_GIGS, jobs: [14], peakMoney: 600_000 }
     expect(nextUnlock(open)).toMatchObject({
       key: "skill:1",
       name: "Used laptop",
       tab: "A",
-      needs: [`${SKILL_TIERS[0]?.firstXpCost ?? 0} XP`],
+      needs: ["more XP"],
     })
     expect(nextUnlock({ ...open, xp: SKILL_TIERS[0]?.firstXpCost ?? 0 })).toMatchObject({
       key: "skill:1",
@@ -89,13 +89,13 @@ describe("next unlock teaser", () => {
       key: "gear:1",
       name: "Thocky keyboard",
       tab: "G",
-      needs: [`$${formatNumber(GEAR[0]?.baseCost ?? 0)}`],
+      needs: ["more money"],
     })
     expect(nextUnlock({ ...done, money: GEAR[0]?.baseCost ?? 0 })).toMatchObject({ key: "gear:1", needs: ["to buy it"] })
 
     const ownedGear = Object.fromEntries(GEAR.map((row) => [String(row.id), 1]))
     const tier = nextUnlock({ ...done, equipment: ownedGear, peakMoney: 250_000_000 })
-    expect(tier).toMatchObject({ key: "capital:1", name: CAPITAL[0]?.name, tab: "D", needs: [`$${formatNumber(CAPITAL[0]?.baseCost ?? 0)}`] })
+    expect(tier).toMatchObject({ key: "capital:1", name: CAPITAL[0]?.name, tab: "D", needs: ["more money"] })
 
     const ownedCapital = Object.fromEntries(CAPITAL.map((row) => [String(row.id), 1]))
     const complete = { ...done, equipment: ownedGear, owned: ownedCapital, peakMoney: 1e30 }
@@ -120,10 +120,10 @@ describe("next unlock per panel", () => {
     // Fresh career: the skill grind is the global answer, but each other panel names its own closed board.
     expect(nextUnlock(EMPTY)?.tab).toBe("A")
     expect(nextUnlock(EMPTY, "A")).toMatchObject({ key: "skill:1", tab: "A" })
-    expect(nextUnlock(EMPTY, "G")).toMatchObject({ key: "board:gear", tab: "G", needs: ["10,000 more XP"] })
+    expect(nextUnlock(EMPTY, "G")).toMatchObject({ key: "board:gear", tab: "G", needs: ["more XP"] })
     expect(nextUnlock(EMPTY, "B")).toMatchObject({ key: "board:gig", tab: "B" })
-    expect(nextUnlock(EMPTY, "B")?.needs).toEqual(["14,000 more XP", "Own Portfolio site live", "Own React / one framework"])
-    expect(nextUnlock(EMPTY, "C")).toMatchObject({ key: "board:job", tab: "C", needs: ["40,000 more XP", "6 more gigs"] })
+    expect(nextUnlock(EMPTY, "B")?.needs).toEqual(["more XP", "Own Portfolio site live", "Own React / one framework"])
+    expect(nextUnlock(EMPTY, "C")).toMatchObject({ key: "board:job", tab: "C", needs: ["more XP", "more gigs"] })
     expect(nextUnlock(EMPTY, "D")).toMatchObject({ key: "board:capital", tab: "D", either: true })
   })
 

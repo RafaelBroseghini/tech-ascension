@@ -269,14 +269,15 @@ export type JobTier = {
   id: number
   name: string
   xpReq: number
-  baseCost: number
+  /** Spendable XP to take the job; 0 for the free internship. Derived from `xpReq` in JOB_TIERS. */
+  xpCost: number
   cps: number
   clickBonus: number
   clickPct: number
   xpPerSec: number
   xpLump: number
 };
-const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump"> & { xpPerSec?: number; xpLump?: number })[] = [
+const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump" | "xpCost"> & { baseCost: number; xpPerSec?: number; xpLump?: number })[] = [
   { id: 1, name: "Internship offer", xpReq: 35000, baseCost: 0, cps: 8, clickBonus: 2, clickPct: 1, xpPerSec: 6, xpLump: 1500 },
   { id: 2, name: "Junior SWE", xpReq: 45000, baseCost: 500, cps: 25, clickBonus: 4, clickPct: 1, xpPerSec: 8 },
   { id: 3, name: "Junior + mentor buddy", xpReq: 50000, baseCost: 800, cps: 30, clickBonus: 4, clickPct: 1, xpPerSec: 12, xpLump: 2500 },
@@ -310,9 +311,12 @@ const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump"> & { xpPerSec?: nu
   { id: 31, name: "Sovereign tech chair", xpReq: 2500000, baseCost: 5000000000, cps: 80000, clickBonus: 8000, clickPct: 4 },
 ] as const;
 
-export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map((row) => ({
+/** A job costs a quarter of the lifetime XP it asks for, before the purchase scale; the dollar column above only orders the rows. */
+const JOB_XP_COST_SHARE = 0.25
+
+export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map(({ baseCost, ...row }) => ({
   ...row,
-  baseCost: scalePurchaseCost(row.baseCost),
+  xpCost: baseCost > 0 ? Math.round(scalePurchaseCost(row.xpReq * JOB_XP_COST_SHARE)) : 0,
   xpPerSec: row.xpPerSec ?? 0,
   xpLump: row.xpLump ?? 0,
 }))

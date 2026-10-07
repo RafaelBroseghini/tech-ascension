@@ -1,8 +1,7 @@
-import { ChevronRight, X } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { X } from "lucide-react"
+import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
-import { CatRosterModal } from "./CatRosterModal.tsx"
-import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
+import { UI_ICON } from "./icons/ui.tsx"
 import { CAT_ROSTER } from "../game/catRoster.ts"
 import { formatNumber } from "../game/format.ts"
 import { formatIdleStreak, formatPlayTime } from "../game/stats.ts"
@@ -32,21 +31,16 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
   const gigs = useGame((state) => state.gigs.length)
   const jobs = useGame((state) => state.jobs.length)
   const dialogRef = useRef<HTMLDivElement>(null)
-  const [roster, setRoster] = useState(false)
   const rows = buildRows(stats, peakMoney, gigs, jobs)
 
   useEffect(() => {
-    if (roster) return
     dialogRef.current?.focus({ preventScroll: true })
     const onKey = (key: KeyboardEvent) => {
       if (key.key === "Escape") onClose()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [onClose, roster])
-
-  // Escape in the roster goes back to the metrics, not out of both.
-  if (roster) return <CatRosterModal onClose={() => setRoster(false)} />
+  }, [onClose])
 
   return createPortal(
     <div className="stats-backdrop" data-testid="stats-backdrop" onClick={onClose}>
@@ -85,10 +79,6 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
             </dd>
           </div>
         </dl>
-        <button type="button" className="stats-roster" data-testid="open-cat-roster" onClick={() => setRoster(true)}>
-          Cat roster
-          <ChevronRight {...UI_ICON_SM} aria-hidden />
-        </button>
       </div>
     </div>,
     document.body,

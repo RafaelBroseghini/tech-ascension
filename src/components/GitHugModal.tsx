@@ -1,8 +1,8 @@
-import { Flame, Star, X } from "lucide-react"
+import { Flame, Lock, Star, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { gitHugProfile } from "../game/githug.ts"
-import type { GitHugDay } from "../game/githug.ts"
+import { GITHUG_ROWS, gitHugProfile } from "../game/githug.ts"
+import type { GitHugRepoCount, GitHugSquare } from "../game/githug.ts"
 import { formatNumber } from "../game/format.ts"
 import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
@@ -21,28 +21,29 @@ const LANG_HUE: Record<string, string> = {
   Markdown: "#9aa4b2",
 }
 
-const WEEKDAY_LABEL = ["", "Mon", "", "Wed", "", "Fri", ""]
+const TIP_ROWS = 5
 
-function dayTitle(day: GitHugDay): string {
-  const when = new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-  return `${day.count === 0 ? "No" : day.count} contribution${day.count === 1 ? "" : "s"} on ${when}`
+function repoLine(repo: GitHugRepoCount): string {
+  return `${repo.count} contribution${repo.count === 1 ? "" : "s"} in ${repo.private ? "private repositories" : repo.name}`
 }
 
-/** The parody GitHub profile: a green square per day you shipped something, pinned repos, and the real repo's star. */
+function squareTitle(square: GitHugSquare): string {
+  return square.steps === 0 ? "Nothing here yet" : square.repos.map(repoLine).join(", ")
+}
+
+/** The parody GitHub profile: a green square per run of career steps, pinned repos, and the real repo's star. */
 export function GitHugModal({ stars, onClose }: { stars: number | null; onClose: () => void }) {
   const entries = useGame((state) => state.journal.entries)
   const skills = useGame((state) => state.skills)
   const gigs = useGame((state) => state.gigs)
   const jobs = useGame((state) => state.jobs)
+  const owned = useGame((state) => state.owned)
+  const equipment = useGame((state) => state.equipment)
   const xpTotal = useGame((state) => state.xpTotal)
   const identity = useGame((state) => state.profile)
   const dialogRef = useRef<HTMLDivElement>(null)
-  // The graph ends on the day the profile was opened.
-  const [openedAt] = useState(() => Date.now())
-  const profile = useMemo(
-    () => gitHugProfile({ entries, skills, gigs, jobs, xpTotal, identity, now: openedAt }),
-    [entries, skills, gigs, jobs, xpTotal, identity, openedAt],
-  )
+  const [hover, setHover] = useState<GitHugSquare | null>(null)
+  const profile = useMemo(() => gitHugProfile({ entries, skills, gigs, jobs, owned, equipment, xpTotal, identity }), [entries, skills, gigs, jobs, owned, equipment, xpTotal, identity])
 
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true })
@@ -90,23 +91,43 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
           <section className="githug-graph-wrap" aria-label="Contributions">
             <p className="githug-sec">
               <span data-testid="githug-total">
-                {formatNumber(profile.total)} contribution{profile.total === 1 ? "" : "s"} in the last {profile.weeks.length} weeks
+                {formatNumber(profile.total)} contribution{profile.total === 1 ? "" : "s"} so far
               </span>
               <span className="githug-streak" data-testid="githug-streak">
                 <Flame {...UI_ICON_SM} aria-hidden />
-                {profile.streak} day streak
+                {profile.filled} / {profile.weeks.length * GITHUG_ROWS} squares
               </span>
             </p>
             {/* One grid, filled a week (a column) at a time, so the squares stay square at any width. */}
             <div className="githug-graph" data-testid="githug-graph" style={{ ["--weeks" as string]: profile.weeks.length }}>
-              {WEEKDAY_LABEL.map((label, index) => (
-                <span key={`label-${index}`} className="githug-weekday" aria-hidden="true">
-                  {label}
-                </span>
+              {profile.weeks.flat().map((square) => (
+                <i
+                  key={square.index}
+                  className="githug-day"
+                  data-level={square.level}
+                  data-index={square.index}
+                  title={squareTitle(square)}
+                  onMouseEnter={() => setHover(square)}
+                  onMouseLeave={() => setHover(null)}
+                />
               ))}
-              {profile.weeks.flat().map((day) => (
-                <i key={day.date} className="githug-day" data-level={day.level} data-date={day.date} title={dayTitle(day)} />
-              ))}
+            </div>
+            <div className="githug-tip" data-testid="githug-tip" aria-live="polite">
+              {hover && hover.steps > 0 ? (
+                <>
+                  <ul>
+                    {hover.repos.slice(0, TIP_ROWS).map((repo) => (
+                      <li key={repo.name} data-private={repo.private}>
+                        {repo.private ? <Lock {...UI_ICON_SM} aria-label="Private" role="img" /> : null}
+                        {repoLine(repo)}
+                      </li>
+                    ))}
+                  </ul>
+                  {hover.repos.length > TIP_ROWS ? <p className="githug-tip-more">+{hover.repos.length - TIP_ROWS} more</p> : null}
+                </>
+              ) : (
+                <p className="githug-tip-head">Hover a square to see where the work went</p>
+              )}
             </div>
             <p className="githug-legend" aria-hidden="true">
               Less

@@ -154,3 +154,21 @@ describe("wipe save", () => {
     expect($(host, "wipe-save")).not.toBeNull()
   })
 })
+
+describe("how to play", () => {
+  it("sits at the top of the settings menu and explains the game, with the last trophy as the finish", () => {
+    const host = renderSettings()
+    flushSync(() => (host.querySelector("[data-testid='editor-settings']") as HTMLButtonElement).click())
+    const menu = host.querySelector(".ide-theme-menu")!
+    expect(menu.querySelector("section")?.querySelector("[data-testid='how-to-play']")).not.toBeNull()
+    expect(document.querySelector("[data-testid='howto-panel']")).toBeNull()
+
+    flushSync(() => (host.querySelector("[data-testid='how-to-play']") as HTMLButtonElement).click())
+    expect(document.querySelector("[data-testid='howto-panel']")).not.toBeNull()
+    expect(document.querySelector("[data-testid='howto-end']")?.textContent).toContain("keep clicking")
+    expect(document.querySelector("[data-testid='howto-end']")?.textContent).toContain("Sabbatical")
+
+    flushSync(() => (document.querySelector("[data-testid='howto-close']") as HTMLButtonElement).click())
+    expect(document.querySelector("[data-testid='howto-panel']")).toBeNull()
+  })
+})

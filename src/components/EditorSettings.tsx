@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react"
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { AdminSettings } from "./AdminSettings.tsx"
+import { HowToPlay } from "./HowToPlay.tsx"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
@@ -180,6 +181,7 @@ export function EditorSettings() {
       </button>
       {open ? (
         <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => clearIdeThemePreview()}>
+          <HowToPlay />
           <AdminSettings headingId={`${menuId}-admin`} />
           <section className="ide-settings-section" aria-labelledby={`${menuId}-settings`}>
             <p className="ide-theme-heading" id={`${menuId}-settings`}>

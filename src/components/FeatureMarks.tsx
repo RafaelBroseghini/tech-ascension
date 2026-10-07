@@ -22,19 +22,6 @@ export function NewMark({ id, pill = false }: { id: FeatureId | `${string}:`; pi
   )
 }
 
-const RING_R = 20
-const RING_C = 2 * Math.PI * RING_R
-
-/** A ring that fills as the unlock gets close. */
-function Ring({ fill }: { fill: number }) {
-  return (
-    <svg className="ul-ring" viewBox="0 0 46 46" aria-hidden="true">
-      <circle className="ul-ring-bg" cx="23" cy="23" r={RING_R} />
-      <circle className="ul-ring-fg" cx="23" cy="23" r={RING_R} strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - Math.max(0, Math.min(1, fill)))} />
-    </svg>
-  )
-}
-
 type TipPlace = "right" | "below" | "above"
 
 function tipStyle(rect: DOMRect, place: TipPlace): React.CSSProperties {
@@ -115,7 +102,6 @@ export function FeatureGhost({ id, place = "right", className, children }: { id:
       {...handlers}
     >
       {children}
-      <Ring fill={tease.fill} />
       <span className="ul-lock" aria-hidden="true">
         <Lock size={9} strokeWidth={2.6} />
       </span>
