@@ -43,11 +43,21 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. "Ha
 | Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 4.3 / 3.8 days | 9.0 / 8.6 days | 3 h / 7 h |
 | Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 6.5 / 5.7 days | 14.0 / 12.9 days | 2 h / 5 h |
 | Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 11.0 / 10.5 days | 25.0 / 23.5 days | 6 h / 13 h |
-| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 12.0 / 11.4 days | 28.0 / 25.7 days | 2 h / 5 h |
+| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 13.0 / 11.4 days | 28.0 / 25.7 days | 2 h / 5 h |
 | Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 22.0 / n/a days | 50.0 / 47.1 days | 6 h / 13 h |
 | Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 168 / n/a days | 182 / 165 days | 12 h / 13 h |
 
-To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached.
+To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
+
+## Whiteboard interviews
+
+Twelve jobs wait on a passed whiteboard interview (`src/data/studio/challenges.ts`). The model gives each one a visit: the interview opens on the visit where lifetime XP reaches the job's requirement, and the player passes it at the start of the next visit. Interviews 6 to 12 (Image upload to Global service) fail once first, so that visit also pays one No hire, 5% of the job's lifetime XP requirement in spendable XP.
+
+Against the numbers before interviews, at the same tables:
+
+- **The finish line barely moves.** Every row of the table above is unchanged except Daily, short for the reinvestor, which goes from 12.0 to 13.0 days. The finish waits on the last capital row, and every schedule has its jobs long before that.
+- **The job ladder takes one more visit.** At `npm run pace -- 3 5 8`, every job is held on day 0.67 instead of 0.33, and the reinvestor's last gear row moves from day 1.67 to 2.00. Senior SWE and capital stay on day 0.33. Lifetime XP passes 160,000 on the first visit, so that interview is already waiting when the second visit starts.
+- **`K` stays 9 and 4.** The best fit moved from 9.19 to 9.19 for the collector and from 4.07 to 4.12 for the reinvestor, which round to the same constants.
 
 ## Reading it
 
@@ -63,13 +73,13 @@ To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visi
 
 - You visit `visitsPerDay` times, evenly spaced, for `minutesPerVisit` each, clicking `clicksPerSec` the whole visit. You buy only while you are there.
 - Time away pays idle income and idle XP, up to the offline cap, once, when you return.
-- You take every gig and job as soon as it opens, and buy a first copy of anything as soon as you can afford it.
+- You take every gig and job as soon as it opens, and buy a first copy of anything as soon as you can afford it. A job with a whiteboard interview opens one visit after its lifetime XP requirement, and interviews 6 to 12 cost one No hire first.
 - A second copy of a skill, gear row or capital row is bought only if it earns itself back within the player's payback limit (an hour for the collector, two days for the reinvestor), best payback first.
 - Random events and click boosts are left out, so this is an estimate with no luck in it. They would move the real number, by how much is not modeled.
 
 ## How far to trust it
 
-- **Collector: within about 8% of the model** at every schedule in the table. **Reinvestor: within about 20%**, and only when you visit at least daily (Hardcore reads 17% long, Daily short 18% short). The reinvestor constant does not hold for visits further apart than a day, because a two day payback is out of reach when you only shop every other day. The table shows `n/a` there. Use the collector's constant.
+- **Collector: within about 10% of the model** at every schedule in the table. **Reinvestor: within about 20%**, and only when you visit at least daily (Left open reads 11% long; Regular, Commuter and Daily short read about 12% short). The reinvestor constant does not hold for visits further apart than a day, because a two day payback is out of reach when you only shop every other day. The table shows `n/a` there. Use the collector's constant.
 - **The two players are the honest uncertainty.** A real player sits between them, so the answer is a range with a factor of about 2.2 across it, not a single number.
 - **The player is simple.** Clicking is a steady rate for the whole visit, shopping takes no time, and the shopper never plans ahead. A real player clicks in bursts and sometimes saves for a big row. The model only needed to be right about the shape.
 - **It is only as good as the tables.** `src/game/pace.test.ts` checks the formula against the model for four schedules and fails if the constants drift past 12% (collector) or 20% (reinvestor). When it does, rerun `npm run pace`, refit `PACE_K` in `src/game/pace.ts`, and update this page.

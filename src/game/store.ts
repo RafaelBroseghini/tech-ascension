@@ -30,7 +30,7 @@ import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
-import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
+import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, jobState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
@@ -61,6 +61,10 @@ import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
 import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
+import { copyDesign, interviewById, isPass, judge, noHirePenalty } from "./studio/interviews.ts"
+import type { InterviewLog, Submission } from "./studio/interviews.ts"
+import type { Verdict } from "./studio/score.ts"
+import type { Design } from "./studio/types.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -158,6 +162,10 @@ type GameState = {
   journal: CareerJournal
   /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
   profile: SavedIdentity
+  /** Whiteboard interviews submitted, keyed by interview id. */
+  interviews: InterviewLog
+  /** The latest submission this session. Not saved. */
+  lastInterview: Submission | null
   unlocked: FeatureId[]
   fresh: FeatureId[]
   returns: number
@@ -169,6 +177,14 @@ type GameState = {
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
   buyJob: (jobId: number) => boolean
+  /**
+   * Run a design past the interview for a job at `interview`, once. A Hire or Strong hire opens the job for good; a
+   * No hire costs `noHirePenalty` in spendable XP (never below 0) and keeps the design for the next try. Null when the
+   * interview is unknown or its job is not at `interview`.
+   */
+  submitWhiteboard: (interviewId: string, design: Design) => Verdict | null
+  /** Record a pass now, bypassing every gate (tests and the harness). False for an unknown or already passed id. */
+  forceInterview: (interviewId: string) => boolean
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
   buyGold: (goldId: number) => boolean
   /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
@@ -248,6 +264,7 @@ function toSave(state: GameState, now: number): SaveData {
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
   save.profile = state.profile
+  if (Object.keys(state.interviews).length > 0) save.interviews = state.interviews
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -390,6 +407,8 @@ export const useGame = create<GameState>((set, get) => ({
   journal: booted.career.journal,
   // A save from before names were drawn is a career already under way: it gets one, kept, with no start card.
   profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
+  interviews: booted.save.interviews ?? {},
+  lastInterview: null,
   unlocked: booted.career.unlocked,
   fresh: booted.career.fresh,
   returns: booted.career.returns,
@@ -527,6 +546,44 @@ export const useGame = create<GameState>((set, get) => ({
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
+    })
+    persistNow()
+    return true
+  },
+
+  submitWhiteboard: (interviewId, design) => {
+    const interview = interviewById(interviewId)
+    const job = interview ? jobById(interview.jobId) : undefined
+    const state = get()
+    if (!interview || !job || jobState(state, job) !== "interview") return null
+    const verdict = judge(interview, design)
+    const attempts = (state.interviews[interview.id]?.attempts ?? 0) + 1
+    const interviews = { ...state.interviews, [interview.id]: { verdict: verdict.kind, attempts, design: copyDesign(design) } }
+    const penalty = verdict.kind === "noHire" ? Math.min(state.xp, noHirePenalty(interview)) : 0
+    // A pass is logged by the timeline listener from the record; a No hire is logged here, with what it missed.
+    const notes: CareerNote[] =
+      verdict.kind === "noHire"
+        ? [{ type: "interview", ref: `interview:${interview.id}`, data: { verdict: verdict.kind, attempts, missed: verdict.missed.map((m) => m.target).join(","), penalty } }]
+        : []
+    set({
+      xp: state.xp - penalty,
+      interviews,
+      lastInterview: { interviewId: interview.id, verdict, penalty },
+      now: Date.now(),
+      journal: noted(state.journal, notes, state),
+    })
+    persistNow()
+    return verdict
+  },
+
+  forceInterview: (interviewId) => {
+    const interview = interviewById(interviewId)
+    const state = get()
+    const prior = interview ? state.interviews[interview.id] : undefined
+    if (!interview || (prior && isPass(prior.verdict))) return false
+    set({
+      interviews: { ...state.interviews, [interview.id]: { verdict: "hire", attempts: prior?.attempts ?? 0, design: copyDesign(interview.reference) } },
+      now: Date.now(),
     })
     persistNow()
     return true
@@ -777,6 +834,8 @@ export const useGame = create<GameState>((set, get) => ({
       celebrationNonce: 0,
       ...freshCareerSlice(now),
       profile: { ...randomIdentity(), chosen: false },
+      interviews: {},
+      lastInterview: null,
     })
   },
 
