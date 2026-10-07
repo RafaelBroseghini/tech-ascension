@@ -83,6 +83,19 @@ afterEach(async () => {
 })
 
 describe("whiteboard", () => {
+  // First in the file: the launcher remembers the last interview, and this one needs a page that opened none yet.
+  it("a Hire keeps the interview the activity bar opened", async () => {
+    expect(getStudioView().interviewId).toBeNull()
+    careerAt(60_000, [1])
+    showInterview(THREE_TIER.id, THREE_TIER.reference)
+    openStudio()
+    await render()
+    expect($("[data-testid='studio']")?.dataset.interview).toBe(THREE_TIER.id)
+    await submitAndSkip()
+    expect($("[data-testid='studio']")?.dataset.interview).toBe(THREE_TIER.id)
+    expect($("[data-testid='studio-verdict']")?.dataset.verdict).toBe("hire")
+  })
+
   it("the palette lists only unlocked kinds", async () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)
