@@ -13,9 +13,10 @@ let root: Root | null = null
 function renderShop(): HTMLDivElement {
   const host = document.createElement("div")
   document.body.append(host)
-  root = createRoot(host)
+  const next = createRoot(host)
+  root = next
   flushSync(() => {
-    root.render(createElement(Shop))
+    next.render(createElement(Shop))
   })
   return host
 }

@@ -43,7 +43,6 @@ import { useGame } from "../game/store.ts"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
 
 const FADE_MS = 260
-const KIND_TITLE = { files: "Explorer", inbox: "Inbox", deck: "Slides" } as const
 const KIND_MODE = { files: "NORMAL", inbox: "MAIL", deck: "SLIDES" } as const
 
 function runPythonFile(file: { path: string; code: string; lang: Lang }) {

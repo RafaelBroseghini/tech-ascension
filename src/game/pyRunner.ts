@@ -21,8 +21,7 @@ export type PythonTestCase = {
 }
 
 export type PythonRunResult =
-  | { ok: true; cases: PythonTestCase[] }
-  | { ok: false; message: string; cases: PythonTestCase[] }
+  { ok: boolean; message?: string; cases: PythonTestCase[] }
 
 const HARNESS = `
 def __ide_run_tests__(ns, fn_name):

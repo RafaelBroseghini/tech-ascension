@@ -7,7 +7,6 @@ import type { Progress } from "./economy.ts"
 import { explorerFolders, folderPackById, ideTabArtId } from "./ideExplorer.ts"
 import type { ExplorerFolder } from "./ideExplorer.ts"
 import { stageOf } from "./phase.ts"
-import type { Stage } from "./phase.ts"
 
 export { ideTabArtId } from "./ideExplorer.ts"
 export type { ExplorerFolder } from "./ideExplorer.ts"

@@ -81,6 +81,8 @@ function shelfFrom(records: readonly StoredRecord[]): LoadedShelf {
     theme: prefRow("theme", byId.get("theme")),
     shopTab: prefRow("shopTab", byId.get("shopTab")),
     treeFolds: prefRow("treeFolds", byId.get("treeFolds")),
+    ideLore: prefRow("ideLore", byId.get("ideLore")),
+    shopPanel: prefRow("shopPanel", byId.get("shopPanel")),
   }
 }
 

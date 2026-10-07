@@ -39,7 +39,7 @@ function formatTests(tests: IdePythonFixture["tests"]): string {
   return `\n\nTESTS = [\n${rows.join("\n")}\n]`
 }
 
-function formatMain(mainLines: string[]): string {
+function formatMain(mainLines: readonly string[]): string {
   if (!mainLines.length) return ""
   return `\n\nif __name__ == "__main__":\n${mainLines.map((line) => `    ${line}`).join("\n")}`
 }

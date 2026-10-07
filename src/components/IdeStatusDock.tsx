@@ -186,7 +186,7 @@ function ThemeDots() {
   )
 }
 
-function ChipIcon({ Icon, src, alt }: { Icon?: LucideIcon; src?: string; alt?: string }) {
+function ChipIcon({ Icon, src }: { Icon?: LucideIcon; src?: string }) {
   if (src) {
     return <img className="ide-status-chip-emoji" src={src} alt="" width={14} height={14} draggable={false} decoding="async" />
   }
@@ -309,7 +309,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
           open={openChip === "cat"}
           onOpen={() => openChipFor("cat")}
           onClose={closeChip}
-          icon={<ChipIcon src={desk.catArt ?? DESK_CAT_EMOJI} alt="" />}
+          icon={<ChipIcon src={desk.catArt ?? DESK_CAT_EMOJI} />}
           panel={
             <SettingsSection heading="Cat">
               <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["cat"]} />
