@@ -5,7 +5,7 @@ import type { Interview } from "../data/studio/challenges.ts"
 import { useGame } from "../game/store.ts"
 import { interviewById } from "../game/studio/interviews.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
-import { jobOf, lastPassed, nextInterview, statusLine, useStatuses } from "./studio/status.ts"
+import { jobOf, lastPassed, nextInterview, passedDesign, statusLine, useStatuses } from "./studio/status.ts"
 
 const DeskDrawing = lazy(() => import("./DeskDrawing.tsx"))
 
@@ -31,12 +31,12 @@ function NextPrompt({ interview, status }: { interview: Interview; status: strin
  * target and takes no pointer events.
  */
 export const DeskDiagram = memo(function DeskDiagram() {
-  const shownId = useGame((s) => lastPassed(s.interviews, s.journal.entries))
-  const design = useGame((s) => (shownId ? s.interviews[shownId]?.design : undefined))
+  const shownId = useGame((s) => lastPassed(s, s.journal.entries))
   const log = useGame((s) => s.interviews)
   const statuses = useStatuses()
   const shown = shownId ? interviewById(shownId) : undefined
-  if (shown && design) {
+  if (shown) {
+    const design = passedDesign(log, shown.id) ?? shown.reference
     return (
       <Suspense fallback={null}>
         <DeskDrawing interview={shown} design={design} />

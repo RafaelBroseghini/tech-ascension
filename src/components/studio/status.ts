@@ -7,6 +7,7 @@ import type { JobGates } from "../../game/phase.ts"
 import type { CareerEntry } from "../../game/careerLog.ts"
 import { interviewPassed, isPass } from "../../game/studio/interviews.ts"
 import type { InterviewLog } from "../../game/studio/interviews.ts"
+import type { Design } from "../../game/studio/types.ts"
 import { useGame } from "../../game/store.ts"
 
 /** Where an interview stands for this career. Only `open` takes a submission. */
@@ -58,22 +59,25 @@ export function nextInterview(statuses: readonly InterviewStatus[]): Interview |
   return INTERVIEWS[ahead] ?? null
 }
 
-const drawable = (log: InterviewLog, id: string) => {
+/** A passing design on record, worth drawing: more than The Users alone. */
+export function passedDesign(log: InterviewLog, id: string): Design | null {
   const record = log[id]
-  return record !== undefined && isPass(record.verdict) && record.design.nodes.length > 1
+  return record && isPass(record.verdict) && record.design.nodes.length > 1 ? record.design : null
 }
 
 /**
- * The interview whose passing design the desk draws: the newest pass in the journal, or, once the journal has trimmed
- * it, the furthest interview with a passing design on record. Null before any pass with a design.
+ * The interview whose design the desk draws: the newest pass in the journal, else the furthest passing design on
+ * record (the journal trims old entries), else the furthest interview a held job counts as passed (a save from before
+ * interviews, or admin's Buy everything), which has no design of its own. Null before any pass.
  */
-export function lastPassed(log: InterviewLog, journal: readonly CareerEntry[]): string | null {
+export function lastPassed(p: { interviews: InterviewLog; jobs: readonly number[] }, journal: readonly CareerEntry[]): string | null {
   for (let i = journal.length - 1; i >= 0; i--) {
     const entry = journal[i]
-    if (entry.type !== "interview") continue
+    if (entry.type !== "interview" || entry.data?.verdict === "noHire") continue
     const id = entry.ref.slice("interview:".length)
-    if (entry.data?.verdict !== "noHire" && drawable(log, id)) return id
+    if (passedDesign(p.interviews, id)) return id
   }
-  for (let i = INTERVIEWS.length - 1; i >= 0; i--) if (drawable(log, INTERVIEWS[i].id)) return INTERVIEWS[i].id
+  for (let i = INTERVIEWS.length - 1; i >= 0; i--) if (passedDesign(p.interviews, INTERVIEWS[i].id)) return INTERVIEWS[i].id
+  for (let i = INTERVIEWS.length - 1; i >= 0; i--) if (interviewPassed(p, INTERVIEWS[i])) return INTERVIEWS[i].id
   return null
 }
