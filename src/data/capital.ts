@@ -1,7 +1,7 @@
 /**
  * Phase D capital: the business catalog (angel seat to Mars Holdings). Replaces the old tier 19-66 ladder.
  * `era` drives boosts and the stage accent; rows 1-5 are mid, 6-11 upper, 12-14 q3, 15-25 end.
- * `artId` is the drawing (src/pixel/art.ts) and code snippet (src/data/overlays.ts) a row uses, from the band
+ * `artId` is the drawing (src/pixel/art.ts) a row uses, from the band
  * of its own era and rising with id, so a new row needs no new art. Ids are unique; costs need not rise with id.
  * nextCost = floor(baseCost * COST_GROWTH ** owned). `baseCost` below is unscaled; the export doubles it.
  */

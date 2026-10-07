@@ -3,15 +3,14 @@ import type { Era } from "../data/capital.ts"
 import { BASE_CLICK_KIT, BASE_THEMES, CAT_DESK_MS, FEATURES } from "../data/features.ts"
 import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
-import { IDE_PACKS } from "../data/idePacks.ts"
+import { bandForTier } from "../data/idePacks.ts"
 import { GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, CAPITAL_UNLOCK } from "../data/phases.ts"
 import { canAfford, equipById, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { goldSectionOpen, hoverRate } from "./gold.ts"
-import { ideBandArt } from "./ideExplorer.ts"
 import { ownsEverything } from "./nextUnlock.ts"
-import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, moneyMode } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, moneyMode, stageOf } from "./phase.ts"
 
 /** What the gates read: progress, the 10x dev skills, and the two things progress alone cannot say. */
 export type FeatureProgress = Progress & {
@@ -43,11 +42,6 @@ function reachedEra(p: Pick<Progress, "owned">, era: Era): boolean {
   return CAPITAL.some((row) => ownedCount(p.owned, row.id) > 0 && ERA_RANK[row.era] >= ERA_RANK[era])
 }
 
-function folderReached(p: FeatureProgress, packId: string): boolean {
-  const pack = IDE_PACKS.find((row) => row.id === packId)
-  return pack ? pack.fromTier <= ideBandArt(p) : false
-}
-
 /** True once progress alone opens the trigger. Gates latch the way the shop's do: progress never goes back. */
 export function triggerMet(trigger: FeatureTrigger, p: FeatureProgress): boolean {
   switch (trigger.kind) {
@@ -70,8 +64,8 @@ export function triggerMet(trigger: FeatureTrigger, p: FeatureProgress): boolean
       return goldSectionOpen(p)
     case "hover":
       return hoverRate(p.gold, ownsEverything(p)) > 0
-    case "folder":
-      return folderReached(p, trigger.packId)
+    case "art":
+      return (stageOf(p)?.artId ?? 0) >= trigger.tier
     case "era":
       return reachedEra(p, trigger.era)
     case "settled":
@@ -109,8 +103,8 @@ export function triggerLabel(trigger: FeatureTrigger): string {
       return `${formatNumber(firstGoldXp())} lifetime XP`
     case "hover":
       return "Hover Tap, a 10x dev skill"
-    case "folder":
-      return `the ${IDE_PACKS.find((row) => row.id === trigger.packId)?.label ?? trigger.packId} folder`
+    case "art":
+      return `the ${bandForTier(trigger.tier).label} stage`
     case "era":
       return `the ${trigger.era === "q3" ? "scale" : trigger.era} era`
     case "settled":
@@ -231,7 +225,7 @@ export function triggerProgress(trigger: FeatureTrigger, p: FeatureProgress): Tr
       return { fill: ratio(p.xpTotal, firstGoldXp()), left: xpLeft() }
     case "hover":
       return hoverProgress(p)
-    case "folder":
+    case "art":
     case "era":
       return { fill: 0, left: "" }
     case "settled": {
@@ -292,7 +286,7 @@ export function nextGhost(p: FeatureProgress, open: ReadonlySet<string>): Featur
   return null
 }
 
-/** The shop rows that open something: `skill:8` -> Terminal. A row can open a feature and a cosmetic at once. */
+/** The shop rows that open something: `skill:10` -> Career log and GitHug profile. A row can open a feature and a cosmetic at once. */
 export function rowUnlocks(rowKey: string): FeatureRow[] {
   const [kind, raw] = rowKey.split(":")
   const id = Number(raw)

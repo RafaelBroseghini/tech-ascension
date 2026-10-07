@@ -6,12 +6,11 @@ import type { Root } from "react-dom/client"
 import { flushSync } from "react-dom"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { SKILL_TIERS } from "../data/phases.ts"
-import { closeIdePythonConsole, getIdePythonConsole } from "../game/idePythonConsole.ts"
 import { setSidebarView } from "../game/ideSidebar.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { onSurface } from "../game/surfaces.ts"
-import { CareerLog, CareerOutput } from "./CareerLog.tsx"
+import { CareerLog } from "./CareerLog.tsx"
 import { GitHugCorner } from "./CornerActions.tsx"
 import { IdentityPicker } from "./IdentityPicker.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
@@ -57,8 +56,7 @@ afterEach(() => {
     for (const root of roots.splice(0)) root.unmount()
   })
   document.body.replaceChildren()
-  closeIdePythonConsole()
-  setSidebarView("explorer")
+  setSidebarView("closed")
   writeSavedShopTab(null)
   useGame.getState().wipe()
 })
@@ -66,21 +64,21 @@ afterEach(() => {
 describe("reveals", () => {
   it("lights a standard unlock up where it lives with a card, and its button opens it", async () => {
     const anchor = document.createElement("button")
-    anchor.dataset.featureAnchor = "terminal"
+    anchor.dataset.featureAnchor = "linkedout"
     document.body.append(anchor)
     let opened = 0
-    const off = onSurface("terminal", () => (opened += 1))
-    useGame.setState({ unlocked: ["editor", "terminal"], fresh: ["terminal"], reveals: ["terminal"] })
+    const off = onSurface("linkedout", () => (opened += 1))
+    useGame.setState({ unlocked: ["studio", "linkedout"], fresh: ["linkedout"], reveals: ["linkedout"] })
     render(UnlockReveals)
     await settle()
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Terminal")
-    expect($("[data-testid='unlock-card']")?.textContent).toContain("from Linux CLI basics")
+    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("LinkedOut profile")
+    expect($("[data-testid='unlock-card']")?.textContent).toContain("from Portfolio site live")
     expect(anchor.classList.contains("ul-lit")).toBe(true)
     expect(useGame.getState().reveals).toEqual([])
 
     click($("[data-testid='unlock-card-action']"))
     expect(opened).toBe(1)
-    expect(useGame.getState().fresh).not.toContain("terminal")
+    expect(useGame.getState().fresh).not.toContain("linkedout")
     await settle(400)
     expect($("[data-testid='unlock-card']")).toBeNull()
     expect(anchor.classList.contains("ul-lit")).toBe(false)
@@ -88,13 +86,13 @@ describe("reveals", () => {
   })
 
   it("slams a big unlock in the centre first, then shows its card", async () => {
-    useGame.setState({ unlocked: ["editor"], reveals: ["editor"] })
+    useGame.setState({ unlocked: ["studio"], reveals: ["studio"] })
     render(UnlockReveals)
     await settle()
-    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Your editor" })
+    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Studio" })
     expect($("[data-testid='unlock-card']")).toBeNull()
     await settle(1_000)
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Your editor")
+    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Studio")
   })
 
   it("turns a small unlock into a toast", async () => {
@@ -107,18 +105,18 @@ describe("reveals", () => {
 
   it("waits while an event is on screen", async () => {
     useGame.getState().fireEvent(1)
-    useGame.setState({ unlocked: ["terminal"], reveals: ["terminal"] })
+    useGame.setState({ unlocked: ["linkedout"], reveals: ["linkedout"] })
     render(UnlockReveals)
     await settle()
     expect($("[data-testid='unlock-card']")).toBeNull()
-    expect(useGame.getState().reveals).toEqual(["terminal"])
+    expect(useGame.getState().reveals).toEqual(["linkedout"])
     flushSync(() => useGame.getState().dismissEvent())
     await settle()
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Terminal")
+    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("LinkedOut profile")
   })
 
   it("shows a save from before the timeline one card about the career log", async () => {
-    useGame.setState({ unlocked: ["editor", "careerLog"], whatsNew: true })
+    useGame.setState({ unlocked: ["studio", "careerLog"], whatsNew: true })
     render(UnlockReveals)
     await settle()
     expect($("[data-testid='unlock-card']")?.textContent).toContain("What's new")
@@ -128,29 +126,27 @@ describe("reveals", () => {
   })
 })
 
-describe("the editor before and after its unlocks", () => {
-  it("keeps the terminal and the career log out until they unlock, standing the next one in its place", () => {
+describe("the desk before and after its unlocks", () => {
+  it("keeps the career log out until it unlocks, standing it in its place, and shows no editor", () => {
     useGame.setState({ skills: { "1": 1 } })
     render(IdeChrome)
-    expect($("[data-testid='ide-console-open']")).toBeNull()
     expect($("[data-testid='ide-view-log']")).toBeNull()
-    expect($$("[data-testid='feature-ghost']").map((el) => el.dataset.feature)).toEqual(["terminal"])
+    expect($$("[data-testid='feature-ghost']").map((el) => el.dataset.feature)).toEqual(["careerLog"])
+    expect($(".ide-tabs")).toBeNull()
     expect($("[data-testid='ide-item-run']")).toBeNull()
 
     const skills = Object.fromEntries(SKILL_TIERS.slice(0, 10).map((row) => [String(row.id), 1]))
-    flushSync(() => useGame.setState({ skills }))
-    expect($("[data-testid='ide-console-open']")).not.toBeNull()
-    expect($("[data-testid='ide-console-open'] [data-testid='new-mark']")).not.toBeNull()
+    flushSync(() => useGame.setState({ skills, unlocked: ["studio", "careerLog"], fresh: ["careerLog"] }))
+    expect($("[data-testid='ide-view-log'] [data-testid='new-mark']")).not.toBeNull()
     click($("[data-testid='ide-view-log']"))
     expect($("[data-testid='career-log']")).not.toBeNull()
-    expect($(".ide-folder-tree")).toBeNull()
     expect(useGame.getState().fresh).not.toContain("careerLog")
-    click($("[data-testid='ide-view-explorer']"))
+    click($("[data-testid='ide-view-log']"))
     expect($("[data-testid='career-log']")).toBeNull()
   })
 })
 
-describe("the career log and the Output tab", () => {
+describe("the career log", () => {
   it("lists what is next and the history newest first, with HEAD on top", () => {
     useGame.setState({ xp: 10_000, xpTotal: 2_300 })
     useGame.getState().buySkill(1)
@@ -159,49 +155,23 @@ describe("the career log and the Output tab", () => {
     const history = $$("[data-testid='career-log-history'] li")
     expect(history[0]?.textContent).toContain("HEAD")
     expect(history.at(-1)?.textContent).toContain("init: high school")
-    expect($$("[data-testid='career-log-next'] li").map((li) => li.dataset.feature)).toEqual(["terminal", "careerLog", "githug"])
-  })
-
-  it("opens the JSON from the career log", () => {
-    render(CareerLog)
-    click($("[data-testid='career-log-json']"))
-    // No console mounted here: the request goes to whoever listens. With IdeChrome mounted it opens Output.
-    render(IdeChrome)
-    click($("[data-testid='career-log-json']"))
-    expect(getIdePythonConsole()).toMatchObject({ open: true, tab: "output" })
-  })
-
-  it("prints one line per journal entry and filters by type", () => {
-    useGame.setState({ xp: 10_000, xpTotal: 2_300 })
-    useGame.getState().buySkill(1)
-    useGame.getState().buySkill(2)
-    const host = render(CareerOutput)
-    const lines = $$("[data-testid='output-line']")
-    expect(lines).toHaveLength(useGame.getState().journal.entries.length)
-    expect(JSON.parse(lines[0]!.querySelector("code")!.textContent ?? "")).toMatchObject({ seq: 1, type: "start" })
-    const select = host.querySelector<HTMLSelectElement>("[data-testid='output-filter']")!
-    flushSync(() => {
-      select.value = "learn"
-      select.dispatchEvent(new Event("change", { bubbles: true }))
-    })
-    expect($$("[data-testid='output-line']").map((line) => line.dataset.type)).toEqual(["learn", "learn"])
-    expect($("[data-testid='output-count']")?.textContent).toBe("2 lines")
+    expect($$("[data-testid='career-log-next'] li").map((li) => li.dataset.feature)).toEqual(["careerLog", "githug", "linkedout"])
   })
 })
 
 describe("the shop teases what is next", () => {
   it("hides closed boards except the next one, and names what a row unlocks", () => {
     writeSavedShopTab("A")
-    useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 7).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
+    useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 9).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
     render(Shop, { onCollapse: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
     expect(tabs).toEqual(["A", "G"])
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
-    expect($$("[data-row='skill:8'] [data-testid='unlock-chip']").map((chip) => chip.textContent)).toEqual(["Unlocks Terminal"])
-    expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.textContent).toBe("Unlocks Terminal")
+    expect($$("[data-row='skill:10'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
+    expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.textContent).toBe("Unlocks Career log")
     // A row wears the feature's icon and keeps the name for the tooltip and screen readers; the banner prints it.
-    const badge = $("[data-row='skill:8'] [data-testid='unlock-chip']")!
-    expect(badge.dataset.feature).toBe("terminal")
+    const badge = $("[data-row='skill:10'] [data-testid='unlock-chip']")!
+    expect(badge.dataset.feature).toBe("careerLog")
     expect(badge.querySelector("svg")).not.toBeNull()
     expect(badge.querySelector(".ul-chip-name")).toBeNull()
     expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.classList.contains("is-named")).toBe(true)
@@ -219,7 +189,7 @@ describe("the GitHug corner", () => {
   })
 
   it("opens a profile with this career's contribution graph and pinned repos", () => {
-    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["editor", "careerLog", "githug"], fresh: ["githug"] })
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["studio", "careerLog", "githug"], fresh: ["githug"] })
     render(GitHugCorner)
     expect($("[data-testid='github-star']")).not.toBeNull()
     click($("[data-testid='view-githug']"))

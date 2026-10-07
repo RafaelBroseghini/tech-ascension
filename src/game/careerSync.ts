@@ -105,7 +105,7 @@ export function newlyOpen(progress: FeatureProgress, unlocked: readonly FeatureI
 
 /** NEW markers sit on things the player can go and use. Boards change the tab on their own, and dollars are just a number. */
 export function getsMarker(row: FeatureRow): boolean {
-  return row.size !== "phase" && row.id !== "money" && row.id !== "editor"
+  return row.size !== "phase" && row.id !== "money" && row.id !== "studio"
 }
 
 /** How loud each size is, for picking the one reveal a batch keeps. */

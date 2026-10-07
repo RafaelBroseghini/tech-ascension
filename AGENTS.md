@@ -52,19 +52,9 @@ getState(): {
   replies: { choice: "exceeds" | "meets" | "pip"; label: string; rating: string; lines: string[]; canAccept: boolean }[]
  } | null
  lastReview: { promptId: number; jobId: number; choice: "exceeds" | "meets" | "pip" | null; lines: string[] } | null
- ide: {
-  era: "early" | "mid" | "upper" | "q3" | "end"
-  packId: string
-  kind: "files" | "inbox" | "deck"
-  items: string[]
-  index: number
-  previewing: boolean
-  restPackId: string
-  folders: string[] // unlocked band ids in explorer order; each persists once entered
- }
  lastPop: { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string } | null
  features: {
-  open: string[]      // career timeline rows unlocked so far, in order ("editor", "terminal", "theme:dracula", ...)
+  open: string[]      // career timeline rows unlocked so far, in order ("studio", "careerLog", "theme:dracula", ...)
   fresh: string[]     // rows still marked NEW (unlocked, not used yet)
   reveals: string[]   // reveals waiting to play
   next: { id: string; name: string; via: string; fill: number; left: string } | null // the one dim outline on screen
@@ -95,9 +85,8 @@ dismissEvent(): void
 forceReview(promptId?: number): boolean // 1:1 for the highest job. False with no job or for a prompt outside that band
 answerReview(choice: "exceeds" | "meets" | "pip"): boolean // meets changes nothing; pip is refused when the cost cannot be paid
 dismissReview(): void
-ideSelect(index: number, packId?: string): boolean
 previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
-careerLog(): Record<string, number | string | boolean>[]  // every journal entry, oldest first, as the Output tab prints them
+careerLog(): Record<string, number | string | boolean>[]  // every journal entry, oldest first, one flat JSON object each
 seeFeature(id: string): boolean   // clear a NEW marker, as using the feature does; false for an unknown id
 clearReveals(): void              // drop the reveals waiting to play (NEW markers stay)
 rerollProfile(): boolean          // draw another handle, as the start card's Reroll does; false once kept
@@ -128,11 +117,11 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - `forceEvent(id)` opens a random event now (ids 1–110, `src/data/events.ts`) without applying it. Returns false for an unknown id. An open event is replaced, never stacked. `acceptEvent()` takes the deal and returns false when a trade's cost cannot be paid. `dismissEvent()` declines and changes nothing. `event` is the modal on screen, `lastEvent` is kept after either choice. Stakes are minutes of what you currently earn (idle, or half a click per second when that is higher), and at least 1% of the balance you hold. A gift only adds money or XP. A trade swaps one for the other. Nothing only deducts. Random events roll roughly every 240s from rows whose `eras` include `any` or the current era. Optional `requires` (job, gig, gear) is AND across fields and OR inside a list; a row with no `requires` stays era-only. Cash events (money gifts and every trade) wait until money exists. A loss never pushes money or spendable XP below 0, and lifetime XP never falls.
 - `forceReview(promptId?)` opens a 1:1 for the highest job you hold (`src/data/reviews.ts`). It returns false with no job or when `promptId` is outside that job's band. Omit `promptId` to roll one. It replaces an open event or review without applying it. `answerReview("exceeds")` is a money gift (12 minutes). `answerReview("meets")` closes the meeting and changes nothing. `answerReview("pip")` trades money for XP (10 minutes) and returns false when that cost cannot be paid, leaving the meeting up. `dismissReview()` leaves without a reply. `review.replies[].lines` are the same `+$` / `-XP` strings as events; meets has none and shows no change. A 1:1 rolls about every 12 minutes, only once a job is held, and waits out an event or a meeting already on screen. If both clocks are due, the event wins and the 1:1 slips 5 seconds.
 - `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
-- `ide` describes the editor pane: each programming band is an explorer folder (id in `folders`) that stays unlocked; older bands freeze their file tabs at full depth. q3 and end add inbox and deck folders. `ideSelect(i, packId?)` opens item `i` in that folder, or the on-screen pack when `packId` is omitted (false when out of range). `previewEra(era)` shows that era's first pack the way the shop's Capital era tab does (`previewing: true`, `restPackId` is the owned pack); `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era. Picking an owned folder while previewing snaps back.
+- The desk behind the stage is an activity bar, the career log sidebar and a status bar. The status bar names the band the career is in (High school to Mars, by stage art id, `src/data/idePacks.ts`). `previewEra(era)` shows that era's first band there with a PREVIEW chip, the way the shop's Capital era tab does; `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era. The snapshot has no field for it; read `data-preview` on `[data-testid='ide']`.
 - A save from any other `version` is wiped on load. There is no migration.
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
 - `reset()` wipes the save back to high school.
-- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has one file, XP and the Skills tab. Used laptop (skill 1) opens the editor, Linux CLI basics (8) the terminal, Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with editor folders, desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()` and the console's Output tab. Admin mode shows the whole desk.
+- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has XP and the Skills tab. Used laptop (skill 1) opens the studio (the activity bar and the status bar; the interview whiteboard comes later), Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with stage art tiers (from the Internship band on), desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()`. Admin mode shows the whole desk.
 - **Identity** (`src/game/identity.ts`, start card in `src/components/IdentityPicker.tsx`). Every new career (a fresh save or `reset()`) draws a Tailscale-style handle (`quiet-otter`) and opens a start card: Reroll draws another, and Start keeps it for good. There is no real name; GitHug and LinkedOut (`linkedout.com/in/<handle>`) both go by the handle. Nothing is ever typed. It is saved in an optional `profile` block with `chosen`; a save is only accepted with a handle the lists can draw. A save from before handles gets one, already kept, with no card. A test scans all 1,024 handles, as shown and run together, for slurs and slang.
 
 ## Smoke (`npm run smoke:play`)
@@ -148,8 +137,8 @@ Vitest + happy-dom, all through `__GAME__`:
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
 7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The toast is a diary sentence plus that credit.
 8. **10x dev skills.** A bulk skill is gated by lifetime XP and price, `amount` only works once unlocked, hover rate and offline cap follow the gold owned.
-9. **Events, 1:1s and the IDE.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, a 1:1 waits for a job and its three replies pay, sit or bill you, and the IDE pack follows the owned era.
-10. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens the editor (logged and queued), Linux CLI basics the terminal with a NEW marker that `seeFeature` clears, Git + GitHug hygiene the career log and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return and brings the cat; after a wipe, 15 minutes of `tick` brings it too.
+9. **Events and 1:1s.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, and a 1:1 waits for a job and its three replies pay, sit or bill you.
+10. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens the studio (logged and queued), Linux CLI basics opens nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return and brings the cat; after a wipe, 15 minutes of `tick` brings it too.
 
 ## Free play (`npm run play:agent`)
 
@@ -227,12 +216,12 @@ Career timeline:
 ```js
 const game = window.__GAME__
 game.reset()
-game.getState().features // { open: [], fresh: [], reveals: [], next: { id: "terminal", ... }, upNext: [...] }
+game.getState().features // { open: [], fresh: [], reveals: [], next: { id: "careerLog", ... }, upNext: [...] }
 game.setXp(90)
-game.buySkill(1) // the editor unlocks: logged, queued to reveal
+game.buySkill(1) // the studio unlocks: logged, queued to reveal
 game.setXp(2_300)
-for (let id = 2; id <= 8; id++) game.buySkill(id) // Linux CLI basics: the terminal, marked NEW
-game.seeFeature("terminal")
+for (let id = 2; id <= 10; id++) game.buySkill(id) // Git + GitHug hygiene: the career log, marked NEW
+game.seeFeature("careerLog")
 game.advanceOffline(30 * 60 * 1000) // a return: logged, and the desk cat moves in
 game.careerLog() // every step as JSON, oldest first
 ```
