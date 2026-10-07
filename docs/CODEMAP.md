@@ -37,6 +37,9 @@
 | Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
+| Whiteboard entry: open state, the lazy chunk and its preload, the host portal | `src/components/studio/launcher.ts`, `src/components/studio/StudioHost.tsx` |
+| Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `RunMeters.tsx`, `ChallengeList.tsx`), `src/styles/studio.css` |
+| Whiteboard board state (one sheet per interview, kept across closing; writes the game store only on Submit) | `src/components/studio/boardStore.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
