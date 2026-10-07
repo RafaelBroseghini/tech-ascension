@@ -13,6 +13,7 @@
 | The desk band and the shop-era preview that snaps back | `src/game/ide.ts` |
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
+| The desk backdrop: the last passed whiteboard as SVG with slow dots, or the next interview's prompt | `src/components/DeskDiagram.tsx`, `src/components/studio/status.ts` (`lastPassed`, `nextInterview`) |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
@@ -40,6 +41,7 @@
 | Whiteboard entry: open state, the lazy chunk and its preload, the host portal | `src/components/studio/launcher.ts`, `src/components/studio/StudioHost.tsx` |
 | Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `RunMeters.tsx`, `ChallengeList.tsx`), `src/styles/studio.css` |
 | Whiteboard board state (one sheet per interview, kept across closing; writes the game store only on Submit) | `src/components/studio/boardStore.ts` |
+| A design's cells and edge flows, and the traffic dot math and loop, shared by the whiteboard and the desk (no `@xyflow/react`) | `src/components/studio/diagram.ts`, `src/components/studio/traffic.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
