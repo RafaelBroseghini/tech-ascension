@@ -97,8 +97,8 @@ export function jobState(p: Gates, job: JobTier): JobState {
   return "ready"
 }
 
-export function canBuyJob(p: Gates & Pick<Progress, "money">, job: JobTier): boolean {
-  return jobState(p, job) === "ready" && canAfford(p.money, job.baseCost)
+export function canBuyJob(p: Gates & Pick<Progress, "xp">, job: JobTier): boolean {
+  return jobState(p, job) === "ready" && canAfford(p.xp, job.xpCost)
 }
 
 /** The Gear tab opens at GEAR_TAB_UNLOCK lifetime XP, independent of the boards. Owning gear keeps it open, so forced progress never hides it. */

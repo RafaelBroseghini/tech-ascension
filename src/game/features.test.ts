@@ -85,7 +85,7 @@ describe("gates", () => {
     expect(triggerMet({ kind: "settled" }, progress({ playTimeMs: 15 * 60 * 1000 - 1 }))).toBe(false)
     expect(triggerMet({ kind: "settled" }, progress({ playTimeMs: 15 * 60 * 1000 }))).toBe(true)
     expect(triggerMet({ kind: "settled" }, progress({ returns: 1 }))).toBe(true)
-    expect(triggerProgress({ kind: "settled" }, progress({ playTimeMs: 5 * 60 * 1000 }))).toEqual({ fill: 1 / 3, left: "10 min to go" })
+    expect(triggerProgress({ kind: "settled" }, progress({ playTimeMs: 5 * 60 * 1000 }))).toEqual({ fill: 1 / 3, left: "more time at the desk" })
   })
 
   it("counts an era as reached once any row of that era or a later one is owned", () => {
@@ -111,7 +111,7 @@ describe("teasing", () => {
     const far = triggerProgress({ kind: "skill", id: 8 }, progress({ xpTotal: skill.unlockAtXp / 2 }))
     const near = triggerProgress({ kind: "skill", id: 8 }, progress({ xpTotal: skill.unlockAtXp, xp: skill.baseXpCost - 1 }))
     expect(far.fill).toBeLessThan(near.fill)
-    expect(near.left).toContain("XP to go")
+    expect(near.left).toBe("more XP")
     expect(triggerProgress({ kind: "skill", id: 8 }, progress({ skills: { "8": 1 } }))).toEqual({ fill: 1, left: "" })
   })
 })

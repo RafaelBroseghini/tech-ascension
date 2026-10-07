@@ -81,7 +81,7 @@ export const FINAL_CLICK_SHARE = clickShare({ jobs: JOB_TIERS.map((job) => job.i
  * day, and `pace.test.ts` fails if the tables drift far enough to make them wrong. The reinvestor constant
  * only holds for a player who visits at least daily; further apart, use the collector's.
  */
-export const PACE_K = { collector: 21, reinvestor: 8 } as const
+export const PACE_K = { collector: 9, reinvestor: 4 } as const
 
 /** Multiplier on a full always-open, never-clicking day of income: idle share plus what clicking adds. */
 export function paceOf(profile: PlayProfile): number {
@@ -170,7 +170,7 @@ function takeJobs(s: Sim): boolean {
   let any = false
   for (const job of JOB_TIERS) {
     if (!canBuyJob(s, job)) continue
-    s.money -= job.baseCost
+    s.xp -= job.xpCost
     s.jobs.push(job.id)
     s.jobs.sort((a, b) => a - b)
     earn(s, 0, job.xpLump)

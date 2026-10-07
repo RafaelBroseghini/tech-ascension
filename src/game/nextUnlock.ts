@@ -1,4 +1,4 @@
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import type { Gig, JobTier, SkillTier } from "../data/phases.ts"
 import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
@@ -6,7 +6,6 @@ import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { formatNumber } from "./format.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
 
@@ -72,12 +71,12 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
   return null
 }
 
-const xpLeft = (have: number, need: number) => `${formatNumber(Math.ceil(need - have))} more XP`
+const xpLeft = () => "more XP"
 /** A balance to reach once. Spending afterwards does not close the gate, so this names the goal, not a gap. */
-const balanceGoal = (need: number) => `a $${formatNumber(need)} balance`
-const gigsLeft = (have: number, need: number) => `${need - have} more ${need - have === 1 ? "gig" : "gigs"}`
-const cashShort = (have: number, cost: number) => `$${formatNumber(Math.ceil(cost - have))}`
-const xpShort = (have: number, cost: number) => `${formatNumber(Math.ceil(cost - have))} XP`
+const balanceGoal = () => "a bigger balance"
+const gigsLeft = () => "more gigs"
+const cashShort = () => "more money"
+const xpShort = () => "more XP"
 
 /** True once every skill, gig, job, gear row, and capital row is owned at least once. */
 export function ownsEverything(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): boolean {
@@ -95,12 +94,12 @@ const study = (p: Progression) => (typeof p.xp === "number" && Number.isFinite(p
 /** The closed board a tab sits behind, with what is still missing. Null once the tab is open (and always for Skills). */
 function boardTarget(p: Progression, tab: ShopTab): NextUnlock | null {
   if (tab === "G" && !equipmentOpen(p)) {
-    return { key: "board:gear", name: "Gear", tab: "G", needs: [xpLeft(p.xpTotal, GEAR_TAB_UNLOCK.minXp)], either: false }
+    return { key: "board:gear", name: "Gear", tab: "G", needs: [xpLeft()], either: false }
   }
 
   if (tab === "B" && !gigBoardUnlocked(p)) {
     const needs: string[] = []
-    if (p.xpTotal < GIG_BOARD_UNLOCK.minXp) needs.push(xpLeft(p.xpTotal, GIG_BOARD_UNLOCK.minXp))
+    if (p.xpTotal < GIG_BOARD_UNLOCK.minXp) needs.push(xpLeft())
     for (const id of GIG_BOARD_UNLOCK.requireOwnedSkills) {
       if (ownedCount(p.skills, id) === 0) needs.push(`Own ${skillById(id)?.name ?? `skill ${id}`}`)
     }
@@ -109,16 +108,16 @@ function boardTarget(p: Progression, tab: ShopTab): NextUnlock | null {
 
   if (tab === "C" && !jobBoardUnlocked(p)) {
     const needs: string[] = []
-    if (p.xpTotal < JOB_BOARD_UNLOCK.minXp) needs.push(xpLeft(p.xpTotal, JOB_BOARD_UNLOCK.minXp))
-    if (p.gigs.length < JOB_BOARD_UNLOCK.minGigsCompleted) needs.push(gigsLeft(p.gigs.length, JOB_BOARD_UNLOCK.minGigsCompleted))
+    if (p.xpTotal < JOB_BOARD_UNLOCK.minXp) needs.push(xpLeft())
+    if (p.gigs.length < JOB_BOARD_UNLOCK.minGigsCompleted) needs.push(gigsLeft())
     return { key: "board:job", name: "Job Board", tab: "C", needs, either: false }
   }
 
   if (tab === "D" && !capitalUnlocked(p)) {
     const senior = jobById(CAPITAL_UNLOCK.minJobId)
     const needs = [
-      `${senior?.name ?? "Senior SWE"}${senior && p.xpTotal < senior.xpReq ? ` (${xpLeft(p.xpTotal, senior.xpReq)})` : ""}`,
-      balanceGoal(CAPITAL_UNLOCK.minMoney),
+      `${senior?.name ?? "Senior SWE"}${senior && p.xpTotal < senior.xpReq ? ` (${xpLeft()})` : ""}`,
+      balanceGoal(),
     ]
     return { key: "board:capital", name: "Capital", tab: "D", needs, either: true }
   }
@@ -178,10 +177,10 @@ export function nextUnlock(p: Progression, tab?: ShopTab): NextUnlock | null {
 
 function skillTarget(p: Progression, skill: SkillTier): NextUnlock {
   const needs: string[] = []
-  if (p.xpTotal < skill.unlockAtXp) needs.push(xpLeft(p.xpTotal, skill.unlockAtXp))
+  if (p.xpTotal < skill.unlockAtXp) needs.push(xpLeft())
   else {
     const cost = skillCost(skill, 0)
-    if (!canAfford(study(p), cost)) needs.push(xpShort(study(p), cost))
+    if (!canAfford(study(p), cost)) needs.push(xpShort())
     else needs.push("to buy it")
   }
   return { key: `skill:${skill.id}`, name: skill.name, tab: "A", needs, either: false }
@@ -189,8 +188,8 @@ function skillTarget(p: Progression, skill: SkillTier): NextUnlock {
 
 function gigTarget(p: Progression, gig: Gig): NextUnlock {
   const needs: string[] = []
-  if (p.xpTotal < gig.xpReq) needs.push(xpLeft(p.xpTotal, gig.xpReq))
-  if (p.gigs.length < gig.priorGigs) needs.push(gigsLeft(p.gigs.length, gig.priorGigs))
+  if (p.xpTotal < gig.xpReq) needs.push(xpLeft())
+  if (p.gigs.length < gig.priorGigs) needs.push(gigsLeft())
   const skills = gigSkillGap(p, gig)
   if (skills) needs.push(skills)
   if (needs.length === 0) needs.push("to clear it")
@@ -199,23 +198,23 @@ function gigTarget(p: Progression, gig: Gig): NextUnlock {
 
 function jobTarget(p: Progression, job: JobTier): NextUnlock {
   if (p.xpTotal < job.xpReq) {
-    return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft(p.xpTotal, job.xpReq)], either: false }
+    return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }
   }
-  if (job.baseCost > 0 && !canAfford(wallet(p), job.baseCost)) {
-    return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [cashShort(wallet(p), job.baseCost)], either: false }
+  if (job.xpCost > 0 && !canAfford(study(p), job.xpCost)) {
+    return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }
   }
-  return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [job.baseCost > 0 ? "to buy it" : "to take it"], either: false }
+  return { key: `job:${job.id}`, name: job.name, tab: "C", needs: ["to take it"], either: false }
 }
 
 function gearTarget(p: Progression, row: GearItem): NextUnlock {
   const needs: string[] = []
   if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs)) {
-    if (p.peakMoney < row.unlockMoney) needs.push(balanceGoal(row.unlockMoney))
+    if (p.peakMoney < row.unlockMoney) needs.push(balanceGoal())
     if (row.unlockJobId > 0 && !p.jobs.includes(row.unlockJobId)) needs.push(jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`)
   }
   if (needs.length === 0) {
     const cost = nextCost(row.baseCost, 0)
-    if (!canAfford(wallet(p), cost)) needs.push(cashShort(wallet(p), cost))
+    if (!canAfford(wallet(p), cost)) needs.push(cashShort())
     else needs.push("to buy it")
   }
   return { key: `gear:${row.id}`, name: row.name, tab: "G", needs, either: false }
@@ -225,7 +224,7 @@ function gearTarget(p: Progression, row: GearItem): NextUnlock {
 function capitalTarget(p: Progression, row: Capital): NextUnlock {
   const cost = nextCost(row.baseCost, 0)
   if (!canAfford(wallet(p), cost)) {
-    return { key: `capital:${row.id}`, name: row.name, tab: "D", needs: [cashShort(wallet(p), cost)], either: false }
+    return { key: `capital:${row.id}`, name: row.name, tab: "D", needs: [cashShort()], either: false }
   }
   return { key: `capital:${row.id}`, name: row.name, tab: "D", needs: ["to buy it"], either: false }
 }

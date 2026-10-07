@@ -12,10 +12,11 @@ describe("catalog order", () => {
     expect(desk?.slice(0, 2)).toEqual(["Thocky keyboard", "Cable management kit"])
   })
 
-  it("keeps jobs in id order with their prices as they are", () => {
+  it("keeps jobs in id order, with an XP price that follows the XP each one asks for", () => {
     expect(JOB_TIERS.map((job) => job.id)).toEqual([...JOB_TIERS.map((job) => job.id)].sort((a, b) => a - b))
-    const cost = (id: number) => JOB_TIERS.find((job) => job.id === id)?.baseCost ?? 0
-    expect(cost(5)).toBeLessThan(cost(4))
-    expect(cost(11)).toBeLessThan(cost(10))
+    const cost = (id: number) => JOB_TIERS.find((job) => job.id === id)?.xpCost ?? 0
+    expect(cost(1)).toBe(0)
+    expect(cost(5)).toBeGreaterThan(cost(4))
+    expect(cost(11)).toBeGreaterThanOrEqual(cost(10))
   })
 })

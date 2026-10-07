@@ -10,15 +10,14 @@ import { openSurface } from "../game/surfaces.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin } from "./useFeature.ts"
 
-type Tease = { id: string; name: string; via: string; fill: number; left: string; mystery: boolean }
+type Tease = { id: string; name: string; via: string; left: string; mystery: boolean }
 
-/** Up next as one string, rounded, so the panel re-renders when a bar visibly moves and not on every tick. */
+/** Up next as one string, so the panel re-renders only when a row changes and not on every tick. */
 function upNextKey(state: ReturnType<typeof useGame.getState>): string {
   const rows = upNext(progressOf(state), new Set(state.unlocked)).map((row) => ({
     id: row.id,
     name: row.name,
     via: row.via,
-    fill: Math.floor(row.fill * 50) / 50,
     left: row.left,
     mystery: row.mystery,
   }))
@@ -74,9 +73,6 @@ export function CareerLog() {
                 <li key={row.id} data-feature={row.id}>
                   <b>{row.mystery ? "???" : row.name}</b>
                   <small>{row.left || row.via}</small>
-                  <span className="career-log-bar" aria-hidden="true">
-                    <i style={{ width: `${Math.round(row.fill * 100)}%` }} />
-                  </span>
                 </li>
               ))}
             </ol>

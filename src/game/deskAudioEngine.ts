@@ -24,7 +24,6 @@ import { musicStyleById, styleSteps } from "./deskMusicStyles.ts"
 import type { MusicStyle, MusicStyleId } from "./deskMusicStyles.ts"
 
 export type RoomPrefs = { music: boolean; sounds: boolean; clicks: boolean; musicStyle: MusicStyleId; clickKit: ClickKitId }
-type DeskNoise = "type" | "coffee" | "click"
 type MusicEvent = {
   time: number
   semi: number | null
@@ -56,8 +55,6 @@ type Graph = {
   /** The player's click has its own grain, so it never fights the room for the shared noise voice. */
   clickNoise: NoiseSynth
   clickNoiseFilter: Filter
-  sip: NoiseSynth
-  sipFilter: Filter
 }
 
 const C4 = 261.63
@@ -154,11 +151,6 @@ function build(): Graph | null {
       noise: { type: "white" },
       envelope: { attack: 0.001, decay: 0.03, sustain: 0, release: 0.02 },
     }).connect(clickNoiseFilter)
-    const sipFilter = new Filter({ type: "bandpass", frequency: 800, Q: 1.6 }).connect(soundGain)
-    const sip = new NoiseSynth({
-      noise: { type: "pink" },
-      envelope: { attack: 0.04, decay: 0.2, sustain: 0, release: 0.12 },
-    }).connect(sipFilter)
     graph = {
       musicGain,
       soundGain,
@@ -176,8 +168,6 @@ function build(): Graph | null {
       noiseFilter,
       clickNoise,
       clickNoiseFilter,
-      sip,
-      sipFilter,
     }
     if (!watching) {
       watching = true
@@ -320,72 +310,31 @@ function noiseStart(voice: NoiseSynth | Synth, time: number): number {
 function playKey(g: Graph, when = 0): void {
   const time = noiseStart(g.noise, now() + when)
   const down = Math.random() < 0.72
-  g.noiseFilter.frequency.setValueAtTime((down ? 2400 : 1700) + Math.random() * 800, time)
-  g.noise.triggerAttackRelease(down ? 0.015 : 0.01, time, down ? 0.05 : 0.03)
-  g.blip.triggerAttackRelease((down ? 300 : 210) + Math.random() * 36, 0.028, time, 0.018)
+  g.noiseFilter.frequency.setValueAtTime((down ? 900 : 650) + Math.random() * 350, time)
+  g.noise.triggerAttackRelease(down ? 0.03 : 0.022, time, down ? 0.035 : 0.02)
+  g.blip.triggerAttackRelease((down ? 150 : 115) + Math.random() * 24, 0.05, time, 0.02)
 }
 
-/** A short run of keys, like someone typing a word. Returns how long to wait after it. */
+/** A long, muffled run of keys, like someone typing a few sentences. Returns how long to wait after it. */
 function playTyping(g: Graph): number {
-  const count = 3 + Math.floor(Math.random() * 6)
+  const count = 14 + Math.floor(Math.random() * 20)
   let at = 30
   for (let i = 0; i < count; i++) {
     const delay = at
     phraseTimers.push(window.setTimeout(() => {
       if (roomLive()) playKey(g)
     }, delay))
-    at += 48 + Math.random() * 85
+    at += 70 + Math.random() * 120
+    if (Math.random() < 0.12) at += 250 + Math.random() * 400
   }
-  return at + 380 + Math.random() * 640
-}
-
-/** Sip, then the cup goes back on the desk. */
-function playCoffee(g: Graph): number {
-  const time = now() + 0.02
-  g.sipFilter.frequency.cancelScheduledValues(time)
-  g.sipFilter.frequency.setValueAtTime(1600, time)
-  g.sipFilter.frequency.exponentialRampToValueAtTime(380, time + 0.32)
-  g.sip.triggerAttackRelease(0.32, time, 0.06)
-  g.blip.triggerAttackRelease(2100 + Math.random() * 200, 0.05, time + 0.4, 0.035)
-  g.clink.triggerAttackRelease(2800, 0.04, time + 0.41, 0.016)
-  return 1100 + Math.random() * 900
-}
-
-/** A dry mouse click, quieter than the player's own tap. */
-function playMouseClick(g: Graph): number {
-  const time = noiseStart(g.noise, now() + 0.02)
-  g.noiseFilter.frequency.setValueAtTime(3400 + Math.random() * 400, time)
-  g.noise.triggerAttackRelease(0.008, time, 0.04)
-  g.blip.triggerAttackRelease(920 + Math.random() * 80, 0.016, time, 0.028)
-  if (Math.random() < 0.45) {
-    const again = noiseStart(g.noise, time + 0.09)
-    g.noiseFilter.frequency.setValueAtTime(3000, again)
-    g.noise.triggerAttackRelease(0.007, again, 0.025)
-    g.blip.triggerAttackRelease(760, 0.014, again, 0.018)
-  }
-  return 420 + Math.random() * 520
-}
-
-function nextNoise(): DeskNoise {
-  const roll = Math.random()
-  if (roll < 0.5) return "type"
-  if (roll < 0.74) return "coffee"
-  return "click"
-}
-
-function playNoise(kind: DeskNoise): number {
-  const g = graph
-  if (!g) return 800
-  if (kind === "type") return playTyping(g)
-  if (kind === "coffee") return playCoffee(g)
-  return playMouseClick(g)
+  return at + 600 + Math.random() * 900
 }
 
 function armRoom(delay: number): void {
   roomTimer = window.setTimeout(() => {
     roomTimer = 0
     if (!roomLive()) return
-    armRoom(playNoise(nextNoise()))
+    armRoom(graph ? playTyping(graph) : 800)
   }, delay)
 }
 

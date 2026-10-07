@@ -224,9 +224,9 @@ describe("the GitHug corner", () => {
     expect($("[data-testid='github-star']")).not.toBeNull()
     click($("[data-testid='view-githug']"))
     expect($("[data-testid='githug-modal']")).not.toBeNull()
-    // 25 full weeks, then this week up to today.
+    // 26 columns of five squares, filled as the career goes.
     const days = $$("[data-testid='githug-graph'] .githug-day")
-    expect(days.length).toBe(25 * 7 + new Date().getDay() + 1)
+    expect(days.length).toBe(26 * 5)
     expect($$("[data-testid='githug-pinned'] strong").map((el) => el.textContent)).toEqual(["til", "hello-world"])
     expect(useGame.getState().fresh).not.toContain("githug")
   })

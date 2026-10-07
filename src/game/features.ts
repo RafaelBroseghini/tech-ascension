@@ -130,13 +130,13 @@ function ratio(have: number, need: number): number {
 /** How close a trigger is, 0 to 1, and the shortest useful phrase for what is left. */
 export type TriggerProgress = { fill: number; left: string }
 
-const xpLeft = (have: number, need: number) => `${formatNumber(Math.ceil(need - have))} more lifetime XP`
+const xpLeft = () => "more lifetime XP"
 
 function gigBoardProgress(p: FeatureProgress): TriggerProgress {
   const skills = GIG_BOARD_UNLOCK.requireOwnedSkills.filter((id) => ownedCount(p.skills, id) > 0).length
   const xpFill = ratio(p.xpTotal, GIG_BOARD_UNLOCK.minXp)
   const skillFill = ratio(skills, GIG_BOARD_UNLOCK.requireOwnedSkills.length)
-  if (xpFill <= skillFill) return { fill: xpFill, left: xpLeft(p.xpTotal, GIG_BOARD_UNLOCK.minXp) }
+  if (xpFill <= skillFill) return { fill: xpFill, left: xpLeft() }
   const missing = GIG_BOARD_UNLOCK.requireOwnedSkills.find((id) => ownedCount(p.skills, id) === 0)
   return { fill: skillFill, left: `learn ${skillById(missing ?? 0)?.name ?? "a skill"}` }
 }
@@ -144,9 +144,8 @@ function gigBoardProgress(p: FeatureProgress): TriggerProgress {
 function jobBoardProgress(p: FeatureProgress): TriggerProgress {
   const xpFill = ratio(p.xpTotal, JOB_BOARD_UNLOCK.minXp)
   const gigFill = ratio(p.gigs.length, JOB_BOARD_UNLOCK.minGigsCompleted)
-  if (xpFill <= gigFill) return { fill: xpFill, left: xpLeft(p.xpTotal, JOB_BOARD_UNLOCK.minXp) }
-  const gigs = JOB_BOARD_UNLOCK.minGigsCompleted - p.gigs.length
-  return { fill: gigFill, left: `${gigs} more ${gigs === 1 ? "gig" : "gigs"}` }
+  if (xpFill <= gigFill) return { fill: xpFill, left: xpLeft() }
+  return { fill: gigFill, left: "more gigs" }
 }
 
 function firstGigProgress(p: FeatureProgress): TriggerProgress {
@@ -158,47 +157,47 @@ function firstGigProgress(p: FeatureProgress): TriggerProgress {
   const skillFill = ratio(skills, gig.skillIds.length)
   if (xpFill >= 1 && skillFill >= 1) return { fill: 0.99, left: "clear it on the Gig Board" }
   return xpFill <= skillFill
-    ? { fill: 0.9 + xpFill * 0.09, left: xpLeft(p.xpTotal, gig.xpReq) }
-    : { fill: 0.9 + skillFill * 0.09, left: `${gig.skillIds.length - skills} more skills` }
+    ? { fill: 0.9 + xpFill * 0.09, left: xpLeft() }
+    : { fill: 0.9 + skillFill * 0.09, left: "more skills" }
 }
 
 function firstJobProgress(p: FeatureProgress): TriggerProgress {
   if (!jobBoardUnlocked(p)) return { fill: jobBoardProgress(p).fill * 0.9, left: jobBoardProgress(p).left }
   const job = JOB_TIERS[0]
   if (!job) return { fill: 1, left: "" }
-  if (p.xpTotal < job.xpReq) return { fill: 0.9 + ratio(p.xpTotal, job.xpReq) * 0.09, left: xpLeft(p.xpTotal, job.xpReq) }
+  if (p.xpTotal < job.xpReq) return { fill: 0.9 + ratio(p.xpTotal, job.xpReq) * 0.09, left: xpLeft() }
   return { fill: 0.99, left: "take it on the Job Board" }
 }
 
 function skillProgress(p: FeatureProgress, id: number): TriggerProgress {
   const row = skillById(id)
   if (!row) return { fill: 0, left: "" }
-  if (p.xpTotal < row.unlockAtXp) return { fill: ratio(p.xpTotal, row.unlockAtXp) * 0.5, left: xpLeft(p.xpTotal, row.unlockAtXp) }
+  if (p.xpTotal < row.unlockAtXp) return { fill: ratio(p.xpTotal, row.unlockAtXp) * 0.5, left: xpLeft() }
   const cost = skillCost(row, 0)
   if (canAfford(p.xp, cost)) return { fill: 1, left: "ready to learn" }
-  return { fill: 0.5 + ratio(p.xp, cost) * 0.5, left: `${formatNumber(Math.ceil(cost - p.xp))} XP to go` }
+  return { fill: 0.5 + ratio(p.xp, cost) * 0.5, left: "more XP" }
 }
 
 function gearProgress(p: FeatureProgress, id: number): TriggerProgress {
   const row = equipById(id)
   if (!row) return { fill: 0, left: "" }
-  if (!equipmentOpen(p)) return { fill: ratio(p.xpTotal, GEAR_TAB_UNLOCK.minXp) * 0.4, left: xpLeft(p.xpTotal, GEAR_TAB_UNLOCK.minXp) }
+  if (!equipmentOpen(p)) return { fill: ratio(p.xpTotal, GEAR_TAB_UNLOCK.minXp) * 0.4, left: xpLeft() }
   if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs)) {
     const job = row.unlockJobId > 0 && !p.jobs.includes(row.unlockJobId) ? jobById(row.unlockJobId) : undefined
     if (job) return { fill: 0.4, left: `the ${job.name} job` }
-    return { fill: 0.4 + ratio(p.peakMoney, row.unlockMoney) * 0.3, left: `a $${formatNumber(row.unlockMoney)} balance` }
+    return { fill: 0.4 + ratio(p.peakMoney, row.unlockMoney) * 0.3, left: "a bigger balance" }
   }
   const cost = nextCost(row.baseCost, 0)
   if (canAfford(p.money, cost)) return { fill: 1, left: "ready to buy" }
-  return { fill: 0.7 + ratio(p.money, cost) * 0.3, left: `$${formatNumber(Math.ceil(cost - p.money))} to go` }
+  return { fill: 0.7 + ratio(p.money, cost) * 0.3, left: "more money" }
 }
 
 function hoverProgress(p: FeatureProgress): TriggerProgress {
   const row = GOLD_SKILLS.find((gold) => gold.effect.kind === "hoverRate")
   if (!row) return { fill: 0, left: "" }
-  if (p.xpTotal < row.unlockXp) return { fill: ratio(p.xpTotal, row.unlockXp) * 0.5, left: xpLeft(p.xpTotal, row.unlockXp) }
+  if (p.xpTotal < row.unlockXp) return { fill: ratio(p.xpTotal, row.unlockXp) * 0.5, left: xpLeft() }
   if (canAfford(p.xp, row.cost)) return { fill: 1, left: "ready to claim" }
-  return { fill: 0.5 + ratio(p.xp, row.cost) * 0.5, left: `${formatNumber(Math.ceil(row.cost - p.xp))} XP to go` }
+  return { fill: 0.5 + ratio(p.xp, row.cost) * 0.5, left: "more XP" }
 }
 
 function capitalProgress(p: FeatureProgress): TriggerProgress {
@@ -206,7 +205,7 @@ function capitalProgress(p: FeatureProgress): TriggerProgress {
   const byJob = senior ? ratio(p.xpTotal, senior.xpReq) * 0.95 : 0
   const byMoney = ratio(p.peakMoney, CAPITAL_UNLOCK.minMoney)
   return byMoney >= byJob
-    ? { fill: byMoney, left: `a $${formatNumber(CAPITAL_UNLOCK.minMoney)} balance` }
+    ? { fill: byMoney, left: "a bigger balance" }
     : { fill: byJob, left: senior ? `the ${senior.name} job` : "a senior job" }
 }
 
@@ -224,12 +223,12 @@ export function triggerProgress(trigger: FeatureTrigger, p: FeatureProgress): Tr
     case "firstJob":
       return firstJobProgress(p)
     case "board":
-      if (trigger.board === "gear") return { fill: ratio(p.xpTotal, GEAR_TAB_UNLOCK.minXp), left: xpLeft(p.xpTotal, GEAR_TAB_UNLOCK.minXp) }
+      if (trigger.board === "gear") return { fill: ratio(p.xpTotal, GEAR_TAB_UNLOCK.minXp), left: xpLeft() }
       if (trigger.board === "gigs") return gigBoardProgress(p)
       if (trigger.board === "jobs") return jobBoardProgress(p)
       return capitalProgress(p)
     case "gold":
-      return { fill: ratio(p.xpTotal, firstGoldXp()), left: xpLeft(p.xpTotal, firstGoldXp()) }
+      return { fill: ratio(p.xpTotal, firstGoldXp()), left: xpLeft() }
     case "hover":
       return hoverProgress(p)
     case "folder":
@@ -237,8 +236,7 @@ export function triggerProgress(trigger: FeatureTrigger, p: FeatureProgress): Tr
       return { fill: 0, left: "" }
     case "settled": {
       if (p.returns > 0) return { fill: 1, left: "" }
-      const minutes = Math.ceil(Math.max(0, CAT_DESK_MS - p.playTimeMs) / 60_000)
-      return { fill: ratio(p.playTimeMs, CAT_DESK_MS), left: minutes > 0 ? `${minutes} min to go` : "" }
+      return { fill: ratio(p.playTimeMs, CAT_DESK_MS), left: p.playTimeMs < CAT_DESK_MS ? "more time at the desk" : "" }
     }
   }
 }
@@ -251,7 +249,7 @@ export type FeatureTease = {
   /** "Linux CLI basics", "your first job". */
   via: string
   fill: number
-  /** "640 XP to go", "2 more gigs". */
+  /** "more XP", "more gigs". */
   left: string
   /** The cat: shown as ??? until it arrives. */
   mystery: boolean

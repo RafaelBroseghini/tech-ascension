@@ -101,8 +101,8 @@ describe("phase gates", () => {
     expect(jobState(EMPTY, junior)).toBe("board-locked")
     expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
     expect(jobState(board, junior)).toBe("ready")
-    expect(canBuyJob({ ...board, money: junior.baseCost - 1 }, junior)).toBe(false)
-    expect(canBuyJob({ ...board, money: junior.baseCost }, junior)).toBe(true)
+    expect(canBuyJob({ ...board, xp: junior.xpCost - 1 }, junior)).toBe(false)
+    expect(canBuyJob({ ...board, xp: junior.xpCost }, junior)).toBe(true)
     expect(jobState({ ...board, jobs: [2] }, junior)).toBe("owned")
   })
 
@@ -314,10 +314,10 @@ describe("phase C: jobs and equipment", () => {
     expect(useGame.getState().buyJob(1)).toBe(false)
 
     expect(useGame.getState().buyJob(2)).toBe(false)
-    const juniorCost = JOB_TIERS[1]?.baseCost ?? 0
-    useGame.setState({ xpTotal: 45_000, money: juniorCost - 1 })
+    const juniorCost = JOB_TIERS[1]?.xpCost ?? 0
+    useGame.setState({ xpTotal: 45_000, xp: juniorCost - 1 })
     expect(useGame.getState().buyJob(2)).toBe(false)
-    useGame.setState({ money: juniorCost })
+    useGame.setState({ xp: juniorCost })
     expect(useGame.getState().buyJob(2)).toBe(true)
     expect(useGame.getState().money).toBe(0)
     expect(idlePerSec(useGame.getState())).toBe(8 + 25)
@@ -338,7 +338,7 @@ describe("phase C: jobs and equipment", () => {
   it("leaves XP alone for a job with no lump, and lets a lump carry lifetime XP past the next gate", () => {
     const junior = jobById(2)!
     expect(junior.xpLump).toBe(0)
-    useGame.setState({ xp: 5, xpTotal: 45_000, money: junior.baseCost })
+    useGame.setState({ xp: junior.xpCost + 5, xpTotal: 45_000 })
     expect(useGame.getState().buyJob(2)).toBe(true)
     expect(useGame.getState().xp).toBe(5)
     expect(useGame.getState().xpTotal).toBe(45_000)

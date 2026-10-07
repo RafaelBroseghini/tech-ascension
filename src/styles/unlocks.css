@@ -77,34 +77,13 @@
   cursor: help;
   pointer-events: auto;
 }
-.ul-ghost > svg:not(.ul-ring),
+.ul-ghost > svg,
 .ul-ghost > span:not(.ul-lock) {
   opacity: 0.38;
 }
 .ul-ghost:focus-visible {
   outline: 2px solid var(--ide-green);
   outline-offset: 3px;
-}
-.ul-ring {
-  position: absolute;
-  inset: -5px;
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
-  overflow: visible;
-  transform: rotate(-90deg);
-  pointer-events: none;
-}
-.ul-ring circle {
-  fill: none;
-  stroke-width: 2.5;
-}
-.ul-ring-bg {
-  stroke: color-mix(in srgb, var(--ide-text) 12%, transparent);
-}
-.ul-ring-fg {
-  stroke: var(--ide-green);
-  stroke-linecap: round;
-  transition: stroke-dashoffset 500ms var(--ease-out);
 }
 .ul-lock {
   position: absolute;
@@ -117,11 +96,6 @@
   border-radius: 50%;
   background: var(--ide-crust);
   color: var(--ide-text);
-}
-.ide-status-chip.ul-ghost .ul-ring {
-  inset: -2px;
-  width: calc(100% + 4px);
-  height: calc(100% + 4px);
 }
 .ide-status-chip.ul-ghost .ul-lock {
   right: -3px;
@@ -547,20 +521,6 @@
   border-style: dashed;
   border-color: color-mix(in srgb, var(--ide-text) 40%, transparent);
   background: transparent;
-}
-.career-log-bar {
-  display: block;
-  height: 4px;
-  margin-top: 5px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--ide-text) 12%, transparent);
-}
-.career-log-bar i {
-  display: block;
-  height: 100%;
-  background: var(--ide-green);
-  transition: width 400ms var(--ease-out);
 }
 .career-log-more {
   margin: 4px 0 0 19px;
