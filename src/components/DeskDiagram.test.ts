@@ -89,4 +89,15 @@ describe("desk diagram", () => {
     expect(useGame.getState().interviews["3-tier-app"]?.verdict).toBe("noHire")
     expect($("[data-testid='desk-diagram']")?.dataset.interview).toBe("hello-server")
   })
+
+  it("draws the reference of the furthest interview a held job passed, for a career with no design on record", async () => {
+    mount()
+    act(() => {
+      useGame.setState({ jobs: [1, 2, 3, 4, 5, 6, 7], interviews: {} })
+    })
+    await settle()
+    const shortener = interview("url-shortener")
+    expect($("[data-testid='desk-diagram']")?.dataset.interview).toBe(shortener.id)
+    expect($$(".desk-diagram-node").length).toBe(shortener.reference.nodes.length)
+  })
 })
