@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { markIdePythonRunHintSeen, readIdePythonRunHintSeen } from "./idePythonRunHint.ts"
-import { readPref, resetLedgerForTests, writePref } from "./ledger.ts"
+import { readPref, resetLedgerForTests } from "./ledger.ts"
 import { unlockIdeLore } from "./ideSecrets.ts"
 
 describe("idePythonRunHint", () => {

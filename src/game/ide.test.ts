@@ -13,16 +13,16 @@ describe("IDE content v2", () => {
   it("keeps early bands on LeetCode-style pools that grow toward 20 tabs", () => {
     const early = packsInEra("early")
     expect(early.map((pack) => pack.id)).toEqual(["fizzbuzz", "two_sum", "reverse_list"])
-    expect(packForTier(0).files.map((f) => f.path)).toEqual(["hello.py"])
-    expect(packForTier(6).files.length).toBeGreaterThan(1)
-    expect(packForTier(12).files[0]?.path).toBe("two_sum.py")
-    expect(packForTier(18).files.some((f) => f.path === "reverse_list.py")).toBe(true)
+    expect((packForTier(0) as FilePack).files.map((f) => f.path)).toEqual(["hello.py"])
+    expect((packForTier(6) as FilePack).files.length).toBeGreaterThan(1)
+    expect((packForTier(12) as FilePack).files[0]?.path).toBe("two_sum.py")
+    expect((packForTier(18) as FilePack).files.some((f) => f.path === "reverse_list.py")).toBe(true)
   })
 
   it("resolves mid and upper packs from problem pools with short snippets", () => {
-    expect(packForTier(33).files[0]?.path).toBe("train.py")
-    expect(packForTier(19).files.some((f) => f.path === "debounce.py")).toBe(true)
-    expect(packForTier(23).files[0]?.path).toBe("binary_search.py")
+    expect((packForTier(33) as FilePack).files[0]?.path).toBe("train.py")
+    expect((packForTier(19) as FilePack).files.some((f) => f.path === "debounce.py")).toBe(true)
+    expect((packForTier(23) as FilePack).files[0]?.path).toBe("binary_search.py")
     for (const meta of IDE_PACKS) {
       if (meta.kind !== "files") continue
       const next = IDE_PACKS.find((p) => p.fromTier > meta.fromTier)
@@ -112,7 +112,7 @@ describe("IDE era preview", () => {
     expect(rest).toMatchObject({ previewing: false, index: 0 })
     expect(rest.pack.id).toBe("debounce")
     expect(rest.restPack.id).toBe(rest.pack.id)
-    expect(rest.pack.files.length).toBeGreaterThan(2)
+    expect((rest.pack as FilePack).files.length).toBeGreaterThan(2)
 
     const preview = ideView({ ...base, ideSel: sel("", 0), previewEra: "q3" })
     expect(preview.previewing).toBe(true)
@@ -143,9 +143,10 @@ describe("IDE explorer folders", () => {
     expect(view.folders.map((f) => f.id)).toEqual(["fizzbuzz", "two_sum", "reverse_list", "debounce", "search"])
     const fizz = view.folders.find((f) => f.id === "fizzbuzz")?.pack as FilePack
     const debounce = view.folders.find((f) => f.id === "debounce")?.pack as FilePack
+    const search = view.folders.find((f) => f.id === "search")?.pack as FilePack
     expect(fizz.files.length).toBeGreaterThan(10)
     expect(debounce.files.some((f) => f.path.includes("debounce"))).toBe(true)
-    expect(view.folders.find((f) => f.id === "search")?.pack.files[0]?.path).toBe("binary_search.py")
+    expect(search.files[0]?.path).toBe("binary_search.py")
   })
 
   it("adds a preview-only folder while browsing an unowned era", () => {

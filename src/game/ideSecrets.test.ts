@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { HIDDEN_LORE_PATH } from "../data/ideHiddenLore.ts"
-import { itemsOf, packForTier } from "../data/idePacks.ts"
+import { itemsOf, packForTier, type FilePack } from "../data/idePacks.ts"
 import { packWithHiddenLore } from "./ide.ts"
 import { resetLedgerForTests } from "./ledger.ts"
 import {
@@ -17,10 +17,10 @@ describe("IDE hidden lore", () => {
 
   it("appends ARCHITECTURE.md only in late file bands when unlocked", () => {
     const early = packForTier(12)
-    expect(packWithHiddenLore(early, true).files.some((f) => f.path === HIDDEN_LORE_PATH)).toBe(false)
+    expect((packWithHiddenLore(early, true) as FilePack).files.some((f) => f.path === HIDDEN_LORE_PATH)).toBe(false)
     const late = packForTier(44)
-    expect(packWithHiddenLore(late, false).files.some((f) => f.path === HIDDEN_LORE_PATH)).toBe(false)
-    expect(packWithHiddenLore(late, true).files.at(-1)?.path).toBe(HIDDEN_LORE_PATH)
+    expect((packWithHiddenLore(late, false) as FilePack).files.some((f) => f.path === HIDDEN_LORE_PATH)).toBe(false)
+    expect((packWithHiddenLore(late, true) as FilePack).files.at(-1)?.path).toBe(HIDDEN_LORE_PATH)
   })
 
   it("unlocks from status triple-click and persists in prefs", () => {
@@ -34,7 +34,7 @@ describe("IDE hidden lore", () => {
 
   it("appends the hidden file after the problem pool for tab selection", () => {
     const bare = packForTier(44)
-    const withLore = packWithHiddenLore(bare, true)
+    const withLore = packWithHiddenLore(bare, true) as FilePack
     const last = itemsOf(withLore).length - 1
     expect(itemsOf(bare).length + 1).toBe(itemsOf(withLore).length)
     expect(withLore.files[last]?.path).toBe(HIDDEN_LORE_PATH)
