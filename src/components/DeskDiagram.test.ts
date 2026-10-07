@@ -21,6 +21,14 @@ function mount() {
   act(() => root.render(createElement(DeskDiagram)))
 }
 
+/** Lets the lazy drawing chunk resolve and render. */
+async function settle() {
+  await act(async () => {
+    await import("./DeskDrawing.tsx")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+}
+
 const $ = (selector: string) => document.body.querySelector<HTMLElement>(selector)
 const $$ = (selector: string) => [...document.body.querySelectorAll<HTMLElement>(selector)]
 
@@ -43,19 +51,20 @@ describe("desk diagram", () => {
     expect($("[data-testid='desk-diagram']")).toBeNull()
   })
 
-  it("draws the last passed design", () => {
+  it("draws the last passed design", async () => {
     mount()
     const shortener = interview("url-shortener")
     act(() => {
       useGame.getState().forceInterview(shortener.id)
     })
+    await settle()
     expect($("[data-testid='desk-prompt']")).toBeNull()
     expect($("[data-testid='desk-diagram']")?.dataset.interview).toBe(shortener.id)
     expect($$(".desk-diagram-node").map((n) => n.dataset.kind).sort()).toEqual(shortener.reference.nodes.map((n) => n.kind).sort())
     expect($$(".desk-diagram-wire").map((w) => w.dataset.edge).sort()).toEqual(shortener.reference.edges.map((e) => `${e.from}>${e.to}`).sort())
   })
 
-  it("draws the newer pass, not the one further up the ladder", () => {
+  it("draws the newer pass, not the one further up the ladder", async () => {
     mount()
     act(() => {
       useGame.getState().forceInterview("url-shortener")
@@ -63,10 +72,11 @@ describe("desk diagram", () => {
     act(() => {
       useGame.getState().forceInterview("3-tier-app")
     })
+    await settle()
     expect($("[data-testid='desk-diagram']")?.dataset.interview).toBe("3-tier-app")
   })
 
-  it("keeps drawing a pass when a later No hire lands on another interview", () => {
+  it("keeps drawing a pass when a later No hire lands on another interview", async () => {
     mount()
     act(() => {
       useGame.getState().forceInterview("hello-server")
@@ -75,6 +85,7 @@ describe("desk diagram", () => {
     act(() => {
       useGame.getState().submitWhiteboard("3-tier-app", { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] })
     })
+    await settle()
     expect(useGame.getState().interviews["3-tier-app"]?.verdict).toBe("noHire")
     expect($("[data-testid='desk-diagram']")?.dataset.interview).toBe("hello-server")
   })
