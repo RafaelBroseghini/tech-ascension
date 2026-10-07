@@ -1,7 +1,7 @@
 /*
- * The IDE shell behind the stage. Colors come from the editor theme (Catppuccin Mocha by default),
- * not the era accent. The pane changes with progress (file packs, inbox, slide deck). The tab bar,
- * the explorer list and the status bar take clicks; the editor stays a pointer-transparent backdrop.
+ * The desk shell behind the stage. Colors come from the editor theme (Catppuccin Mocha by default), not the era
+ * accent. The activity bar, the career log and the status bar take clicks; the drawing of the last passed whiteboard
+ * stays a pointer-transparent backdrop under the click target.
  */
 
 .ide {
@@ -12,8 +12,8 @@
   grid-template-columns: var(--ide-activity) var(--ide-tree) minmax(0, 1fr);
   grid-template-rows: var(--ide-tabs) minmax(0, 1fr) var(--ide-status);
   grid-template-areas:
-    "activity tree tabs"
-    "activity tree editor"
+    "activity tree backdrop"
+    "activity tree backdrop"
     "status status status";
   overflow: hidden;
   pointer-events: none;
@@ -33,19 +33,6 @@
   padding-top: var(--sp-4);
   background: var(--ide-crust);
   pointer-events: auto;
-}
-
-.ide-activity-icon-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ide-activity-pair {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
 }
 
 .ide-activity-btn {
@@ -68,30 +55,14 @@
   opacity: 0.38;
   cursor: not-allowed;
 }
-.ide-activity-btn.is-busy .ide-activity-icon-run {
-  color: var(--ide-green);
-}
-.ide-activity-bottom {
-  margin-top: auto;
-  margin-bottom: var(--sp-4);
-}
-.ide-activity-bottom .ide-activity-console {
-  margin-top: 0;
-  margin-bottom: 0;
-}
 .ide-activity-btn.is-active {
   background: var(--ide-surface);
-}
-.ide-activity-btn.is-active .ide-activity-icon-console {
-  color: var(--ide-green);
 }
 
 .ide-activity-icon {
   flex: none;
   color: var(--ide-overlay);
 }
-.ide-activity-icon-files { color: var(--ide-text); }
-.ide-activity-icon-run { color: var(--ide-green); }
 
 .ide-tree {
   grid-area: tree;
@@ -104,144 +75,6 @@
   background: var(--ide-mantle);
   pointer-events: auto;
 }
-.ide-folder-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-.ide-folder { min-width: 0; }
-.ide-folder-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  min-height: 24px;
-  padding: 3px var(--sp-3);
-  border: 0;
-  background: transparent;
-  color: var(--ide-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.ide-folder-head:hover { background: var(--ide-surface); }
-.ide-folder-head.is-active { background: var(--ide-surface); box-shadow: inset 2px 0 0 var(--ide-mauve); }
-.ide-folder-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-.ide-folder.is-preview-folder .ide-folder-name { color: var(--ide-peach); }
-.ide-folder .ide-list { margin: 0 0 var(--sp-2); padding-left: calc(var(--sp-3) + 14px); }
-.ide-folder-tree { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ide-folder { min-width: 0; }
-.ide-folder-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  min-height: 24px;
-  padding: 3px var(--sp-3);
-  border: 0;
-  background: transparent;
-  color: var(--ide-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.ide-folder-head:hover { background: var(--ide-surface); }
-.ide-folder-head.is-active { background: var(--ide-surface); box-shadow: inset 2px 0 0 var(--ide-mauve); }
-.ide-folder-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-.ide-folder.is-preview-folder .ide-folder-name { color: var(--ide-peach); }
-.ide-folder .ide-list { margin: 0 0 var(--sp-2); padding-left: calc(var(--sp-3) + 14px); }
-.ide-list { display: flex; flex-direction: column; margin-bottom: var(--sp-3); }
-.ide-item-wrap {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  min-height: 24px;
-  color: var(--ide-overlay);
-}
-.ide-item-wrap:hover {
-  color: var(--ide-text);
-  background: var(--ide-surface);
-}
-.ide-item-wrap.is-active {
-  color: var(--ide-text);
-  background: var(--ide-surface);
-  box-shadow: inset 2px 0 0 var(--ide-mauve);
-}
-.ide-item-wrap .ide-item {
-  flex: 1;
-  min-width: 0;
-}
-.ide-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  min-height: 24px;
-  padding: 3px var(--sp-3);
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.ide-item-run {
-  display: grid;
-  flex: none;
-  align-self: stretch;
-  place-items: center;
-  width: 28px;
-  margin: 0;
-  padding: 0 var(--sp-1) 0 0;
-  border: 0;
-  background: transparent;
-  color: var(--ide-green);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-}
-.ide-item-wrap.is-runnable:hover .ide-item-run,
-.ide-item-wrap.is-runnable:focus-within .ide-item-run {
-  opacity: 1;
-  pointer-events: auto;
-}
-.ide-item-wrap.is-runnable:hover .ide-item-run:disabled,
-.ide-item-wrap.is-runnable:focus-within .ide-item-run:disabled {
-  opacity: 0.38;
-  pointer-events: none;
-}
-.ide-item-run:disabled {
-  cursor: not-allowed;
-}
-.ide-item-run-icon { color: var(--ide-green); }
-.ide-list-icon,
-.ide-tree-chevron {
-  flex: none;
-  margin-top: 2px;
-  color: var(--ide-overlay);
-}
-.ide-item-wrap.is-active .ide-list-icon { color: var(--ide-blue); }
-.ide-item-text { display: flex; flex-direction: column; min-width: 0; }
-.ide-item-main, .ide-item-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ide-item-sub { font-size: 0.85em; color: var(--ide-overlay); }
-.ide-item-wrap.is-inbox .ide-item-main { color: var(--ide-text); }
-.ide-mail-dot, .ide-slide-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ide-blue); }
-.ide-slide-dot { border-radius: 1px; background: var(--ide-peach); }
 .ide-tree-head {
   display: flex;
   align-items: center;
@@ -259,153 +92,103 @@
   text-transform: uppercase;
   flex: none;
 }
-.ide-tree-action {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: inherit;
-  opacity: 0.7;
-  cursor: pointer;
-}
-.ide-tree-action:hover:not(:disabled) {
-  opacity: 1;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-}
-.ide-tree-action:focus-visible {
-  outline: 1px solid var(--ide-blue);
-  outline-offset: 1px;
-}
-.ide-tree-action:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-.ide-tree-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 22px;
-  margin: 0;
-  padding-left: calc(var(--sp-3) + var(--depth) * 12px);
-}
-.ide-tree-chevron { margin-top: 0; }
-.ghost-bar {
-  display: block;
-  height: 8px;
-  max-width: 100%;
-  border-radius: 2px;
-  background: var(--ide-surface);
-}
 
-.ide-tabs {
-  grid-area: tabs;
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  background: var(--ide-mantle);
-  pointer-events: auto;
-}
-.ide-tab {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-  min-width: 0;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-4);
-  border: 0;
-  border-right: 1px solid var(--ide-crust);
-  background: transparent;
-  color: var(--ide-overlay);
-  font: inherit;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.ide-tab:hover:not(.is-active) { color: var(--ide-text); background: var(--ide-surface); }
-.ide-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.ide-tab.is-active {
-  color: var(--ide-text);
-  background: var(--ide-base);
-  box-shadow: inset 0 2px 0 var(--ide-mauve);
-}
-.ide-tab.is-active span { animation: code-in 260ms linear; }
-.ide-tab-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--ide-blue);
-}
-.ide-tab-dot[data-lang="python"] { background: var(--ide-blue); }
-.ide-tab-dot[data-lang="go"] { background: var(--ide-sky); }
-.ide-tab-dot[data-lang="ts"] { background: var(--ide-blue); }
-.ide-tab-dot[data-lang="java"] { background: var(--ide-peach); }
-.ide-tab-dot[data-lang="rust"] { background: var(--ide-rosewater); }
-.ide-tab-dot[data-lang="md"] { background: var(--ide-overlay); }
-.ide-tab-dot[data-lang="yaml"], .ide-tab-dot[data-lang="toml"], .ide-tab-dot[data-lang="mod"] { background: var(--ide-green); }
-.ide-tab-dot[data-lang="inbox"] { background: var(--ide-blue); }
-.ide-tab-dot[data-lang="deck"] { border-radius: 1px; background: var(--ide-peach); }
-
-.ide-editor {
-  grid-area: editor;
+/* The last passed whiteboard, or the next interview's prompt, dimmed behind the sprite and the readouts. */
+.desk-diagram {
+  grid-area: backdrop;
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  padding: var(--sp-4);
   overflow: hidden;
-  background: var(--ide-base);
+  opacity: 0.55;
+  color: var(--ide-text);
 }
-
-/* The buffer sits behind the sprite and the readouts, so it is dimmed to stay a backdrop. */
-.code-layer {
+:root[data-ide-scheme="light"] .desk-diagram { opacity: 0.7; }
+.desk-diagram-caption {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  color: var(--ide-overlay);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.desk-diagram-board {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.desk-diagram-svg,
+.desk-diagram-dots {
   position: absolute;
   inset: 0;
-  padding: var(--sp-4) 0 var(--sp-4) var(--sp-3);
-  /* A file longer than the pane scrolls. The stage forwards wheel turns here (see ideScroll.ts). */
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
+  width: 100%;
+  height: 100%;
 }
-.code-enter { animation: code-in 260ms linear; }
-.code-leave { animation: code-out 260ms linear forwards; }
+.desk-diagram-dots { color: var(--ide-green); }
+.desk-diagram-wire {
+  fill: none;
+  stroke: var(--ide-overlay);
+  stroke-width: 2;
+}
+.desk-diagram-node rect {
+  fill: var(--ide-mantle);
+  stroke: var(--ide-surface);
+  stroke-width: 2;
+}
+.desk-diagram-node svg { color: var(--ide-blue); }
+.desk-diagram-node[data-kind="users"] svg { color: var(--ide-peach); }
+.desk-diagram-node text {
+  fill: var(--ide-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.desk-diagram-node .desk-diagram-count {
+  fill: var(--ide-mauve);
+  font-size: 11px;
+}
 
-/* A theme swap restyles every span in the file. Off-screen lines skip that work (content-visibility), and the pre is as wide as its longest line so paint containment never clips a long one. */
-.code {
-  width: max-content;
-  min-width: 100%;
-  margin: 0;
-  opacity: 0.62;
-  color: var(--ide-text);
-  font: inherit;
-  font-size: var(--fs-xs);
-  line-height: 1.65;
-  tab-size: 4;
-  white-space: pre;
+.desk-diagram.is-prompt { justify-content: flex-start; }
+.desk-prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: 52ch;
+  padding: var(--sp-4);
+  border: 1px dashed var(--ide-surface);
+  border-radius: var(--radius);
+  background: var(--ide-mantle);
 }
-.code-line {
-  display: block;
-  min-height: 1.65em;
-  content-visibility: auto;
-  contain-intrinsic-block-size: auto 1.65em;
-}
-.code-num {
-  display: inline-block;
-  width: 3ch;
-  margin-right: 2ch;
+.desk-prompt-card p { margin: 0; }
+.desk-prompt-kicker {
   color: var(--ide-overlay);
-  text-align: right;
-  user-select: none;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
 }
-
-.tok-kw { color: var(--ide-mauve); }
-.tok-str { color: var(--ide-green); }
-.tok-num { color: var(--ide-peach); }
-.tok-op { color: var(--ide-sky); }
-.tok-type { color: var(--ide-rosewater); }
-.tok-fn { color: var(--ide-blue); }
+.desk-prompt-title {
+  color: var(--ide-text);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.desk-prompt-brief {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.desk-prompt-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ide-mauve);
+}
 
 .ide-status {
   grid-area: status;
@@ -543,41 +326,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ide-status-music-icon.is-on { animation: none; opacity: 1; }
 }
-.ide-deck-nav { display: flex; align-items: center; gap: var(--sp-2); }
-.ide-deck-nav button {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--ide-surface);
-  color: var(--ide-text);
-  line-height: 1;
-  cursor: pointer;
-}
-.ide-deck-nav button:hover:not(:disabled) { background: var(--ide-mauve); color: var(--ide-on-accent); }
-.ide-deck-nav button:disabled { opacity: 0.35; cursor: default; }
-
-/* Inbox and deck panes live in the left gutter, clear of the sprite in the middle of the stage. */
-.mail, .slide {
-  /* Half the editor, minus the half-width of the sprite hitbox and the code layer's padding. */
-  width: clamp(7rem, calc(50% - 108px), 12rem);
-  margin: 0;
-  color: var(--ide-text);
-  line-height: 1.5;
-}
-.mail-subject { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 700; color: var(--ide-text); }
-.mail-from { margin: 0 0 var(--sp-3); color: var(--ide-overlay); }
-.mail-from span { margin-right: 0.5ch; color: var(--ide-mauve); text-transform: uppercase; letter-spacing: var(--track-caps); }
-.mail-body { margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--ide-surface); white-space: normal; }
-.slide { padding: var(--sp-3); border: 1px solid var(--ide-surface); border-radius: var(--radius); background: var(--ide-mantle); }
-.slide-count { margin: 0 0 var(--sp-2); font-size: var(--fs-2xs); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--ide-overlay); }
-.slide-title { margin: 0 0 var(--sp-3); font-size: var(--fs-sm); color: var(--ide-peach); }
-.slide ul { margin: 0; padding-left: 1.2em; }
-.slide li { margin-bottom: var(--sp-1); }
-.slide li::marker { color: var(--ide-mauve); }
 
 .desk-cat {
   position: absolute;
@@ -588,13 +336,6 @@
   height: 108px;
   pointer-events: none;
 }
-.desk-cat svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
-.desk-cat-eyes, .desk-cat-shut { transform-box: fill-box; }
-.desk-cat-shut { display: none; }
-.desk-cat.is-asleep .desk-cat-eyes { display: none; }
-.desk-cat.is-asleep .desk-cat-shut { display: block; }
-.desk-cat:not(.is-asleep) .desk-cat-eyes { animation: desk-blink 4.8s linear infinite; }
-.desk-cat-tail { transform-box: fill-box; transform-origin: 100% 80%; animation: desk-tail 2.6s ease-in-out infinite; }
 .desk-cat.is-hop { animation: desk-hop 320ms var(--ease-out); }
 .desk-cat-z {
   position: absolute;
@@ -609,14 +350,6 @@
   animation: desk-z 2.2s ease-in-out infinite;
 }
 
-@keyframes desk-blink {
-  0%, 90%, 100% { opacity: 1; }
-  94%, 97% { opacity: 0; }
-}
-@keyframes desk-tail {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-1px); }
-}
 @keyframes desk-hop {
   0% { transform: translateY(0); }
   40% { transform: translateY(-8px); }
@@ -628,10 +361,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desk-cat, .desk-cat-tail, .desk-cat-eyes, .desk-cat-z { animation: none; }
+  .desk-cat, .desk-cat-z { animation: none; }
 }
-
-:root[data-ide-scheme="light"] .code { opacity: 0.85; }
 
 .desk-cat {
   position: absolute;
@@ -730,8 +461,6 @@
 @media (prefers-reduced-motion: reduce) {
   .desk-cat, .desk-cat-img, .desk-cat-z, .desk-cat-new { animation: none; }
 }
-
-:root[data-ide-scheme="light"] .code { opacity: 0.85; }
 
 @media (max-width: 860px) {
   .ide-tree { display: none; }

@@ -1,10 +1,10 @@
 /*
- * The career timeline on screen: the bare editor before the first laptop, the dim outline of the next unlock, the
- * reveal card, NEW markers, the career log in the sidebar and the console's Output tab. Green means new here, the
- * way added lines are green in a diff. Colors come from the editor theme.
+ * The career timeline on screen: the bare desk before the first laptop, the dim outline of the next unlock, the
+ * reveal card, NEW markers and the career log in the sidebar. Green means new here, the way added lines are green
+ * in a diff. Colors come from the editor theme.
  */
 
-/* ---------- the bare editor: no activity bar or explorer until the first laptop ---------- */
+/* ---------- the bare desk: no activity bar or sidebar until the first laptop ---------- */
 
 @property --ide-activity {
   syntax: "<length>";
@@ -58,7 +58,6 @@
   border-radius: 2px;
   background: var(--ide-mauve);
 }
-.ide-activity-pair .ide-activity-btn,
 .ide-settings,
 .ide-status-chip {
   position: relative;
@@ -533,105 +532,7 @@
   cursor: pointer;
 }
 
-/* ---------- the console: Terminal and Output tabs ---------- */
-
-.ide-console-tabs {
-  display: flex;
-  gap: 2px;
-}
-.ide-console-tab {
-  padding: 4px 8px 5px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
-}
-.ide-console-tab:hover {
-  color: var(--text);
-}
-.ide-console-tab.is-active {
-  border-bottom-color: var(--accent-hi);
-  color: var(--accent-hi);
-}
-
-.career-output {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  background: var(--surface-0);
-}
-.career-output-bar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 5px var(--sp-3);
-  border-bottom: 1px solid var(--surface-2);
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-}
-.career-output-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.career-output-filter select {
-  padding: 2px 4px;
-  border: 1px solid var(--surface-2);
-  border-radius: 4px;
-  background: var(--surface-1);
-  color: var(--text);
-  font: inherit;
-}
-.career-output-count {
-  margin-right: auto;
-}
-.career-output-btn {
-  padding: 3px 8px;
-  border: 1px solid var(--surface-2);
-  border-radius: 4px;
-  background: var(--surface-1);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-.career-output-btn:hover {
-  border-color: var(--accent-hi);
-}
-.career-output-lines {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: var(--sp-2) var(--sp-3);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  line-height: 1.55;
-}
-.out-line {
-  display: flex;
-  gap: 1.2ch;
-  white-space: nowrap;
-}
-.out-line code {
-  font: inherit;
-}
-.out-time {
-  flex: none;
-  color: var(--text-dim);
-  user-select: none;
-}
-.out-punc {
-  color: var(--text-dim);
-}
-
-/* Narrow screens hide the explorer column. The career log takes one while it is open. */
+/* Narrow screens hide the sidebar column. The career log takes one while it is open. */
 @media (max-width: 860px) {
   .stage-panel.is-log-open:not(.is-bare) {
     --ide-tree: min(250px, 62vw);
