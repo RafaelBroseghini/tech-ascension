@@ -24,6 +24,7 @@ const POP_HOLD_MS = 1_600
 
 /** The button on a card, for rows that have one. */
 const ACTION: Partial<Record<FeatureId, Surface | "music" | "hoverClick">> = {
+  studio: "studio",
   careerLog: "careerLog",
   githug: "githug",
   linkedout: "linkedout",

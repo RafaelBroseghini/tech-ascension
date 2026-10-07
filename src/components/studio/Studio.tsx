@@ -11,7 +11,7 @@ import { Board } from "./Board.tsx"
 import { endReveal, showInterview, submitBoard, useBoard } from "./boardStore.ts"
 import { Brief } from "./Brief.tsx"
 import { ChallengeList } from "./ChallengeList.tsx"
-import { useStatuses } from "./status.ts"
+import { nextInterview, useStatuses } from "./status.ts"
 import type { InterviewStatus } from "./status.ts"
 import { closeStudio, openStudio } from "./launcher.ts"
 import { Palette } from "./Palette.tsx"
@@ -19,11 +19,9 @@ import { RunMeters } from "./RunMeters.tsx"
 
 const PANEL = { type: "spring", stiffness: 420, damping: 36 } as const
 
-/** The interview the whiteboard opens on when none was asked for: the first one waiting, else the first. */
+/** The interview the whiteboard opens on when none was asked for: the one the desk's prompt card names, else the first. */
 function pickInterview(requested: string | null, statuses: readonly InterviewStatus[]): Interview {
-  const asked = INTERVIEWS.find((row) => row.id === requested)
-  if (asked) return asked
-  return INTERVIEWS[statuses.indexOf("open")] ?? INTERVIEWS[0]
+  return INTERVIEWS.find((row) => row.id === requested) ?? nextInterview(statuses) ?? INTERVIEWS[0]
 }
 
 /** The full-screen whiteboard: interviews on the left, the board in the middle, the brief and meters on the right. */
