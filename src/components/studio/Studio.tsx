@@ -41,6 +41,11 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
     showInterview(interview.id, useGame.getState().interviews[interview.id]?.design ?? null)
   }, [interview.id])
 
+  // Opened without an interview, the pick follows the statuses; pin it so a Hire does not swap the board for the next one.
+  useLayoutEffect(() => {
+    if (interviewId === null) openStudio(interview.id)
+  }, [interviewId, interview.id])
+
   const close = useCallback(() => {
     const run = useBoard.getState().run
     const hired = run !== null && run.verdict.kind !== "noHire" && !useGame.getState().jobs.includes(interview.jobId)
