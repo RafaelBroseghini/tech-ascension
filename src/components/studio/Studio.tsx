@@ -3,7 +3,7 @@ import "../../styles/studio.css"
 import { ReactFlowProvider } from "@xyflow/react"
 import { X } from "lucide-react"
 import { domAnimation, LazyMotion, m, MotionConfig } from "motion/react"
-import { useCallback, useEffect, useLayoutEffect, useMemo } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
@@ -49,6 +49,19 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
   const toJobs = useCallback(() => closeStudio(interview.jobId), [interview.jobId])
   const submit = useCallback(() => submitBoard(interview), [interview])
 
+  // The desk keeps earning behind the dialog but leaves the tab order, and closing hands focus back to the opener.
+  const dialog = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const desk = document.getElementById("root")
+    desk?.setAttribute("inert", "")
+    dialog.current?.focus()
+    return () => {
+      desk?.removeAttribute("inert")
+      if (opener?.isConnected) opener.focus()
+    }
+  }, [])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !e.defaultPrevented) close()
@@ -62,6 +75,8 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
       <MotionConfig reducedMotion="user">
         <ReactFlowProvider>
           <m.div
+            ref={dialog}
+            tabIndex={-1}
             className="studio"
             role="dialog"
             aria-modal="true"
