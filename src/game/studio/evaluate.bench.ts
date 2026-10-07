@@ -1,13 +1,13 @@
 import { expect, test } from "vitest"
-import { FIXTURE_CHALLENGES } from "../../data/studio/fixtures.ts"
+import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import { evaluate } from "./evaluate.ts"
 
 const size = (d: { nodes: readonly unknown[]; edges: readonly unknown[] }) => d.nodes.length + d.edges.length
-const [largest] = FIXTURE_CHALLENGES.flatMap((challenge) =>
-  [challenge.reference, ...challenge.naive.map((n) => n.design)].map((design) => ({ design, scenario: challenge.scenario })),
+const [largest] = INTERVIEWS.flatMap((challenge) =>
+  [challenge.reference, challenge.strongHire, ...challenge.naive.map((n) => n.design)].map((design) => ({ design, scenario: challenge.scenario })),
 ).sort((a, b) => size(b.design) - size(a.design))
 
-test("one evaluate call on the largest fixture stays under 2 ms at the median", async ({ bench }) => {
+test("one evaluate call on the largest interview design stays under 2 ms at the median", async ({ bench }) => {
   let served = 0
   const results = await bench.compare(
     bench("no-op", () => {}),

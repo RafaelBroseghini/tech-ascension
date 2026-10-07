@@ -1,6 +1,6 @@
 import type { Challenge, ComponentKind, Design, DesignNode } from "../../game/studio/types.ts"
 
-/** Stand-ins for the interview catalog, so the simulator and `designs:check` have something to chew on. */
+/** Fixed designs for the simulator's unit tests. The interviews themselves live in `challenges.ts`. */
 
 const node = (id: string, kind: ComponentKind, replicas = 1): DesignNode => ({ id, kind, replicas })
 
@@ -51,14 +51,6 @@ export const THREE_TIER: Challenge = {
   ],
 }
 
-const SHORTENER_PHASE = { seconds: 60, rps: 3000, mix: { read: 0.96, write: 0.04 } }
-
-export const SHORTENER_NAIVE = design([node("users", "users"), node("lb", "lb"), node("api", "api", 12), node("db", "sql")], [
-  ["users", "lb"],
-  ["lb", "api"],
-  ["api", "db"],
-])
-
 export const SHORTENER_CACHE = design(
   [node("users", "users"), node("lb", "lb"), node("api", "api", 14), node("cache", "cache"), node("db", "sql")],
   [
@@ -82,26 +74,6 @@ export const SHORTENER_CDN_READS_ONLY = design(
     ["api", "db"],
   ],
 )
-
-export const URL_SHORTENER: Challenge = {
-  id: "fixture-url-shortener",
-  name: "URL shortener",
-  scenario: {
-    phases: [
-      { name: "Launch day", ...SHORTENER_PHASE },
-      { name: "Viral link", ...SHORTENER_PHASE, fault: { kind: "spike", multiplier: 2 } },
-    ],
-    cacheHitRate: 0.9,
-    edgeHitRate: 0.8,
-    fanout: 1,
-  },
-  targets: { successRate: 0.99, p95Ms: 60, maxLagSeconds: 5, availability: 0.99, budgetPerMonth: 1500 },
-  reference: SHORTENER_CACHE,
-  naive: [
-    { name: "one SQL node", design: SHORTENER_NAIVE, fails: "success" },
-    { name: "CDN for reads only", design: SHORTENER_CDN_READS_ONLY, fails: "success" },
-  ],
-}
 
 const fanoutDesign = (workers: number): Design =>
   design(
@@ -155,5 +127,3 @@ export const FANOUT: Challenge = {
     { name: "synchronous fan-out", design: FANOUT_SYNC, fails: "success" },
   ],
 }
-
-export const FIXTURE_CHALLENGES: readonly Challenge[] = [THREE_TIER, URL_SHORTENER, FANOUT]
