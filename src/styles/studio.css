@@ -24,6 +24,10 @@
   transform-origin: 50% 40%;
 }
 
+.studio:focus {
+  outline: none;
+}
+
 .studio :focus-visible {
   outline: 2px solid var(--ide-mauve);
   outline-offset: 2px;
