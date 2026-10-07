@@ -41,7 +41,7 @@ export type CareerEntry = {
   /** Epoch ms. */
   at: number
   type: CareerType
-  /** What the entry is about: a feature id ("terminal"), or a row key ("skill:8", "gig:3", "phase:B", "era:mid"). */
+  /** What the entry is about: a feature id ("careerLog"), or a row key ("skill:8", "gig:3", "phase:B", "era:mid"). */
   ref: string
   /** Balance and lifetime XP at that moment. */
   money: number
@@ -211,10 +211,6 @@ export function careerJson(entry: CareerEntry): Record<string, number | string |
   line.money = entry.money
   line.xpTotal = entry.xpTotal
   return line
-}
-
-export function careerLine(entry: CareerEntry): string {
-  return JSON.stringify(careerJson(entry))
 }
 
 /** Marker colour in the career log. */

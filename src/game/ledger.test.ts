@@ -32,14 +32,14 @@ describe("career ledger", () => {
     expect(judgeCas(41, 40)).toBe("stale")
   })
 
-  it("keeps a desk object and a folder list, and unwraps a stringified document", async () => {
+  it("keeps a desk object and a list, and unwraps a stringified document", async () => {
     const port = createMemoryPort()
     writePref("desk", "{\"music\":true,\"sounds\":false}")
-    writePref("treeFolds", "[\"fizzbuzz\",\"search\"]")
+    writePref("shopPanel", "[\"fizzbuzz\",\"search\"]")
     await settled()
     const loaded = await port.load()
     expect(loaded.desk?.body).toEqual({ music: true, sounds: false })
-    expect(loaded.treeFolds?.body).toEqual(["fizzbuzz", "search"])
+    expect(loaded.shopPanel?.body).toEqual(["fizzbuzz", "search"])
     expect(bodyNeedsRewrite("{\"music\":true}")).toBe(true)
     expect(bodyNeedsRewrite("[\"fizzbuzz\"]")).toBe(true)
     expect(bodyNeedsRewrite("dracula")).toBe(false)

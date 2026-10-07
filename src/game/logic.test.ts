@@ -1,8 +1,6 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { allProblemFiles } from "../data/ideProblems.ts"
-import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { PURCHASE_COST_SCALE } from "../data/costs.ts"
@@ -467,19 +465,6 @@ describe("pixel sprites", () => {
     expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG")
     expect(bytes.readUInt32BE(16)).toBe(64)
     expect(bytes.readUInt32BE(20)).toBe(64)
-  })
-})
-
-describe("IDE lexer", () => {
-  it("tokenizes every pack file without losing or adding a character", () => {
-    for (const file of allProblemFiles()) {
-      expect(tokenize(file.code, file.lang).map((token) => token.text).join("")).toBe(file.code)
-    }
-    const kinds = tokenize('for i in range(1, 101): print("Fizz")', "python")
-    expect(kinds.find((t) => t.text === "for")?.kind).toBe("kw")
-    expect(kinds.find((t) => t.text === "101")?.kind).toBe("num")
-    expect(kinds.find((t) => t.text === '"Fizz"')?.kind).toBe("str")
-    expect(kinds.find((t) => t.text === "range")?.kind).toBe("fn")
   })
 })
 
