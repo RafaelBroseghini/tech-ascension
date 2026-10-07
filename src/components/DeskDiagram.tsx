@@ -8,6 +8,7 @@ import { interviewById } from "../game/studio/interviews.ts"
 import type { Design } from "../game/studio/types.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { edgeFlows, edgeId, placeDesign } from "./studio/diagram.ts"
+import type { Placed } from "./studio/diagram.ts"
 import { KIND_ICON } from "./studio/kinds.ts"
 import { getStudioView, subscribeStudioView } from "./studio/launcher.ts"
 import { jobOf, lastPassed, nextInterview, statusLine, useStatuses } from "./studio/status.ts"
@@ -16,6 +17,11 @@ import type { Lane, Pt } from "./studio/traffic.ts"
 
 const NODE_W = 192
 const NODE_H = 56
+/** The desk spreads the whiteboard's cells wider than the board does, so wires are long enough to carry dots. */
+const COLUMN = 272
+const ROW = 96
+/** Dots on one wire stay at least this far apart. */
+const DOT_GAP = 56
 const PAD = 32
 /** One trip along an edge takes this long, so the dots drift rather than race. */
 const LAP_MS = 6_000
@@ -26,7 +32,7 @@ const LONG_NAME = 20
 
 type Drawing = {
   readonly view: { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
-  readonly nodes: ReturnType<typeof placeDesign>["nodes"]
+  readonly nodes: readonly Placed[]
   readonly wires: readonly { readonly id: string; readonly d: string }[]
   readonly lanes: readonly Lane[]
 }
@@ -40,17 +46,20 @@ function wirePoints(from: Pt, to: Pt): Pt[] {
 }
 
 function drawingOf(design: Design, interview: Interview): Drawing {
-  const { nodes, edges } = placeDesign(design)
+  const placed = placeDesign(design)
+  const nodes = placed.nodes.map((n) => ({ ...n, x: n.col * COLUMN, y: n.row * ROW }))
   const at = new Map(nodes.map((n) => [n.id, n]))
   const flows = edgeFlows(design, interview.scenario)
   const wires: { id: string; d: string }[] = []
   const lanes: Lane[] = []
-  for (const e of edges) {
+  for (const e of placed.edges) {
     const points = wirePoints(at.get(e.from) as Pt, at.get(e.to) as Pt)
     const id = edgeId(e.from, e.to)
     wires.push({ id, d: `M${points.map((p) => `${p.x} ${p.y}`).join(" L")}` })
     const share = flows[id] ?? 0
-    if (share > 0) lanes.push(laneOf(points, Math.max(1, Math.min(MAX_DOTS, Math.round(share * MAX_DOTS)))))
+    if (share <= 0) continue
+    const lane = laneOf(points, 1)
+    lanes.push({ ...lane, dots: Math.max(1, Math.min(Math.round(share * MAX_DOTS), Math.floor(lane.total / DOT_GAP))) })
   }
   const xs = nodes.map((n) => n.x)
   const ys = nodes.map((n) => n.y)
@@ -165,15 +174,15 @@ function PassedDiagram({ interview, design }: { interview: Interview; design: De
 
 function NextPrompt({ interview, status }: { interview: Interview; status: string }) {
   return (
-    <div className="desk-diagram is-prompt" data-testid="desk-prompt" data-interview={interview.id} aria-hidden>
+    <div className="desk-diagram" data-testid="desk-prompt" data-interview={interview.id} aria-hidden>
+      <p className="desk-diagram-caption">
+        <Presentation {...UI_ICON_SM} aria-hidden />
+        Next interview · {interview.name}
+      </p>
       <div className="desk-prompt-card">
-        <p className="desk-prompt-kicker">Next interview · for {jobOf(interview)?.name ?? "a job"}</p>
-        <p className="desk-prompt-title">{interview.name}</p>
+        <p className="desk-prompt-kicker">For {jobOf(interview)?.name ?? "a job"}</p>
         <p className="desk-prompt-brief">{interview.brief}</p>
-        <p className="desk-prompt-foot">
-          <Presentation {...UI_ICON_SM} aria-hidden />
-          {status}. The whiteboard button on the left opens it.
-        </p>
+        <p className="desk-prompt-foot">{status}. The whiteboard button on the left opens it.</p>
       </div>
     </div>
   )
