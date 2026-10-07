@@ -4,7 +4,8 @@ import type { Interview } from "../../data/studio/challenges.ts"
 import { JOB_TIERS } from "../../data/phases.ts"
 import { jobState } from "../../game/phase.ts"
 import type { JobGates } from "../../game/phase.ts"
-import { interviewPassed } from "../../game/studio/interviews.ts"
+import type { CareerEntry } from "../../game/careerLog.ts"
+import { interviewPassed, isPass } from "../../game/studio/interviews.ts"
 import type { InterviewLog } from "../../game/studio/interviews.ts"
 import { useGame } from "../../game/store.ts"
 
@@ -49,3 +50,30 @@ export function statusLine(status: InterviewStatus, interview: Interview, log: I
   }
 }
 
+
+/** The interview the whiteboard opens on by default: the first one waiting for a submission, else the first not passed. */
+export function nextInterview(statuses: readonly InterviewStatus[]): Interview | null {
+  const open = statuses.indexOf("open")
+  const ahead = open >= 0 ? open : statuses.findIndex((status) => status !== "passed" && status !== "hired")
+  return INTERVIEWS[ahead] ?? null
+}
+
+const drawable = (log: InterviewLog, id: string) => {
+  const record = log[id]
+  return record !== undefined && isPass(record.verdict) && record.design.nodes.length > 1
+}
+
+/**
+ * The interview whose passing design the desk draws: the newest pass in the journal, or, once the journal has trimmed
+ * it, the furthest interview with a passing design on record. Null before any pass with a design.
+ */
+export function lastPassed(log: InterviewLog, journal: readonly CareerEntry[]): string | null {
+  for (let i = journal.length - 1; i >= 0; i--) {
+    const entry = journal[i]
+    if (entry.type !== "interview") continue
+    const id = entry.ref.slice("interview:".length)
+    if (entry.data?.verdict !== "noHire" && drawable(log, id)) return id
+  }
+  for (let i = INTERVIEWS.length - 1; i >= 0; i--) if (drawable(log, INTERVIEWS[i].id)) return INTERVIEWS[i].id
+  return null
+}

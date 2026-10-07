@@ -4,15 +4,14 @@ import { create } from "zustand"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
-import { route } from "../../game/studio/route.ts"
 import type { Verdict } from "../../game/studio/score.ts"
-import type { ComponentKind, Design, RunResult, Scenario } from "../../game/studio/types.ts"
+import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
+import { edgeFlows, edgeId, placeDesign, snap } from "./diagram.ts"
 
 export type NodeData = { readonly kind: ComponentKind; readonly replicas: number }
 export type BoardNode = Node<NodeData, "component">
 export type BoardEdge = Edge
 
-export const GRID = 16
 export const REVEAL_MS = 2500
 
 /** One submission as the board shows it. Heat and the traffic only apply while the board is still the one sent. */
@@ -48,8 +47,6 @@ export const useBoard = create<BoardState>(() => ({ interviewId: null, nodes: []
 let version = 0
 const nextEdit = () => ++version
 
-const snap = (v: number) => Math.round(v / GRID) * GRID
-
 const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYPosition): BoardNode => ({
   id,
   type: "component",
@@ -58,31 +55,15 @@ const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYP
   deletable: kind !== "users",
 })
 
-const edgeOf = (source: string, target: string): BoardEdge => ({ id: `${source}>${target}`, source, target, type: "smoothstep" })
+const edgeOf = (source: string, target: string): BoardEdge => ({ id: edgeId(source, target), source, target, type: "smoothstep" })
 
-/** Lays a design out left to right by its distance from The Users, for a board seeded from a saved submission. */
+/** A board seeded from a saved submission, laid out the way the desk draws it. */
 export function layout(design: Design): Pick<Sheet, "nodes" | "edges"> {
-  const depth = new Map<string, number>()
-  const queue = design.nodes.filter((n) => n.kind === "users").map((n) => n.id)
-  for (const id of queue) depth.set(id, 0)
-  while (queue.length > 0) {
-    const id = queue.shift() as string
-    for (const e of design.edges) {
-      if (e.from !== id || depth.has(e.to)) continue
-      depth.set(e.to, (depth.get(id) ?? 0) + 1)
-      queue.push(e.to)
-    }
+  const placed = placeDesign(design)
+  return {
+    nodes: placed.nodes.map((n) => nodeOf(n.id, n.kind, n.replicas, n)),
+    edges: placed.edges.map((e) => edgeOf(e.from, e.to)),
   }
-  const rows = new Map<number, number>()
-  const nodes = design.nodes.map((n) => {
-    const col = depth.get(n.id) ?? Math.max(0, ...depth.values()) + 1
-    const row = rows.get(col) ?? 0
-    rows.set(col, row + 1)
-    return nodeOf(n.id, n.kind, n.replicas, { x: 32 + col * 224, y: 64 + row * 128 })
-  })
-  const ids = new Set(nodes.map((n) => n.id))
-  const edges = design.edges.filter((e) => ids.has(e.from) && ids.has(e.to)).map((e) => edgeOf(e.from, e.to))
-  return { nodes, edges }
 }
 
 const EMPTY: Design = { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] }
@@ -167,20 +148,6 @@ export function removeNode(id: string): void {
       edits: nextEdit(),
     }
   })
-}
-
-/** The share of the first phase's requests that crosses each edge, for the traffic dots. */
-export function edgeFlows(design: Design, scenario: Scenario): Record<string, number> {
-  const phase = scenario.phases[0]
-  const routing = route(design, { mix: phase.mix, cacheHitRate: scenario.cacheHitRate, edgeHitRate: scenario.edgeHitRate, fanout: scenario.fanout, bots: 0 })
-  const flows: Record<string, number> = {}
-  for (const leaf of routing.leaves) {
-    for (let i = 1; i < leaf.nodes.length; i++) {
-      const id = `${leaf.nodes[i - 1]}>${leaf.nodes[i]}`
-      flows[id] = (flows[id] ?? 0) + leaf.share
-    }
-  }
-  return flows
 }
 
 export function startRun(run: Omit<Run, "edits" | "startedAt" | "revealing">): void {

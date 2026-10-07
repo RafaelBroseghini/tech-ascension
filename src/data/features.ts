@@ -83,9 +83,10 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "studio",
     name: "Studio",
-    blurb: "Your whiteboard for job interviews.",
+    blurb: "Your whiteboard for job interviews. The desk shows the next one, then your last passed design.",
     size: "big",
     trigger: { kind: "skill", id: 1 },
+    action: "Try it",
     ghost: false,
   },
   {

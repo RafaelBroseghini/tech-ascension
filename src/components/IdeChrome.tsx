@@ -2,6 +2,7 @@ import { GitBranch, Presentation } from "lucide-react"
 import { memo, useMemo, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
+import { DeskDiagram } from "./DeskDiagram.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
 import { UI_ICON } from "./icons/ui.tsx"
@@ -11,7 +12,7 @@ import { IdeStatusDock } from "./IdeStatusDock.tsx"
 import { loadStudio, openStudio } from "./studio/launcher.ts"
 import { StudioHost } from "./studio/StudioHost.tsx"
 
-/** The desk shell behind the stage: the activity bar, the career log sidebar and the status bar. The palette is the saved theme. */
+/** The desk shell behind the stage: the activity bar, the career log sidebar, the whiteboard backdrop and the status bar. The palette is the saved theme. */
 export const IdeChrome = memo(function IdeChrome() {
   const skills = useGame((state) => state.skills)
   const owned = useGame((state) => state.owned)
@@ -93,6 +94,7 @@ export const IdeChrome = memo(function IdeChrome() {
           <CareerLog />
         </aside>
       ) : null}
+      {studioOpen ? <DeskDiagram /> : null}
       <footer className="ide-status">
         <a className="ide-status-powered" href="https://emoji.gg/" target="_blank" rel="noopener noreferrer">
           powered by emoji.gg

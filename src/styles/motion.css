@@ -26,16 +26,6 @@
   100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.96); opacity: 0; }
 }
 
-/* Editor buffer swap: old snippet fades out as the new one fades in. */
-@keyframes code-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes code-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
 /* Idle sway: left to right and back over 3.6s, 6px each way. */
 @keyframes sway {
   0%, 100% { transform: translateX(-6px) rotate(-0.5deg); }
