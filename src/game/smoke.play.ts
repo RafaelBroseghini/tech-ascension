@@ -2,6 +2,7 @@ import { expect, test } from "vitest"
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
+import { INTERVIEWS } from "../data/studio/challenges.ts"
 import { installGameHarness } from "./harness.ts"
 import { hydrate } from "./save.ts"
 
@@ -96,6 +97,7 @@ test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gi
 
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   const paid = game.click()
   expect(paid.money).toBe(game.getState().clickPower)
@@ -137,6 +139,9 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   if (!intern || !junior || !senior) throw new Error("missing jobs")
   expect(intern.xpPerSec).toBeGreaterThan(0)
   expect(intern.xpLump).toBeGreaterThan(0)
+  // Each of these jobs waits on a whiteboard interview; the smoke step below plays one for real.
+  expect(game.buyJob(intern.id)).toBe(false)
+  expect(game.forceInterview("hello-server")).toBe(true)
   const unhired = game.getState()
   expect(game.buyJob(intern.id)).toBe(true)
   // Taking the internship pays its lump of XP once, spendable and lifetime.
@@ -152,6 +157,7 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   game.setXp(junior.xpCost - 1)
   expect(game.buyJob(junior.id)).toBe(false)
   game.setXp(45_000)
+  expect(game.forceInterview("3-tier-app")).toBe(true)
   expect(game.buyJob(junior.id)).toBe(true)
   expect(game.getState().xp).toBe(45_000 - junior.xpCost)
   expect(game.getState().jobs).toEqual([intern.id, junior.id])
@@ -160,12 +166,53 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   game.setXp(senior.xpReq)
   game.setMoney(0)
   expect(game.getState().unlocks.capital).toBe(false)
+  expect(game.buyJob(senior.id)).toBe(false)
+  expect(game.forceInterview("read-heavy-feed")).toBe(true)
   expect(game.buyJob(senior.id)).toBe(true)
   const d = game.getState()
   expect(d.unlocks.capital).toBe(true)
   expect(d.phase).toBe("D")
   expect(d.money).toBe(0)
   expect(d.lastPop).toMatchObject({ kind: "unlock", size: "large" })
+})
+
+test("an interview gates the Junior SWE job, a No hire costs XP and a pass opens the job", () => {
+  game.reset()
+  const junior = JOB_TIERS.find((job) => job.id === 2)
+  const threeTier = INTERVIEWS.find((row) => row.jobId === 2)
+  if (!junior || !threeTier) throw new Error("missing Junior SWE or its interview")
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.submitWhiteboard(threeTier.id, threeTier.reference)).toBe(false)
+  expect(game.getState().interviews.open).toEqual(["hello-server"])
+
+  game.setXp(junior.xpReq)
+  expect(game.getState().interviews.open).toEqual(["hello-server", threeTier.id])
+  expect(game.buyJob(junior.id)).toBe(false)
+
+  const naive = threeTier.naive[0]
+  const failed = game.submitWhiteboard(threeTier.id, naive.design)
+  expect(failed).toMatchObject({ interviewId: threeTier.id, verdict: "noHire", penalty: junior.xpReq * 0.05 })
+  expect(failed && failed.missed).toContain(naive.fails)
+  expect(game.getState().xp).toBe(junior.xpReq - junior.xpReq * 0.05)
+  expect(game.getState().xpTotal).toBe(junior.xpReq)
+  expect(game.getState().careerLog.last).toMatchObject({ type: "interview", verdict: "noHire", penalty: 2_250 })
+
+  const hired = game.submitWhiteboard(threeTier.id, threeTier.reference)
+  expect(hired).toMatchObject({ verdict: "hire", missed: [], penalty: 0 })
+  expect(game.getState().interviews).toMatchObject({ open: ["hello-server"], passed: [threeTier.id] })
+  expect(game.getState().careerLog.last).toMatchObject({ type: "interview", verdict: "hire", attempts: 2 })
+  expect(game.buyJob(junior.id)).toBe(true)
+  expect(game.getState().xp).toBe(junior.xpReq - junior.xpReq * 0.05 - junior.xpCost)
+
+  // With every skill and gig done and the internship held, the whole-game target is the open interview.
+  game.reset()
+  game.setXp(1e12)
+  for (const skill of SKILL_TIERS) game.buySkill(skill.id)
+  for (const gig of GIGS) game.forceGig(gig.id)
+  game.forceInterview("hello-server")
+  expect(game.buyJob(1)).toBe(true)
+  expect(game.getState().nextUnlock).toMatchObject({ key: "job:2", name: junior.name, tab: "C", needs: ["pass the whiteboard"] })
 })
 
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
@@ -212,6 +259,7 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   game.reset()
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   const row = tierByName("WhyCombinator batch investment")
   game.setMoney(row.baseCost)
@@ -329,6 +377,7 @@ test("events: a trade scales to the pile, and Yes is refused when you cannot pay
   game.forceGig(1)
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   expect(game.click().money).toBeGreaterThan(0)
 })
@@ -339,6 +388,7 @@ test("a 1:1 waits for a job, then the three replies pay, sit, or bill you", () =
 
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
+  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
 
   expect(game.forceReview(1)).toBe(true)
@@ -450,6 +500,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   game.setXp(60_000)
   for (let id = 11; id <= 16; id++) game.buySkill(id)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
+  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()
   expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "githug", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))

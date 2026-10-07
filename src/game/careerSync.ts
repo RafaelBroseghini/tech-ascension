@@ -10,6 +10,8 @@ import { featureById, isCosmetic, isFeatureId, openFeatureIds, triggerMet } from
 import type { FeatureProgress } from "./features.ts"
 import { phaseOf, phaseRank, PHASES } from "./phase.ts"
 import type { SaveData } from "./save.ts"
+import { isPass } from "./studio/interviews.ts"
+import type { InterviewLog } from "./studio/interviews.ts"
 
 /** The timeline's slice of the store. */
 export type CareerSlice = {
@@ -67,13 +69,29 @@ function erasHeld(owned: OwnedMap): Set<Era> {
   return eras
 }
 
-type PurchaseState = Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "xpTotal" | "peakMoney"> & { gold: readonly number[] }
+type PurchaseState = Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "xpTotal" | "peakMoney"> & {
+  gold: readonly number[]
+  interviews: InterviewLog
+}
 
-/** First copies, clears, hires, perks, new eras and new phases between two states, in the order they read best. */
+/** Interviews whose record turned into a pass. A No hire is logged where it is judged, with its missed targets. */
+function newPasses(before: InterviewLog, after: InterviewLog): CareerNote[] {
+  if (before === after) return []
+  const notes: CareerNote[] = []
+  for (const [id, record] of Object.entries(after)) {
+    const was = before[id]
+    if (!isPass(record.verdict) || (was && isPass(was.verdict))) continue
+    notes.push({ type: "interview", ref: `interview:${id}`, data: { verdict: record.verdict, attempts: record.attempts } })
+  }
+  return notes
+}
+
+/** First copies, clears, passes, hires, perks, new eras and new phases between two states, in the order they read best. */
 export function purchaseNotes(prev: PurchaseState, next: PurchaseState): CareerNote[] {
   const notes: CareerNote[] = []
   for (const id of newKeys(prev.skills, next.skills)) notes.push({ type: "learn", ref: `skill:${id}` })
   for (const id of newIds(prev.gigs, next.gigs)) notes.push({ type: "gig", ref: `gig:${id}` })
+  notes.push(...newPasses(prev.interviews, next.interviews))
   for (const id of newIds(prev.jobs, next.jobs)) notes.push({ type: "hire", ref: `job:${id}` })
   for (const id of newKeys(prev.equipment, next.equipment)) notes.push({ type: "gear", ref: `gear:${id}` })
   for (const id of newKeys(prev.owned, next.owned)) notes.push({ type: "invest", ref: `capital:${id}` })

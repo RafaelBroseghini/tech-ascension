@@ -9,7 +9,7 @@ import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
 import type { NextUnlock } from "./nextUnlock.ts"
-import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, jobState, stageOf } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
@@ -24,6 +24,10 @@ import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
+import { INTERVIEWS } from "../data/studio/challenges.ts"
+import { interviewPassed, parseDesign } from "./studio/interviews.ts"
+import type { Submission, VerdictKind } from "./studio/interviews.ts"
+import type { Design, TargetName } from "./studio/types.ts"
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
@@ -50,6 +54,24 @@ export type LastReviewSnapshot = {
   jobId: number
   choice: ReviewChoiceId | null
   lines: string[]
+}
+
+/** One whiteboard submission: the verdict, the targets it missed with the interviewer's line for each, and the XP it took. */
+export type SubmissionSnapshot = {
+  interviewId: string
+  verdict: VerdictKind
+  missed: TargetName[]
+  lines: string[]
+  penalty: number
+}
+
+export type InterviewsSnapshot = {
+  /** Interviews whose job has the lifetime XP and waits on a passed whiteboard. */
+  open: string[]
+  /** Interviews passed by a submission, `forceInterview`, or holding the job or a later gated one. */
+  passed: string[]
+  /** The latest submission this session, or null. */
+  lastVerdict: SubmissionSnapshot | null
 }
 
 export type GameSnapshot = {
@@ -120,6 +142,8 @@ export type GameSnapshot = {
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
   profile: { handle: string; chosen: boolean }
+  /** The whiteboard interviews that gate twelve jobs (`src/data/studio/challenges.ts`). */
+  interviews: InterviewsSnapshot
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -157,6 +181,13 @@ export type GameHarness = {
   buy: (tierId: number, amount?: BuyAmount) => boolean
   buySkill: (skillId: number, amount?: BuyAmount) => boolean
   buyJob: (jobId: number) => boolean
+  /**
+   * Run a design past an interview whose job is at `interview`. A No hire costs 5% of the job's lifetime XP
+   * requirement in spendable XP (never below 0). False when the interview is unknown or its job is not at `interview`.
+   */
+  submitWhiteboard: (interviewId: string, design: Design) => SubmissionSnapshot | false
+  /** Record a pass now, bypassing every gate. False for an unknown or already passed id. */
+  forceInterview: (interviewId: string) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
   /** Buy a gold skill with spendable XP through its normal gates (lifetime XP, earlier row of its family, price). */
   buyGold: (goldId: number) => boolean
@@ -288,6 +319,28 @@ function eventSnapshot(
   return { eventId: event.eventId, name: eventById(event.eventId)?.name ?? "", lines }
 }
 
+function submissionSnapshot(submission: Submission): SubmissionSnapshot {
+  const missed = submission.verdict.kind === "noHire" ? submission.verdict.missed : []
+  return {
+    interviewId: submission.interviewId,
+    verdict: submission.verdict.kind,
+    missed: missed.map((m) => m.target),
+    lines: missed.map((m) => m.line),
+    penalty: submission.penalty,
+  }
+}
+
+function interviewsSnapshot(state: ReturnType<typeof useGame.getState>): InterviewsSnapshot {
+  return {
+    open: INTERVIEWS.filter((row) => {
+      const job = jobById(row.jobId)
+      return job !== undefined && jobState(state, job) === "interview"
+    }).map((row) => row.id),
+    passed: INTERVIEWS.filter((row) => interviewPassed(state, row)).map((row) => row.id),
+    lastVerdict: state.lastInterview ? submissionSnapshot(state.lastInterview) : null,
+  }
+}
+
 function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesSnapshot {
   const progress = progressOf(state)
   const open = new Set<string>(state.unlocked)
@@ -355,6 +408,7 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
+        interviews: interviewsSnapshot(state),
       }
     },
 
@@ -373,6 +427,14 @@ export function installGameHarness(): GameHarness {
     },
 
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
+
+    submitWhiteboard: (interviewId, design) => {
+      const verdict = useGame.getState().submitWhiteboard(interviewId, parseDesign(design))
+      const last = useGame.getState().lastInterview
+      return verdict && last ? submissionSnapshot(last) : false
+    },
+
+    forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),
 
     buyEquipment: (equipId, amount = 1) => {
       const before = ownedCount(useGame.getState().equipment, equipId)
