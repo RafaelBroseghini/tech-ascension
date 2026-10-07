@@ -162,4 +162,22 @@ describe("whiteboard", () => {
     expect($("[data-testid='studio']")?.dataset.interview).toBe(THREE_TIER.id)
     expect($$("[data-testid='studio-node']").map((n) => n.dataset.kind)).toEqual(["users", "api"])
   })
+
+  it("opening takes focus off the desk and closing hands it back", async () => {
+    careerAt(60_000, [1])
+    const desk = document.createElement("div")
+    desk.id = "root"
+    const opener = document.createElement("button")
+    desk.append(opener)
+    document.body.append(desk)
+    opener.focus()
+    await open(THREE_TIER.id)
+    expect($("[data-testid='studio']")?.contains(document.activeElement)).toBe(true)
+    expect(desk.hasAttribute("inert")).toBe(true)
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+    expect(desk.hasAttribute("inert")).toBe(false)
+    expect(document.activeElement).toBe(opener)
+  })
 })
