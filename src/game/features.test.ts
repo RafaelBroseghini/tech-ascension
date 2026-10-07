@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { FEATURES } from "../data/features.ts"
-import { IDE_PACKS } from "../data/idePacks.ts"
-import { SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL } from "../data/capital.ts"
+import { IDE_BANDS } from "../data/idePacks.ts"
+import { JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { stageOf } from "./phase.ts"
 import type { FeatureProgress } from "./features.ts"
 import {
   clickKitChoices,
@@ -52,7 +54,7 @@ describe("the feature table", () => {
     for (const row of FEATURES) {
       const trigger = row.trigger
       if (trigger.kind === "skill") expect(SKILL_TIERS.some((skill) => skill.id === trigger.id)).toBe(true)
-      if (trigger.kind === "folder") expect(IDE_PACKS.some((pack) => pack.id === trigger.packId)).toBe(true)
+      if (trigger.kind === "art") expect(IDE_BANDS.some((band) => band.fromTier === trigger.tier)).toBe(true)
       expect(triggerLabel(trigger)).not.toBe("")
     }
   })
@@ -92,18 +94,40 @@ describe("gates", () => {
     expect(triggerMet({ kind: "era", era: "mid" }, progress({ owned: { "6": 1 } }))).toBe(true)
     expect(triggerMet({ kind: "era", era: "upper" }, progress({ owned: { "1": 1 } }))).toBe(false)
   })
+
+  it("a theme opens at its art tier", () => {
+    const themes = FEATURES.filter((row) => row.id.startsWith("theme:") && row.trigger.kind === "art")
+    expect(themes.map((row) => [row.id, row.trigger.kind === "art" ? row.trigger.tier : 0])).toEqual([
+      ["theme:solarized-light", 19],
+      ["theme:tokyo-night", 23],
+      ["theme:monokai", 27],
+      ["theme:gruvbox", 31],
+      ["theme:github-light", 34],
+      ["theme:gruvbox-light", 37],
+      ["theme:synthwave", 50],
+    ])
+    const stages = [...JOB_TIERS.map((job) => progress({ jobs: [job.id] })), ...CAPITAL.map((row) => progress({ owned: { [row.id]: 1 } }))]
+    for (const row of themes) {
+      if (row.trigger.kind !== "art") continue
+      const tier = row.trigger.tier
+      const arts = stages.map((p) => stageOf(p)?.artId ?? 0)
+      expect(arts.some((art) => art < tier) && arts.some((art) => art >= tier)).toBe(true)
+      for (const [i, p] of stages.entries()) expect(triggerMet(row.trigger, p)).toBe((arts[i] ?? 0) >= tier)
+    }
+    expect(triggerMet({ kind: "art", tier: 19 }, progress())).toBe(false)
+  })
 })
 
 describe("teasing", () => {
   it("lists the next closed rows in table order, skipping cosmetics", () => {
-    expect(upNext(progress(), none).map((row) => row.id)).toEqual(["editor", "terminal", "careerLog"])
-    const later = upNext(progress({ skills: { "1": 1 } }), new Set(["editor"]))
-    expect(later.map((row) => row.id)).toEqual(["terminal", "careerLog", "githug"])
+    expect(upNext(progress(), none).map((row) => row.id)).toEqual(["studio", "careerLog", "githug"])
+    const later = upNext(progress({ skills: { "1": 1 } }), new Set(["studio"]))
+    expect(later.map((row) => row.id)).toEqual(["careerLog", "githug", "linkedout"])
   })
 
   it("stands one row in its place: the first closed one with a slot on screen", () => {
-    expect(nextGhost(progress(), none)?.id).toBe("terminal")
-    expect(nextGhost(progress({ skills: { "8": 1 } }), new Set(["editor", "terminal"]))?.id).toBe("careerLog")
+    expect(nextGhost(progress(), none)?.id).toBe("careerLog")
+    expect(nextGhost(progress({ skills: { "10": 1 } }), new Set(["studio", "careerLog"]))?.id).toBe("linkedout")
   })
 
   it("fills the ring as the trigger gets close, and reads full once it opens", () => {
@@ -118,7 +142,8 @@ describe("teasing", () => {
 
 describe("rows that open something", () => {
   it("names the feature a shop row opens", () => {
-    expect(rowUnlocks("skill:8").map((row) => row.id)).toEqual(["terminal"])
+    expect(rowUnlocks("skill:1").map((row) => row.id)).toEqual(["studio"])
+    expect(rowUnlocks("skill:8")).toEqual([])
     expect(rowUnlocks("gear:11").map((row) => row.id)).toEqual(["themes", "theme:dracula"])
     expect(rowUnlocks("gig:1")).toEqual([])
   })

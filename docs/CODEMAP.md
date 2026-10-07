@@ -9,11 +9,10 @@
 | Phase D capital catalog (25 rows, `artId` + `era`) | `src/data/capital.ts` |
 | Which sprite each skill, gig, job and equipment item uses | `src/data/art.ts` |
 | Sprite URLs (`spriteForTier`, `thumbForTier`) and era accents | `src/data/sprites.ts` |
-| Which pack the IDE pane shows for each stage (files, inbox, deck) | `src/data/idePacks.ts` |
-| Syntax colours and the lexer | `src/data/overlays.ts` |
-| IDE navigation and the shop-era preview that snaps back | `src/game/ide.ts` |
+| The desk band for each stage art id, named in the status bar | `src/data/idePacks.ts` |
+| The desk band and the shop-era preview that snaps back | `src/game/ide.ts` |
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
-| The IDE chrome (activity bar, tree, tabs, statusline) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
+| The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
@@ -36,8 +35,8 @@
 | Career journal: entries, JSON lines, the career log's rows | `src/game/careerLog.ts` |
 | Turning progress into journal notes, unlocks, NEW markers and reveals; boot and old saves | `src/game/careerSync.ts` (wired in `src/game/store.ts`) |
 | Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
-| Career log sidebar and the console's Output tab | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
-| "Open this" requests (a card's Try it, the career log's JSON button) | `src/game/surfaces.ts` |
+| Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
+| "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
@@ -49,7 +48,7 @@ Replacing `CAPITAL` is enough for the capital shop, as long as each row has `id`
 
 Skills, gigs, jobs, gear and capital are plain typed arrays with unique ids. Nothing assumes 50, 31, 30 or 25 rows. A table drop replaces the array. Ids past the end of an art table reuse its drawings in order (`artFor`). A new gear `kind` is one line in `GEAR_KINDS`. Gig and job ids are checked against the live tables on load, so a removed row drops out of a save. Counts for ids this build does not sell are kept.
 
-The 66 drawings stay in use: skills, gigs, jobs and gear borrow them through `src/data/art.ts`, and each capital row names the drawing it wants with `artId`. That drawing also picks the editor snippet.
+The 66 drawings stay in use: skills, gigs, jobs and gear borrow them through `src/data/art.ts`, and each capital row names the drawing it wants with `artId`. That drawing also picks the desk band.
 
 ## Numbers
 

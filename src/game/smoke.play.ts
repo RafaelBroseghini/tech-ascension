@@ -373,53 +373,6 @@ test("a 1:1 waits for a job, then the three replies pay, sit, or bill you", () =
   expect(game.getState().money).toBe(0)
 })
 
-test("ide: the pack follows the owned era, tabs navigate, the shop era previews and snaps back", () => {
-  game.reset()
-  expect(game.getState().ide).toMatchObject({ era: "early", packId: "fizzbuzz", kind: "files", index: 0, previewing: false })
-
-  game.setMoney(1e28)
-  const top = (name: string) => {
-    const row = tierByName(name)
-    for (let id = 1; id <= row.id; id++) game.buy(id)
-    return row
-  }
-  top("Angel syndicate seat")
-  const searchIde = game.getState().ide
-  expect(searchIde).toMatchObject({ era: "mid", packId: "search", kind: "files", index: 0 })
-  expect(searchIde.items[0]).toBe("binary_search.py")
-  expect(searchIde.items.length).toBeGreaterThan(2)
-  expect(searchIde.folders).toEqual(["fizzbuzz", "two_sum", "reverse_list", "debounce", "search"])
-  expect(game.ideSelect(0, "fizzbuzz")).toBe(true)
-  expect(game.getState().ide.packId).toBe("fizzbuzz")
-  expect(game.ideSelect(1)).toBe(true)
-  expect(game.getState().ide.packId).toBe("fizzbuzz")
-  expect(game.getState().ide.index).toBe(1)
-  expect(game.ideSelect(99)).toBe(false)
-  expect(game.ideSelect(-1)).toBe(false)
-  expect(game.getState().ide.index).toBe(1)
-
-  game.previewEra("q3")
-  expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", previewing: true, restPackId: "search", index: 0 })
-  expect(game.ideSelect(2)).toBe(true)
-  expect(game.getState().ide.items[2]).toBe("CUDA OOM on node gpu-17")
-  game.previewEra("end")
-  expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", previewing: true })
-  game.previewEra(null)
-  expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
-
-  game.previewEra("upper")
-  game.tick(60_000)
-  expect(game.getState().ide).toMatchObject({ packId: "search", previewing: false })
-
-  top("Custom accelerator IP")
-  expect(game.getState().ide.restPackId).toBe("frontier")
-  expect(game.ideSelect(0, "frontier")).toBe(true)
-  expect(game.getState().ide).toMatchObject({ era: "q3", kind: "inbox", packId: "frontier" })
-  top("Mars megacampus Holdings")
-  expect(game.ideSelect(0, "mars")).toBe(true)
-  expect(game.getState().ide).toMatchObject({ era: "end", kind: "deck", packId: "mars", items: ["Habitat power", "GPU shed policy", "Dust storm runbook"] })
-})
-
 test("save: a save from another schema version is wiped, not migrated", () => {
   game.reset()
   game.forceGig(1)
@@ -465,35 +418,37 @@ test("10x dev (gold) skills: bulk buying, hover clicking and the offline cap ope
 
 test("career timeline: the desk is earned piece by piece, logged as JSON, and the cat arrives on a return", () => {
   game.reset()
-  // Minute zero: one file, XP, the Skills tab. Nothing unlocked, the journal holds the start line.
+  // Minute zero: XP and the Skills tab. Nothing unlocked, the journal holds the start line.
   const start = game.getState()
   expect(start.features.open).toEqual([])
   expect(start.careerLog.size).toBe(1)
   expect(start.careerLog.last).toMatchObject({ seq: 1, type: "start" })
-  expect(start.features.upNext.map((row) => row.id)).toEqual(["editor", "terminal", "careerLog"])
+  expect(start.features.upNext.map((row) => row.id)).toEqual(["studio", "careerLog", "githug"])
 
-  // The first skill boots the editor: logged twice (the skill, the unlock) and queued to reveal.
+  // The first skill opens the studio: logged twice (the skill, the unlock) and queued to reveal.
   game.setXp(90)
   expect(game.buySkill(1)).toBe(true)
   let state = game.getState()
-  expect(state.features.open).toEqual(["editor"])
-  expect(state.features.reveals).toEqual(["editor"])
-  expect(state.features.next?.id).toBe("terminal")
-  expect(game.careerLog().slice(-2).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1", "unlock:editor"])
+  expect(state.features.open).toEqual(["studio"])
+  expect(state.features.reveals).toEqual(["studio"])
+  expect(state.features.next?.id).toBe("careerLog")
+  expect(game.careerLog().slice(-2).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1", "unlock:studio"])
 
-  // Linux CLI basics opens the terminal, marked NEW until used.
+  // Linux CLI basics opens nothing now. Git + GitHug hygiene opens the career log, marked NEW until used.
   game.setXp(2_300)
   for (let id = 2; id <= 8; id++) game.buySkill(id)
+  expect(game.getState().features.open).toEqual(["studio"])
+  for (let id = 9; id <= 10; id++) game.buySkill(id)
   state = game.getState()
-  expect(state.features.open).toContain("terminal")
-  expect(state.features.fresh).toContain("terminal")
-  expect(game.seeFeature("terminal")).toBe(true)
-  expect(game.getState().features.fresh).not.toContain("terminal")
-  expect(game.seeFeature("nope")).toBe(false)
+  expect(state.features.open).toContain("careerLog")
+  expect(state.features.fresh).toContain("careerLog")
+  expect(game.seeFeature("careerLog")).toBe(true)
+  expect(game.getState().features.fresh).not.toContain("careerLog")
+  expect(game.seeFeature("terminal")).toBe(false)
 
   // The first gig opens the board, the dollars and the rosters; the first job, the metrics.
   game.setXp(60_000)
-  for (let id = 9; id <= 16; id++) game.buySkill(id)
+  for (let id = 11; id <= 16; id++) game.buySkill(id)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()

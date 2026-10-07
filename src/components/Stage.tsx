@@ -20,9 +20,7 @@ import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { DeskCat } from "./DeskCat.tsx"
 import { StickyNote } from "./StickyNote.tsx"
-import { scrollIdeEditor } from "../game/ideScroll.ts"
 import { IdeChrome } from "./IdeChrome.tsx"
-import { IdePythonConsole } from "./IdePythonConsole.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
@@ -113,7 +111,6 @@ const DeskCatMemo = memo(DeskCat)
 const HeroMoneyMemo = memo(HeroMoney)
 const OwnedStripMemo = memo(OwnedStrip)
 const SkillsMemo = memo(Skills)
-const IdePythonConsoleMemo = memo(IdePythonConsole)
 const ScorePopMemo = memo(ScorePop)
 
 const BOOST_CHIP_MS = 12000
@@ -163,8 +160,8 @@ export function Stage() {
 
   const stage = stageOf({ skills, owned, jobs, gigs })
   const accent = ERA_ACCENT[eraOf({ owned })]
-  // Before the first laptop the editor is a single file: no activity bar, no explorer.
-  const editorOpen = useFeatureOpen("editor")
+  // Before the first laptop the desk is bare: no activity bar, no sidebar.
+  const studioOpen = useFeatureOpen("studio")
   const logOpen = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView) === "log"
   const stageName = stage?.name ?? "High school"
 
@@ -364,9 +361,8 @@ export function Stage() {
   return (
     <section
       ref={stagePanelRef}
-      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : "", editorOpen ? "" : "is-bare", logOpen ? "is-log-open" : ""].filter(Boolean).join(" ")}
+      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : "", studioOpen ? "" : "is-bare", logOpen ? "is-log-open" : ""].filter(Boolean).join(" ")}
       aria-label="Click stage"
-      onWheel={scrollIdeEditor}
     >
       <IdeChrome />
       <StickyNoteMemo />
@@ -501,7 +497,6 @@ export function Stage() {
         <OwnedStripMemo />
         <SkillsMemo />
       </div>
-      <IdePythonConsoleMemo />
       <ScorePopMemo />
     </section>
   )

@@ -24,7 +24,6 @@ const POP_HOLD_MS = 1_600
 
 /** The button on a card, for rows that have one. */
 const ACTION: Partial<Record<FeatureId, Surface | "music" | "hoverClick">> = {
-  terminal: "terminal",
   careerLog: "careerLog",
   githug: "githug",
   linkedout: "linkedout",
@@ -309,7 +308,7 @@ export function UnlockReveals() {
         copy={{
           kicker: "What's new",
           title: "Career log",
-          body: "Your career, commit by commit, with what unlocks next. The console's Output tab has it as JSON.",
+          body: "Your career, commit by commit, with what unlocks next.",
           action: "Open it",
         }}
         onAction={() => openSurface("careerLog")}

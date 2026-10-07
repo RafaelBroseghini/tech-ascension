@@ -4,7 +4,6 @@ import {
   appendNotes,
   CAREER_LOG_MAX,
   careerJson,
-  careerLine,
   CAREER_TYPES,
   describeEntry,
   emptyJournal,
@@ -56,12 +55,11 @@ describe("the career journal", () => {
 })
 
 describe("the JSON lines", () => {
-  const entry: CareerEntry = { seq: 7, at, type: "unlock", ref: "terminal", money: 0, xpTotal: 2215 }
+  const entry: CareerEntry = { seq: 7, at, type: "unlock", ref: "linkedout", money: 0, xpTotal: 2215 }
 
   it("prints one flat object per entry, in a stable key order", () => {
     expect(Object.keys(careerJson(entry))).toEqual(["seq", "time", "type", "ref", "name", "size", "via", "money", "xpTotal"])
-    expect(careerJson(entry)).toMatchObject({ time: "2026-10-06T12:00:00.000Z", name: "Terminal", size: "standard", via: "Linux CLI basics" })
-    expect(JSON.parse(careerLine(entry))).toEqual(careerJson(entry))
+    expect(careerJson(entry)).toMatchObject({ time: "2026-10-06T12:00:00.000Z", name: "LinkedOut profile", size: "standard", via: "Portfolio site live" })
   })
 
   it("names every kind of step and merges its extras", () => {
@@ -76,7 +74,7 @@ describe("the JSON lines", () => {
 describe("the career log rows", () => {
   it("has a title and a tone for every type", () => {
     const refs: Record<string, string> = {
-      unlock: "terminal",
+      unlock: "linkedout",
       learn: "skill:1",
       gig: "gig:8",
       hire: "job:1",

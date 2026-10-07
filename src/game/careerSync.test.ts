@@ -40,11 +40,11 @@ describe("purchase notes", () => {
 
 describe("planning unlocks", () => {
   it("logs and queues each row, and marks the ones with a place to go", () => {
-    const plan = planUnlocks(rows("terminal", "money"), empty)
-    expect(plan.unlocked).toEqual(["terminal", "money"])
-    expect(plan.reveals).toEqual(["terminal", "money"])
-    expect(plan.fresh).toEqual(["terminal"])
-    expect(plan.notes.map((note) => note.ref)).toEqual(["terminal", "money"])
+    const plan = planUnlocks(rows("linkedout", "money"), empty)
+    expect(plan.unlocked).toEqual(["linkedout", "money"])
+    expect(plan.reveals).toEqual(["linkedout", "money"])
+    expect(plan.fresh).toEqual(["linkedout"])
+    expect(plan.notes.map((note) => note.ref)).toEqual(["linkedout", "money"])
   })
 
   it("leaves boards to their own phase pop and line", () => {
@@ -61,16 +61,16 @@ describe("planning unlocks", () => {
   })
 
   it("plays only the loudest reveal of a big batch or a return", () => {
-    const batch = rows("editor", "terminal", "careerLog", "linkedout", "rosters")
+    const batch = rows("studio", "careerLog", "githug", "linkedout", "rosters")
     expect(batch.length).toBeGreaterThanOrEqual(REVEAL_BATCH_LIMIT)
-    expect(planUnlocks(batch, empty).reveals).toEqual(["editor"])
+    expect(planUnlocks(batch, empty).reveals).toEqual(["studio"])
     expect(planUnlocks(rows("rosters", "cat"), empty, true).reveals).toEqual(["cat"])
   })
 
   it("clears a picker's NEW items when the picker opens", () => {
-    expect(seenFresh(["themes", "theme:dracula", "terminal"], "themes")).toEqual(["terminal"])
-    const same = ["terminal"] as const
-    expect(seenFresh([...same], "rosters")).toEqual(["terminal"])
+    expect(seenFresh(["themes", "theme:dracula", "linkedout"], "themes")).toEqual(["linkedout"])
+    const same = ["linkedout"] as const
+    expect(seenFresh([...same], "rosters")).toEqual(["linkedout"])
   })
 })
 
@@ -80,21 +80,35 @@ describe("booting the timeline", () => {
   it("continues a current save, and plays only the loudest of what opened while away", () => {
     const save = {
       ...freshSave(now),
-      skills: { "1": 1, "8": 1 },
-      career: { ...freshCareer(now), unlocked: ["editor"], returns: 1 },
+      skills: { "1": 1, "15": 1 },
+      career: { ...freshCareer(now), unlocked: ["studio"], returns: 1 },
     }
     const career = bootCareer(save, now)
-    expect(career.unlocked).toEqual(["editor", "terminal", "cat"])
+    expect(career.unlocked).toEqual(["studio", "linkedout", "cat"])
     expect(career.reveals).toEqual(["cat"])
-    expect(career.awayUnlocks).toEqual(["Terminal", "Desk cat"])
+    expect(career.awayUnlocks).toEqual(["LinkedOut profile", "Desk cat"])
     expect(career.whatsNew).toBe(false)
+  })
+
+  it("a save that unlocked terminal boots without it", () => {
+    const save = {
+      ...freshSave(now),
+      skills: { "1": 1, "8": 1 },
+      career: { ...freshCareer(now), unlocked: ["editor", "terminal", "cat"], fresh: ["terminal"], returns: 1 },
+    }
+    const career = bootCareer(save, now)
+    expect(career.unlocked).toEqual(["cat", "studio"])
+    expect(career.fresh).toEqual([])
+    expect(career.unlocked).not.toContain("terminal")
+    expect(career.unlocked).not.toContain("editor")
+    expect(career.journal.entries.length).toBeGreaterThan(0)
   })
 
   it("gives a save from before the timeline everything it earned, the cat, and the what's-new card", () => {
     const save = { ...freshSave(now), skills: { "1": 1 }, gigs: [1, 2], jobs: [1], xpTotal: 50_000 }
     delete (save as { career?: unknown }).career
     const career = bootCareer(save, now)
-    expect(career.unlocked).toEqual(expect.arrayContaining(["editor", "money", "rosters", "metrics", "boardGigs", "boardJobs", "cat"]))
+    expect(career.unlocked).toEqual(expect.arrayContaining(["studio", "money", "rosters", "metrics", "boardGigs", "boardJobs", "cat"]))
     expect(career.whatsNew).toBe(true)
     expect(career.reveals).toEqual([])
     const types = career.journal.entries.map((entry) => `${entry.type}:${entry.ref}`)
