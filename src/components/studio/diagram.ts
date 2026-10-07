@@ -2,15 +2,24 @@ import { route } from "../../game/studio/route.ts"
 import type { ComponentKind, Design, DesignEdge, Scenario } from "../../game/studio/types.ts"
 
 /**
- * A design as both the whiteboard and the desk draw it. The save keeps a design without positions, so both lay it out
- * the same way: left to right by distance from The Users. Nothing here imports `@xyflow/react`, so the desk can.
+ * A design as both the whiteboard and the desk draw it. The save keeps a design without positions, so both put each node
+ * in the same cell: left to right by distance from The Users. Nothing here imports `@xyflow/react`, so the desk can.
  */
 
 export const GRID = 16
 export const COLUMN = 224
 export const ROW = 128
 
-export type Placed = { readonly id: string; readonly kind: ComponentKind; readonly replicas: number; readonly x: number; readonly y: number }
+/** `col` and `row` are the node's cell; `x` and `y` are its board position, one `COLUMN` by `ROW` per cell. */
+export type Placed = {
+  readonly id: string
+  readonly kind: ComponentKind
+  readonly replicas: number
+  readonly col: number
+  readonly row: number
+  readonly x: number
+  readonly y: number
+}
 
 export const snap = (v: number) => Math.round(v / GRID) * GRID
 
@@ -34,7 +43,7 @@ export function placeDesign(design: Design): { nodes: Placed[]; edges: DesignEdg
     const col = depth.get(n.id) ?? Math.max(0, ...depth.values()) + 1
     const row = rows.get(col) ?? 0
     rows.set(col, row + 1)
-    return { id: n.id, kind: n.kind, replicas: n.replicas, x: snap(32 + col * COLUMN), y: snap(64 + row * ROW) }
+    return { id: n.id, kind: n.kind, replicas: n.replicas, col, row, x: snap(32 + col * COLUMN), y: snap(64 + row * ROW) }
   })
   const ids = new Set(nodes.map((n) => n.id))
   return { nodes, edges: design.edges.filter((e) => ids.has(e.from) && ids.has(e.to)) }
