@@ -98,7 +98,7 @@ function nameOf(design: Design, id: string): string {
 export function readout(design: Design, result: RunResult, counts: RequestCounts, settled = true): ReadoutLine[] {
   const lines: ReadoutLine[] = [
     { key: "requests", text: `${count(counts.sent)} requests over ${counts.seconds} s, peak ${count(counts.peakRps)} rps` },
-    { key: "answered", text: `Answered ${count(counts.answered)}, failed ${count(counts.sent - counts.answered)}` },
+    { key: "answered", text: `Answered ${count(counts.answered)}, failed ${count(Math.max(0, counts.sent - counts.answered))}` },
   ]
   if (!settled) return lines
   const hot = result.hot[0]

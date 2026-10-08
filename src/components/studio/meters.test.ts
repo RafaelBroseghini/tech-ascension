@@ -48,6 +48,11 @@ describe("readout", () => {
     expect(lines.find((line) => line.key === "hottest")?.text).toMatch(/^Busiest: .+, \d+% busy$/)
   })
 
+  it("never prints a negative failed count from rounding error", () => {
+    const lines = readout(THREE_TIER.reference, result, { sent: 12_000, answered: 12_000 + 1e-9, peakRps: 200, seconds: 60 })
+    expect(lines[1].text).toBe("Answered 12,000, failed 0")
+  })
+
   it("holds back the node lines while a reveal still plays", () => {
     expect(readout(THREE_TIER.naive[0].design, result, total, false).map((line) => line.key)).toEqual(["requests", "answered"])
   })
