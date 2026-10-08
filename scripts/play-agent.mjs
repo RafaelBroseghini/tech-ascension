@@ -1,21 +1,16 @@
-import { spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { spawn, spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
-import { chromium } from "playwright-core"
 
 const APP = "http://127.0.0.1:43123"
-const CDP_PORT = 9222
-const CDP = `http://127.0.0.1:${CDP_PORT}`
+const SESSION = process.env.AGENT_BROWSER_SESSION ?? "tech-ascension"
+const ROOT = fileURLToPath(new URL("..", import.meta.url))
 
-function chromePath() {
-  const candidates = [
-    process.env.CHROME_PATH,
-    "/usr/local/bin/google-chrome",
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ].filter(Boolean)
-  return candidates.find((path) => existsSync(path))
+function browser(...args) {
+  return spawnSync("npx", ["agent-browser", ...args], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: { ...process.env, AGENT_BROWSER_SESSION: SESSION },
+  })
 }
 
 async function appIsUp() {
@@ -37,61 +32,52 @@ async function waitForApp() {
 
 const startedVite = !(await appIsUp())
 let vite
+const stopVite = () => {
+  if (vite?.pid) process.kill(-vite.pid, "SIGTERM")
+}
 if (startedVite) {
-  vite = spawn("npm", ["run", "dev"], {
-    stdio: "inherit",
-    cwd: fileURLToPath(new URL("..", import.meta.url)),
-  })
+  vite = spawn("npm", ["run", "dev"], { stdio: "inherit", cwd: ROOT, detached: true })
   await waitForApp()
 }
 
-const executablePath = chromePath()
-if (!executablePath) {
-  console.error("No Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.")
+const opened = browser("open", APP)
+if (opened.status !== 0) {
+  console.error(opened.stderr || opened.stdout)
+  console.error("agent-browser could not open the app. Run `npx agent-browser install` once, or set AGENT_BROWSER_EXECUTABLE_PATH.")
+  stopVite()
   process.exit(1)
 }
-
-const headed = process.env.PLAY_HEADED === "1"
-const browser = await chromium.launch({
-  executablePath,
-  headless: !headed,
-  args: [
-    `--remote-debugging-port=${CDP_PORT}`,
-    "--no-sandbox",
-    "--disable-dev-shm-usage",
-  ],
-})
-const page = await browser.newPage()
-await page.goto(APP, { waitUntil: "networkidle" })
-const probe = await page.evaluate(() => typeof window.__GAME__?.getState)
-if (probe !== "function") {
+const probe = browser("wait", "--fn", "typeof window.__GAME__?.getState === 'function'")
+if (probe.status !== 0) {
   console.error("window.__GAME__.getState is missing")
+  browser("close")
+  stopVite()
   process.exit(1)
 }
 
 console.log("")
 console.log("play:agent ready")
 console.log(`app ${APP}`)
-console.log(`cdp ${CDP}`)
+console.log(`session ${SESSION}`)
 console.log("")
-console.log("Connect from another process. close() on the CDP client leaves Chrome up:")
+console.log("Drive it from another process. Set the session first, so you reach this browser:")
 console.log(`
-import { chromium } from "playwright-core"
-const browser = await chromium.connectOverCDP("${CDP}")
-const page = browser.contexts()[0].pages()[0]
-await page.evaluate(() => window.__GAME__.getState())
-await page.evaluate(() => window.__GAME__.click())
-await browser.close()
+export AGENT_BROWSER_SESSION=${SESSION}
+npx agent-browser eval "window.__GAME__.getState()"
+npx agent-browser eval "window.__GAME__.click()"
+npx agent-browser snapshot -i
+npx agent-browser screenshot desk.png
 `)
+console.log("Set AGENT_BROWSER_HEADED=1 before starting to show the window.")
 
 let shuttingDown = false
-async function shutdown() {
+function shutdown() {
   if (shuttingDown) return
   shuttingDown = true
-  await browser.close().catch(() => {})
-  if (vite) vite.kill("SIGTERM")
+  browser("close")
+  stopVite()
   process.exit(0)
 }
-process.on("SIGINT", () => void shutdown())
-process.on("SIGTERM", () => void shutdown())
+process.on("SIGINT", shutdown)
+process.on("SIGTERM", shutdown)
 await new Promise(() => {})

@@ -18,7 +18,7 @@
 | Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
 | Keyframes and the `prefers-reduced-motion` kill switch | `src/styles/motion.css` |
-| Phase screenshots (A XP, B gig pop, C jobs, D capital) through `__GAME__` | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
+| Phase screenshots (A XP, B gig pop, C jobs, D capital) through `__GAME__` and agent-browser | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
 | Boost rates by era | `src/data/boosts.ts` |
 | 10x dev skills, `gold` in the code (buy amounts, hover click rate, offline cap): table, then rules | `src/data/gold.ts`, `src/game/gold.ts` |
 | Hover click interval | `src/game/autoClick.ts` |

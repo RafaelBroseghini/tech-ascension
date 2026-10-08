@@ -1,6 +1,6 @@
 # Agent and smoke play
 
-`window.__GAME__` is on the page in dev and in `vite preview`. The full method list, the smoke scenarios and the Playwright connect pattern are in [AGENTS.md](../AGENTS.md). Prefer the harness over DOM selectors.
+`window.__GAME__` is on the page in dev and in `vite preview`. The full method list, the smoke scenarios and the agent-browser usage are in [AGENTS.md](../AGENTS.md). Prefer the harness over DOM selectors.
 
 ```bash
 npm run smoke:play
@@ -12,4 +12,4 @@ That Vitest run resets and plays phase A (XP-only clicks), the A-to-B gate, a gi
 npm run play:agent
 ```
 
-That starts the dev server if needed and leaves Chrome open on port 9222 so another process can `page.evaluate(() => window.__GAME__.click())`. Automated play should stay in phases A to C (and a single mid check) unless you mean to push further.
+That starts the dev server if needed and opens the app in an agent-browser session (`tech-ascension`), so another process can run `AGENT_BROWSER_SESSION=tech-ascension npx agent-browser eval "window.__GAME__.click()"`. Browser usability checks (snapshots, screenshots, viewports) are in AGENTS.md under Browser checks. Automated play should stay in phases A to C (and a single mid check) unless you mean to push further.
