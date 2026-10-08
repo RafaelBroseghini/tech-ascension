@@ -6,9 +6,10 @@ Drive the game through `window.__GAME__`. Do not scrape buttons or guess DOM sel
 
 ## Rules
 
-- Prefer `__GAME__` over DOM selectors.
+- Prefer `__GAME__` over DOM selectors for game state and mechanics. Use snapshot refs only to check the UI itself (see Browser checks).
+- Browser work goes through `npx agent-browser`, not Playwright. Set your own session first: `export AGENT_BROWSER_SESSION=<task-name>`. The unnamed session is shared with every other agent.
 - Run `npm run smoke:play` first to prove mechanics. It must exit non-zero on any failed assert.
-- Free play: `npm run play:agent`, then drive the open page with `__GAME__`.
+- Free play: `npm run play:agent`, then drive the open page with `npx agent-browser eval` and `__GAME__`.
 - Do not grind past the mid era in automated runs unless the user asks. Mid is capital ids 1-5 (era flips to `upper` at id 6, "Acquire rival SaaS"). Phases A to C and a single mid check (id 3, "WhyCombinator batch investment") are enough.
 - `npm test` runs the unit tests (Vitest, node, `src/**/*.test.ts`). `npm run smoke:play` runs only `src/game/smoke.play.ts` (happy-dom). `npm run lint` is oxlint, `npm run build` is `tsc -b && vite build`.
 
@@ -151,29 +152,30 @@ Vitest + happy-dom, all through `__GAME__`:
 
 ## Free play (`npm run play:agent`)
 
-Starts Vite on http://127.0.0.1:43123 if it is not already up, opens Chrome with remote debugging on port 9222, and leaves that browser up until the process is stopped. Set `PLAY_HEADED=1` to show the window. Set `CHROME_PATH` if Chrome is not on the default path.
+Starts Vite on http://127.0.0.1:43123 if it is not already up, opens the app in agent-browser under the session `tech-ascension`, and stays up until the process is stopped (SIGINT closes the browser and Vite). Set `AGENT_BROWSER_HEADED=1` to show the window. Set `AGENT_BROWSER_EXECUTABLE_PATH` to use a specific Chrome. The first run on a machine needs `npx agent-browser install` (`--with-deps` on Linux).
 
-From another process:
+From another process, use the same session:
 
-```js
-import { chromium } from "playwright-core"
-
-const browser = await chromium.connectOverCDP("http://127.0.0.1:9222")
-const page = browser.contexts()[0].pages()[0]
-
-await page.evaluate(() => window.__GAME__.getState())
-await page.evaluate(() => {
-  const game = window.__GAME__
-  while (game.getState().money < 185) game.click()
-  game.buy(1)
-  game.buy(2)
-  game.buy(3)
-})
-
-await browser.close()
+```bash
+export AGENT_BROWSER_SESSION=tech-ascension
+npx agent-browser eval "window.__GAME__.getState()"
+npx agent-browser eval "(() => { const g = window.__GAME__; for (let i = 0; i < 90; i++) g.click(); return g.getState().xp })()"
+npx agent-browser close
 ```
 
-`browser.disconnect` is not a function in this Playwright. `close()` on a `connectOverCDP` browser drops this client and leaves Chrome running. The `play:agent` process owns Chrome until SIGINT or SIGTERM; that shutdown is the one that actually closes the window.
+`eval` takes one JavaScript expression and prints its value as JSON, awaiting a returned promise. Wrap statements in an IIFE, as above. Add `--json` for the full response envelope (the value sits under `data.result`).
+
+## Browser checks (usability and visuals)
+
+Without `play:agent`, start with `npm run dev`, then `npx agent-browser open http://127.0.0.1:43123`. Run `npx agent-browser skills get core --full` once for the full command reference (it matches the installed version).
+
+- Set state with `eval` and `__GAME__` (`reset()`, `keepProfile()` to clear the start card, `setXp`, `forceGig`, `forceInterview`, `setMoney`). Do not click through the grind.
+- Read the page with `snapshot -i` (interactive elements as `@e1` refs). Act with `click @e8`. Re-snapshot after the page changes; refs go stale. `find role tab click --name "Gigs"` works without a snapshot. A tab only exists once its board is unlocked, so unlock first.
+- Look with `screenshot <path>`; add `--annotate` to overlay the ref numbers. Set the size first with `set viewport 1280 800`. Read the PNG yourself before calling a visual change fine.
+- Check narrow layouts with `set viewport 390 844`. Below 640 px the desk drawing drops its prompt, and a "Desktop recommended" card covers the page until "Got it" is clicked, so dismiss it before judging the layout.
+- Read `console` and `errors` after a run; a clean game logs only the Vite connect lines and the React DevTools notice.
+- Stay in phases A to C plus the single mid check (see Rules). Always end with `close`.
+- `node scripts/capture-visuals.mjs <prefix> [outDir]` writes the standard phase A to D and mobile screenshots (default outDir is the OS temp dir).
 
 ## Example sequences
 
