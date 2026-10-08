@@ -96,7 +96,7 @@ describe("meters", () => {
     it("a queue target shows only where the interview has a queue", () => {
       const hello = interview("hello-server")
       const upload = interview("image-upload")
-      expect([...allTargets(hello)].sort()).toEqual(["availability", "budget", "faults", "p95", "success"])
+      expect([...allTargets(hello)].sort()).toEqual(["availability", "budget", "faults", "features", "p95", "success"])
       expect(allTargets(upload).has("lag")).toBe(true)
       const done = evaluate(hello.reference, hello.scenario)
       expect(meters(done, hello.targets, faultTally(done, hello.targets), allTargets(hello))[1].target).toBe("99% within 100 ms")

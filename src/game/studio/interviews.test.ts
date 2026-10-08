@@ -295,9 +295,9 @@ describe("questions, nudges, hints and offers", () => {
     expect(hint).not.toBeNull()
     const [noDb, enterprise] = HELLO.naive
     expect(kindOf(noDb.design)).toBe("noHire")
-    expect(records()[HELLO.id]).toMatchObject({ attempts: 1, asked: ["traffic", "speed", "uptime"], nudges: ["budget"], hints: [hint] })
+    expect(records()[HELLO.id]).toMatchObject({ attempts: 1, asked: ["traffic", "speed", "uptime", "features"], nudges: ["budget"], hints: [hint] })
     expect(kindOf(enterprise.design)).toBe("noHire")
-    expect(records()[HELLO.id]).toMatchObject({ attempts: 2, asked: ["traffic", "speed", "uptime", "budget"], nudges: ["budget"], hints: [hint] })
+    expect(records()[HELLO.id]).toMatchObject({ attempts: 2, asked: ["traffic", "speed", "uptime", "features", "budget"], nudges: ["budget"], hints: [hint] })
     expect(kindOf(HELLO.strongHire)).toBe("strongHire")
     expect(records()[HELLO.id]?.offer).toEqual({ band: "bottom", bonus: 0 })
   })

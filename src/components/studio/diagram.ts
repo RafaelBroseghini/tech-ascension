@@ -54,8 +54,7 @@ export type TrafficPath = { readonly nodes: readonly string[]; readonly share: n
 
 /** Every route the first phase's requests take, one per distinct node path, for the traffic dots. */
 export function leafPaths(design: Design, scenario: Scenario): TrafficPath[] {
-  const phase = scenario.phases[0]
-  const routing = route(design, { mix: phase.mix, cacheHitRate: scenario.cacheHitRate, edgeHitRate: scenario.edgeHitRate, fanout: scenario.fanout, bots: 0 })
+  const routing = route(design, { features: scenario.features, cacheHitRate: scenario.cacheHitRate, edgeHitRate: scenario.edgeHitRate, fanout: scenario.fanout, bots: 0 })
   const shares = new Map<string, TrafficPath>()
   for (const leaf of routing.leaves) {
     const key = leaf.nodes.join(">")

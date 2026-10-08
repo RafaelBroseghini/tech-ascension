@@ -437,7 +437,7 @@ describe("questions, nudges, hints and the offer letter", () => {
     expect($("[data-testid='studio-offer']")).toBeNull()
     expect($("[data-testid='studio-run-passbar']")).toBeNull()
     const asked = $$("[data-testid='studio-note'][data-asked='true']").map((note) => note.dataset.question)
-    expect(asked).toEqual(["traffic", "speed", "uptime"])
+    expect(asked).toEqual(["traffic", "features", "speed", "uptime"])
     // The budget was never asked and never missed: no target line for it, in the live panel or the report.
     expect(document.body.textContent).not.toContain("budget $500")
   })

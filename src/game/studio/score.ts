@@ -1,7 +1,7 @@
 import { COMPONENTS } from "../../data/studio/components.ts"
 import type { Design, RunResult, TargetName, Targets } from "./types.ts"
 
-export type Constraint = "money" | "performance" | "availability" | "faultTolerance"
+export type Constraint = "money" | "performance" | "availability" | "faultTolerance" | "correctness"
 
 export const CONSTRAINT_OF: Readonly<Record<TargetName, Constraint>> = {
   budget: "money",
@@ -10,12 +10,20 @@ export const CONSTRAINT_OF: Readonly<Record<TargetName, Constraint>> = {
   lag: "performance",
   availability: "availability",
   faults: "faultTolerance",
+  features: "correctness",
 }
 
 export interface Miss {
   readonly target: TargetName
   /** What the interviewer says about it. */
   readonly line: string
+}
+
+export interface FeatureTally {
+  readonly working: number
+  readonly total: number
+  /** Ids of the features under the success target, in scenario order. */
+  readonly broken: readonly string[]
 }
 
 export interface FaultTally {
@@ -50,11 +58,28 @@ function lineFor(target: TargetName, result: RunResult, targets: Targets, design
         ? `Your ${COMPONENTS[node.kind].name} is a single point of failure, and so is your confidence. ${minutes} minutes down a month.`
         : `${minutes} minutes down a month. The status page has a fan club.`
     }
+    case "features": {
+      const broken = result.features.filter((feature) => brokenFeatures(result, targets).includes(feature.id))
+      const first = broken[0]
+      const more = broken.length > 1 ? ` ${broken.length - 1} more broke with it.` : ""
+      return first
+        ? `"${first.story}" doesn't work: only ${pct(first.served)} of those requests came back right.${more} Users noticed before the dashboard did.`
+        : "A feature broke."
+    }
     case "faults": {
       const fell = result.phases.find((p) => p.fault !== null && p.successRate < targets.successRate)
       return `"${fell?.line ?? "A fault hit."}" Your design took that personally and served ${pct(result.faultSuccessRate)}.`
     }
   }
+}
+
+/** The features whose share answered correctly in the worst calm phase fell under the success target. */
+export const brokenFeatures = (result: RunResult, targets: Targets): string[] =>
+  result.features.filter((feature) => feature.served < targets.successRate).map((feature) => feature.id)
+
+export function featureTally(result: RunResult, targets: Targets): FeatureTally {
+  const broken = brokenFeatures(result, targets)
+  return { working: result.features.length - broken.length, total: result.features.length, broken }
 }
 
 /** How many of the phases that carry a fault kept the success target. */
@@ -72,6 +97,7 @@ export function verdict(result: RunResult, targets: Targets, design: Design): Ve
     lag: result.lagSeconds > targets.maxLagSeconds,
     availability: result.availability < targets.availability,
     faults: faults.survived < faults.total,
+    features: brokenFeatures(result, targets).length > 0,
   }
   const missed = (Object.keys(failed) as TargetName[])
     .filter((target) => failed[target])

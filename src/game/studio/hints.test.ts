@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import type { Interview } from "../../data/studio/challenges.ts"
 import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import type { Design } from "./types.ts"
 import { nextHint } from "./hints.ts"
@@ -13,12 +14,19 @@ describe("hints", () => {
   })
 
   it("asks for the second node of a kind the reference uses twice", () => {
-    const feed = interviewById("read-heavy-feed")!
-    const oneLb: Design = {
-      nodes: feed.reference.nodes.filter((n) => n.id !== "rlb"),
-      edges: [],
+    const twoApis: Interview = {
+      ...THREE_TIER,
+      reference: {
+        nodes: [
+          { id: "users", kind: "users", replicas: 1 },
+          { id: "front", kind: "api", replicas: 1 },
+          { id: "back", kind: "api", replicas: 1 },
+        ],
+        edges: [],
+      },
     }
-    expect(nextHint(feed, oneLb)).toBe("Add another load balancer (Round Robin Hood).")
+    const oneApi: Design = { nodes: twoApis.reference.nodes.filter((n) => n.id !== "back"), edges: [] }
+    expect(nextHint(twoApis, oneApi)).toBe("Add another API server (Hamster Wheel API).")
   })
 
   it("gives a wire hint once every kind is on the board", () => {

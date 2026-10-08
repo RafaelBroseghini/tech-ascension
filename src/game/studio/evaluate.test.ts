@@ -9,16 +9,19 @@ import {
   THREE_TIER,
 } from "../../data/studio/fixtures.ts"
 import { evaluate } from "./evaluate.ts"
-import type { ComponentKind, Design, Phase, Scenario } from "./types.ts"
+import { feature } from "../../data/studio/fixtures.ts"
+import type { ComponentKind, Design, Feature, Phase, Scenario } from "./types.ts"
 
 const design = (nodes: [string, ComponentKind, number?][], edges: [string, string][]): Design => ({
   nodes: nodes.map(([id, kind, replicas = 1]) => ({ id, kind, replicas })),
   edges: edges.map(([from, to]) => ({ from, to })),
 })
 
-const scenario = (...phases: [Phase, ...Phase[]]): Scenario => ({ phases, cacheHitRate: 0.9, edgeHitRate: 0, fanout: 1 })
+const READS: [Feature, ...Feature[]] = [feature("read", "read", 1)]
 
-const READS_4000: Phase = { name: "reads", seconds: 60, rps: 4000, mix: { read: 1 } }
+const scenario = (...phases: [Phase, ...Phase[]]): Scenario => ({ phases, features: READS, cacheHitRate: 0.9, edgeHitRate: 0, fanout: 1 })
+
+const READS_4000: Phase = { name: "reads", seconds: 60, rps: 4000 }
 
 describe("evaluate", () => {
   it("a single SQL node at 4,000 reads per second is the hot node and fails success rate", () => {
@@ -34,7 +37,7 @@ describe("evaluate", () => {
     const result = evaluate(
       design(
         [["users", "users"], ["lb", "lb"], ["api", "api", 20], ["cache", "cache"], ["db", "sql"]],
-        [["users", "lb"], ["lb", "api"], ["api", "cache"], ["cache", "db"]],
+        [["users", "lb"], ["lb", "api"], ["api", "cache"], ["api", "db"]],
       ),
       scenario(READS_4000),
     )
@@ -51,9 +54,12 @@ describe("evaluate", () => {
   })
 
   it("a failed replica phase drops capacity", () => {
-    const calm: Phase = { name: "calm", seconds: 60, rps: 800, mix: { read: 1 } }
+    const calm: Phase = { name: "calm", seconds: 60, rps: 800 }
     const result = evaluate(
-      design([["users", "users"], ["lb", "lb"], ["api", "api", 2], ["db", "replica", 2]], [["users", "lb"], ["lb", "api"], ["api", "db"]]),
+      design(
+        [["users", "users"], ["lb", "lb"], ["api", "api", 2], ["db", "sql"], ["copy", "replica", 2]],
+        [["users", "lb"], ["lb", "api"], ["api", "copy"], ["api", "db"], ["db", "copy"]],
+      ),
       scenario(calm, { ...calm, name: "reboot", fault: { kind: "killReplica", target: "api" } }),
     )
     expect(result.phases[0].successRate).toBe(1)
@@ -97,16 +103,31 @@ describe("evaluate", () => {
     expect(result.availability).toBe(0)
   })
 
-  it("a cycle in the edges is named and the run still finishes", () => {
-    const result = evaluate(
-      design(
-        [["users", "users"], ["lb", "lb"], ["api", "api", 2], ["db", "sql"]],
-        [["users", "lb"], ["lb", "api"], ["api", "lb"], ["api", "db"]],
-      ),
-      THREE_TIER.scenario,
+  it("a wire the table forbids changes nothing", () => {
+    const legal = design(
+      [["users", "users"], ["lb", "lb"], ["api", "api", 2], ["db", "sql"]],
+      [["users", "lb"], ["lb", "api"], ["api", "db"]],
     )
-    expect(result.cycles).toEqual([["lb", "api", "lb"]])
-    expect(result.phases[0].successRate).toBe(1)
+    const sneaky = design(
+      [["users", "users"], ["lb", "lb"], ["api", "api", 2], ["db", "sql"]],
+      [["users", "lb"], ["lb", "api"], ["api", "db"], ["users", "db"], ["api", "lb"]],
+    )
+    expect(evaluate(sneaky, THREE_TIER.scenario)).toEqual(evaluate(legal, THREE_TIER.scenario))
+  })
+
+  it("a feature that cannot be served is named and the others still count", () => {
+    const writesOnly = design([["users", "users"], ["api", "api"], ["db", "sql"]], [["users", "api"], ["api", "db"]])
+    const result = evaluate(writesOnly, {
+      ...scenario({ name: "calm", seconds: 60, rps: 100 }),
+      features: [feature("read", "read", 0.5, { consistency: "strong" }), feature("write", "write", 0.5, { durable: true })],
+    })
+    expect(result.features.map((f) => [f.id, f.served])).toEqual([["read", 1], ["write", 1]])
+    const copyOnly = design([["users", "users"], ["api", "api"], ["copy", "replica"], ["db", "sql"]], [["users", "api"], ["api", "copy"], ["api", "db"]])
+    const lost = evaluate(copyOnly, {
+      ...scenario({ name: "calm", seconds: 60, rps: 100 }),
+      features: [feature("read", "read", 1, { consistency: "strong" })],
+    })
+    expect(lost.features[0].served).toBe(1)
   })
 
   it("availability rises with redundancy, and so does the bill", () => {

@@ -15,6 +15,7 @@ const NUDGE_TOPIC: Readonly<Record<TargetName, string>> = {
   lag: "the queue",
   availability: "uptime",
   faults: "things breaking",
+  features: "broken features",
 }
 
 /**
