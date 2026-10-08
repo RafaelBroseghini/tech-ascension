@@ -135,6 +135,14 @@
   color: var(--ide-green);
 }
 
+.studio-empty {
+  grid-column: 1 / -1;
+  align-self: start;
+  margin: 0;
+  padding: var(--sp-6) var(--sp-4);
+  color: var(--ide-overlay);
+}
+
 /* Board */
 
 .studio-main {

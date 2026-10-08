@@ -13,6 +13,11 @@ import { useGame } from "../../game/store.ts"
 /** Where an interview stands for this career. Only `open` takes a submission. */
 export type InterviewStatus = "open" | "passed" | "hired" | "board" | "xp"
 
+/** A status the player can see: the rest would name an interview they have not reached. */
+export type ReachableStatus = Extract<InterviewStatus, "open" | "passed" | "hired">
+
+export const reachable = (status: InterviewStatus): status is ReachableStatus => status === "open" || status === "passed" || status === "hired"
+
 export const jobOf = (interview: Interview) => JOB_TIERS.find((job) => job.id === interview.jobId)
 
 export function interviewStatus(gates: JobGates, interview: Interview): InterviewStatus {
@@ -35,28 +40,22 @@ export function interviewStatus(gates: JobGates, interview: Interview): Intervie
 export const useStatuses = (): InterviewStatus[] =>
   useGame(useShallow((s) => INTERVIEWS.map((interview) => interviewStatus(s, interview))))
 
-export function statusLine(status: InterviewStatus, interview: Interview, log: InterviewLog): string {
+export function statusLine(status: ReachableStatus, interview: Interview, log: InterviewLog): string {
   const record = log[interview.id]
   switch (status) {
     case "hired":
       return "Hired"
     case "passed":
       return record?.verdict === "strongHire" ? "Strong hire" : "Passed"
-    case "board":
-      return "Opens with the Job Board"
-    case "xp":
-      return `Needs ${(jobOf(interview)?.xpReq ?? 0).toLocaleString("en-US")} lifetime XP`
     case "open":
       return record ? `No hire x${record.attempts}` : "Ready to interview"
   }
 }
 
 
-/** The interview the whiteboard opens on by default: the first one waiting for a submission, else the first not passed. */
+/** The first interview waiting for a submission, or null. A locked interview is never named. */
 export function nextInterview(statuses: readonly InterviewStatus[]): Interview | null {
-  const open = statuses.indexOf("open")
-  const ahead = open >= 0 ? open : statuses.findIndex((status) => status !== "passed" && status !== "hired")
-  return INTERVIEWS[ahead] ?? null
+  return INTERVIEWS[statuses.indexOf("open")] ?? null
 }
 
 /** A passing design on record, worth drawing: more than The Users alone. */

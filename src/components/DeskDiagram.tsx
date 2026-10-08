@@ -1,6 +1,5 @@
 import { Presentation } from "lucide-react"
 import { lazy, memo, Suspense } from "react"
-import { INTERVIEWS } from "../data/studio/challenges.ts"
 import type { Interview } from "../data/studio/challenges.ts"
 import { useGame } from "../game/store.ts"
 import { interviewById } from "../game/studio/interviews.ts"
@@ -45,5 +44,5 @@ export const DeskDiagram = memo(function DeskDiagram() {
   }
   const next = nextInterview(statuses)
   if (!next) return null
-  return <NextPrompt interview={next} status={statusLine(statuses[INTERVIEWS.indexOf(next)], next, log)} />
+  return <NextPrompt interview={next} status={statusLine("open", next, log)} />
 })

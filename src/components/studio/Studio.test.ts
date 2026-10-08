@@ -96,6 +96,35 @@ describe("whiteboard", () => {
     expect($("[data-testid='studio-verdict']")?.dataset.verdict).toBe("hire")
   })
 
+  it("lists only the interviews the career has reached", async () => {
+    careerAt(40_000, [], [1, 2, 3, 4, 5, 6])
+    await open(THREE_TIER.id)
+    expect($$("[data-testid='studio-interview']").map((row) => row.dataset.interview)).toEqual(["hello-server"])
+    expect($$(".studio-list-select option").map((option) => option.getAttribute("value"))).toEqual(["hello-server"])
+    // The request for a locked interview falls back to the one the career can take.
+    expect($("[data-testid='studio']")?.dataset.interview).toBe("hello-server")
+    const text = document.body.textContent ?? ""
+    for (const row of INTERVIEWS.filter((r) => r.id !== "hello-server")) expect(text).not.toContain(row.name)
+  })
+
+  it("before the Job Board the whiteboard names no interview", async () => {
+    careerAt(0, [], [])
+    await open(THREE_TIER.id)
+    expect($("[data-testid='studio-empty']")?.textContent).toBe("Your next interview opens with the Job Board.")
+    expect($$("[data-testid='studio-interview']")).toEqual([])
+    expect($("[data-testid='studio-submit']")).toBeNull()
+    expect($("[data-testid='studio']")?.dataset.interview).toBeUndefined()
+    const text = document.body.textContent ?? ""
+    for (const row of INTERVIEWS) expect(text).not.toContain(row.name)
+  })
+
+  it("keeps passed interviews listed for replay", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().forceInterview(THREE_TIER.id)
+    await open(THREE_TIER.id)
+    expect($$("[data-testid='studio-interview']").map((row) => row.dataset.status)).toEqual(["hired", "passed"])
+  })
+
   it("the palette lists only unlocked kinds", async () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)

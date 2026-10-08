@@ -41,7 +41,8 @@ afterEach(() => {
 })
 
 describe("desk diagram", () => {
-  it("draws the next prompt before any pass", () => {
+  it("draws the next prompt once an interview is open", () => {
+    useGame.setState({ xpTotal: 40_000, gigs: [1, 2, 3, 4, 5, 6] })
     mount()
     const card = $("[data-testid='desk-prompt']")
     expect(card?.dataset.interview).toBe("hello-server")
