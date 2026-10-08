@@ -10,7 +10,8 @@ import type { Offer } from "../../game/studio/interviews.ts"
 import { starsOf } from "../../game/studio/score.ts"
 import type { Stars, Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
-import { edgeId, laneX, leafPaths, placeDesign, ROW, snap } from "./diagram.ts"
+import { cellAt, cellOf, edgeId, freeCell, leafPaths, placeDesign, positionOf, sameCell } from "./diagram.ts"
+import type { Cell } from "./diagram.ts"
 import { trayLimit } from "./kinds.ts"
 import type { TrafficPath } from "./diagram.ts"
 
@@ -90,7 +91,7 @@ const nextEdit = () => ++version
 const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYPosition, locked = false): BoardNode => ({
   id,
   type: "component",
-  position: { x: laneX(kind), y: snap(position.y) },
+  position: positionOf(cellAt(position.x, position.y)),
   data: locked ? { kind, replicas, locked } : { kind, replicas },
   deletable: kind !== "users" && !locked,
 })
@@ -142,11 +143,12 @@ export function draftOf(s: BoardState): Design {
 export function onNodesChange(changes: NodeChange<BoardNode>[]): void {
   const edit = changes.some((c) => c.type === "remove" || c.type === "add" || c.type === "replace")
   useBoard.setState((s) => {
-    // A piece slides up and down its lane; it never leaves it.
-    const kept = changes.map((c) => {
-      if (c.type !== "position" || !c.position) return c
-      const kind = s.nodes.find((n) => n.id === c.id)?.data.kind
-      return kind ? { ...c, position: { x: laneX(kind), y: c.position.y } } : c
+    // A piece jumps from cell to cell and never lands on another piece.
+    const kept = changes.flatMap((c) => {
+      if (c.type !== "position" || !c.position) return [c]
+      const cell = cellAt(c.position.x, c.position.y)
+      const blocked = s.nodes.some((n) => n.id !== c.id && sameCell(cellOf(n.position), cell))
+      return blocked ? [] : [{ ...c, position: positionOf(cell) }]
     })
     return { nodes: applyNodeChanges(kept, s.nodes), edits: edit ? nextEdit() : s.edits, notice: edit ? null : s.notice }
   })
@@ -194,19 +196,18 @@ export function piecesLeft(s: Pick<BoardState, "interviewId" | "nodes">, kind: C
   return trayLimit(interview, kind) - s.nodes.filter((n) => n.data.kind === kind).length
 }
 
-/** Drops a piece into its lane at the first free spot at or below `at`. Returns the new id, or null when the tray has none left. */
+/** Drops a piece into the free cell nearest `at`, or the column of its role when `at` is taken. Null when the tray has none left or the grid is full. */
 export function addNode(kind: ComponentKind, at: XYPosition): string | null {
   const state = useBoard.getState()
   if (piecesLeft(state, kind) <= 0) return null
   const { nodes } = state
+  const cell = freeCell(cellAt(at.x, at.y), nodes.map((n) => cellOf(n.position)) as Cell[])
+  if (!cell) return null
   let n = 1
   while (nodes.some((node) => node.id === `${kind}-${n}`)) n++
   const id = `${kind}-${n}`
-  const x = laneX(kind)
-  let y = snap(at.y)
-  while (nodes.some((node) => node.position.x === x && Math.abs(node.position.y - y) < ROW * 0.6)) y += ROW
   useBoard.setState((s) => ({
-    nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, { x, y }), selected: true }],
+    nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, positionOf(cell)), selected: true }],
     edits: nextEdit(),
     notice: null,
   }))

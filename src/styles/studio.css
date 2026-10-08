@@ -204,26 +204,14 @@
   outline-offset: 3px;
 }
 
-.studio-lane {
+.studio-cell {
   position: absolute;
   top: 0;
   left: 0;
-  height: 2400px;
-  border-left: 1px dashed var(--ide-surface);
-  border-right: 1px dashed var(--ide-surface);
-  background: color-mix(in srgb, var(--ide-surface) 14%, transparent);
+  box-sizing: border-box;
+  border: 1px dashed var(--ide-surface);
+  background: color-mix(in srgb, var(--ide-surface) 10%, transparent);
   pointer-events: none;
-}
-.studio-lane span {
-  position: absolute;
-  top: 408px;
-  left: 0;
-  right: 0;
-  color: var(--ide-overlay);
-  font-size: var(--fs-2xs);
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-transform: uppercase;
 }
 .studio-toolbar {
   margin: var(--sp-2);
@@ -279,16 +267,20 @@
 
 .studio-node {
   position: relative;
-  display: grid;
-  gap: var(--sp-1);
-  width: 176px;
-  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 96px;
+  height: 96px;
   box-sizing: border-box;
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-1);
   border: 1px solid var(--ide-overlay);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ide-mantle);
   box-shadow: 2px 2px 0 var(--ide-crust);
+  text-align: center;
 }
 .react-flow__node:hover .studio-node,
 .react-flow__node:has(.studio-handle.connectingto) .studio-node {
@@ -308,22 +300,20 @@
   border-color: var(--ide-red);
   background: color-mix(in srgb, var(--ide-red) 18%, var(--ide-mantle));
 }
-.studio-node.is-spof {
-  outline: 2px dashed var(--ide-peach);
-  outline-offset: 4px;
-}
 .studio-node-head {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
 }
 .studio-node-name {
-  flex: 1;
-  min-width: 0;
+  font-size: var(--fs-2xs);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .studio-node-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
   display: grid;
   place-items: center;
   width: 20px;
@@ -374,6 +364,11 @@
   text-align: center;
 }
 .studio-spof {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
   padding: 1px 6px;
   border-radius: 4px;
   background: var(--ide-peach);
@@ -383,9 +378,7 @@
   letter-spacing: 0.06em;
 }
 .studio-node-note {
-  color: var(--ide-text);
-  font-size: var(--fs-2xs);
-  line-height: 1.3;
+  color: var(--ide-sky);
 }
 .studio-node-plan {
   color: var(--ide-text);

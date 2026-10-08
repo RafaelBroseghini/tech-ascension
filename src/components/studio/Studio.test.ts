@@ -308,23 +308,26 @@ describe("whiteboard", () => {
     expect($$("[data-testid='studio-node'][data-kind='api']")).toHaveLength(1)
   })
 
-  it("a piece snaps into its lane and slides only up and down it", async () => {
+  it("pieces sit one to a cell of a square grid, jump from cell to cell, and never land on each other", async () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)
+    expect($$("[data-testid='studio-cell']")).toHaveLength(36)
     await click($("[data-testid='studio-tile'][data-kind='sql']"))
     await click($("[data-testid='studio-tile'][data-kind='api']"))
-    const x = (kind: string) => useBoard.getState().nodes.find((n) => n.data.kind === kind)?.position.x
-    expect(x("users")).toBeLessThan(x("api")!)
-    expect(x("api")).toBeLessThan(x("sql")!)
-    const lanes = $$("[data-testid='studio-lane']").map((lane) => lane.dataset.lane)
-    expect(lanes).toEqual(["users", "edge", "routing", "compute", "async", "data"])
+    const { cellOf } = await import("./diagram.ts")
+    const { onNodesChange } = await import("./boardStore.ts")
+    const cells = () => useBoard.getState().nodes.map((n) => JSON.stringify(cellOf(n.position)))
+    expect(new Set(cells()).size).toBe(3)
     const api = useBoard.getState().nodes.find((n) => n.data.kind === "api")!
     await act(async () => {
-      const { onNodesChange } = await import("./boardStore.ts")
-      onNodesChange([{ id: api.id, type: "position", position: { x: 9999, y: 320 } }])
+      onNodesChange([{ id: api.id, type: "position", position: { x: 3 * 120 + 30, y: 2 * 120 + 31 } }])
     })
-    const moved = useBoard.getState().nodes.find((n) => n.id === api.id)!
-    expect(moved.position).toEqual({ x: api.position.x, y: 320 })
+    expect(cellOf(useBoard.getState().nodes.find((n) => n.id === api.id)!.position)).toEqual({ col: 3, row: 2 })
+    const users = useBoard.getState().nodes.find((n) => n.data.kind === "users")!
+    await act(async () => {
+      onNodesChange([{ id: api.id, type: "position", position: users.position }])
+    })
+    expect(cellOf(useBoard.getState().nodes.find((n) => n.id === api.id)!.position)).toEqual({ col: 3, row: 2 })
   })
 
   it("a wire the table forbids is refused with one line saying why", async () => {

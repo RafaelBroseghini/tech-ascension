@@ -4,40 +4,52 @@ import { route } from "../../game/studio/route.ts"
 import type { ComponentKind, Design, DesignEdge, Scenario } from "../../game/studio/types.ts"
 
 /**
- * A design as the whiteboard draws it. The save keeps a design without positions, so each node goes in its lane: left to
- * right from The Users to the data.
+ * A design as the whiteboard draws it: an N by N grid of square cells, one piece per cell. The save keeps a design
+ * without positions, so each node starts in the column of its role (The Users at the left, the data at the right) and
+ * the first free row down it.
  */
 
+/** Cells on a side of the grid. */
+export const N = 6
+/** One cell, in board pixels; a piece is a `TILE` square centred in its cell. */
+export const CELL = 120
+export const TILE = 96
 export const GRID = 16
-export const COLUMN = 208
-export const ROW = 128
 
-/** `col` and `row` are the node's cell; `x` and `y` are its board position, one `COLUMN` by `ROW` per cell. */
-type Placed = {
-  readonly id: string
-  readonly kind: ComponentKind
-  readonly replicas: number
-  readonly col: number
-  readonly row: number
-  readonly x: number
-  readonly y: number
+export type Cell = { readonly col: number; readonly row: number }
+
+const clamp = (v: number) => Math.max(0, Math.min(N - 1, v))
+
+/** The cell a board position (a piece's top-left corner) falls in. */
+export const cellAt = (x: number, y: number): Cell => ({ col: clamp(Math.round(x / CELL)), row: clamp(Math.round(y / CELL)) })
+
+/** The board position of a piece in a cell. */
+export const positionOf = (cell: Cell) => ({ x: cell.col * CELL + (CELL - TILE) / 2, y: cell.row * CELL + (CELL - TILE) / 2 })
+
+/** The cell a piece sits in, from its board position. */
+export const cellOf = (position: { x: number; y: number }): Cell => cellAt(position.x - (CELL - TILE) / 2, position.y - (CELL - TILE) / 2)
+
+export const sameCell = (a: Cell, b: Cell) => a.col === b.col && a.row === b.row
+
+/** The free cell nearest `want`, scanning its column first, then outward by distance. Null when the grid is full. */
+export function freeCell(want: Cell, taken: readonly Cell[]): Cell | null {
+  const all: Cell[] = []
+  for (let col = 0; col < N; col++) for (let row = 0; row < N; row++) all.push({ col, row })
+  const free = all.filter((cell) => !taken.some((t) => sameCell(t, cell)))
+  const dist = (c: Cell) => Math.abs(c.col - want.col) * 2 + Math.abs(c.row - want.row)
+  return free.sort((a, b) => dist(a) - dist(b))[0] ?? null
 }
 
-export const snap = (v: number) => Math.round(v / GRID) * GRID
+type Placed = { readonly id: string; readonly kind: ComponentKind; readonly replicas: number; readonly x: number; readonly y: number }
 
 export const edgeId = (from: string, to: string) => `${from}>${to}`
 
-/** The x of a lane's column: one `COLUMN` per lane, so a piece's lane is readable from where it sits. */
-export const laneX = (kind: ComponentKind): number => snap(32 + laneIndex(kind) * COLUMN)
-
-/** Each node's spot on the board: its lane's column, and the first free row down it in the design's order. */
 export function placeDesign(design: Design): { nodes: Placed[]; edges: DesignEdge[] } {
-  const rows = new Map<number, number>()
+  const taken: Cell[] = []
   const nodes = design.nodes.map((n) => {
-    const col = laneIndex(n.kind)
-    const row = rows.get(col) ?? 0
-    rows.set(col, row + 1)
-    return { id: n.id, kind: n.kind, replicas: n.replicas, col, row, x: laneX(n.kind), y: snap(64 + row * ROW) }
+    const cell = freeCell({ col: laneIndex(n.kind), row: 1 }, taken) ?? { col: 0, row: 0 }
+    taken.push(cell)
+    return { id: n.id, kind: n.kind, replicas: n.replicas, ...positionOf(cell) }
   })
   const ids = new Set(nodes.map((n) => n.id))
   return { nodes, edges: design.edges.filter((e) => ids.has(e.from) && ids.has(e.to)) }
