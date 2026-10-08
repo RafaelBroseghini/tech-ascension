@@ -442,12 +442,8 @@
   margin: 0 0 var(--sp-2);
   line-height: 1.5;
 }
-.studio-bill {
-  margin: 0 0 var(--sp-2);
-  color: var(--ide-green);
-}
-.studio-bill.is-over {
-  color: var(--ide-red);
+.studio-brief .studio-meters {
+  margin-bottom: var(--sp-3);
 }
 .studio-warn {
   margin: 0 0 var(--sp-2);
@@ -474,6 +470,16 @@
   color: var(--ide-overlay);
 }
 
+.studio-run.is-stale {
+  opacity: 0.55;
+}
+.studio-run-label {
+  margin: 0 0 var(--sp-2);
+  color: var(--ide-overlay);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  font-size: var(--fs-2xs);
+}
 .studio-log {
   display: grid;
   gap: var(--sp-1);

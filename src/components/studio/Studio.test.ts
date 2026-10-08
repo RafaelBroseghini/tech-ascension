@@ -125,6 +125,32 @@ describe("whiteboard", () => {
     expect($$("[data-testid='studio-interview']").map((row) => row.dataset.status)).toEqual(["hired", "passed"])
   })
 
+  it("every meter moves with an edit, and none says pass or fail before a Submit", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+    const read = () => $$("[data-testid='studio-live-meter']").map((meter) => meter.textContent)
+    const before = read()
+    expect($$("[data-testid='studio-live-meter']").map((meter) => meter.dataset.meter)).toEqual(["Money", "Performance", "Availability", "Fault tolerance"])
+    await click($("[data-testid='studio-tile'][data-kind='cache']"))
+    const after = read()
+    expect(after[0]).not.toBe(before[0])
+    expect(document.body.querySelector(".is-fail, .is-over")).toBeNull()
+    await click($("[data-testid='studio-tile'][data-kind='lb']"))
+    expect(read()[0]).not.toBe(after[0])
+    expect($("[data-testid='studio-run']")).toBeNull()
+  })
+
+  it("an edit after a Submit labels the report as the last submission", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+    await submitAndSkip()
+    expect($("[data-testid='studio-run']")?.dataset.stale).toBe("false")
+    expect($(".studio-run-label")).toBeNull()
+    await click($("[data-testid='studio-tile'][data-kind='cache']"))
+    expect($("[data-testid='studio-run']")?.dataset.stale).toBe("true")
+    expect($(".studio-run-label")?.textContent).toBe("Last submission")
+  })
+
   it("the palette lists only unlocked kinds", async () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)

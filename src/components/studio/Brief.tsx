@@ -1,13 +1,16 @@
 import { memo, useMemo } from "react"
 import type { Interview } from "../../data/studio/challenges.ts"
-import { costPerMonth, evaluate } from "../../game/studio/evaluate.ts"
+import { evaluate } from "../../game/studio/evaluate.ts"
 import { noHirePenalty } from "../../game/studio/interviews.ts"
+import { faultTally } from "../../game/studio/score.ts"
 import { draftOf, useBoard } from "./boardStore.ts"
-import { money, requestList } from "./kinds.ts"
+import { requestList } from "./kinds.ts"
+import { MeterList } from "./MeterList.tsx"
+import { meters } from "./meters.ts"
 import { jobOf } from "./status.ts"
 import type { InterviewStatus } from "./status.ts"
 
-/** The interviewer's prompt, the live bill, what the board leaves unrouted, and the Submit button. */
+/** The interviewer's prompt, the live meters, what the board leaves unrouted, and the Submit button. */
 export const Brief = memo(function Brief({
   interview,
   status,
@@ -19,11 +22,9 @@ export const Brief = memo(function Brief({
 }) {
   const draft = useBoard(draftOf)
   const revealing = useBoard((s) => Boolean(s.run?.revealing))
-  const { unrouted, cost } = useMemo(() => {
-    const result = evaluate(draft, interview.scenario)
-    return { unrouted: result.unrouted, cost: costPerMonth(draft) }
-  }, [draft, interview])
-  const budget = interview.targets.budgetPerMonth
+  const result = useMemo(() => evaluate(draft, interview.scenario), [draft, interview])
+  const live = useMemo(() => meters(result, interview.targets, faultTally(result, interview.targets)), [result, interview])
+  const { unrouted } = result
   const penalty = noHirePenalty(interview)
 
   return (
@@ -33,9 +34,7 @@ export const Brief = memo(function Brief({
       <p className="studio-brief-text" data-testid="studio-brief">
         {interview.brief}
       </p>
-      <p className={cost > budget ? "studio-bill is-over" : "studio-bill"} data-testid="studio-bill">
-        {`Bill so far ${money(cost)} of ${money(budget)} a month`}
-      </p>
+      <MeterList meters={live} testid="studio-live-meter" />
       {unrouted.length > 0 ? (
         <p className="studio-warn" role="status" data-testid="studio-unrouted" data-unrouted={unrouted.join(",")}>
           {`Unrouted: nothing on this board answers ${requestList(unrouted)}. They will fail.`}
