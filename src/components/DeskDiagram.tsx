@@ -14,7 +14,7 @@ function NextPrompt({ interview, status }: { interview: Interview; status: strin
       </p>
       <div className="desk-prompt-card">
         <p className="desk-prompt-kicker">For {jobOf(interview)?.name ?? "a job"}</p>
-        <p className="desk-prompt-brief">{interview.brief}</p>
+        <p className="desk-prompt-brief">{interview.opener}</p>
         <p className="desk-prompt-foot">{status}. The whiteboard button on the left opens it.</p>
       </div>
     </div>

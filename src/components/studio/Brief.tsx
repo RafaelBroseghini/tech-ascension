@@ -54,7 +54,7 @@ export const Brief = memo(function Brief({
       </p>
       <h2 id="studio-brief-title">{interview.name}</h2>
       <p className="studio-brief-text" data-testid="studio-brief">
-        {interview.brief}
+        {interview.opener}
       </p>
       <MeterList meters={live} failed={missed} testid="studio-live-meter" />
       <Readout lines={lines} testid="studio-live-readout" />

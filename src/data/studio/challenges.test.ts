@@ -4,6 +4,7 @@ import { CONSTRAINT_OF, verdict, type Constraint } from "../../game/studio/score
 import type { ComponentKind, Design } from "../../game/studio/types.ts"
 import { INTERVIEWS, type Interview } from "./challenges.ts"
 import { COMPONENTS } from "./components.ts"
+import { QUESTION_FOR, questionById, questionsFor, revealedTargets } from "./questions.ts"
 import { momentXp, UNLOCKS, unlockedBeforeJob, unlockedIn } from "./unlocks.ts"
 
 const judge = (interview: Interview, design: Design) =>
@@ -97,24 +98,76 @@ describe("interview catalog", () => {
     targets.slice(1).forEach((target, i) => expect(target).toBeGreaterThanOrEqual(targets[i]))
   })
 
-  it("each brief names its load and every target in numbers", () => {
-    for (const { name, brief, targets, scenario } of INTERVIEWS) {
+  it("each pass bar names every target in numbers", () => {
+    for (const { name, passBar, targets } of INTERVIEWS) {
       const numbers = [
-        `${scenario.phases[0].rps.toLocaleString("en-US")} `,
         `${Number((targets.successRate * 100).toFixed(2))}% of requests`,
         `${targets.p95Ms} ms`,
         `${Number((targets.availability * 100).toFixed(2))}% uptime`,
         `$${targets.budgetPerMonth.toLocaleString("en-US")} a month`,
       ]
-      expect([name, numbers.filter((n) => !brief.includes(n))]).toEqual([name, []])
+      expect([name, numbers.filter((n) => !passBar.includes(n))]).toEqual([name, []])
     }
   })
 
   it("names the queue's lag target only where the reference has a queue", () => {
-    for (const { name, brief, reference } of INTERVIEWS) {
+    for (const { name, passBar, reference } of INTERVIEWS) {
       const queued = reference.nodes.some((n) => n.kind === "queue")
-      expect([name, brief.includes("seconds behind")]).toEqual([name, queued])
+      expect([name, passBar.includes("seconds behind")]).toEqual([name, queued])
     }
+  })
+
+  it("every opener is vague: it carries no digits and no component name", () => {
+    expect(INTERVIEWS[0].opener).toBe("Any questions before you start?")
+    for (const { name, opener } of INTERVIEWS) {
+      expect([name, /\d/.test(opener)]).toEqual([name, false])
+      for (const component of Object.values(COMPONENTS)) expect([name, opener.toLowerCase().includes(component.name.toLowerCase())]).toEqual([name, false])
+    }
+  })
+
+  it("every distinct target a naive design fails has a nudge, and a nudge never names a component", () => {
+    for (const { name, naive, nudges } of INTERVIEWS) {
+      const fails = [...new Set(naive.map((n) => n.fails))].sort()
+      expect([name, Object.keys(nudges).sort()]).toEqual([name, fails])
+      for (const line of Object.values(nudges)) {
+        for (const component of Object.values(COMPONENTS)) {
+          expect([name, line, line.toLowerCase().includes(component.name.toLowerCase())]).toEqual([name, line, false])
+        }
+      }
+    }
+  })
+})
+
+describe("interview questions", () => {
+  it("answers every question of every interview from its own numbers", () => {
+    for (const interview of INTERVIEWS) {
+      const answers = Object.fromEntries(questionsFor(interview).map((q) => [q.id, q.answer(interview)]))
+      const { scenario, targets } = interview
+      expect(answers.traffic).toContain(scenario.phases[0].rps.toLocaleString("en-US"))
+      expect(answers.speed).toContain(`${targets.p95Ms} ms`)
+      expect(answers.uptime).toContain(`${Number((targets.availability * 100).toFixed(2))}%`)
+      expect(answers.budget).toContain(`$${targets.budgetPerMonth.toLocaleString("en-US")}`)
+      for (const answer of Object.values(answers)) expect(answer.length).toBeGreaterThan(0)
+    }
+  })
+
+  it("asks about the queue only where the reference has one", () => {
+    for (const interview of INTERVIEWS) {
+      const queued = interview.reference.nodes.some((n) => n.kind === "queue")
+      expect([interview.name, questionsFor(interview).some((q) => q.id === "lag")]).toEqual([interview.name, queued])
+    }
+  })
+
+  it("names every curveball of the scenario", () => {
+    const faults = (id: string) => questionById("faults")!.answer(INTERVIEWS.find((i) => i.id === id)!)
+    expect(faults("hello-server")).toContain("clean run")
+    expect(faults("global-service")).toMatch(/Server down.*Region down: a whole region goes dark/)
+  })
+
+  it("puts every target behind exactly the question that reveals it", () => {
+    for (const [target, id] of Object.entries(QUESTION_FOR)) expect(questionById(id)?.reveals).toContain(target)
+    expect([...revealedTargets(["speed", "budget"])].sort()).toEqual(["budget", "p95", "success"])
+    expect(revealedTargets(["traffic", "mix"]).size).toBe(0)
   })
 })
 

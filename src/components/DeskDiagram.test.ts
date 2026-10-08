@@ -40,7 +40,7 @@ describe("desk diagram", () => {
     mount()
     const card = $("[data-testid='desk-prompt']")
     expect(card?.dataset.interview).toBe("hello-server")
-    expect(card?.textContent).toContain(interview("hello-server").brief)
+    expect(card?.textContent).toContain(interview("hello-server").opener)
     expect(card?.textContent).toContain("whiteboard button")
     expect(card?.textContent).toContain("Next interview · Hello server")
   })
