@@ -8,6 +8,8 @@ export interface Question {
   readonly id: QuestionId
   /** What the player asks. */
   readonly ask: string
+  /** The label on the note the answer lands on, which is blank until the question is asked. */
+  readonly topic: string
   /** The interviewer's answer, written from the interview's own scenario and targets so it cannot drift from them. */
   readonly answer: (interview: Interview) => string
   /** The targets this answer puts on the meters. */
@@ -55,18 +57,21 @@ const queued = (interview: Interview) => interview.reference.nodes.some((n) => n
 const ROWS: readonly Question[] = [
   {
     id: "traffic",
+    topic: "Traffic",
     ask: "How much traffic?",
     answer: ({ scenario }) => `About ${count(scenario.phases[0].rps)} requests a second.`,
     reveals: [],
   },
   {
     id: "mix",
+    topic: "Request mix",
     ask: "What kind of requests?",
     answer: ({ scenario }) => mixLine(scenario.phases[0].mix),
     reveals: [],
   },
   {
     id: "cache",
+    topic: "Caching",
     ask: "Can anything be cached?",
     answer: ({ scenario }) => {
       const parts = [
@@ -80,36 +85,42 @@ const ROWS: readonly Question[] = [
   },
   {
     id: "fanout",
+    topic: "Fan-out",
     ask: "Does anything fan out?",
     answer: ({ scenario }) => (scenario.fanout > 1 ? `Each post becomes ${count(scenario.fanout)} writes, one per follower.` : "No. Each request is one unit of work."),
     reveals: [],
   },
   {
     id: "speed",
+    topic: "Speed",
     ask: "How fast does it need to be?",
     answer: ({ targets }) => `${percent(targets.successRate)} of requests answered in every phase, and 95% of them within ${targets.p95Ms} ms.`,
     reveals: ["success", "p95"],
   },
   {
     id: "uptime",
+    topic: "Uptime",
     ask: "How much uptime?",
     answer: ({ targets }) => `${percent(targets.availability)} uptime.`,
     reveals: ["availability"],
   },
   {
     id: "budget",
+    topic: "Budget",
     ask: "What's the budget?",
     answer: ({ targets }) => `At most $${count(targets.budgetPerMonth)} a month.`,
     reveals: ["budget"],
   },
   {
     id: "lag",
+    topic: "Queue lag",
     ask: "How far behind can the queue get?",
     answer: ({ targets }) => `No more than ${targets.maxLagSeconds} seconds.`,
     reveals: ["lag"],
   },
   {
     id: "faults",
+    topic: "Curveballs",
     ask: "What could go wrong?",
     answer: ({ scenario }) => {
       const hits = scenario.phases.flatMap((phase) => (phase.fault ? [`${phase.name}: ${faultLine(phase.fault)}`] : []))
@@ -141,4 +152,9 @@ export const QUESTION_FOR: Readonly<Record<TargetName, QuestionId>> = {
 /** The targets the player knows from the questions asked. */
 export function revealedTargets(asked: readonly QuestionId[]): ReadonlySet<TargetName> {
   return new Set(ROWS.filter((row) => asked.includes(row.id)).flatMap((row) => row.reveals))
+}
+
+/** Every target this interview judges: what a passed interview, a practice run and the pass bar all show. */
+export function allTargets(interview: Interview): ReadonlySet<TargetName> {
+  return revealedTargets(questionsFor(interview).map((question) => question.id))
 }

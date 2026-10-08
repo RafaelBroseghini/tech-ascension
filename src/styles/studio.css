@@ -153,9 +153,15 @@
   min-width: 0;
   min-height: 0;
 }
+.studio-stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
 .studio-board {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   background: var(--ide-base);
 }
@@ -427,6 +433,9 @@
   border-left: 1px solid var(--ide-surface);
   background: var(--ide-crust);
 }
+.studio-side > * {
+  flex: none;
+}
 .studio-brief h2 {
   margin: 0 0 var(--sp-2);
   font-size: var(--fs-md);
@@ -467,10 +476,14 @@
   color: var(--ide-peach);
 }
 .studio-submit-row {
+  position: sticky;
+  bottom: calc(-1 * var(--sp-3));
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  background: var(--ide-crust);
 }
 .studio .studio-submit {
   padding: var(--sp-2) var(--sp-3);
@@ -585,6 +598,139 @@
   background: linear-gradient(90deg, var(--ide-red) calc(var(--fill) * 100%), var(--ide-surface) 0);
 }
 
+/* Sticky notes beside the board */
+
+.studio-notes {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 176px;
+  padding: var(--sp-3);
+  overflow-y: auto;
+  border-right: 1px solid var(--ide-surface);
+  background: var(--ide-mantle);
+}
+.studio-note {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  margin: 0;
+  padding: var(--sp-2);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ide-rosewater) 22%, var(--ide-base));
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--ide-crust) 70%, transparent);
+  line-height: 1.4;
+}
+.studio-note b {
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+}
+.studio-note.is-blank {
+  background: transparent;
+  border: 1px dashed var(--ide-surface);
+  box-shadow: none;
+}
+.studio-note.is-nudge {
+  background: color-mix(in srgb, var(--ide-sky) 18%, var(--ide-base));
+}
+.studio-note.is-hint {
+  background: color-mix(in srgb, var(--ide-peach) 22%, var(--ide-base));
+}
+
+/* Questions, nudges and hints */
+
+.studio-ask {
+  display: grid;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.studio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: var(--sp-2);
+  border: 1px solid var(--ide-surface);
+  border-radius: 6px;
+}
+.studio-group legend {
+  padding: 0 var(--sp-1);
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+}
+.studio .studio-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px var(--sp-2);
+  font-size: var(--fs-2xs);
+  border: 1px solid var(--ide-surface);
+  border-radius: 999px;
+  background: var(--ide-base);
+  color: var(--ide-text);
+  font-family: inherit;
+  text-align: left;
+}
+.studio .studio-chip:hover:not(:disabled) {
+  border-color: var(--ide-mauve);
+}
+.studio .studio-chip:disabled {
+  color: var(--ide-overlay);
+  text-decoration: line-through;
+}
+.studio .studio-chip.is-hint {
+  width: 100%;
+  border-radius: 6px;
+  border-color: var(--ide-peach);
+}
+.studio .studio-chip.is-hint:disabled {
+  text-decoration: none;
+  border-color: var(--ide-surface);
+}
+.studio-cost {
+  color: var(--ide-peach);
+  font-size: var(--fs-2xs);
+}
+
+/* The offer letter */
+
+.studio-offer {
+  display: grid;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--ide-mauve);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ide-mauve) 12%, var(--ide-mantle));
+}
+.studio-offer-kicker {
+  margin: 0;
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+}
+.studio-offer-band {
+  margin: 0;
+  font-weight: 700;
+}
+.studio-offer-why {
+  margin: 0;
+  color: var(--ide-overlay);
+}
+.studio-offer-bonus {
+  margin: 0;
+  color: var(--ide-green);
+  font-weight: 700;
+}
+
+
 @media (max-width: 720px) {
   .studio {
     display: flex;
@@ -617,6 +763,9 @@
     color: var(--ide-text);
     font: inherit;
   }
+  .studio-submit-row {
+    position: static;
+  }
   .studio-side {
     order: 1;
     flex: none;
@@ -626,6 +775,20 @@
   .studio-main {
     order: 2;
     flex: none;
+  }
+  .studio-stage {
+    flex: none;
+    flex-direction: column;
+  }
+  .studio-notes {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--ide-surface);
+  }
+  .studio-note {
+    flex: 1 1 140px;
   }
   .studio-board {
     flex: none;

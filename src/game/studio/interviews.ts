@@ -93,6 +93,9 @@ export const BAND_LABEL: Readonly<Record<Band, string>> = {
 /** The board every interview starts from. */
 export const THE_USERS_ALONE: Design = { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] }
 
+/** The line a résumé or profile carries under the job whose interview earned an offer. */
+export const offerLine = (band: Band): string => `Offer: ${BAND_LABEL[band].toLowerCase()}`
+
 /** A career that has not touched an interview yet. */
 export const NO_RECORD: InterviewRecord = { verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] }
 

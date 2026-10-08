@@ -5,6 +5,7 @@ import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
 import { THE_USERS_ALONE } from "../../game/studio/interviews.ts"
+import type { Offer } from "../../game/studio/interviews.ts"
 import type { Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
 import { edgeId, leafPaths, placeDesign, snap } from "./diagram.ts"
@@ -25,6 +26,8 @@ export interface Run {
   readonly newBest: boolean
   /** Spendable XP the No hire took. */
   readonly penalty: number
+  /** The offer a real pass earned; null for a No hire and for practice. */
+  readonly offer: Offer | null
   readonly result: RunResult
   /** The board that was sent, so the report can name its nodes after the board changes. */
   readonly design: Design
@@ -158,7 +161,7 @@ export function removeNode(id: string): void {
   })
 }
 
-type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty">
+type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty" | "offer">
 
 function startRun(interview: Interview, design: Design, judged: Judged): void {
   const run: Omit<Run, "edits" | "startedAt" | "revealing"> = {
@@ -175,8 +178,8 @@ export function submitBoard(interview: Interview): void {
   const design = draftOf(useBoard.getState())
   const verdict = useGame.getState().submitWhiteboard(interview.id, design)
   if (!verdict) return
-  const penalty = useGame.getState().lastInterview?.penalty ?? 0
-  startRun(interview, design, { verdict, result: evaluate(design, interview.scenario), practice: false, newBest: false, penalty })
+  const last = useGame.getState().lastInterview
+  startRun(interview, design, { verdict, result: evaluate(design, interview.scenario), practice: false, newBest: false, penalty: last?.penalty ?? 0, offer: last?.offer ?? null })
 }
 
 /** Reruns a passed interview against its targets and plays the same reveal. Nothing in the career changes. */
@@ -184,7 +187,7 @@ export function practiceBoard(interview: Interview): void {
   const design = draftOf(useBoard.getState())
   const run = useGame.getState().practiceWhiteboard(interview.id, design)
   if (!run) return
-  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0 })
+  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0, offer: null })
 }
 
 export function endReveal(): void {
