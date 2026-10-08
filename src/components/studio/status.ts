@@ -4,10 +4,8 @@ import type { Interview } from "../../data/studio/challenges.ts"
 import { JOB_TIERS } from "../../data/phases.ts"
 import { jobState } from "../../game/phase.ts"
 import type { JobGates } from "../../game/phase.ts"
-import type { CareerEntry } from "../../game/careerLog.ts"
-import { interviewPassed, isPass } from "../../game/studio/interviews.ts"
+import { interviewPassed } from "../../game/studio/interviews.ts"
 import type { InterviewLog } from "../../game/studio/interviews.ts"
-import type { Design } from "../../game/studio/types.ts"
 import { useGame } from "../../game/store.ts"
 
 /** Where an interview stands for this career. Only `open` takes a submission. */
@@ -56,27 +54,4 @@ export function statusLine(status: ReachableStatus, interview: Interview, log: I
 /** The first interview waiting for a submission, or null. A locked interview is never named. */
 export function nextInterview(statuses: readonly InterviewStatus[]): Interview | null {
   return INTERVIEWS[statuses.indexOf("open")] ?? null
-}
-
-/** A passing design on record, worth drawing: more than The Users alone. */
-export function passedDesign(log: InterviewLog, id: string): Design | null {
-  const record = log[id]
-  return record && isPass(record.verdict) && record.design.nodes.length > 1 ? record.design : null
-}
-
-/**
- * The interview whose design the desk draws: the newest pass in the journal, else the furthest passing design on
- * record (the journal trims old entries), else the furthest interview a held job counts as passed (a save from before
- * interviews, or admin's Buy everything), which has no design of its own. Null before any pass.
- */
-export function lastPassed(p: { interviews: InterviewLog; jobs: readonly number[] }, journal: readonly CareerEntry[]): string | null {
-  for (let i = journal.length - 1; i >= 0; i--) {
-    const entry = journal[i]
-    if (entry.type !== "interview" || entry.data?.verdict === "noHire") continue
-    const id = entry.ref.slice("interview:".length)
-    if (passedDesign(p.interviews, id)) return id
-  }
-  for (let i = INTERVIEWS.length - 1; i >= 0; i--) if (passedDesign(p.interviews, INTERVIEWS[i].id)) return INTERVIEWS[i].id
-  for (let i = INTERVIEWS.length - 1; i >= 0; i--) if (interviewPassed(p, INTERVIEWS[i])) return INTERVIEWS[i].id
-  return null
 }

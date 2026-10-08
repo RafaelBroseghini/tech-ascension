@@ -1,7 +1,4 @@
-/**
- * Traffic dots on a canvas: the whiteboard's reveal and the desk drawing share the path math and the loop. Nothing here
- * imports `@xyflow/react` or Motion, so the desk can.
- */
+/** Traffic dots on a canvas: the path math and the animation loop for the whiteboard's reveal. */
 
 export type Pt = { readonly x: number; readonly y: number }
 export type Lane = { readonly points: readonly Pt[]; readonly length: readonly number[]; readonly total: number; readonly dots: number }

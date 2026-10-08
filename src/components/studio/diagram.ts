@@ -2,16 +2,16 @@ import { route } from "../../game/studio/route.ts"
 import type { ComponentKind, Design, DesignEdge, Scenario } from "../../game/studio/types.ts"
 
 /**
- * A design as both the whiteboard and the desk draw it. The save keeps a design without positions, so both put each node
- * in the same cell: left to right by distance from The Users. Nothing here imports `@xyflow/react`, so the desk can.
+ * A design as the whiteboard draws it. The save keeps a design without positions, so each node goes in a cell: left to
+ * right by distance from The Users.
  */
 
 export const GRID = 16
-export const COLUMN = 224
-export const ROW = 128
+const COLUMN = 224
+const ROW = 128
 
 /** `col` and `row` are the node's cell; `x` and `y` are its board position, one `COLUMN` by `ROW` per cell. */
-export type Placed = {
+type Placed = {
   readonly id: string
   readonly kind: ComponentKind
   readonly replicas: number
