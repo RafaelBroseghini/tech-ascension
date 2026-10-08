@@ -8,7 +8,8 @@ import type { TargetName } from "../../game/studio/types.ts"
 import { draftOf, useBoard } from "./boardStore.ts"
 import { money, requestList } from "./kinds.ts"
 import { MeterList } from "./MeterList.tsx"
-import { meters } from "./meters.ts"
+import { meters, readout, requestCounts } from "./meters.ts"
+import { Readout } from "./Readout.tsx"
 import { jobOf } from "./status.ts"
 import type { ReachableStatus } from "./status.ts"
 
@@ -36,6 +37,7 @@ export const Brief = memo(function Brief({
   const practicing = status !== "open" && !submitting
   const result = useMemo(() => evaluate(draft, interview.scenario), [draft, interview])
   const live = useMemo(() => meters(result, interview.targets, faultTally(result, interview.targets)), [result, interview])
+  const lines = useMemo(() => readout(draft, result, requestCounts(interview.scenario, result).total), [draft, result, interview])
   const missed = useMemo<ReadonlySet<TargetName> | undefined>(() => {
     if (!practicing) return undefined
     const judged = verdict(result, interview.targets, draft)
@@ -55,6 +57,7 @@ export const Brief = memo(function Brief({
         {interview.brief}
       </p>
       <MeterList meters={live} failed={missed} testid="studio-live-meter" />
+      <Readout lines={lines} testid="studio-live-readout" />
       {practicing && best ? (
         <p className="studio-best" data-testid="studio-best">{`Best: ${money(best.costPerMonth)}/mo at p95 ${ms(best.p95Ms)}`}</p>
       ) : null}

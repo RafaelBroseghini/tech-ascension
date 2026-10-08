@@ -24,6 +24,8 @@ export interface Run {
   /** Spendable XP the No hire took. */
   readonly penalty: number
   readonly result: RunResult
+  /** The board that was sent, so the report can name its nodes after the board changes. */
+  readonly design: Design
   /** Edge id to the share of requests that cross it in the first phase. */
   readonly flows: Readonly<Record<string, number>>
   /** `edits` when it was sent. */
@@ -164,7 +166,7 @@ export function submitBoard(interview: Interview): void {
   const verdict = useGame.getState().submitWhiteboard(interview.id, design)
   if (!verdict) return
   const penalty = useGame.getState().lastInterview?.penalty ?? 0
-  startRun({ verdict, practice: false, newBest: false, penalty, result: evaluate(design, interview.scenario), flows: edgeFlows(design, interview.scenario) })
+  startRun({ verdict, practice: false, newBest: false, penalty, design, result: evaluate(design, interview.scenario), flows: edgeFlows(design, interview.scenario) })
 }
 
 /** Reruns a passed interview against its targets and plays the same reveal. Nothing in the career changes. */
@@ -172,7 +174,7 @@ export function practiceBoard(interview: Interview): void {
   const design = draftOf(useBoard.getState())
   const run = useGame.getState().practiceWhiteboard(interview.id, design)
   if (!run) return
-  startRun({ verdict: run.verdict, practice: true, newBest: run.newBest, penalty: 0, result: run.result, flows: edgeFlows(design, interview.scenario) })
+  startRun({ verdict: run.verdict, practice: true, newBest: run.newBest, penalty: 0, design, result: run.result, flows: edgeFlows(design, interview.scenario) })
 }
 
 export function endReveal(): void {

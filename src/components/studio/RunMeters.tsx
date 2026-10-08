@@ -5,10 +5,13 @@ import { currentRun, endReveal, REVEAL_MS, useBoard } from "./boardStore.ts"
 import type { Run } from "./boardStore.ts"
 import { percent } from "./kinds.ts"
 import { MeterList } from "./MeterList.tsx"
-import { meters } from "./meters.ts"
+import { meters, readout, requestCounts } from "./meters.ts"
+import { Readout } from "./Readout.tsx"
 
 const SPRING = { type: "spring", stiffness: 380, damping: 30 } as const
 const VERDICT: Readonly<Record<Run["verdict"]["kind"], string>> = { strongHire: "Strong hire", hire: "Hire", noHire: "No hire" }
+
+const EMPTY_COUNTS = { sent: 0, answered: 0, peakRps: 0, seconds: 0 }
 
 /** How many run log lines the reveal has printed; all of them once it ends. */
 function usePrinted(run: Run): number {
@@ -34,6 +37,8 @@ export const RunMeters = memo(function RunMeters({ interview, onHired }: { inter
 
 function RunReport({ run, stale, interview, onHired }: { run: Run; stale: boolean; interview: Interview; onHired: () => void }) {
   const printed = usePrinted(run)
+  const counts = requestCounts(interview.scenario, run.result)
+  const lines = readout(run.design, run.result, printed === 0 ? EMPTY_COUNTS : counts.running[printed - 1], !run.revealing)
   const missed = new Set(run.verdict.kind === "noHire" ? run.verdict.missed.map((miss) => miss.target) : [])
   const pass = run.verdict.kind !== "noHire"
   const stamp = run.practice ? (pass ? "Passes the bar" : "Misses the bar") : VERDICT[run.verdict.kind]
@@ -48,6 +53,7 @@ function RunReport({ run, stale, interview, onHired }: { run: Run; stale: boolea
           </li>
         ))}
       </ol>
+      <Readout lines={lines} testid="studio-run-readout" />
       {run.revealing ? (
         <p className="studio-skip">Traffic is running. Click to skip.</p>
       ) : (

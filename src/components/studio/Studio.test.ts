@@ -140,6 +140,22 @@ describe("whiteboard", () => {
     expect($("[data-testid='studio-run']")).toBeNull()
   })
 
+  it("the live readout counts requests and names the busiest node, and the run report holds the node lines until the reveal ends", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "Two APIs, no spare"))
+    const line = (testid: string, key: string) => $(`[data-testid='${testid}'] [data-line='${key}']`)?.textContent
+    expect(line("studio-live-readout", "requests")).toBe("72,000 requests over 120 s, peak 600 rps")
+    expect(line("studio-live-readout", "hottest")).toBe("Busiest: Hamster Wheel API, 120% busy")
+    expect(line("studio-live-readout", "singlePoints")).toBe("Single points of failure: PostgreSloth, Round Robin Hood")
+    await click($("[data-testid='studio-submit']"))
+    expect($$("[data-testid='studio-run-readout'] li").map((li) => li.dataset.line)).toEqual(["requests", "answered"])
+    await act(async () => {
+      $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+    })
+    expect($$("[data-testid='studio-run-readout'] li").map((li) => li.dataset.line)).toEqual(["requests", "answered", "hottest", "singlePoints"])
+    expect(line("studio-run-readout", "requests")).toBe("72,000 requests over 120 s, peak 600 rps")
+  })
+
   it("an edit after a Submit labels the report as the last submission", async () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))

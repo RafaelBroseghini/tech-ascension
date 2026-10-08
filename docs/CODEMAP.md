@@ -39,7 +39,7 @@
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
 | Whiteboard entry: open state, the lazy chunk and its preload, the host portal | `src/components/studio/launcher.ts`, `src/components/studio/StudioHost.tsx` |
-| Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `RunMeters.tsx`, `ChallengeList.tsx`), `src/styles/studio.css` |
+| Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `RunMeters.tsx`, `MeterList.tsx`, `Readout.tsx`, `meters.ts`, `ChallengeList.tsx`), `src/styles/studio.css` |
 | Whiteboard board state (one sheet per interview, kept across closing; writes the game store only on Submit) | `src/components/studio/boardStore.ts` |
 | A design's cells and edge flows, and the traffic dot math and loop | `src/components/studio/diagram.ts`, `src/components/studio/traffic.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
