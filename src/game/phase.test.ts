@@ -15,7 +15,7 @@ import {
   stageOf,
 } from "./phase.ts"
 import { useGame } from "./store.ts"
-import { interviewForJob } from "./studio/interviews.ts"
+import { interviewForJob, NO_RECORD } from "./studio/interviews.ts"
 import type { InterviewLog } from "./studio/interviews.ts"
 
 const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[], interviews: {} as InterviewLog }
@@ -24,7 +24,7 @@ const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as num
 function passed(jobId: number): InterviewLog {
   const interview = interviewForJob(jobId)
   if (!interview) throw new Error(`job ${jobId} has no interview`)
-  return { [interview.id]: { verdict: "hire", attempts: 1, design: interview.reference } }
+  return { [interview.id]: { ...NO_RECORD, verdict: "hire", attempts: 1, design: interview.reference } }
 }
 
 describe("phase gates", () => {
@@ -121,7 +121,7 @@ describe("phase gates", () => {
     expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
     expect(jobState(board, junior)).toBe("interview")
     expect(canBuyJob(board, junior)).toBe(false)
-    const failed: InterviewLog = { "3-tier-app": { verdict: "noHire", attempts: 3, design: { nodes: [], edges: [] } } }
+    const failed: InterviewLog = { "3-tier-app": { ...NO_RECORD, verdict: "noHire", attempts: 3 } }
     expect(jobState({ ...board, interviews: failed }, junior)).toBe("interview")
     expect(jobState({ ...board, interviews: passed(2) }, junior)).toBe("ready")
     expect(canBuyJob({ ...board, interviews: passed(2) }, junior)).toBe(true)

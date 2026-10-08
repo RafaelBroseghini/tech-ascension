@@ -61,10 +61,14 @@ import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
 import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
-import { betterBest, bestOf, copyDesign, interviewById, interviewPassed, isPass, noHirePenalty, practice } from "./studio/interviews.ts"
+import { betterBest, bestOf, copyDesign, interviewById, interviewPassed, isPass, NO_RECORD, noHirePenalty, offerFor, practice, withRecord } from "./studio/interviews.ts"
 import type { InterviewLog, PracticeRun, Submission } from "./studio/interviews.ts"
 import type { Verdict } from "./studio/score.ts"
-import type { Design } from "./studio/types.ts"
+import type { Design, TargetName } from "./studio/types.ts"
+import { nextHint } from "./studio/hints.ts"
+import { QUESTION_FOR, questionsFor } from "../data/studio/questions.ts"
+import type { QuestionId } from "../data/studio/questions.ts"
+import type { Interview } from "../data/studio/challenges.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -189,6 +193,19 @@ type GameState = {
    * the interview is unknown or not passed.
    */
   practiceWhiteboard: (interviewId: string, design: Design) => PracticeRun | null
+  /**
+   * Ask the interviewer a question: free, unlimited, and once asked it stays answered. Allowed while the interview is
+   * open or passed. False for an unknown interview, a question it does not ask, or an interview not reached yet.
+   */
+  askInterviewer: (interviewId: string, questionId: QuestionId) => boolean
+  /** Take the nudge about a target: free, and it stays shown. False when the interview has no nudge for that target or is not reached. */
+  takeNudge: (interviewId: string, target: TargetName) => boolean
+  /**
+   * Take the next paid hint for `design`, only while the interview is open. It lowers the offer to the bottom of the
+   * band if the interview is passed. Returns the hint line (the same line again if it was already taken), or null when
+   * the board covers the reference or the interview is not open.
+   */
+  takeHint: (interviewId: string, design: Design) => string | null
   /** Record a pass now, bypassing every gate (tests and the harness). False for an unknown or already passed id. */
   forceInterview: (interviewId: string) => boolean
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
@@ -282,6 +299,12 @@ function toSave(state: GameState, now: number): SaveData {
     save.activeBoost = state.activeBoost
   }
   return save
+}
+
+/** An interview the career has reached: its job waits on the interview, or the interview is passed. */
+function engaged(state: GameState, interview: Interview): boolean {
+  const job = jobById(interview.jobId)
+  return job !== undefined && (jobState(state, job) === "interview" || interviewPassed(state, interview))
 }
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
@@ -563,15 +586,24 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     if (!interview || !job || jobState(state, job) !== "interview") return null
     const { verdict, result } = practice(interview, design)
-    const prior = state.interviews[interview.id]
-    const attempts = (prior?.attempts ?? 0) + 1
+    const prior = state.interviews[interview.id] ?? NO_RECORD
+    const attempts = prior.attempts + 1
     const candidate = bestOf(design, result)
-    const best = isPass(verdict.kind) && betterBest(prior?.best, candidate) ? candidate : prior?.best
-    const interviews = {
-      ...state.interviews,
-      [interview.id]: { verdict: verdict.kind, attempts, design: copyDesign(design), ...(best ? { best } : {}) },
-    }
+    const best = isPass(verdict.kind) && betterBest(prior.best, candidate) ? candidate : prior.best
+    // The offer is worked out once, here, from the hints taken so far; a pass closes the interview to further Submits.
+    const offer = prior.offer ?? (isPass(verdict.kind) ? offerFor(verdict.kind, prior.hints.length, job.cps) : undefined)
+    // A retry should not be a guess: the requirement a No hire missed is told for free.
+    const missedAsks = verdict.kind === "noHire" ? verdict.missed.map((m) => QUESTION_FOR[m.target]) : []
+    const interviews = withRecord(state.interviews, interview.id, {
+      verdict: verdict.kind,
+      attempts,
+      design: copyDesign(design),
+      asked: [...new Set([...prior.asked, ...missedAsks])],
+      ...(best ? { best } : {}),
+      ...(offer ? { offer } : {}),
+    })
     const penalty = verdict.kind === "noHire" ? Math.min(state.xp, noHirePenalty(interview)) : 0
+    const bonus = prior.offer ? 0 : (offer?.bonus ?? 0)
     // A pass is logged by the timeline listener from the record; a No hire is logged here, with what it missed.
     const notes: CareerNote[] =
       verdict.kind === "noHire"
@@ -579,8 +611,10 @@ export const useGame = create<GameState>((set, get) => ({
         : []
     set({
       xp: state.xp - penalty,
+      money: state.money + bonus,
+      stats: bonus > 0 ? creditMoney(state.stats, bonus, "other") : state.stats,
       interviews,
-      lastInterview: { interviewId: interview.id, verdict, penalty },
+      lastInterview: { interviewId: interview.id, verdict, penalty, offer: isPass(verdict.kind) ? (offer ?? null) : null },
       now: Date.now(),
       journal: noted(state.journal, notes, state),
     })
@@ -598,10 +632,46 @@ export const useGame = create<GameState>((set, get) => ({
     const newBest = isPass(verdict.kind) && betterBest(prior?.best, candidate)
     const best = newBest ? candidate : prior?.best
     if (newBest) {
-      set({ interviews: { ...state.interviews, [interview.id]: { ...(prior ?? { verdict: null, attempts: 0, design: { nodes: [], edges: [] } }), best: candidate } } })
+      set({ interviews: withRecord(state.interviews, interview.id, { best: candidate }) })
       persistNow()
     }
     return { verdict, result, newBest, best }
+  },
+
+  askInterviewer: (interviewId, questionId) => {
+    const interview = interviewById(interviewId)
+    const state = get()
+    if (!interview || !engaged(state, interview) || !questionsFor(interview).some((q) => q.id === questionId)) return false
+    const prior = state.interviews[interview.id] ?? NO_RECORD
+    if (prior.asked.includes(questionId)) return true
+    set({ interviews: withRecord(state.interviews, interview.id, { asked: [...prior.asked, questionId] }) })
+    persistNow()
+    return true
+  },
+
+  takeNudge: (interviewId, target) => {
+    const interview = interviewById(interviewId)
+    const state = get()
+    if (!interview || !engaged(state, interview) || interview.nudges[target] === undefined) return false
+    const prior = state.interviews[interview.id] ?? NO_RECORD
+    if (prior.nudges.includes(target)) return true
+    set({ interviews: withRecord(state.interviews, interview.id, { nudges: [...prior.nudges, target] }) })
+    persistNow()
+    return true
+  },
+
+  takeHint: (interviewId, design) => {
+    const interview = interviewById(interviewId)
+    const job = interview ? jobById(interview.jobId) : undefined
+    const state = get()
+    if (!interview || !job || jobState(state, job) !== "interview") return null
+    const hint = nextHint(interview, design)
+    if (hint === null) return null
+    const prior = state.interviews[interview.id] ?? NO_RECORD
+    if (prior.hints.includes(hint)) return hint
+    set({ interviews: withRecord(state.interviews, interview.id, { hints: [...prior.hints, hint] }) })
+    persistNow()
+    return hint
   },
 
   forceInterview: (interviewId) => {
@@ -610,7 +680,7 @@ export const useGame = create<GameState>((set, get) => ({
     const prior = interview ? state.interviews[interview.id] : undefined
     if (!interview || (prior && isPass(prior.verdict))) return false
     set({
-      interviews: { ...state.interviews, [interview.id]: { ...prior, verdict: "hire", attempts: prior?.attempts ?? 0, design: copyDesign(interview.reference) } },
+      interviews: withRecord(state.interviews, interview.id, { verdict: "hire", design: copyDesign(interview.reference) }),
       now: Date.now(),
     })
     persistNow()

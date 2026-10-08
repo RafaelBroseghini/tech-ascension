@@ -4,6 +4,7 @@ import { create } from "zustand"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
+import { THE_USERS_ALONE } from "../../game/studio/interviews.ts"
 import type { Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
 import { edgeId, leafPaths, placeDesign, snap } from "./diagram.ts"
@@ -75,8 +76,6 @@ export function layout(design: Design): Pick<Sheet, "nodes" | "edges"> {
   }
 }
 
-const EMPTY: Design = { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] }
-
 /** Shows `interviewId`'s sheet, starting it from `seed` (the last submission) or from The Users alone. */
 export function showInterview(interviewId: string, seed: Design | null): void {
   useBoard.setState((s) => {
@@ -84,7 +83,7 @@ export function showInterview(interviewId: string, seed: Design | null): void {
     const sheets = s.interviewId ? { ...s.sheets, [s.interviewId]: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run } } : s.sheets
     const kept = sheets[interviewId]
     const edits = nextEdit()
-    if (!kept) return { interviewId, sheets, ...layout(seed && seed.nodes.length > 0 ? seed : EMPTY), edits, run: null }
+    if (!kept) return { interviewId, sheets, ...layout(seed && seed.nodes.length > 0 ? seed : THE_USERS_ALONE), edits, run: null }
     const run = kept.run && kept.run.edits === kept.edits ? { ...kept.run, edits } : kept.run
     return { interviewId, sheets, nodes: kept.nodes, edges: kept.edges, edits, run }
   })

@@ -35,7 +35,7 @@ import {
 import type { Progress } from "./economy.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { canBuyJob, capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigState, jobBoardUnlocked, jobState } from "./phase.ts"
-import { noHirePenalty } from "./studio/interviews.ts"
+import { NO_RECORD, noHirePenalty } from "./studio/interviews.ts"
 import type { InterviewRecord } from "./studio/interviews.ts"
 
 const DAY_SECONDS = 86_400
@@ -202,7 +202,7 @@ function sitInterviews(s: Sim) {
     if (!interview) continue
     const failsFirst = index + 1 >= FIRST_FAILED_INTERVIEW
     if (failsFirst) s.xp = Math.max(0, s.xp - noHirePenalty(interview))
-    s.interviews[id] = { verdict: "hire", attempts: failsFirst ? 2 : 1, design: interview.reference }
+    s.interviews[id] = { ...NO_RECORD, verdict: "hire", attempts: failsFirst ? 2 : 1, design: interview.reference }
     s.waiting.delete(id)
   }
 }
