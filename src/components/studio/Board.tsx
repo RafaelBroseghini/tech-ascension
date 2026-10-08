@@ -1,8 +1,9 @@
-import { Background, BackgroundVariant, ConnectionLineType, Controls, ReactFlow, ViewportPortal } from "@xyflow/react"
+import { Background, BackgroundVariant, ConnectionLineType, Controls, Panel, ReactFlow, ViewportPortal } from "@xyflow/react"
 import type { IsValidConnection, OnConnectEnd } from "@xyflow/react"
 import { memo, useEffect, useState } from "react"
+import type { Interview } from "../../data/studio/challenges.ts"
 import { LANES } from "../../data/studio/components.ts"
-import { canConnect, clearNotice, explainRefusal, onConnect, onEdgesChange, onNodesChange, useBoard } from "./boardStore.ts"
+import { canConnect, clearNotice, explainRefusal, onConnect, onEdgesChange, onNodesChange, playing, runTraffic, useBoard } from "./boardStore.ts"
 import { COLUMN, GRID } from "./diagram.ts"
 import type { BoardEdge } from "./boardStore.ts"
 import { ComponentNode } from "./ComponentNode.tsx"
@@ -62,9 +63,10 @@ function Notice() {
 }
 
 /** The board: nodes snap to a 16 px grid, wires are smooth steps, and a handle catches a wire within 40 px. */
-export const Board = memo(function Board() {
+export const Board = memo(function Board({ interview }: { interview: Interview }) {
   const nodes = useBoard((s) => s.nodes)
   const edges = useBoard((s) => s.edges)
+  const running = useBoard((s) => playing(s) !== null)
   // Fit a seeded board once on mount; a fresh one starts with The Users on the left at full size.
   const [fit] = useState(() => nodes.length > 1)
   return (
@@ -93,6 +95,11 @@ export const Board = memo(function Board() {
       >
         <Background variant={BackgroundVariant.Dots} gap={GRID} size={1} />
         <Controls showInteractive={false} position="top-right" />
+        <Panel position="top-left" className="studio-toolbar">
+          <button type="button" className="studio-run-traffic" data-testid="studio-run-traffic" disabled={running} onClick={() => runTraffic(interview)}>
+            Run traffic
+          </button>
+        </Panel>
         <Lanes />
         <TrafficLayer />
       </ReactFlow>

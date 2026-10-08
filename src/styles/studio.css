@@ -225,6 +225,24 @@
   text-align: center;
   text-transform: uppercase;
 }
+.studio-toolbar {
+  margin: var(--sp-2);
+}
+.studio-run-traffic {
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--ide-sky);
+  border-radius: 6px;
+  background: var(--ide-mantle);
+  color: var(--ide-sky);
+  font-weight: 700;
+}
+.studio-run-traffic:hover:not(:disabled) {
+  background: var(--ide-surface);
+}
+.studio-run-traffic:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
 .studio-notice {
   position: absolute;
   left: var(--sp-3);
@@ -256,6 +274,7 @@
   height: 100%;
   pointer-events: none;
   color: var(--ide-sky);
+  --traffic-dead: var(--ide-red);
 }
 
 .studio-node {
@@ -354,15 +373,22 @@
   min-width: 30px;
   text-align: center;
 }
-.studio-heat {
+.studio-spof {
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--ide-surface);
-}
-.studio-heat.is-hot {
-  background: var(--ide-red);
+  background: var(--ide-peach);
   color: var(--ide-on-accent);
+  font-size: var(--fs-2xs);
   font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.studio-node-note {
+  color: var(--ide-text);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+}
+.studio-node-plan {
+  color: var(--ide-text);
 }
 .studio-node-card {
   position: absolute;

@@ -2,13 +2,23 @@
 
 export type Pt = { readonly x: number; readonly y: number }
 /** A polyline from The Users to a leaf, with how many dots ride it. */
-export type Lane = { readonly points: readonly Pt[]; readonly length: readonly number[]; readonly total: number; readonly dots: number }
+export type Lane = {
+  readonly points: readonly Pt[]
+  readonly length: readonly number[]
+  readonly total: number
+  readonly dots: number
+  /** Where requests on this lane die: `at` is how far along it (0 to 1), `share` the part of the dots that stop there. */
+  readonly dead: { readonly at: number; readonly share: number } | null
+}
 
-export function laneOf(points: readonly Pt[], dots: number): Lane {
+export function laneOf(points: readonly Pt[], dots: number, dead: Lane["dead"] = null): Lane {
   const length = [0]
   for (let i = 1; i < points.length; i++) length.push(length[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y))
-  return { points, length, total: length[length.length - 1] || 1, dots }
+  return { points, length, total: length[length.length - 1] || 1, dots, dead }
 }
+
+/** How far along a lane (0 to 1) its `index`th point is. */
+export const fractionAt = (lane: Lane, index: number): number => (lane.length[Math.min(index, lane.length.length - 1)] ?? 0) / lane.total
 
 /** The point `f` (0 to 1) of the way along the lane. */
 export function pointAt(lane: Lane, f: number): Pt {
@@ -40,7 +50,7 @@ export function travelMs(p95Ms: number, targetMs: number): number {
 /** Dots that never arrive get this far down a path before they stall and fade. */
 const STALL_AT = 0.5
 
-export type Dot = { readonly at: Pt; readonly alpha: number }
+export type Dot = { readonly at: Pt; readonly alpha: number; readonly dead: boolean }
 
 /**
  * Where the dots of one path are `elapsed` ms after the reveal began. Dot `k` leaves The Users (the path's first point)
@@ -54,28 +64,40 @@ export function dotsAt(lane: Lane, elapsed: number, travel: number, stalls: bool
     const age = elapsed - k * gap
     if (age < 0) continue
     const t = (age % travel) / travel
+    const dead = isDead(lane, k)
+    const stopAt = dead ? lane.dead!.at : stalls ? STALL_AT : null
     dots.push(
-      stalls
-        ? { at: pointAt(lane, STALL_AT * Math.min(1, t / 0.6)), alpha: t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4 }
-        : { at: pointAt(lane, t), alpha: 1 },
+      stopAt !== null
+        ? { at: pointAt(lane, stopAt * Math.min(1, t / 0.6)), alpha: t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4, dead }
+        : { at: pointAt(lane, t), alpha: 1, dead: false },
     )
   }
   return dots
 }
 
-/** Without motion, the dots sit evenly along the lane. */
-export const stillDots = (lane: Lane): Dot[] => Array.from({ length: lane.dots }, (_, k) => ({ at: pointAt(lane, (k + 0.5) / lane.dots), alpha: 1 }))
+/** Dot `k` is one of the lane's dead dots, spread evenly through the stream so the deaths read as a share and not a burst. */
+const isDead = (lane: Lane, k: number): boolean => lane.dead !== null && Math.floor((k + 1) * lane.dead.share) > Math.floor(k * lane.dead.share)
+
+/** Without motion, the dots sit evenly along the lane, and the dead ones sit where they die. */
+export const stillDots = (lane: Lane): Dot[] =>
+  Array.from({ length: lane.dots }, (_, k) => {
+    const dead = isDead(lane, k)
+    return { at: pointAt(lane, dead ? lane.dead!.at : (k + 0.5) / lane.dots), alpha: 1, dead }
+  })
 
 /** Fills `dots` at the context's current alpha, each scaled by its own. */
-export function paintDots(ctx: CanvasRenderingContext2D, dots: readonly Dot[], radius: number): void {
+export function paintDots(ctx: CanvasRenderingContext2D, dots: readonly Dot[], radius: number, deadColor: string): void {
   const base = ctx.globalAlpha
+  const live = ctx.fillStyle
   for (const dot of dots) {
     ctx.globalAlpha = base * dot.alpha
+    ctx.fillStyle = dot.dead ? deadColor : live
     ctx.beginPath()
     ctx.arc(dot.at.x, dot.at.y, radius, 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.globalAlpha = base
+  ctx.fillStyle = live
 }
 
 /**

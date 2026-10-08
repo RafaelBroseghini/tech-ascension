@@ -278,3 +278,6 @@ export const LANE_OF: Readonly<Record<ComponentKind, Lane>> = {
 }
 
 export const laneIndex = (kind: ComponentKind): number => LANES.findIndex((lane) => lane.id === LANE_OF[kind])
+
+/** How far behind its primary a read replica runs. It is the same for every design, so the board can say it. */
+export const REPLICA_LAG_SECONDS = 2

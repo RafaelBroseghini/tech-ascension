@@ -48,6 +48,16 @@ export interface Run {
   readonly revealing: boolean
 }
 
+/** Free traffic on the current draft: facts only, so it carries no verdict. */
+export interface Demo {
+  readonly paths: readonly TrafficPath[]
+  readonly p95Ms: number
+  readonly targetP95Ms: number
+  readonly edits: number
+  readonly startedAt: number
+  readonly revealing: boolean
+}
+
 interface Sheet {
   readonly nodes: BoardNode[]
   readonly edges: BoardEdge[]
@@ -60,11 +70,13 @@ interface BoardState extends Sheet {
   readonly interviewId: string | null
   /** Why the last wire was refused, until the next edit or a few seconds pass. */
   readonly notice: string | null
+  /** The last Run traffic on this board. */
+  readonly demo: Demo | null
   /** Every interview's sheet, kept while another one is on the board and across closing the whiteboard. */
   readonly sheets: Readonly<Record<string, Sheet>>
 }
 
-export const useBoard = create<BoardState>(() => ({ interviewId: null, notice: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
+export const useBoard = create<BoardState>(() => ({ interviewId: null, notice: null, demo: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
 
 let version = 0
 const nextEdit = () => ++version
@@ -98,9 +110,9 @@ export function showInterview(interviewId: string, seed: Design | null): void {
     const kept = sheets[interviewId]
     const edits = nextEdit()
     const start = interview ? startDesign(interview) : { nodes: [], edges: [] }
-    if (!kept) return { interviewId, sheets, notice: null, ...layout(seed && seed.nodes.length > 0 ? seed : start, locked), edits, run: null }
+    if (!kept) return { interviewId, sheets, notice: null, demo: null, ...layout(seed && seed.nodes.length > 0 ? seed : start, locked), edits, run: null }
     const run = kept.run && kept.run.edits === kept.edits ? { ...kept.run, edits } : kept.run
-    return { interviewId, sheets, notice: null, nodes: kept.nodes, edges: kept.edges, edits, run }
+    return { interviewId, sheets, notice: null, demo: null, nodes: kept.nodes, edges: kept.edges, edits, run }
   })
 }
 
@@ -243,8 +255,38 @@ export function practiceBoard(interview: Interview): void {
   startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0, offer: null })
 }
 
+/**
+ * Plays the current draft's traffic as dots, with a red dot wherever a request dies. It is free and unlimited, allowed
+ * while the interview is open, and shows no verdict, no target and no pass or fail colour.
+ */
+export function runTraffic(interview: Interview): void {
+  const design = draftOf(useBoard.getState())
+  const result = evaluate(design, interview.scenario)
+  const demo: Demo = {
+    paths: leafPaths(design, interview.scenario),
+    p95Ms: result.phases[0].p95Ms,
+    targetP95Ms: interview.targets.p95Ms,
+    edits: useBoard.getState().edits,
+    startedAt: performance.now(),
+    revealing: true,
+  }
+  useBoard.setState({ demo })
+  window.setTimeout(() => useBoard.setState((s) => (s.demo === demo ? { demo: { ...demo, revealing: false } } : s)), REVEAL_MS)
+}
+
 export function endReveal(): void {
-  useBoard.setState((s) => (s.run?.revealing ? { run: { ...s.run, revealing: false } } : s))
+  useBoard.setState((s) => ({
+    run: s.run?.revealing ? { ...s.run, revealing: false } : s.run,
+    demo: s.demo?.revealing ? { ...s.demo, revealing: false } : s.demo,
+  }))
+}
+
+/** What the traffic layer plays now: a Run traffic, else a Submit's reveal, while the board is still the one it ran on. */
+export function playing(s: BoardState): Pick<Demo, "paths" | "p95Ms" | "targetP95Ms" | "startedAt"> | null {
+  if (s.demo?.revealing && s.demo.edits === s.edits) return s.demo
+  const run = s.run
+  if (run?.revealing && run.edits === s.edits) return { paths: run.paths, p95Ms: run.result.p95Ms, targetP95Ms: run.targetP95Ms, startedAt: run.startedAt }
+  return null
 }
 
 /** The run, while the board on screen is still the one it judged. */

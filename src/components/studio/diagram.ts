@@ -1,4 +1,5 @@
 import { laneIndex } from "../../data/studio/components.ts"
+import { evaluate, trafficOf } from "../../game/studio/evaluate.ts"
 import { route } from "../../game/studio/route.ts"
 import type { ComponentKind, Design, DesignEdge, Scenario } from "../../game/studio/types.ts"
 
@@ -42,16 +43,38 @@ export function placeDesign(design: Design): { nodes: Placed[]; edges: DesignEdg
   return { nodes, edges: design.edges.filter((e) => ids.has(e.from) && ids.has(e.to)) }
 }
 
-/** One way a request travels: the node ids from The Users to where it ends, and the share of requests that take it. */
-export type TrafficPath = { readonly nodes: readonly string[]; readonly share: number }
+/**
+ * One way a request travels: the node ids from The Users to where it ends, and the share of requests that take it.
+ * `dies` is where part of them stop: the index in `nodes` of the node that drops them, and the share of this path's
+ * requests it drops. A path nothing answers dies at its last node.
+ */
+export type TrafficPath = {
+  readonly nodes: readonly string[]
+  readonly share: number
+  readonly dies: { readonly at: number; readonly share: number } | null
+}
 
 /** Every route the first phase's requests take, one per distinct node path, for the traffic dots. */
 export function leafPaths(design: Design, scenario: Scenario): TrafficPath[] {
-  const routing = route(design, { features: scenario.features, cacheHitRate: scenario.cacheHitRate, edgeHitRate: scenario.edgeHitRate, fanout: scenario.fanout, bots: 0 })
-  const shares = new Map<string, TrafficPath>()
+  const phase = scenario.phases[0]
+  const calm: Scenario = { ...scenario, phases: [{ ...phase, fault: undefined }] }
+  const routing = route(design, trafficOf(calm.phases[0], calm))
+  const busy = new Map(evaluate(design, calm).phases[0].hot.map((node) => [node.id, node.utilization]))
+  const merged = new Map<string, { nodes: readonly string[]; share: number; dead: number; at: number }>()
   for (const leaf of routing.leaves) {
     const key = leaf.nodes.join(">")
-    shares.set(key, { nodes: leaf.nodes, share: (shares.get(key)?.share ?? 0) + leaf.share })
+    const sync = leaf.nodes.slice(0, leaf.sync)
+    const survive = leaf.served ? sync.reduce((kept, id) => kept * Math.min(1, 1 / Math.max(1, busy.get(id) ?? 0)), 1) : 0
+    const first = leaf.served ? sync.findIndex((id) => (busy.get(id) ?? 0) > 1) : leaf.nodes.length - 1
+    const row = merged.get(key) ?? { nodes: leaf.nodes, share: 0, dead: 0, at: Infinity }
+    row.share += leaf.share
+    row.dead += leaf.share * (1 - survive)
+    if (survive < 1) row.at = Math.min(row.at, Math.max(0, first))
+    merged.set(key, row)
   }
-  return [...shares.values()]
+  return [...merged.values()].map((row) => ({
+    nodes: row.nodes,
+    share: row.share,
+    dies: row.dead > 1e-9 ? { at: row.at, share: Math.min(1, row.dead / row.share) } : null,
+  }))
 }

@@ -8,13 +8,14 @@ import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { Board } from "./Board.tsx"
-import { endReveal, practiceBoard, showInterview, submitBoard, useBoard } from "./boardStore.ts"
+import { endReveal, playing, practiceBoard, showInterview, submitBoard, useBoard } from "./boardStore.ts"
 import { Brief } from "./Brief.tsx"
 import { ChallengeList } from "./ChallengeList.tsx"
 import { reachable, useStatuses } from "./status.ts"
 import type { InterviewStatus, ReachableStatus } from "./status.ts"
 import { closeStudio, openStudio } from "./launcher.ts"
 import { Notes } from "./Notes.tsx"
+import { NodeNotesProvider } from "./NodeNotes.tsx"
 import { Palette } from "./Palette.tsx"
 import { RunMeters } from "./RunMeters.tsx"
 
@@ -55,7 +56,13 @@ function Room({ interview, status }: { interview: Interview; status: ReachableSt
       <main className="studio-main">
         <div className="studio-stage">
           <Notes interview={interview} />
-          {shown ? <Board key={interview.id} /> : <div className="studio-board" />}
+          {shown ? (
+            <NodeNotesProvider interview={interview} status={status}>
+              <Board key={interview.id} interview={interview} />
+            </NodeNotesProvider>
+          ) : (
+            <div className="studio-board" />
+          )}
         </div>
         <Palette interview={interview} career={career} />
       </main>
@@ -122,7 +129,7 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
             animate={{ opacity: 1, scale: 1 }}
             transition={PANEL}
             onPointerDownCapture={() => {
-              if (useBoard.getState().run?.revealing) endReveal()
+              if (playing(useBoard.getState())) endReveal()
             }}
           >
             <header className="studio-head">

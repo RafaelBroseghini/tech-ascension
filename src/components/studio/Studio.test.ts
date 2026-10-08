@@ -312,6 +312,50 @@ describe("whiteboard", () => {
     expect($("[data-node='db'] .studio-node-x")).toBeNull()
   })
 
+  it("Run traffic is free, plays dots on the draft, and shows no verdict or career change", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+    const before = { xp: useGame.getState().xp, interviews: useGame.getState().interviews }
+    await click($("[data-testid='studio-run-traffic']"))
+    expect(useBoard.getState().demo?.revealing).toBe(true)
+    expect(useBoard.getState().demo?.paths.length).toBeGreaterThan(0)
+    expect($("[data-testid='studio-run-traffic']")?.hasAttribute("disabled")).toBe(true)
+    expect($("[data-testid='studio-verdict']")).toBeNull()
+    expect($("[data-testid='studio-run']")).toBeNull()
+    expect(document.body.querySelector(".is-fail, .is-over, .is-hot")).toBeNull()
+    expect(useGame.getState().xp).toBe(before.xp)
+    expect(useGame.getState().interviews).toBe(before.interviews)
+    // A click on the whiteboard skips it, and the button is back.
+    await act(async () => {
+      $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+    })
+    expect(useBoard.getState().demo?.revealing).toBe(false)
+    expect($("[data-testid='studio-run-traffic']")?.hasAttribute("disabled")).toBe(false)
+  })
+
+  it("an edit while traffic runs stops it", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, THREE_TIER.reference)
+    await click($("[data-testid='studio-run-traffic']"))
+    const { playing } = await import("./boardStore.ts")
+    expect(playing(useBoard.getState())).not.toBeNull()
+    await click($("[data-testid='studio-node'][data-kind='api'] [aria-label='One more replica']"))
+    expect(playing(useBoard.getState())).toBeNull()
+  })
+
+  it("every piece prints a labelled readout, and a single point of failure wears a badge live", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().askInterviewer(THREE_TIER.id, "traffic")
+    await open(THREE_TIER.id, THREE_TIER.reference)
+    const note = (id: string) => $(`[data-node='${id}'] [data-testid='studio-node-note']`)?.textContent
+    expect(note("api")).toBe("API: 600 of 1,500 rps")
+    expect(note("db")).toMatch(/^SQL: 120 writes\/s of 300/)
+    expect($$("[data-testid='studio-spof']").map((badge) => badge.closest<HTMLElement>("[data-node]")?.dataset.node).sort()).toEqual(["db", "lb"])
+    expect($("[data-node='api'] [data-testid='studio-node-plan']")?.textContent).toContain("reads try Redish and PostgreSloth")
+    // Nothing about the budget or the verdict leaks onto a node.
+    expect($$("[data-testid='studio-node']").map((n) => n.textContent).join(" ")).not.toMatch(/\$800|budget|pass|fail/i)
+  })
+
   it("Run shows the hot node", async () => {
     careerAt(100_000, [1, 2, 6])
     await open(SHORTENER.id, NAIVE(SHORTENER.id, "No cache"))

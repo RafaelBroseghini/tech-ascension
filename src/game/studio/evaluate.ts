@@ -73,7 +73,7 @@ function costPerMonth(design: Design): number {
   return region ? total * 2 : total
 }
 
-function trafficOf(phase: Phase, scenario: Scenario): Traffic {
+export function trafficOf(phase: Phase, scenario: Scenario): Traffic {
   const fault = phase.fault
   return {
     features: scenario.features,
@@ -82,6 +82,14 @@ function trafficOf(phase: Phase, scenario: Scenario): Traffic {
     fanout: scenario.fanout,
     bots: fault?.kind === "botFlood" ? fault.bots : 0,
   }
+}
+
+/** Requests per second `replicas` copies of a node take, and the writes per second among them. */
+export function capacitiesOf(node: DesignNode, replicas: number, boost = 1): { total: number; writes: number } {
+  const spec = COMPONENTS[node.kind]
+  const total = spec.capacity === null ? (replicas > 0 ? Infinity : 0) : spec.capacity * replicas * boost
+  const writes = spec.writeCapacity === null ? total : spec.writeCapacity * (effectOf(node).kind === "shard" ? replicas : Math.min(replicas, 1))
+  return { total, writes }
 }
 
 const withReplicas = (design: Design, live: ReadonlyMap<string, number>): Design => ({
@@ -140,7 +148,8 @@ function p95(samples: { ms: number; weight: number }[]): number {
   return sorted[sorted.length - 1].ms
 }
 
-function runPhase(design: Design, scenario: Scenario, phase: Phase): PhaseResult {
+/** `lost` takes one replica of that node away on top of the phase's own fault, which is how a single point of failure is found. */
+function runPhase(design: Design, scenario: Scenario, phase: Phase, lost?: string): PhaseResult {
   const fault = phase.fault ?? null
   const base = new Map(design.nodes.map((n) => [n.id, liveReplicas(n)]))
   const live = new Map(base)
@@ -183,12 +192,17 @@ function runPhase(design: Design, scenario: Scenario, phase: Phase): PhaseResult
       break
   }
 
+  if (lost !== undefined) {
+    const node = design.nodes.find((n) => n.id === lost)
+    const covered = node !== undefined && isDatabase(node) && failoverPairs(design).has(node.id)
+    if (node && !covered) live.set(lost, Math.max(0, (live.get(lost) ?? 0) - 1))
+  }
+
   const routed = route(withReplicas(design, live), trafficOf(phase, scenario))
   const utilization = new Map<string, number>()
   const pinnedSurvival = new Map<string, number>()
   for (const node of design.nodes) {
     const flow = routed.flows.get(node.id)
-    const spec = COMPONENTS[node.kind]
     const now = live.get(node.id)!
     const before = base.get(node.id)!
     // Without a balancer, requests still go to a dead replica and fail there.
@@ -198,12 +212,7 @@ function runPhase(design: Design, scenario: Scenario, phase: Phase): PhaseResult
       utilization.set(node.id, 0)
       continue
     }
-    const replicas = pinned ? before : now
-    const capacity = spec.capacity === null ? (now > 0 ? Infinity : 0) : spec.capacity * replicas * capacityBoost(node)
-    const writeCapacity =
-      spec.writeCapacity === null
-        ? capacity
-        : spec.writeCapacity * (effectOf(node).kind === "shard" ? replicas : Math.min(replicas, 1))
+    const { total: capacity, writes: writeCapacity } = capacitiesOf(node, pinned ? before : now, capacityBoost(node))
     const ratio = (load: number, cap: number) => (load <= 0 ? 0 : cap <= 0 ? Infinity : load / cap)
     utilization.set(node.id, Math.max(ratio(flow.total * rps, capacity), ratio(flow.writes * rps, writeCapacity)))
   }
@@ -316,4 +325,23 @@ export function evaluate(wired: Design, scenario: Scenario): RunResult {
       served: Math.min(1, ...calm.map((p) => p.features.find((f) => f.id === feature.id)?.served ?? 0)),
     })),
   }
+}
+
+/**
+ * For each node, the features that stop working when one of its replicas is lost. A node with a spare behind a balancer,
+ * or a database with a standby, loses none. Judged on the first phase with its fault left out, against `threshold`.
+ */
+export function fragileFeatures(wired: Design, scenario: Scenario, threshold: number): ReadonlyMap<string, readonly string[]> {
+  const design = withLegalEdges(wired)
+  const phase: Phase = { ...scenario.phases[0], fault: undefined }
+  const served = (lost?: string) => new Map(runPhase(design, scenario, phase, lost).features.map((f) => [f.id, f.served]))
+  const calm = served()
+  const out = new Map<string, readonly string[]>()
+  for (const node of design.nodes) {
+    if (COMPONENTS[node.kind].uptime === null || liveReplicas(node) === 0) continue
+    const after = served(node.id)
+    const dropped = scenario.features.filter((f) => (calm.get(f.id) ?? 0) >= threshold && (after.get(f.id) ?? 0) < threshold).map((f) => f.id)
+    if (dropped.length > 0) out.set(node.id, dropped)
+  }
+  return out
 }

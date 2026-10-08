@@ -7,6 +7,7 @@ import { COMPONENTS } from "../../data/studio/components.ts"
 import { currentRun, MAX_REPLICAS, removeNode, setReplicas, useBoard } from "./boardStore.ts"
 import type { BoardNode } from "./boardStore.ts"
 import { KIND_ICON, specLine } from "./kinds.ts"
+import { useNodeNote } from "./NodeNotes.tsx"
 
 const SPRING = { type: "spring", stiffness: 520, damping: 32 } as const
 
@@ -18,12 +19,6 @@ const useHeat = (id: string): number | null =>
     return run.result.hot.find((h) => h.id === id)?.utilization ?? null
   })
 
-const useSpof = (id: string): boolean =>
-  useBoard((s) => {
-    const run = currentRun(s)
-    return Boolean(run && !run.revealing && run.result.singlePointsOfFailure.includes(id))
-  })
-
 const heatLabel = (util: number): string => (Number.isFinite(util) ? `${Math.round(util * 100)}%` : "down")
 
 /** One placed component. Memoized on its `data`, which a drag leaves alone, so only the dragged node re-renders. */
@@ -32,7 +27,8 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
   const spec = COMPONENTS[kind]
   const Icon = KIND_ICON[kind]
   const heat = useHeat(id)
-  const spof = useSpof(id)
+  const note = useNodeNote(id)
+  const spof = (note?.spof.length ?? 0) > 0
   const hot = heat !== null && heat >= 1
   const source = kind === "users"
   const className = ["studio-node", selected ? "is-selected" : "", hot ? "is-hot" : "", spof ? "is-spof" : "", source ? "is-source" : ""]
@@ -75,18 +71,24 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
               <Plus size={12} strokeWidth={2.5} aria-hidden />
             </button>
           </div>
-          {heat === null ? null : (
-            <span className={hot ? "studio-heat is-hot" : "studio-heat"} data-testid="studio-heat">
-              {heatLabel(heat)}
+          {spof ? (
+            <span className="studio-spof" data-testid="studio-spof" title={note?.spofText ?? undefined}>
+              SPOF
             </span>
-          )}
+          ) : null}
         </div>
       )}
+      {note ? (
+        <span className="studio-node-note" data-testid="studio-node-note">
+          {note.line}
+        </span>
+      ) : null}
       <div className="studio-node-card" role="tooltip">
         <strong>{spec.name}</strong>
         <span>{spec.goal}</span>
+        {note?.plan ? <span className="studio-node-plan" data-testid="studio-node-plan">{note.plan}</span> : null}
         <span className="studio-node-spec">{specLine(kind)}</span>
-        {spof ? <span className="studio-node-warn">Single point of failure</span> : null}
+        {spof ? <span className="studio-node-warn">{note?.spofText ?? "Single point of failure"}</span> : null}
       </div>
       <Handle type="source" position={Position.Right} className="studio-handle" />
     </m.div>

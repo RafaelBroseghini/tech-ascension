@@ -52,6 +52,24 @@ describe("dotsAt", () => {
   })
 })
 
+describe("dying dots", () => {
+  const dying = (share: number) => laneOf(lane(1).points, 8, { at: 1 / 3, share })
+
+  it("a share of the dots stop at the node that drops them and fade there", () => {
+    const stopped = dotsAt(dying(0.5), 5000, 600, false).filter((dot) => dot.dead)
+    expect(stopped).toHaveLength(4)
+    for (const dot of stopped) expect(dot.at.x).toBeLessThanOrEqual(100 + 1e-9)
+    expect(dotsAt(dying(0), 5000, 600, false).some((dot) => dot.dead)).toBe(false)
+  })
+
+  it("the dead dots are spread through the stream, not bunched at its head", () => {
+    const flags = Array.from({ length: 8 }, (_, k) => dotsAt(dying(0.5), 600 + k * 75 + 1, 600, false).length > 0)
+    expect(flags.every(Boolean)).toBe(true)
+    const marks = stillDots(dying(0.5)).map((dot) => dot.dead)
+    expect(marks).toEqual([false, true, false, true, false, true, false, true])
+  })
+})
+
 describe("travelMs", () => {
   it("is fast at or under the target and slow at 3x or worse, in a line between", () => {
     expect(travelMs(30, 60)).toBe(FAST_TRAVEL_MS)
@@ -76,6 +94,17 @@ describe("leafPaths", () => {
     expect(paths.length).toBeGreaterThan(1)
     for (const path of paths) expect(path.nodes[0]).toBe("users")
     expect(paths.reduce((sum, path) => sum + path.share, 0)).toBeCloseTo(1, 6)
+  })
+
+  it("says where requests die: at the piece with nowhere to send them, and at one that is over capacity", () => {
+    const unrouted = leafPaths(INTERVIEWS[0].naive[0].design, INTERVIEWS[0].scenario)
+    expect(unrouted.every((path) => path.dies?.share === 1)).toBe(true)
+    expect(unrouted.every((path) => path.dies?.at === path.nodes.length - 1)).toBe(true)
+    const noCache = leafPaths(shortener.naive[0].design, shortener.scenario)
+    const overloaded = noCache.filter((path) => path.dies)
+    expect(overloaded.length).toBeGreaterThan(0)
+    expect(overloaded.every((path) => path.nodes[path.dies!.at] === "db")).toBe(true)
+    expect(leafPaths(shortener.reference, shortener.scenario).every((path) => path.dies === null)).toBe(true)
   })
 
   it("merges leaves that walk the same nodes", () => {
