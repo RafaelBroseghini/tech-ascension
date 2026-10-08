@@ -107,3 +107,15 @@ export function verdict(result: RunResult, targets: Targets, design: Design): Ve
   const strong = result.costPerMonth <= targets.budgetPerMonth * STRONG_HIRE_BUDGET_SHARE
   return { kind: strong ? "strongHire" : "hire", faults }
 }
+
+/** What a design earned: works, meets every target, and does it under half the budget. Each star needs the one before. */
+export type Stars = 0 | 1 | 2 | 3
+
+export const STAR_LABELS: readonly [string, string, string] = ["Works", "Meets the targets", "Under half the budget"]
+
+export function starsOf(result: RunResult, targets: Targets, judged: Verdict): Stars {
+  const works = result.unrouted.length === 0 && brokenFeatures(result, targets).length === 0
+  if (!works) return 0
+  if (judged.kind === "noHire") return 1
+  return judged.kind === "strongHire" ? 3 : 2
+}

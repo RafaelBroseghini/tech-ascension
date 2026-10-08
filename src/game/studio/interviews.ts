@@ -7,7 +7,7 @@ import { JOB_TIERS } from "../../data/phases.ts"
 import { evaluate } from "./evaluate.ts"
 import { withLegalEdges } from "./route.ts"
 import { verdict } from "./score.ts"
-import type { Verdict } from "./score.ts"
+import type { Stars, Verdict } from "./score.ts"
 import type { ComponentKind, Design, DesignEdge, DesignNode, RunResult, TargetName } from "./types.ts"
 
 export type VerdictKind = Verdict["kind"]
@@ -48,6 +48,10 @@ export type InterviewRecord = {
   readonly hints: readonly string[]
   /** Set once, by the Submit that first passed. */
   readonly offer?: Offer
+  /** The most stars any run earned, real or practice: works, meets the targets, under half the budget. */
+  readonly stars: Stars
+  /** The player has looked at the engineers' board after a pass. */
+  readonly studied: boolean
 }
 
 /**
@@ -73,6 +77,9 @@ export type PracticeRun = {
   readonly newBest: boolean
   /** The best on record after this run. */
   readonly best: Best | undefined
+  /** The stars this run earned, and the most on record after it. */
+  readonly stars: Stars
+  readonly bestStars: Stars
 }
 
 /** The lump a Strong hire with no hints signs for, in minutes of the gated job's salary. */
@@ -101,7 +108,7 @@ export const startDesign = (interview: Interview): Design => ({ nodes: [...THE_U
 export const offerLine = (band: Band): string => `Offer: ${BAND_LABEL[band].toLowerCase()}`
 
 /** A career that has not touched an interview yet. */
-export const NO_RECORD: InterviewRecord = { verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] }
+export const NO_RECORD: InterviewRecord = { verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [], stars: 0, studied: false }
 
 export function interviewById(id: string): Interview | undefined {
   return INTERVIEWS.find((row) => row.id === id)
@@ -217,6 +224,10 @@ const isQuestion = (value: unknown): value is QuestionId => typeof value === "st
 const isTarget = (value: unknown): value is TargetName => TARGET_NAMES.some((target) => target === value)
 const isLine = (value: unknown): value is string => typeof value === "string" && value.length > 0
 
+function parseStars(raw: unknown): Stars {
+  return raw === 1 || raw === 2 || raw === 3 ? raw : 0
+}
+
 function parseOffer(raw: unknown): Offer | undefined {
   if (!isRecord(raw) || !isCount(raw.bonus)) return undefined
   const band = BANDS.find((b) => b === raw.band)
@@ -241,6 +252,8 @@ export function parseInterviews(raw: unknown): InterviewLog {
       asked: parseList(value.asked, isQuestion),
       nudges: parseList(value.nudges, isTarget),
       hints: Array.isArray(value.hints) ? value.hints.filter(isLine) : [],
+      stars: parseStars(value.stars),
+      studied: value.studied === true,
       ...(best ? { best } : {}),
       ...(offer ? { offer } : {}),
     }

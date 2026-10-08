@@ -25,6 +25,7 @@ export const Palette = memo(function Palette({ interview, career }: { interview:
   const drag = useRef<{ kind: ComponentKind; x: number; y: number; moved: boolean } | null>(null)
   // The click that follows a drag's pointerup must not drop a second node in the middle.
   const dropped = useRef(false)
+  const studying = useBoard((s) => s.studying)
   const pieces = trayFor(interview, career)
   const locked = trayWanted(interview) - pieces.length
   const left = useBoard(useShallow((state) => Object.fromEntries(pieces.map(({ kind }) => [kind, piecesLeft(state, kind)])) as Record<ComponentKind, number>))
@@ -83,7 +84,7 @@ export const Palette = memo(function Palette({ interview, career }: { interview:
             data-testid="studio-tile"
             data-kind={kind}
             data-left={remaining}
-            disabled={remaining <= 0}
+            disabled={remaining <= 0 || studying}
             title={`${spec.name}. ${spec.goal} ${specLine(kind)}`}
             onPointerDown={onPointerDown(kind)}
             onPointerMove={onPointerMove}

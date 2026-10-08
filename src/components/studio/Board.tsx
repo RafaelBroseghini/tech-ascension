@@ -67,6 +67,7 @@ export const Board = memo(function Board({ interview }: { interview: Interview }
   const nodes = useBoard((s) => s.nodes)
   const edges = useBoard((s) => s.edges)
   const running = useBoard((s) => playing(s) !== null)
+  const studying = useBoard((s) => s.studying)
   // Fit a seeded board once on mount; a fresh one starts with The Users on the left at full size.
   const [fit] = useState(() => nodes.length > 1)
   return (
@@ -85,7 +86,10 @@ export const Board = memo(function Board({ interview }: { interview: Interview }
         connectionRadius={40}
         snapToGrid
         snapGrid={SNAP}
-        deleteKeyCode={DELETE_KEYS}
+        deleteKeyCode={studying ? null : DELETE_KEYS}
+        nodesDraggable={!studying}
+        nodesConnectable={!studying}
+        edgesFocusable={!studying}
         fitView={fit}
         fitViewOptions={FIT}
         defaultViewport={START}
@@ -104,6 +108,11 @@ export const Board = memo(function Board({ interview }: { interview: Interview }
         <TrafficLayer />
       </ReactFlow>
       <Notice />
+      {studying ? (
+        <p className="studio-studying" role="status" data-testid="studio-studying">
+          The engineers' board, studied. Read it, run its traffic, then go back to yours.
+        </p>
+      ) : null}
     </div>
   )
 })

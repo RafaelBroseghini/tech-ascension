@@ -7,7 +7,7 @@ import { COMPONENTS } from "../../data/studio/components.ts"
 import { currentRun, MAX_REPLICAS, removeNode, setReplicas, useBoard } from "./boardStore.ts"
 import type { BoardNode } from "./boardStore.ts"
 import { KIND_ICON, specLine } from "./kinds.ts"
-import { useNodeNote } from "./NodeNotes.tsx"
+import { useNodeNote } from "./nodeNotesContext.ts"
 
 const SPRING = { type: "spring", stiffness: 520, damping: 32 } as const
 
@@ -28,6 +28,7 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
   const Icon = KIND_ICON[kind]
   const heat = useHeat(id)
   const note = useNodeNote(id)
+  const studying = useBoard((s) => s.studying)
   const spof = (note?.spof.length ?? 0) > 0
   const hot = heat !== null && heat >= 1
   const source = kind === "users"
@@ -50,7 +51,7 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
       <div className="studio-node-head">
         <Icon size={16} strokeWidth={2} aria-hidden />
         <span className="studio-node-name">{spec.name}</span>
-        {source || locked ? null : (
+        {source || locked || studying ? null : (
           <button type="button" className="studio-node-x nodrag" aria-label={`Remove ${spec.name}`} title="Remove (Delete)" onClick={() => removeNode(id)}>
             <X size={12} strokeWidth={2.5} aria-hidden />
           </button>
@@ -61,13 +62,13 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
       ) : (
         <div className="studio-node-row">
           <div className="studio-stepper nodrag" role="group" aria-label={`${spec.name} replicas`}>
-            <button type="button" aria-label="One fewer replica" disabled={replicas <= 1} onClick={() => setReplicas(id, replicas - 1)}>
+            <button type="button" aria-label="One fewer replica" disabled={replicas <= 1 || studying} onClick={() => setReplicas(id, replicas - 1)}>
               <Minus size={12} strokeWidth={2.5} aria-hidden />
             </button>
             <output data-testid="studio-replicas" aria-live="polite">
               x{replicas}
             </output>
-            <button type="button" aria-label="One more replica" disabled={replicas >= MAX_REPLICAS} onClick={() => setReplicas(id, replicas + 1)}>
+            <button type="button" aria-label="One more replica" disabled={replicas >= MAX_REPLICAS || studying} onClick={() => setReplicas(id, replicas + 1)}>
               <Plus size={12} strokeWidth={2.5} aria-hidden />
             </button>
           </div>

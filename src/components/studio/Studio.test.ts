@@ -254,6 +254,49 @@ describe("whiteboard", () => {
     expect(tiles).not.toContain("standby")
   })
 
+  it("every interview opens with a goal line above the vague opener", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    const goal = $("[data-testid='studio-goal']")
+    expect(goal?.textContent).toBe(THREE_TIER.goal)
+    expect(goal?.nextElementSibling?.getAttribute("data-testid")).toBe("studio-brief")
+  })
+
+  it("after a pass the score shows stars, and Show the reference swaps in a read-only board marked studied", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().forceInterview(THREE_TIER.id)
+    await open(THREE_TIER.id, THREE_TIER.naive[0].design)
+    expect($("[data-testid='studio-stars']")?.dataset.stars).toBe("0")
+    await submitAndSkip()
+    expect(useGame.getState().interviews[THREE_TIER.id]?.stars).toBe(0)
+    expect($("[data-testid='studio-studied']")).toBeNull()
+    await click($("[data-testid='studio-study']"))
+    expect(useGame.getState().interviews[THREE_TIER.id]?.studied).toBe(true)
+    expect($("[data-testid='studio-studying']")).not.toBeNull()
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node).sort()).toEqual(THREE_TIER.reference.nodes.map((n) => n.id).sort())
+    expect($("[data-testid='studio-submit']")?.hasAttribute("disabled")).toBe(true)
+    expect($("[data-node='api'] .studio-node-x")).toBeNull()
+    expect($("[data-node='api'] [aria-label='One more replica']")?.hasAttribute("disabled")).toBe(true)
+    expect($("[data-testid='studio-tile'][data-kind='api']")?.hasAttribute("disabled")).toBe(true)
+    await click($("[data-testid='studio-study-back']"))
+    expect($("[data-testid='studio-studying']")).toBeNull()
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node).sort()).toEqual(THREE_TIER.naive[0].design.nodes.map((n) => n.id).sort())
+    expect($("[data-testid='studio-studied']")?.textContent).toBe("Studied")
+  })
+
+  it("a practice run earns stars and the list shows them", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().forceInterview(THREE_TIER.id)
+    await open(THREE_TIER.id, THREE_TIER.strongHire)
+    await click($("[data-testid='studio-submit']"))
+    await act(async () => {
+      $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+    })
+    expect($("[data-testid='studio-run-stars']")?.dataset.stars).toBe("3")
+    expect($("[data-testid='studio-stars']")?.dataset.stars).toBe("3")
+    expect($("[data-testid='studio-interview'][data-interview='3-tier-app'] [data-testid='studio-list-stars']")?.dataset.stars).toBe("3")
+  })
+
   it("the tray counts what the board still takes and stops at zero", async () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)

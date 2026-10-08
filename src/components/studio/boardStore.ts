@@ -7,7 +7,8 @@ import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
 import { interviewById, startDesign } from "../../game/studio/interviews.ts"
 import type { Offer } from "../../game/studio/interviews.ts"
-import type { Verdict } from "../../game/studio/score.ts"
+import { starsOf } from "../../game/studio/score.ts"
+import type { Stars, Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
 import { edgeId, laneX, leafPaths, placeDesign, ROW, snap } from "./diagram.ts"
 import { trayLimit } from "./kinds.ts"
@@ -35,6 +36,8 @@ export interface Run {
   readonly penalty: number
   /** The offer a real pass earned; null for a No hire and for practice. */
   readonly offer: Offer | null
+  /** Stars this run earned. */
+  readonly stars: Stars
   readonly result: RunResult
   /** The board that was sent, so the report can name its nodes after the board changes. */
   readonly design: Design
@@ -72,11 +75,14 @@ interface BoardState extends Sheet {
   readonly notice: string | null
   /** The last Run traffic on this board. */
   readonly demo: Demo | null
+  /** The engineers' board is on screen, read-only; `stash` holds the player's own board until they go back. */
+  readonly studying: boolean
+  readonly stash: Pick<Sheet, "nodes" | "edges" | "edits" | "run"> | null
   /** Every interview's sheet, kept while another one is on the board and across closing the whiteboard. */
   readonly sheets: Readonly<Record<string, Sheet>>
 }
 
-export const useBoard = create<BoardState>(() => ({ interviewId: null, notice: null, demo: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
+export const useBoard = create<BoardState>(() => ({ interviewId: null, notice: null, demo: null, studying: false, stash: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
 
 let version = 0
 const nextEdit = () => ++version
@@ -104,15 +110,18 @@ export function layout(design: Design, locked: ReadonlySet<string> = new Set()):
 export function showInterview(interviewId: string, seed: Design | null): void {
   const interview = interviewById(interviewId)
   const locked = new Set(interview?.locked.map((n) => n.id))
-  useBoard.setState((s) => {
-    if (s.interviewId === interviewId) return s
+  useBoard.setState((current) => {
+    if (current.interviewId === interviewId) return current
+    // Leaving for another interview puts the player's own board back first.
+    const s = current.studying && current.stash ? { ...current, ...current.stash } : current
     const sheets = s.interviewId ? { ...s.sheets, [s.interviewId]: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run } } : s.sheets
     const kept = sheets[interviewId]
     const edits = nextEdit()
     const start = interview ? startDesign(interview) : { nodes: [], edges: [] }
-    if (!kept) return { interviewId, sheets, notice: null, demo: null, ...layout(seed && seed.nodes.length > 0 ? seed : start, locked), edits, run: null }
+    const fresh = { interviewId, sheets, notice: null, demo: null, studying: false, stash: null, edits }
+    if (!kept) return { ...fresh, ...layout(seed && seed.nodes.length > 0 ? seed : start, locked), run: null }
     const run = kept.run && kept.run.edits === kept.edits ? { ...kept.run, edits } : kept.run
-    return { interviewId, sheets, notice: null, demo: null, nodes: kept.nodes, edges: kept.edges, edits, run }
+    return { ...fresh, nodes: kept.nodes, edges: kept.edges, run }
   })
 }
 
@@ -226,7 +235,7 @@ export function removeNode(id: string): void {
   })
 }
 
-type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty" | "offer">
+type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty" | "offer" | "stars">
 
 function startRun(interview: Interview, design: Design, judged: Judged): void {
   const run: Omit<Run, "edits" | "startedAt" | "revealing"> = {
@@ -244,7 +253,16 @@ export function submitBoard(interview: Interview): void {
   const verdict = useGame.getState().submitWhiteboard(interview.id, design)
   if (!verdict) return
   const last = useGame.getState().lastInterview
-  startRun(interview, design, { verdict, result: evaluate(design, interview.scenario), practice: false, newBest: false, penalty: last?.penalty ?? 0, offer: last?.offer ?? null })
+  const result = evaluate(design, interview.scenario)
+  startRun(interview, design, {
+    verdict,
+    result,
+    practice: false,
+    newBest: false,
+    penalty: last?.penalty ?? 0,
+    offer: last?.offer ?? null,
+    stars: starsOf(result, interview.targets, verdict),
+  })
 }
 
 /** Reruns a passed interview against its targets and plays the same reveal. Nothing in the career changes. */
@@ -252,7 +270,30 @@ export function practiceBoard(interview: Interview): void {
   const design = draftOf(useBoard.getState())
   const run = useGame.getState().practiceWhiteboard(interview.id, design)
   if (!run) return
-  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0, offer: null })
+  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0, offer: null, stars: run.stars })
+}
+
+/** Swaps in the engineers' board, read-only, and marks the interview studied. The player's own board waits for `leaveStudy`. */
+export function studyReference(interview: Interview): void {
+  const reference = useGame.getState().studyReference(interview.id)
+  if (!reference) return
+  useBoard.setState((s) =>
+    s.studying
+      ? s
+      : {
+          studying: true,
+          stash: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run },
+          ...layout(reference, new Set(interview.locked.map((n) => n.id))),
+          edits: nextEdit(),
+          run: null,
+          demo: null,
+          notice: null,
+        },
+  )
+}
+
+export function leaveStudy(): void {
+  useBoard.setState((s) => (s.studying && s.stash ? { studying: false, stash: null, nodes: s.stash.nodes, edges: s.stash.edges, run: null, demo: null, edits: nextEdit() } : s))
 }
 
 /**
