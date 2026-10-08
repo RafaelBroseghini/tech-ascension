@@ -17,6 +17,10 @@ export const REVEAL_MS = 2500
 /** One submission as the board shows it. Heat and the traffic only apply while the board is still the one sent. */
 export interface Run {
   readonly verdict: Verdict
+  /** A rerun of a passed interview: it judges the board against the targets and changes nothing in the career. */
+  readonly practice: boolean
+  /** A practice run that beat the best on record. */
+  readonly newBest: boolean
   /** Spendable XP the No hire took. */
   readonly penalty: number
   readonly result: RunResult
@@ -160,7 +164,15 @@ export function submitBoard(interview: Interview): void {
   const verdict = useGame.getState().submitWhiteboard(interview.id, design)
   if (!verdict) return
   const penalty = useGame.getState().lastInterview?.penalty ?? 0
-  startRun({ verdict, penalty, result: evaluate(design, interview.scenario), flows: edgeFlows(design, interview.scenario) })
+  startRun({ verdict, practice: false, newBest: false, penalty, result: evaluate(design, interview.scenario), flows: edgeFlows(design, interview.scenario) })
+}
+
+/** Reruns a passed interview against its targets and plays the same reveal. Nothing in the career changes. */
+export function practiceBoard(interview: Interview): void {
+  const design = draftOf(useBoard.getState())
+  const run = useGame.getState().practiceWhiteboard(interview.id, design)
+  if (!run) return
+  startRun({ verdict: run.verdict, practice: true, newBest: run.newBest, penalty: 0, result: run.result, flows: edgeFlows(design, interview.scenario) })
 }
 
 export function endReveal(): void {

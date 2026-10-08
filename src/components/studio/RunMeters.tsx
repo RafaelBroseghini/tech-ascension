@@ -36,6 +36,7 @@ function RunReport({ run, stale, interview, onHired }: { run: Run; stale: boolea
   const printed = usePrinted(run)
   const missed = new Set(run.verdict.kind === "noHire" ? run.verdict.missed.map((miss) => miss.target) : [])
   const pass = run.verdict.kind !== "noHire"
+  const stamp = run.practice ? (pass ? "Passes the bar" : "Misses the bar") : VERDICT[run.verdict.kind]
   return (
     <section className={stale ? "studio-run is-stale" : "studio-run"} aria-label="Run" data-testid="studio-run" data-stale={stale}>
       {stale ? <p className="studio-run-label">Last submission</p> : null}
@@ -54,23 +55,25 @@ function RunReport({ run, stale, interview, onHired }: { run: Run; stale: boolea
           <m.div
             className={pass ? "studio-verdict is-pass" : "studio-verdict is-fail"}
             data-testid="studio-verdict"
-            data-verdict={run.verdict.kind}
+            data-verdict={run.practice ? (pass ? "passes" : "misses") : run.verdict.kind}
+            data-practice={run.practice}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={SPRING}
           >
-            <p className="studio-verdict-kind">{VERDICT[run.verdict.kind]}</p>
+            <p className="studio-verdict-kind">{stamp}</p>
+            {run.newBest ? <p className="studio-new-best" data-testid="studio-new-best">New best</p> : null}
             {run.verdict.kind === "noHire" ? (
               <>
-                <p className="studio-xp-lost" data-testid="studio-xp-lost">{`-${run.penalty.toLocaleString("en-US")} XP`}</p>
+                {run.practice ? null : <p className="studio-xp-lost" data-testid="studio-xp-lost">{`-${run.penalty.toLocaleString("en-US")} XP`}</p>}
                 <ul className="studio-misses">
                   {run.verdict.missed.map((miss) => (
                     <li key={miss.target}>{miss.line}</li>
                   ))}
                 </ul>
-                <p className="studio-retry">Your board is still here. Fix it and submit again.</p>
+                <p className="studio-retry">{run.practice ? "Change the board and run it again." : "Your board is still here. Fix it and submit again."}</p>
               </>
-            ) : (
+            ) : run.practice ? null : (
               <button type="button" className="studio-submit" data-testid="studio-to-jobs" onClick={onHired}>
                 Back to the Job Board
               </button>

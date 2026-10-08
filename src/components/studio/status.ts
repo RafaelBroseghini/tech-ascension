@@ -46,7 +46,7 @@ export function statusLine(status: ReachableStatus, interview: Interview, log: I
     case "passed":
       return record?.verdict === "strongHire" ? "Strong hire" : "Passed"
     case "open":
-      return record ? `No hire x${record.attempts}` : "Ready to interview"
+      return record && record.attempts > 0 ? `No hire x${record.attempts}` : "Ready to interview"
   }
 }
 

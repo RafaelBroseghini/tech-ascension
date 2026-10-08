@@ -8,7 +8,7 @@ import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { Board } from "./Board.tsx"
-import { endReveal, showInterview, submitBoard, useBoard } from "./boardStore.ts"
+import { endReveal, practiceBoard, showInterview, submitBoard, useBoard } from "./boardStore.ts"
 import { Brief } from "./Brief.tsx"
 import { ChallengeList } from "./ChallengeList.tsx"
 import { reachable, useStatuses } from "./status.ts"
@@ -46,7 +46,7 @@ function Room({ interview, status }: { interview: Interview; status: ReachableSt
   }, [interview.id])
 
   const toJobs = useCallback(() => closeStudio(interview.jobId), [interview.jobId])
-  const submit = useCallback(() => submitBoard(interview), [interview])
+  const submit = useCallback(() => (status === "open" ? submitBoard(interview) : practiceBoard(interview)), [interview, status])
 
   return (
     <>
@@ -76,7 +76,7 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
 
   const close = useCallback(() => {
     const run = useBoard.getState().run
-    const hired = interview !== null && run !== null && run.verdict.kind !== "noHire" && !useGame.getState().jobs.includes(interview.jobId)
+    const hired = interview !== null && run !== null && !run.practice && run.verdict.kind !== "noHire" && !useGame.getState().jobs.includes(interview.jobId)
     closeStudio(hired ? interview.jobId : undefined)
   }, [interview])
 

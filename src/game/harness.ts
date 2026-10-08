@@ -65,6 +65,19 @@ export type SubmissionSnapshot = {
   penalty: number
 }
 
+/** One practice rerun: whether it clears the interview's targets, what it missed, its numbers, and the best on record after it. */
+export type PracticeSnapshot = {
+  interviewId: string
+  passes: boolean
+  missed: TargetName[]
+  lines: string[]
+  costPerMonth: number
+  p95Ms: number
+  /** True when this run beat the best, or set the first one. */
+  newBest: boolean
+  best: { costPerMonth: number; p95Ms: number } | null
+}
+
 export type InterviewsSnapshot = {
   /** Interviews whose job has the lifetime XP and waits on a passed whiteboard. */
   open: string[]
@@ -186,6 +199,13 @@ export type GameHarness = {
    * requirement in spendable XP (never below 0). False when the interview is unknown or its job is not at `interview`.
    */
   submitWhiteboard: (interviewId: string, design: Design) => SubmissionSnapshot | false
+  /**
+   * Run a design past an interview that is already passed (a submission, `forceInterview`, or holding its job or a
+   * later gated one) without touching the career: no verdict, attempt, XP, job or journal entry. A passing run that is
+   * cheaper (then faster) than the best on record is kept as the best. False for anything not passed; there is no
+   * shortcut around a real Submit.
+   */
+  practiceWhiteboard: (interviewId: string, design: Design) => PracticeSnapshot | false
   /** Record a pass now, bypassing every gate. False for an unknown or already passed id. */
   forceInterview: (interviewId: string) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
@@ -432,6 +452,22 @@ export function installGameHarness(): GameHarness {
       const verdict = useGame.getState().submitWhiteboard(interviewId, parseDesign(design))
       const last = useGame.getState().lastInterview
       return verdict && last ? submissionSnapshot(last) : false
+    },
+
+    practiceWhiteboard: (interviewId, design) => {
+      const run = useGame.getState().practiceWhiteboard(interviewId, parseDesign(design))
+      if (!run) return false
+      const missed = run.verdict.kind === "noHire" ? run.verdict.missed : []
+      return {
+        interviewId,
+        passes: missed.length === 0,
+        missed: missed.map((m) => m.target),
+        lines: missed.map((m) => m.line),
+        costPerMonth: run.result.costPerMonth,
+        p95Ms: run.result.p95Ms,
+        newBest: run.newBest,
+        best: run.best ? { costPerMonth: run.best.costPerMonth, p95Ms: run.best.p95Ms } : null,
+      }
     },
 
     forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),
