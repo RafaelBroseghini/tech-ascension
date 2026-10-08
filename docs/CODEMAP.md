@@ -13,7 +13,7 @@
 | The desk band and the shop-era preview that snaps back | `src/game/ide.ts` |
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
-| The desk backdrop: the prompt of the interview that is open, else nothing | `src/components/DeskDiagram.tsx`, `src/components/studio/status.ts` (`nextInterview`) |
+| The desk backdrop: the opener of the interview that is open, else nothing | `src/components/DeskDiagram.tsx`, `src/components/studio/status.ts` (`nextInterview`) |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
@@ -38,8 +38,12 @@
 | Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
+| Interview catalog: the vague opener, pass bar, nudges and the reference and naive designs of each interview | `src/data/studio/challenges.ts` |
+| Interview questions: the nine questions, their answers written from the scenario, and which targets each puts on the meters | `src/data/studio/questions.ts` |
+| Interview record (asked, nudges, hints, offer, best), the offer and its signing bonus, practice, and the save parser | `src/game/studio/interviews.ts` (`offerFor`, `practice`, `parseInterviews`; the store actions `askInterviewer`, `takeNudge`, `takeHint`, `submitWhiteboard` are in `src/game/store.ts`) |
+| Paid hints: the next missing piece of the reference | `src/game/studio/hints.ts` |
 | Whiteboard entry: open state, the lazy chunk and its preload, the host portal | `src/components/studio/launcher.ts`, `src/components/studio/StudioHost.tsx` |
-| Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `RunMeters.tsx`, `MeterList.tsx`, `Readout.tsx`, `meters.ts`, `ChallengeList.tsx`), `src/styles/studio.css` |
+| Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, questions and hints, sticky notes, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `Ask.tsx`, `Notes.tsx`, `RunMeters.tsx`, `MeterList.tsx`, `Readout.tsx`, `meters.ts`, `ChallengeList.tsx`), `src/styles/studio.css` |
 | Whiteboard board state (one sheet per interview, kept across closing; writes the game store only on Submit) | `src/components/studio/boardStore.ts` |
 | A design's cells and traffic routes, and the traffic dot math and loop | `src/components/studio/diagram.ts`, `src/components/studio/traffic.ts` |
 | Timeline styles | `src/styles/unlocks.css` |

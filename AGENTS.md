@@ -147,6 +147,7 @@ Vitest + happy-dom, all through `__GAME__`:
 3. **B.** The first retainer gig is the first `$/s`.
 4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), the internship waits on its interview until `forceInterview`, an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash.
    **Interviews.** An interview gates the Junior SWE job: `submitWhiteboard` is refused below 45,000 lifetime XP, a No hire costs 2,250 spendable XP and leaves `xpTotal` alone, a pass opens the job, and `nextUnlock` says "pass the whiteboard".
+   **Questions, hints and offers.** Asking and nudging cost nothing and change nothing in the career, a Strong hire with no hints tops the band and pays 30 minutes of the job's salary as money, a pass after a hint is bottom (down-leveled) with no bonus, a No hire retry keeps every answer and hint and adds the missed target's question, and practice or `forceInterview` never change the offer.
    **Gear.** Gear and `buyEquipment` stay shut until 10,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
 5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
