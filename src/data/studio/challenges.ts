@@ -1,4 +1,4 @@
-import type { Challenge, ComponentKind, Design, Feature, NaiveDesign, Phase, RequestType, Scenario, TargetName, Targets } from "../../game/studio/types.ts"
+import type { Challenge, ComponentKind, Design, DesignNode, Feature, NaiveDesign, Phase, RequestType, Scenario, TargetName, Targets } from "../../game/studio/types.ts"
 
 /** A whiteboard interview: one challenge that gates one job. */
 export interface Interview extends Challenge {
@@ -13,7 +13,18 @@ export interface Interview extends Challenge {
   readonly nudges: Readonly<Partial<Record<TargetName, string>>>
   /** Passes at half the budget or less, so the top verdict is reachable. */
   readonly strongHire: Design
+  /** Pieces in the tray that no design here uses: they look useful and are not. */
+  readonly decoys: readonly ComponentKind[]
+  /** Pieces already on the board that cannot be removed, such as a database the company will not migrate. Every design has them. */
+  readonly locked: readonly DesignNode[]
 }
+
+/** Every design the catalog ships for an interview: the reference, the Strong hire and each naive one. */
+export const designsOf = (interview: Challenge & Pick<Interview, "strongHire">): Design[] => [
+  interview.reference,
+  interview.strongHire,
+  ...interview.naive.map((naive) => naive.design),
+]
 
 type Spec = ComponentKind | readonly [ComponentKind, number]
 
@@ -46,14 +57,16 @@ function passBar(targets: Targets, queued: boolean): string {
   return `To pass: ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}.`
 }
 
-interface Draft extends Omit<Interview, "passBar" | "strongHire"> {
+interface Draft extends Omit<Interview, "passBar" | "strongHire" | "decoys" | "locked"> {
   /** Left out when the reference already earns a Strong hire. */
   readonly strongHire?: Design
+  readonly decoys?: readonly ComponentKind[]
+  readonly locked?: readonly DesignNode[]
 }
 
-function interview({ strongHire, ...rest }: Draft): Interview {
+function interview({ strongHire, decoys = [], locked = [], ...rest }: Draft): Interview {
   const queued = rest.reference.nodes.some((n) => n.kind === "queue")
-  return { ...rest, strongHire: strongHire ?? rest.reference, passBar: passBar(rest.targets, queued) }
+  return { ...rest, decoys, locked, strongHire: strongHire ?? rest.reference, passBar: passBar(rest.targets, queued) }
 }
 
 const calm = (name: string, rps: number): Phase => ({ name, seconds: 60, rps })
@@ -149,6 +162,7 @@ const THREE_TIER = interview({
 
 const STATIC_SITE = interview({
   id: "static-site",
+  decoys: ["cache"],
   name: "Static site",
   jobId: 6,
   goal: "Survive the launch-day crowd on a marketing site for under $400 a month.",
@@ -177,6 +191,7 @@ const SHORTENER_PHASE = { rps: 2000 }
 
 const URL_SHORTENER = interview({
   id: "url-shortener",
+  decoys: ["queue"],
   name: "URL shortener",
   jobId: 7,
   goal: "Redirect 2,000 clicks a second, and survive going viral, for under $1,100 a month.",
@@ -229,6 +244,7 @@ const PASTE_PHASE = { rps: 2000 }
 
 const PASTEBIN = interview({
   id: "pastebin",
+  decoys: ["standby"],
   name: "Pastebin",
   jobId: 10,
   goal: "Store and serve pastes at 2,000 requests a second, even if the cache forgets everything, for under $1,100 a month.",
@@ -271,13 +287,14 @@ const UPLOAD_PHASE = { rps: 2000 }
 
 const IMAGE_UPLOAD = interview({
   id: "image-upload",
+  decoys: ["replica"],
   name: "Image upload",
   jobId: 12,
   goal: "Let people upload photos that get resized, without making them wait, for under $1,400 a month.",
   opener: "A photo app has outgrown its server. Ask away.",
   nudges: {
     faults: "Who is waiting while a photo gets resized?",
-    success: "What happens to uploads that need resizing and have nowhere to go?",
+    features: "Where does an uploaded photo live once the cache restarts?",
     lag: "What if resizing falls behind?",
     budget: "Could the same traffic be served with far less hardware?",
   },
@@ -314,7 +331,7 @@ const IMAGE_UPLOAD = interview({
     ),
     naive(
       "Skip the resize",
-      "success",
+      "features",
       board({ users: "users", lb: "lb", api: ["api", 8], cache: "cache", files: "blob" }, "users>lb>api", "api>cache", "api>files"),
     ),
     naive(
@@ -346,6 +363,8 @@ const FEED_PHASE = { rps: 5000 }
 
 const READ_HEAVY_FEED = interview({
   id: "read-heavy-feed",
+  locked: [{ id: "db", kind: "sql", replicas: 1 }],
+  decoys: ["queue"],
   name: "Read-heavy feed",
   jobId: 14,
   goal: "Serve a feed to readers who outnumber posters 24 to 1, for under $2,400 a month.",
@@ -353,6 +372,7 @@ const READ_HEAVY_FEED = interview({
   nudges: {
     success: "What happens to one database when every reader asks it directly?",
     faults: "What happens when your only read copy reboots?",
+    features: "What happens to a new post when the cache restarts?",
     budget: "Do you really need that much hardware just to feel safe?",
   },
   scenario: scenario(
@@ -403,6 +423,17 @@ const READ_HEAVY_FEED = interview({
       ),
     ),
     naive(
+      "Posts only in the cache",
+      "features",
+      board(
+        { users: "users", lb: "lb", api: ["api", 20], cache: "cache", replicas: ["replica", 3], db: "sql" },
+        "users>lb>api",
+        "api>cache",
+        "api>replicas",
+        "db>replicas",
+      ),
+    ),
+    naive(
       "Scale everything to be safe",
       "budget",
       board(
@@ -438,6 +469,7 @@ const notificationBoard = (workers: number, kv: number, queued = true): Design =
 
 const NOTIFICATION_FANOUT = interview({
   id: "notification-fanout",
+  decoys: ["standby"],
   name: "Notification fan-out",
   jobId: 16,
   goal: "Tell every follower about a celebrity post within seconds, for under $3,800 a month.",
@@ -491,6 +523,7 @@ const chatBoard = (parts: { socket?: number; lb?: boolean; queue?: boolean; kv?:
 
 const WHATSAPP = interview({
   id: "whatsapp",
+  decoys: ["cdn", "cache"],
   name: "WhatsApp",
   jobId: 19,
   goal: "Deliver every chat message, even when every phone reconnects at once, for under $2,200 a month.",
@@ -547,6 +580,7 @@ const timelineBoard = (parts: { bouncer?: boolean; queued?: boolean; workers?: n
 
 const TWITTER_FANOUT = interview({
   id: "twitter-fanout",
+  decoys: ["replica"],
   name: "Twitter fan-out",
   jobId: 20,
   goal: "Put every post on its followers' timelines, and shrug off bots, for under $7,000 a month.",
@@ -611,6 +645,7 @@ const videoBoard = (parts: { bouncer?: boolean; queued?: boolean }): Design => {
 
 const VIDEO_STREAMING = interview({
   id: "video-streaming",
+  decoys: ["kv"],
   name: "Video streaming",
   jobId: 22,
   goal: "Stream a season finale to everyone and encode uploads in the background, for under $1,300 a month.",
@@ -672,6 +707,8 @@ const globalBoard = (parts: { region?: boolean; api?: number }): Design => {
 
 const GLOBAL_SERVICE = interview({
   id: "global-service",
+  locked: [{ id: "db", kind: "sql", replicas: 1 }],
+  decoys: ["queue"],
   name: "Global service",
   jobId: 24,
   goal: "Keep a payments app answering on every continent, even when a region dies, for under $8,000 a month.",

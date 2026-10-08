@@ -103,6 +103,26 @@ describe("evaluate", () => {
     expect(result.availability).toBe(0)
   })
 
+  it("a durable feature whose writes only reach a cache is answered but does not work", () => {
+    const cacheOnly = design([["users", "users"], ["api", "api"], ["cache", "cache"], ["db", "sql"], ["copy", "replica"]], [
+      ["users", "api"],
+      ["api", "cache"],
+      ["api", "copy"],
+      ["db", "copy"],
+    ])
+    const result = evaluate(cacheOnly, {
+      ...scenario({ name: "calm", seconds: 60, rps: 100 }),
+      features: [feature("browse", "read", 0.8), feature("save", "write", 0.2, { durable: true })],
+    })
+    expect(result.successRate).toBe(1)
+    expect(result.features.map((f) => [f.id, f.served])).toEqual([["browse", 1], ["save", 0]])
+    const kept = evaluate(cacheOnly, {
+      ...scenario({ name: "calm", seconds: 60, rps: 100 }),
+      features: [feature("browse", "read", 0.8), feature("save", "write", 0.2)],
+    })
+    expect(kept.features.map((f) => f.served)).toEqual([1, 1])
+  })
+
   it("a wire the table forbids changes nothing", () => {
     const legal = design(
       [["users", "users"], ["lb", "lb"], ["api", "api", 2], ["db", "sql"]],

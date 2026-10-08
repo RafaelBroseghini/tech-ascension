@@ -204,6 +204,50 @@
   outline-offset: 3px;
 }
 
+.studio-lane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2400px;
+  border-left: 1px dashed var(--ide-surface);
+  border-right: 1px dashed var(--ide-surface);
+  background: color-mix(in srgb, var(--ide-surface) 14%, transparent);
+  pointer-events: none;
+}
+.studio-lane span {
+  position: absolute;
+  top: 408px;
+  left: 0;
+  right: 0;
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.studio-notice {
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: var(--sp-3);
+  z-index: 8;
+  margin: 0;
+  padding: var(--sp-2);
+  border-left: 3px solid var(--ide-peach);
+  background: var(--ide-mantle);
+  color: var(--ide-peach);
+  pointer-events: none;
+}
+.studio-tile-count {
+  grid-column: 2;
+  color: var(--ide-sky);
+  font-size: var(--fs-2xs);
+}
+.studio-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .studio-traffic {
   position: absolute;
   inset: 0;

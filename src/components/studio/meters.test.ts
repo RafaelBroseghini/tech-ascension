@@ -65,10 +65,12 @@ describe("readout", () => {
 })
 
 describe("meters", () => {
-  it("builds the four constraints with their targets", () => {
+  it("builds the five constraints with their targets", () => {
     const result = evaluate(THREE_TIER.reference, THREE_TIER.scenario)
     const built = meters(result, THREE_TIER.targets, faultTally(result, THREE_TIER.targets), allTargets(THREE_TIER))
-    expect(built.map((meter) => meter.name)).toEqual(["Money", "Performance", "Availability", "Fault tolerance"])
+    expect(built.map((meter) => meter.name)).toEqual(["Money", "Performance", "Availability", "Fault tolerance", "Correctness"])
+    expect(built[4].value).toBe("3 of 3 features work")
+    expect(built[4].target).toBe("every feature works")
     expect(built[0].target).toBe("budget $800")
     expect(built[3].value).toBe("1 of 1 faults survived")
   })
@@ -80,12 +82,12 @@ describe("meters", () => {
 
     it("draws no target line or bar until the player asked about it, and keeps every number", () => {
       const built = build(new Set())
-      expect(built.map((meter) => [meter.target, meter.fill])).toEqual([["", null], ["", null], ["", null], ["", null]])
+      expect(built.map((meter) => [meter.target, meter.fill])).toEqual([["", null], ["", null], ["", null], ["", null], ["", null]])
       expect(built.map((meter) => meter.value)).toEqual(build(allTargets(THREE_TIER)).map((meter) => meter.value))
     })
 
     it("each question draws only its own target", () => {
-      expect(build(new Set<TargetName>(["budget"])).map((meter) => meter.target)).toEqual(["budget $800", "", "", ""])
+      expect(build(new Set<TargetName>(["budget"])).map((meter) => meter.target)).toEqual(["budget $800", "", "", "", ""])
       expect(build(new Set<TargetName>(["success", "p95"]))[1].target).toBe("99% within 80 ms")
       expect(build(new Set<TargetName>(["p95"]))[1].target).toBe("p95 within 80 ms")
       expect(build(new Set<TargetName>(["success", "p95", "lag"]))[1].target).toBe("99% within 80 ms, queue under 10 s")

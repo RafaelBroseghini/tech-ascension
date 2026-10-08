@@ -225,6 +225,7 @@ function runPhase(design: Design, scenario: Scenario, phase: Phase): PhaseResult
   }
 
   const breaker = present(design, "breakCircuit")
+  const durable = new Set(scenario.features.filter((feature) => feature.durable).map((feature) => feature.id))
   let success = 0
   let lag = 0
   const keptByFeature = new Map<string, number>()
@@ -243,7 +244,9 @@ function runPhase(design: Design, scenario: Scenario, phase: Phase): PhaseResult
       if (u > 1) lag = Math.max(lag, Math.min((u - 1) * phase.seconds, hold))
     })
     success += leaf.share * kept
-    keptByFeature.set(leaf.feature, (keptByFeature.get(leaf.feature) ?? 0) + leaf.share * kept)
+    // A write that only reached a cache was answered, but a durable feature does not work with it.
+    const lost = leaf.volatile && durable.has(leaf.feature)
+    if (!lost) keptByFeature.set(leaf.feature, (keptByFeature.get(leaf.feature) ?? 0) + leaf.share * kept)
     if (kept <= 0) continue
     // A breaker is design-wide: whatever a path waits on after its last service is cut off at the timeout.
     const lastService = leaf.nodes.findLastIndex((id, i) => i < leaf.sync && isService(byId.get(id)!))

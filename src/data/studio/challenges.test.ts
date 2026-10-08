@@ -52,6 +52,19 @@ describe("interview catalog", () => {
     }
   })
 
+  it("a decoy is in no design, and a locked piece is in every design", () => {
+    for (const interview of INTERVIEWS) {
+      const used = new Set(designsOf(interview).flatMap((design) => design.nodes.map((n) => n.kind)))
+      for (const decoy of interview.decoys) expect([interview.name, decoy, used.has(decoy)]).toEqual([interview.name, decoy, false])
+      for (const design of designsOf(interview)) {
+        for (const piece of interview.locked) {
+          expect([interview.name, design.nodes.some((n) => n.id === piece.id && n.kind === piece.kind)]).toEqual([interview.name, true])
+        }
+      }
+    }
+    expect(INTERVIEWS.filter((i) => i.locked.length > 0).map((i) => i.id)).toEqual(["read-heavy-feed", "global-service"])
+  })
+
   it("every reference design passes", () => {
     for (const interview of INTERVIEWS) {
       expect([interview.name, judge(interview, interview.reference).kind]).not.toEqual([interview.name, "noHire"])

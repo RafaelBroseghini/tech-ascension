@@ -5,6 +5,7 @@ import { questionById } from "../../data/studio/questions.ts"
 import type { QuestionId } from "../../data/studio/questions.ts"
 import { JOB_TIERS } from "../../data/phases.ts"
 import { evaluate } from "./evaluate.ts"
+import { withLegalEdges } from "./route.ts"
 import { verdict } from "./score.ts"
 import type { Verdict } from "./score.ts"
 import type { ComponentKind, Design, DesignEdge, DesignNode, RunResult, TargetName } from "./types.ts"
@@ -82,7 +83,7 @@ export const NO_HIRE_PENALTY_SHARE = 0.05
 
 const VERDICTS: readonly VerdictKind[] = ["noHire", "hire", "strongHire"]
 const BANDS: readonly Band[] = ["top", "mid", "bottom"]
-export const TARGET_NAMES: readonly TargetName[] = ["budget", "success", "p95", "lag", "availability", "faults"]
+export const TARGET_NAMES: readonly TargetName[] = ["budget", "success", "p95", "lag", "availability", "faults", "features"]
 
 export const BAND_LABEL: Readonly<Record<Band, string>> = {
   top: "Top of the band",
@@ -92,6 +93,9 @@ export const BAND_LABEL: Readonly<Record<Band, string>> = {
 
 /** The board every interview starts from. */
 export const THE_USERS_ALONE: Design = { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] }
+
+/** The board an interview starts from: The Users, and whatever the company will not let you remove. */
+export const startDesign = (interview: Interview): Design => ({ nodes: [...THE_USERS_ALONE.nodes, ...interview.locked], edges: [] })
 
 /** The line a résumé or profile carries under the job whose interview earned an offer. */
 export const offerLine = (band: Band): string => `Offer: ${BAND_LABEL[band].toLowerCase()}`
@@ -192,7 +196,7 @@ export function parseDesign(raw: unknown): Design {
   for (const e of raw.edges) {
     if (isRecord(e) && typeof e.from === "string" && typeof e.to === "string") edges.push({ from: e.from, to: e.to })
   }
-  return { nodes, edges }
+  return withLegalEdges({ nodes, edges })
 }
 
 const isCount = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)

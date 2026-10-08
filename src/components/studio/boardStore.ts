@@ -2,16 +2,23 @@ import { applyEdgeChanges, applyNodeChanges } from "@xyflow/react"
 import type { Connection, Edge, EdgeChange, Node, NodeChange, XYPosition } from "@xyflow/react"
 import { create } from "zustand"
 import type { Interview } from "../../data/studio/challenges.ts"
+import { refusal } from "../../data/studio/components.ts"
 import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
-import { THE_USERS_ALONE } from "../../game/studio/interviews.ts"
+import { interviewById, startDesign } from "../../game/studio/interviews.ts"
 import type { Offer } from "../../game/studio/interviews.ts"
 import type { Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
-import { edgeId, leafPaths, placeDesign, snap } from "./diagram.ts"
+import { edgeId, laneX, leafPaths, placeDesign, ROW, snap } from "./diagram.ts"
+import { trayLimit } from "./kinds.ts"
 import type { TrafficPath } from "./diagram.ts"
 
-export type NodeData = { readonly kind: ComponentKind; readonly replicas: number }
+export type NodeData = {
+  readonly kind: ComponentKind
+  readonly replicas: number
+  /** Placed by the interview: it cannot be removed. */
+  readonly locked?: boolean
+}
 export type BoardNode = Node<NodeData, "component">
 export type BoardEdge = Edge
 
@@ -51,44 +58,49 @@ interface Sheet {
 
 interface BoardState extends Sheet {
   readonly interviewId: string | null
+  /** Why the last wire was refused, until the next edit or a few seconds pass. */
+  readonly notice: string | null
   /** Every interview's sheet, kept while another one is on the board and across closing the whiteboard. */
   readonly sheets: Readonly<Record<string, Sheet>>
 }
 
-export const useBoard = create<BoardState>(() => ({ interviewId: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
+export const useBoard = create<BoardState>(() => ({ interviewId: null, notice: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
 
 let version = 0
 const nextEdit = () => ++version
 
-const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYPosition): BoardNode => ({
+const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYPosition, locked = false): BoardNode => ({
   id,
   type: "component",
-  position: { x: snap(position.x), y: snap(position.y) },
-  data: { kind, replicas },
-  deletable: kind !== "users",
+  position: { x: laneX(kind), y: snap(position.y) },
+  data: locked ? { kind, replicas, locked } : { kind, replicas },
+  deletable: kind !== "users" && !locked,
 })
 
 const edgeOf = (source: string, target: string): BoardEdge => ({ id: edgeId(source, target), source, target, type: "smoothstep" })
 
 /** A board seeded from a saved submission, laid out the way the desk draws it. */
-export function layout(design: Design): Pick<Sheet, "nodes" | "edges"> {
+export function layout(design: Design, locked: ReadonlySet<string> = new Set()): Pick<Sheet, "nodes" | "edges"> {
   const placed = placeDesign(design)
   return {
-    nodes: placed.nodes.map((n) => nodeOf(n.id, n.kind, n.replicas, n)),
+    nodes: placed.nodes.map((n) => nodeOf(n.id, n.kind, n.replicas, n, locked.has(n.id))),
     edges: placed.edges.map((e) => edgeOf(e.from, e.to)),
   }
 }
 
-/** Shows `interviewId`'s sheet, starting it from `seed` (the last submission) or from The Users alone. */
+/** Shows `interviewId`'s sheet, starting it from `seed` (the last submission) or from The Users and the locked pieces. */
 export function showInterview(interviewId: string, seed: Design | null): void {
+  const interview = interviewById(interviewId)
+  const locked = new Set(interview?.locked.map((n) => n.id))
   useBoard.setState((s) => {
     if (s.interviewId === interviewId) return s
     const sheets = s.interviewId ? { ...s.sheets, [s.interviewId]: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run } } : s.sheets
     const kept = sheets[interviewId]
     const edits = nextEdit()
-    if (!kept) return { interviewId, sheets, ...layout(seed && seed.nodes.length > 0 ? seed : THE_USERS_ALONE), edits, run: null }
+    const start = interview ? startDesign(interview) : { nodes: [], edges: [] }
+    if (!kept) return { interviewId, sheets, notice: null, ...layout(seed && seed.nodes.length > 0 ? seed : start, locked), edits, run: null }
     const run = kept.run && kept.run.edits === kept.edits ? { ...kept.run, edits } : kept.run
-    return { interviewId, sheets, nodes: kept.nodes, edges: kept.edges, edits, run }
+    return { interviewId, sheets, notice: null, nodes: kept.nodes, edges: kept.edges, edits, run }
   })
 }
 
@@ -108,7 +120,15 @@ export function draftOf(s: BoardState): Design {
 /** Moves and selection keep the run on screen; anything that changes the design counts as an edit. */
 export function onNodesChange(changes: NodeChange<BoardNode>[]): void {
   const edit = changes.some((c) => c.type === "remove" || c.type === "add" || c.type === "replace")
-  useBoard.setState((s) => ({ nodes: applyNodeChanges(changes, s.nodes), edits: edit ? nextEdit() : s.edits }))
+  useBoard.setState((s) => {
+    // A piece slides up and down its lane; it never leaves it.
+    const kept = changes.map((c) => {
+      if (c.type !== "position" || !c.position) return c
+      const kind = s.nodes.find((n) => n.id === c.id)?.data.kind
+      return kind ? { ...c, position: { x: laneX(kind), y: c.position.y } } : c
+    })
+    return { nodes: applyNodeChanges(kept, s.nodes), edits: edit ? nextEdit() : s.edits, notice: edit ? null : s.notice }
+  })
 }
 
 export function onEdgesChange(changes: EdgeChange<BoardEdge>[]): void {
@@ -116,26 +136,58 @@ export function onEdgesChange(changes: EdgeChange<BoardEdge>[]): void {
   useBoard.setState((s) => ({ edges: applyEdgeChanges(changes, s.edges), edits: edit ? nextEdit() : s.edits }))
 }
 
+/** Why a wire is refused, in one line; null when the table allows it and the board does not have it yet. */
+export function connectRefusal(c: Pick<Connection, "source" | "target">): string | null {
+  const { nodes } = useBoard.getState()
+  if (!c.source || !c.target || c.source === c.target) return null
+  const from = nodes.find((n) => n.id === c.source)?.data.kind
+  const to = nodes.find((n) => n.id === c.target)?.data.kind
+  if (!from || !to) return null
+  return refusal(from, to)
+}
+
 export function canConnect(c: Pick<Connection, "source" | "target">): boolean {
-  const { nodes, edges } = useBoard.getState()
+  const { edges } = useBoard.getState()
   if (!c.source || !c.target || c.source === c.target) return false
-  if (nodes.find((n) => n.id === c.target)?.data.kind === "users") return false
+  if (connectRefusal(c) !== null) return false
   return !edges.some((e) => e.source === c.source && e.target === c.target)
 }
 
-export function onConnect(c: Connection): void {
-  if (!canConnect(c)) return
-  useBoard.setState((s) => ({ edges: [...s.edges, edgeOf(c.source, c.target)], edits: nextEdit() }))
+/** Says why a dropped wire was refused. A wire that fell on empty canvas, or that the board already has, says nothing. */
+export function explainRefusal(c: Pick<Connection, "source" | "target">): void {
+  const notice = connectRefusal(c)
+  if (notice) useBoard.setState({ notice })
 }
 
-export function addNode(kind: ComponentKind, at: XYPosition): string {
-  const { nodes } = useBoard.getState()
+export const clearNotice = (): void => useBoard.setState({ notice: null })
+
+export function onConnect(c: Connection): void {
+  if (!canConnect(c)) return
+  useBoard.setState((s) => ({ edges: [...s.edges, edgeOf(c.source, c.target)], edits: nextEdit(), notice: null }))
+}
+
+/** How many more of `kind` this board takes: the tray's count for the interview, less what is placed. */
+export function piecesLeft(s: Pick<BoardState, "interviewId" | "nodes">, kind: ComponentKind): number {
+  const interview = s.interviewId ? interviewById(s.interviewId) : undefined
+  if (!interview) return Infinity
+  return trayLimit(interview, kind) - s.nodes.filter((n) => n.data.kind === kind).length
+}
+
+/** Drops a piece into its lane at the first free spot at or below `at`. Returns the new id, or null when the tray has none left. */
+export function addNode(kind: ComponentKind, at: XYPosition): string | null {
+  const state = useBoard.getState()
+  if (piecesLeft(state, kind) <= 0) return null
+  const { nodes } = state
   let n = 1
   while (nodes.some((node) => node.id === `${kind}-${n}`)) n++
   const id = `${kind}-${n}`
+  const x = laneX(kind)
+  let y = snap(at.y)
+  while (nodes.some((node) => node.position.x === x && Math.abs(node.position.y - y) < ROW * 0.6)) y += ROW
   useBoard.setState((s) => ({
-    nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, at), selected: true }],
+    nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, { x, y }), selected: true }],
     edits: nextEdit(),
+    notice: null,
   }))
   return id
 }
@@ -152,7 +204,8 @@ export function setReplicas(id: string, replicas: number): void {
 
 export function removeNode(id: string): void {
   useBoard.setState((s) => {
-    if (s.nodes.find((n) => n.id === id)?.data.kind === "users") return s
+    const gone = s.nodes.find((n) => n.id === id)
+    if (gone?.data.kind === "users" || gone?.data.locked) return s
     return {
       nodes: s.nodes.filter((n) => n.id !== id),
       edges: s.edges.filter((e) => e.source !== id && e.target !== id),

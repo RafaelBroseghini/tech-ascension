@@ -241,3 +241,40 @@ export function refusal(from: ComponentKind, to: ComponentKind): string | null {
   if (to === "queue" || to === "worker") return `${b} takes its work from a server or a queue. ${a} can't reach it directly.`
   return `${a} doesn't call ${b}. Requests flow from The Users toward the data.`
 }
+
+/** The board's columns, left to right. Wires run toward the data; only replication stays inside a column. */
+export type Lane = "users" | "edge" | "routing" | "compute" | "async" | "data" | "ops"
+
+export const LANES: readonly { readonly id: Lane; readonly name: string }[] = [
+  { id: "users", name: "Users" },
+  { id: "edge", name: "Edge" },
+  { id: "routing", name: "Routing" },
+  { id: "compute", name: "Compute" },
+  { id: "async", name: "Async" },
+  { id: "data", name: "Data" },
+  { id: "ops", name: "Ops" },
+]
+
+/** The lane a piece snaps into. Ops pieces take no wires, so they sit in a column of their own at the end. */
+export const LANE_OF: Readonly<Record<ComponentKind, Lane>> = {
+  users: "users",
+  cdn: "edge",
+  bouncer: "edge",
+  lb: "routing",
+  api: "compute",
+  socket: "compute",
+  queue: "async",
+  worker: "async",
+  sql: "data",
+  replica: "data",
+  standby: "data",
+  cache: "data",
+  kv: "data",
+  blob: "data",
+  autoscaler: "ops",
+  breaker: "ops",
+  oncall: "ops",
+  region: "ops",
+}
+
+export const laneIndex = (kind: ComponentKind): number => LANES.findIndex((lane) => lane.id === LANE_OF[kind])

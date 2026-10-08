@@ -19,6 +19,8 @@ import {
   Zap,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { designsOf } from "../../data/studio/challenges.ts"
+import type { Interview } from "../../data/studio/challenges.ts"
 import { COMPONENTS } from "../../data/studio/components.ts"
 import { unlockedIn } from "../../data/studio/unlocks.ts"
 import type { CareerSoFar } from "../../data/studio/unlocks.ts"
@@ -98,3 +100,31 @@ export function paletteKinds(career: CareerSoFar): ComponentKind[] {
   return PALETTE_ORDER.filter((kind) => unlockedIn(kind, career))
 }
 
+
+/** How many nodes of `kind` the board takes: the most any design of the interview uses, and one for a decoy. */
+export function trayLimit(interview: Interview, kind: ComponentKind): number {
+  if (kind === "users") return 1
+  const most = Math.max(0, ...designsOf(interview).map((design) => design.nodes.filter((n) => n.kind === kind).length))
+  return Math.max(1, most)
+}
+
+export interface TrayPiece {
+  readonly kind: ComponentKind
+  readonly limit: number
+}
+
+/**
+ * The tray: the kinds this interview's designs use plus its decoys, in palette order, that the career has unlocked.
+ * Nothing in the tray says which are decoys.
+ */
+export function trayFor(interview: Interview, career: CareerSoFar): TrayPiece[] {
+  const used = new Set<ComponentKind>([...interview.decoys, ...designsOf(interview).flatMap((design) => design.nodes.map((n) => n.kind))])
+  return paletteKinds(career)
+    .filter((kind) => used.has(kind))
+    .map((kind) => ({ kind, limit: trayLimit(interview, kind) }))
+}
+
+/** Kinds the interview's own designs use, so the tray can count what the career has not unlocked yet. */
+export function trayWanted(interview: Interview): number {
+  return new Set<ComponentKind>([...interview.decoys, ...designsOf(interview).flatMap((design) => design.nodes.map((n) => n.kind))].filter((kind) => kind !== "users")).size
+}

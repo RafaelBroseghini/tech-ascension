@@ -1,14 +1,15 @@
+import { laneIndex } from "../../data/studio/components.ts"
 import { route } from "../../game/studio/route.ts"
 import type { ComponentKind, Design, DesignEdge, Scenario } from "../../game/studio/types.ts"
 
 /**
- * A design as the whiteboard draws it. The save keeps a design without positions, so each node goes in a cell: left to
- * right by distance from The Users.
+ * A design as the whiteboard draws it. The save keeps a design without positions, so each node goes in its lane: left to
+ * right from The Users to the data.
  */
 
 export const GRID = 16
-const COLUMN = 224
-const ROW = 128
+export const COLUMN = 224
+export const ROW = 128
 
 /** `col` and `row` are the node's cell; `x` and `y` are its board position, one `COLUMN` by `ROW` per cell. */
 type Placed = {
@@ -25,25 +26,17 @@ export const snap = (v: number) => Math.round(v / GRID) * GRID
 
 export const edgeId = (from: string, to: string) => `${from}>${to}`
 
-/** Each node's spot on the board, by its distance from The Users; nodes nothing reaches go in one column after the rest. */
+/** The x of a lane's column: one `COLUMN` per lane, so a piece's lane is readable from where it sits. */
+export const laneX = (kind: ComponentKind): number => snap(32 + laneIndex(kind) * COLUMN)
+
+/** Each node's spot on the board: its lane's column, and the first free row down it in the design's order. */
 export function placeDesign(design: Design): { nodes: Placed[]; edges: DesignEdge[] } {
-  const depth = new Map<string, number>()
-  const queue = design.nodes.filter((n) => n.kind === "users").map((n) => n.id)
-  for (const id of queue) depth.set(id, 0)
-  while (queue.length > 0) {
-    const id = queue.shift() as string
-    for (const e of design.edges) {
-      if (e.from !== id || depth.has(e.to)) continue
-      depth.set(e.to, (depth.get(id) ?? 0) + 1)
-      queue.push(e.to)
-    }
-  }
   const rows = new Map<number, number>()
   const nodes = design.nodes.map((n) => {
-    const col = depth.get(n.id) ?? Math.max(0, ...depth.values()) + 1
+    const col = laneIndex(n.kind)
     const row = rows.get(col) ?? 0
     rows.set(col, row + 1)
-    return { id: n.id, kind: n.kind, replicas: n.replicas, col, row, x: snap(32 + col * COLUMN), y: snap(64 + row * ROW) }
+    return { id: n.id, kind: n.kind, replicas: n.replicas, col, row, x: laneX(n.kind), y: snap(64 + row * ROW) }
   })
   const ids = new Set(nodes.map((n) => n.id))
   return { nodes, edges: design.edges.filter((e) => ids.has(e.from) && ids.has(e.to)) }

@@ -77,7 +77,7 @@ afterEach(async () => {
   root = null
   closeStudio()
   document.body.replaceChildren()
-  useBoard.setState({ interviewId: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} })
+  useBoard.setState({ interviewId: null, notice: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} })
   useGame.getState().wipe()
   vi.restoreAllMocks()
 })
@@ -130,7 +130,7 @@ describe("whiteboard", () => {
     await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
     const read = () => $$("[data-testid='studio-live-meter']").map((meter) => meter.textContent)
     const before = read()
-    expect($$("[data-testid='studio-live-meter']").map((meter) => meter.dataset.meter)).toEqual(["Money", "Performance", "Availability", "Fault tolerance"])
+    expect($$("[data-testid='studio-live-meter']").map((meter) => meter.dataset.meter)).toEqual(["Money", "Performance", "Availability", "Fault tolerance", "Correctness"])
     await click($("[data-testid='studio-tile'][data-kind='cache']"))
     const after = read()
     expect(after[0]).not.toBe(before[0])
@@ -247,10 +247,69 @@ describe("whiteboard", () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)
     const tiles = $$("[data-testid='studio-tile']").map((tile) => tile.dataset.kind)
-    // Skill 1 opens the API and SQL, gigs 1 and 3 the balancer and cache, the internship the replica.
-    expect(tiles).toEqual(["lb", "api", "cache", "sql", "replica"])
+    // Skill 1 opens the API and SQL, gigs 1 and 3 the balancer and cache. The replica is unlocked but no design here uses it.
+    expect(tiles).toEqual(["lb", "api", "cache", "sql"])
+    expect(tiles).not.toContain("replica")
     expect(tiles).not.toContain("users")
     expect(tiles).not.toContain("standby")
+  })
+
+  it("the tray counts what the board still takes and stops at zero", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    const count = (kind: string) => $(`[data-testid='studio-tile'][data-kind='${kind}'] [data-testid='studio-tile-count']`)?.textContent
+    expect(count("api")).toBe("1 of 1")
+    await click($("[data-testid='studio-tile'][data-kind='api']"))
+    expect(count("api")).toBe("0 of 1")
+    expect($("[data-testid='studio-tile'][data-kind='api']")?.hasAttribute("disabled")).toBe(true)
+    expect($$("[data-testid='studio-node'][data-kind='api']")).toHaveLength(1)
+  })
+
+  it("a piece snaps into its lane and slides only up and down it", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    await click($("[data-testid='studio-tile'][data-kind='sql']"))
+    await click($("[data-testid='studio-tile'][data-kind='api']"))
+    const x = (kind: string) => useBoard.getState().nodes.find((n) => n.data.kind === kind)?.position.x
+    expect(x("users")).toBeLessThan(x("api")!)
+    expect(x("api")).toBeLessThan(x("sql")!)
+    const lanes = $$("[data-testid='studio-lane']").map((lane) => lane.dataset.lane)
+    expect(lanes).toEqual(["users", "edge", "routing", "compute", "async", "data", "ops"])
+    const api = useBoard.getState().nodes.find((n) => n.data.kind === "api")!
+    await act(async () => {
+      const { onNodesChange } = await import("./boardStore.ts")
+      onNodesChange([{ id: api.id, type: "position", position: { x: 9999, y: 320 } }])
+    })
+    const moved = useBoard.getState().nodes.find((n) => n.id === api.id)!
+    expect(moved.position).toEqual({ x: api.position.x, y: 320 })
+  })
+
+  it("a wire the table forbids is refused with one line saying why", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    await click($("[data-testid='studio-tile'][data-kind='sql']"))
+    const { canConnect, connectRefusal, explainRefusal } = await import("./boardStore.ts")
+    const db = useBoard.getState().nodes.find((n) => n.data.kind === "sql")!.id
+    expect(canConnect({ source: "users", target: db })).toBe(false)
+    expect(connectRefusal({ source: "users", target: db })).toBe("Data sits behind a server. The Users can't reach PostgreSloth directly.")
+    await act(async () => {
+      explainRefusal({ source: "users", target: db })
+    })
+    expect($("[data-testid='studio-notice']")?.textContent).toContain("Data sits behind a server")
+    expect(useBoard.getState().edges).toEqual([])
+  })
+
+  it("a locked piece starts on the board and cannot be removed", async () => {
+    const feed = interview("read-heavy-feed")
+    careerAt(160_000, [1, 2, 6, 7, 10, 12])
+    await open(feed.id)
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node)).toEqual(["users", "db"])
+    const { removeNode } = await import("./boardStore.ts")
+    await act(async () => {
+      removeNode("db")
+    })
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node)).toEqual(["users", "db"])
+    expect($("[data-node='db'] .studio-node-x")).toBeNull()
   })
 
   it("Run shows the hot node", async () => {

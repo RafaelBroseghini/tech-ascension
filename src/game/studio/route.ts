@@ -31,6 +31,8 @@ export interface Leaf {
   /** How much work the queue that answered can hold, in seconds. */
   readonly holdSeconds: number | null
   readonly served: boolean
+  /** The write was answered by a cache alone, so a restart takes it. A durable feature does not count it as working. */
+  readonly volatile: boolean
 }
 
 export interface Routing {
@@ -174,7 +176,7 @@ export function route(design: Design, traffic: Traffic): Routing {
   const unrouted = new Set<RequestType>()
   const unroutedFeatures = new Set<string>()
 
-  const end = (walk: Walk, served: boolean, share = walk.share) => {
+  const end = (walk: Walk, served: boolean, share = walk.share, volatile = false) => {
     if (share <= 0) return
     if (!served) {
       unrouted.add(walk.feature.request)
@@ -189,6 +191,7 @@ export function route(design: Design, traffic: Traffic): Routing {
       fanFrom: walk.fanFrom,
       holdSeconds: walk.holdSeconds,
       served,
+      volatile,
     })
   }
 
@@ -206,11 +209,12 @@ export function route(design: Design, traffic: Traffic): Routing {
    * A cache is a dependency the service asks first, not a hop: the hits end at the cache, and the misses go on from
    * the service. A cache with no live replica is skipped, so its share falls through to the store.
    */
+  const liveCache = (service: DesignNode): DesignNode | undefined =>
+    (out.get(service.id) ?? []).find((target) => COMPONENTS[target.kind].effect.kind === "cacheHits" && liveReplicas(target) > 0)
+
   const lookAside = (service: DesignNode, walk: Walk): Walk => {
-    const cache = (out.get(service.id) ?? []).find(
-      (target) => COMPONENTS[target.kind].effect.kind === "cacheHits" && liveReplicas(target) > 0 && stepOf(target, walk).kind !== "refuse",
-    )
-    if (!cache) return walk
+    const cache = liveCache(service)
+    if (!cache || stepOf(cache, walk).kind === "refuse") return walk
     const asked: Walk = { ...walk, nodes: [...walk.nodes, cache.id] }
     load(cache.id, asked)
     end(asked, true, walk.share * traffic.cacheHitRate)
@@ -239,7 +243,14 @@ export function route(design: Design, traffic: Traffic): Routing {
     if (next.share <= 0) return
 
     const group = nextHop(node, next)
-    if (group.length === 0) return end(next, false)
+    if (group.length === 0) {
+      // A write with no store behind the service still lands in a cache wired to it: fast, and gone after a restart.
+      const cache = isWrite(next.feature.request) ? liveCache(node) : undefined
+      if (!cache) return end(next, false)
+      const kept: Walk = { ...next, nodes: [...next.nodes, cache.id] }
+      load(cache.id, kept)
+      return end(kept, true, kept.share, true)
+    }
     if (here.kind === "compute" && walk.feature.request === "fanout" && next.fan === 1) {
       const queued = COMPONENTS[group[0].kind].effect.kind === "buffer"
       if (!queued) next = { ...next, fan: traffic.fanout, fanFrom: next.sync === null ? next.nodes.length : null }

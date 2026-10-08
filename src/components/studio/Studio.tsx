@@ -57,7 +57,7 @@ function Room({ interview, status }: { interview: Interview; status: ReachableSt
           <Notes interview={interview} />
           {shown ? <Board key={interview.id} /> : <div className="studio-board" />}
         </div>
-        <Palette career={career} />
+        <Palette interview={interview} career={career} />
       </main>
       <aside className="studio-side">
         <Brief interview={interview} status={status} onSubmit={submit} />

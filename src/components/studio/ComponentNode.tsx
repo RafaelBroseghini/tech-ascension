@@ -28,7 +28,7 @@ const heatLabel = (util: number): string => (Number.isFinite(util) ? `${Math.rou
 
 /** One placed component. Memoized on its `data`, which a drag leaves alone, so only the dragged node re-renders. */
 export const ComponentNode = memo(function ComponentNode({ id, data, selected }: NodeProps<BoardNode>) {
-  const { kind, replicas } = data
+  const { kind, replicas, locked } = data
   const spec = COMPONENTS[kind]
   const Icon = KIND_ICON[kind]
   const heat = useHeat(id)
@@ -54,7 +54,7 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
       <div className="studio-node-head">
         <Icon size={16} strokeWidth={2} aria-hidden />
         <span className="studio-node-name">{spec.name}</span>
-        {source ? null : (
+        {source || locked ? null : (
           <button type="button" className="studio-node-x nodrag" aria-label={`Remove ${spec.name}`} title="Remove (Delete)" onClick={() => removeNode(id)}>
             <X size={12} strokeWidth={2.5} aria-hidden />
           </button>

@@ -97,6 +97,18 @@ describe("route", () => {
     expect(later.flows.get("queue")?.total).toBeCloseTo(1)
   })
 
+  it("a write with no store behind its service lands in the cache and is marked volatile", () => {
+    const design: Design = {
+      nodes: [node("users", "users"), node("api", "api"), node("cache", "cache")],
+      edges: wires(["users", "api"], ["api", "cache"]),
+    }
+    const routed = route(design, traffic([feature("save", "write", 1, { durable: true })]))
+    expect(routed.unrouted).toEqual([])
+    expect(routed.leaves).toEqual([expect.objectContaining({ feature: "save", served: true, volatile: true, nodes: ["users", "api", "cache"] })])
+    const stored = route(SHORTENER_CACHE, traffic([WRITE]))
+    expect(stored.leaves.every((leaf) => !leaf.volatile)).toBe(true)
+  })
+
   it("an upload reaches the bucket only through a worker", () => {
     const uploads = traffic([feature("upload", "upload", 1, { durable: true })])
     const nodes = [node("users", "users"), node("api", "api"), node("workers", "worker"), node("files", "blob")]

@@ -26,7 +26,7 @@ import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
 import { INTERVIEWS } from "../data/studio/challenges.ts"
 import { questionById } from "../data/studio/questions.ts"
-import { interviewPassed, parseDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
+import { interviewById, interviewPassed, parseDesign, startDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
 import type { Band, Submission, VerdictKind } from "./studio/interviews.ts"
 import type { Design, TargetName } from "./studio/types.ts"
 
@@ -522,8 +522,10 @@ export function installGameHarness(): GameHarness {
     },
 
     takeHint: (interviewId, design) => {
-      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? THE_USERS_ALONE)
-      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : THE_USERS_ALONE) ?? false
+      const start = interviewById(interviewId)
+      const alone = start ? startDesign(start) : THE_USERS_ALONE
+      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? alone)
+      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : alone) ?? false
     },
 
     forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),
