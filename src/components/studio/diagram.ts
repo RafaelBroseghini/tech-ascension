@@ -49,16 +49,17 @@ export function placeDesign(design: Design): { nodes: Placed[]; edges: DesignEdg
   return { nodes, edges: design.edges.filter((e) => ids.has(e.from) && ids.has(e.to)) }
 }
 
-/** The share of the first phase's requests that crosses each edge, keyed by `edgeId`, for the traffic dots. */
-export function edgeFlows(design: Design, scenario: Scenario): Record<string, number> {
+/** One way a request travels: the node ids from The Users to where it ends, and the share of requests that take it. */
+export type TrafficPath = { readonly nodes: readonly string[]; readonly share: number }
+
+/** Every route the first phase's requests take, one per distinct node path, for the traffic dots. */
+export function leafPaths(design: Design, scenario: Scenario): TrafficPath[] {
   const phase = scenario.phases[0]
   const routing = route(design, { mix: phase.mix, cacheHitRate: scenario.cacheHitRate, edgeHitRate: scenario.edgeHitRate, fanout: scenario.fanout, bots: 0 })
-  const flows: Record<string, number> = {}
+  const shares = new Map<string, TrafficPath>()
   for (const leaf of routing.leaves) {
-    for (let i = 1; i < leaf.nodes.length; i++) {
-      const id = edgeId(leaf.nodes[i - 1], leaf.nodes[i])
-      flows[id] = (flows[id] ?? 0) + leaf.share
-    }
+    const key = leaf.nodes.join(">")
+    shares.set(key, { nodes: leaf.nodes, share: (shares.get(key)?.share ?? 0) + leaf.share })
   }
-  return flows
+  return [...shares.values()]
 }
