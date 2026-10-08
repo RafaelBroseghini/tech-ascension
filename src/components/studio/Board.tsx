@@ -1,6 +1,6 @@
-import { Background, BackgroundVariant, ConnectionLineType, Controls, Panel, ReactFlow, ViewportPortal } from "@xyflow/react"
+import { Background, BackgroundVariant, ConnectionLineType, Controls, Panel, ReactFlow, useReactFlow, ViewportPortal } from "@xyflow/react"
 import type { IsValidConnection, OnConnectEnd } from "@xyflow/react"
-import { memo, useEffect, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { LANES } from "../../data/studio/components.ts"
 import { canConnect, clearNotice, explainRefusal, onConnect, onEdgesChange, onNodesChange, playing, runTraffic, useBoard } from "./boardStore.ts"
@@ -14,7 +14,7 @@ const SNAP: [number, number] = [GRID, GRID]
 const DELETE_KEYS = ["Delete", "Backspace"]
 const EDGE_DEFAULTS = { type: "smoothstep" } as const
 const FIT = { padding: 0.25, maxZoom: 1 }
-const START = { x: 16, y: 48, zoom: 0.7 }
+const START = { x: 8, y: 40, zoom: 0.6 }
 const LANE_LEFT = 16
 const NOTICE_MS = 6000
 const PRO = { hideAttribution: true }
@@ -28,7 +28,7 @@ const onConnectEnd: OnConnectEnd = (_event, state) => {
   }
 }
 
-/** The five lanes behind the pieces, plus the users' column and the ops column, so the direction rules can be seen. */
+/** The lanes behind the pieces, from The Users to the data, so the direction rules can be seen. */
 function Lanes() {
   return (
     <ViewportPortal>
@@ -70,8 +70,15 @@ export const Board = memo(function Board({ interview }: { interview: Interview }
   const studying = useBoard((s) => s.studying)
   // Fit a seeded board once on mount; a fresh one starts with The Users on the left at full size.
   const [fit] = useState(() => nodes.length > 1)
+  const rf = useReactFlow()
+  const wrap = useRef<HTMLDivElement>(null)
+  // A fresh board shows every lane at once, as large as the pane allows.
+  const onInit = useCallback(() => {
+    const width = wrap.current?.clientWidth ?? 0
+    if (!fit && width > 0) void rf.setViewport({ x: 8, y: 40, zoom: Math.min(1, Math.max(0.4, (width - 16) / (LANES.length * COLUMN))) })
+  }, [fit, rf])
   return (
-    <div className="studio-board" data-testid="studio-board">
+    <div className="studio-board" data-testid="studio-board" ref={wrap}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -80,6 +87,7 @@ export const Board = memo(function Board({ interview }: { interview: Interview }
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
+        onInit={onInit}
         isValidConnection={isValid}
         defaultEdgeOptions={EDGE_DEFAULTS}
         connectionLineType={ConnectionLineType.SmoothStep}

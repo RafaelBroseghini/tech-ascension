@@ -9,7 +9,7 @@ import type { ComponentKind, Design, DesignEdge, Scenario } from "../../game/stu
  */
 
 export const GRID = 16
-export const COLUMN = 224
+export const COLUMN = 208
 export const ROW = 128
 
 /** `col` and `row` are the node's cell; `x` and `y` are its board position, one `COLUMN` by `ROW` per cell. */

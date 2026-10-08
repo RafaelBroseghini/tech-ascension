@@ -243,19 +243,18 @@ export function refusal(from: ComponentKind, to: ComponentKind): string | null {
 }
 
 /** The board's columns, left to right. Wires run toward the data; only replication stays inside a column. */
-export type Lane = "users" | "edge" | "routing" | "compute" | "async" | "data" | "ops"
+export type Lane = "users" | "edge" | "routing" | "compute" | "async" | "data"
 
 export const LANES: readonly { readonly id: Lane; readonly name: string }[] = [
-  { id: "users", name: "Users" },
+  { id: "users", name: "Users & ops" },
   { id: "edge", name: "Edge" },
   { id: "routing", name: "Routing" },
   { id: "compute", name: "Compute" },
   { id: "async", name: "Async" },
   { id: "data", name: "Data" },
-  { id: "ops", name: "Ops" },
 ]
 
-/** The lane a piece snaps into. Ops pieces take no wires, so they sit in a column of their own at the end. */
+/** The lane a piece snaps into. Ops pieces take no wires, so they sit under The Users in the first column. */
 export const LANE_OF: Readonly<Record<ComponentKind, Lane>> = {
   users: "users",
   cdn: "edge",
@@ -271,10 +270,10 @@ export const LANE_OF: Readonly<Record<ComponentKind, Lane>> = {
   cache: "data",
   kv: "data",
   blob: "data",
-  autoscaler: "ops",
-  breaker: "ops",
-  oncall: "ops",
-  region: "ops",
+  autoscaler: "users",
+  breaker: "users",
+  oncall: "users",
+  region: "users",
 }
 
 export const laneIndex = (kind: ComponentKind): number => LANES.findIndex((lane) => lane.id === LANE_OF[kind])

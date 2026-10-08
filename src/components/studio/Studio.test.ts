@@ -317,7 +317,7 @@ describe("whiteboard", () => {
     expect(x("users")).toBeLessThan(x("api")!)
     expect(x("api")).toBeLessThan(x("sql")!)
     const lanes = $$("[data-testid='studio-lane']").map((lane) => lane.dataset.lane)
-    expect(lanes).toEqual(["users", "edge", "routing", "compute", "async", "data", "ops"])
+    expect(lanes).toEqual(["users", "edge", "routing", "compute", "async", "data"])
     const api = useBoard.getState().nodes.find((n) => n.data.kind === "api")!
     await act(async () => {
       const { onNodesChange } = await import("./boardStore.ts")
