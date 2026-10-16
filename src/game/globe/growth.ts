@@ -180,9 +180,17 @@ export function uptimePercent(uptime: string): number {
   return Math.round((up / uptime.length) * 10000) / 100
 }
 
-/** The growth facts the game has right now, for `stepCompany`. */
+let memo: { gigs: readonly number[]; equipment: Readonly<Record<string, number>>; footprint: Footprint; facts: GrowthFacts } | null = null
+
+/**
+ * The growth facts the game has right now, for `stepCompany`. The game ticks ten times a second and reach walks every
+ * city against every server, so the last answer is kept while the gigs, the gear and the footprint are the same objects.
+ */
 export function growthFacts(gigs: readonly number[], equipment: Readonly<Record<string, number>>, footprint: Footprint = FRESH_FOOTPRINT): GrowthFacts {
-  return { seeds: seedsOf(gigs), reach: reachOf(footprint), live: liveRegions(footprint), equipment }
+  if (memo && memo.gigs === gigs && memo.equipment === equipment && memo.footprint === footprint) return memo.facts
+  const facts = { seeds: seedsOf(gigs), reach: reachOf(footprint), live: liveRegions(footprint), equipment }
+  memo = { gigs, equipment, footprint, facts }
+  return facts
 }
 
 /**
