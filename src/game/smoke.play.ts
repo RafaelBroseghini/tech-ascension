@@ -570,4 +570,34 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
   game.tick(Date.now() + 99 * 3_600_000)
   expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+  expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Seven billion users" })
+
+  // What an incident costs is what the harness says, even with the win's multiplier in the earnings.
+  expect(game.forceIncident("block")).toBe(true)
+  game.setMoney(5e12)
+  const open = game.getState().world.incidents.at(-1)!
+  const cash = game.getState().money
+  expect(open.cost).toBeCloseTo(game.getState().cps * 60 * 3, -3)
+  expect(open.cost).toBeGreaterThan(cash * 0.01)
+  expect(game.respondIncident(open.id)).toBe(true)
+  expect(cash - game.getState().money).toBeCloseTo(open.cost, 0)
+})
+
+test("the world while away: the win is journaled and paid when it happens offline", () => {
+  game.reset()
+  game.keepProfile()
+  game.forceGig(1)
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 31; id++) game.buyJob(id)
+  game.setMoney(1e15)
+  for (const id of [109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
+  for (const [region, share] of Object.entries({ "americas-east": 0.04, "americas-west": 0.043, "south-america": 0.055, europe: 0.093, africa: 0.174, asia: 0.589, oceania: 0.006 })) {
+    game.setUsers(region, 6.999e9 * share)
+  }
+  const mult = game.getState().foreverMult
+  game.advanceOffline(8 * 3_600_000)
+  expect(game.getState().world.won).toBe(true)
+  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+  expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
 })

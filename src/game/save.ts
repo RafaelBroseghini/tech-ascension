@@ -12,7 +12,7 @@ import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany } from "./globe/growth.ts"
 import { WIN_MULT } from "./globe/world.ts"
-import type { CompanyState } from "./globe/growth.ts"
+import type { CompanyState, GrowthNote } from "./globe/growth.ts"
 import { parseFootprint } from "./globe/footprint.ts"
 import type { Footprint } from "./globe/footprint.ts"
 import type { SavedIdentity } from "./identity.ts"
@@ -186,6 +186,18 @@ function noteReturn(career: SavedCareer, now: number, awayMs: number, money: num
   return { ...career, seq: seq + 1, log: [...career.log, entry].slice(-CAREER_LOG_CAP), returns: career.returns + 1 }
 }
 
+/** Journals what the company went through while the player was away: incidents, milestones, the win. */
+function noteWorld(career: SavedCareer, notes: readonly GrowthNote[], now: number, balance: number, xpTotal: number): SavedCareer {
+  if (notes.length === 0) return career
+  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
+  let seq = Math.max(career.seq, top + 1)
+  const added = notes.map((note): SavedCareerEntry => {
+    const row: SavedCareerEntry = [seq++, now, note.type, note.ref, Math.floor(balance), Math.floor(xpTotal)]
+    return note.data ? [...row, note.data] as SavedCareerEntry : row
+  })
+  return { ...career, seq, log: [...career.log, ...added].slice(-CAREER_LOG_CAP) }
+}
+
 export function freshSave(now: number): SaveData {
   return {
     version: SAVE_VERSION,
@@ -304,6 +316,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     else delete save.tempMults
   }
 
+  if (save.career) save.career = noteWorld(save.career, grown.notes, now, save.money, save.xpTotal)
   if (save.career && elapsed >= RETURN_BREAK_MS) {
     save.career = noteReturn(save.career, now, elapsed, credit, xpCredit, save.money, save.xpTotal)
   }
