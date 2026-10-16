@@ -582,7 +582,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const incident = state.company.incidents.find((i) => i.id === id)
     if (!incident) return false
-    const cost = incidentCost(incident, idlePerSec(state), state.money)
+    const cost = incidentCost(incident, earnedPerSec(state), state.money)
     if (state.money < cost) return false
     set({
       money: state.money - cost,
@@ -1021,6 +1021,25 @@ syncMusicGate()
 subscribeAdminMode(syncMusicGate)
 useGame.subscribe((state, prev) => {
   if (state.unlocked !== prev.unlocked) syncMusicGate()
+})
+
+/** What the company earns a second right now, with the event multipliers in. Incidents are priced in minutes of this. */
+export function earnedPerSec(state: GameState, at = Date.now()): number {
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps
+}
+
+const WIN_LABEL = "Seven billion users"
+const WIN_TOAST = `${WIN_LABEL}. The world is yours, and everything you earn is ×${WIN_MULT} for good.`
+
+// The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).
+useGame.subscribe((state, prev) => {
+  if (!state.company.won || prev.company.won) return
+  const toastSeq = state.toastSeq + 1
+  useGame.setState({
+    ...makePop(state, "unlock", 0, WIN_LABEL),
+    celebrationNonce: state.celebrationNonce + 1,
+    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: WIN_TOAST }, toastSeq }),
+  })
 })
 
 export function persistNow(): void {

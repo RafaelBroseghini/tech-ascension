@@ -1,10 +1,9 @@
 import { memo } from "react"
 import { REGIONS } from "../../data/regions.ts"
-import { idlePerSec } from "../../game/economy.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
 import { ceilingOf, incidentCost, INCIDENT_LABEL, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
-import { useGame } from "../../game/store.ts"
+import { earnedPerSec, useGame } from "../../game/store.ts"
 
 const money = (n: number) => `$${formatNumber(n)}`
 const users = (n: number) => formatNumber(Math.round(n))
@@ -12,7 +11,7 @@ const users = (n: number) => formatNumber(Math.round(n))
 /** The conquest: users against the seven billion, where they are, how hard the world pushes back, and what it has thrown. */
 export const WorldPanel = memo(function WorldPanel({ company }: { company: Company }) {
   const cash = useGame((state) => state.money)
-  const perSec = useGame((state) => idlePerSec(state))
+  const perSec = useGame((state) => earnedPerSec(state, state.now))
   const respond = useGame((state) => state.respondIncident)
   const bar = Math.min(100, company.share * 100)
   return (

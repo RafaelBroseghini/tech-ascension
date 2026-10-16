@@ -15,14 +15,14 @@ import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
-import { demandAt } from "./globe/growth.ts"
+import { demandAt, FRESH_COMPANY } from "./globe/growth.ts"
 import { capacityOf } from "./globe/load.ts"
 import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
 import { readCareerText } from "./ledger.ts"
 import { setMoneyDirect, setXpDirect } from "./admin.ts"
-import { persistNow, useGame, writeStateAt } from "./store.ts"
+import { earnedPerSec, persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
 import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
@@ -402,7 +402,7 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
-        world: worldSnapshot(state, idlePerSec(state) * fx.cps),
+        world: worldSnapshot(state, earnedPerSec(state, now)),
       }
     },
 
@@ -491,6 +491,8 @@ export function installGameHarness(): GameHarness {
         owned: hydrated.save.owned,
         ...(hydrated.save.career ? { journal: journalFromSave(hydrated.save.career), returns: hydrated.save.career.returns } : {}),
         tempMults: hydrated.save.tempMults ?? {},
+        foreverMult: hydrated.save.foreverMult ?? 1,
+        company: hydrated.save.company ?? FRESH_COMPANY,
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
         idleSince: now,
