@@ -11,6 +11,7 @@ import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany } from "./globe/growth.ts"
+import { WIN_MULT } from "./globe/world.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { parseFootprint } from "./globe/footprint.ts"
 import type { Footprint } from "./globe/footprint.ts"
@@ -83,7 +84,7 @@ export type SaveData = {
    * (until then the start card offers a reroll). Saves from before it get a random one at boot.
    */
   profile?: SavedIdentity
-  /** Popularity, inbound leads and the uptime bars. Omitted before the company has a history. */
+  /** Users by region, the resistance, live incidents, the win latch and the uptime bars. Omitted before the company has a history. */
   company?: CompanyState
   /** Regions bought and points of presence deployed. Omitted until the company buys one. */
   footprint?: Footprint
@@ -277,11 +278,13 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
   // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
-  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment), loaded.savedAt, loaded.savedAt + away, Math.random)
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
+  const wonAway = !(loaded.company?.won ?? false) && grown.state.won
   const save: SaveData = {
     ...loaded,
+    ...(wonAway ? { foreverMult: clampForever((loaded.foreverMult ?? 1) * WIN_MULT) } : {}),
     money: Math.max(0, loaded.money + credit - grown.lost),
     company: grown.state,
     xp: loaded.xp + xpCredit,

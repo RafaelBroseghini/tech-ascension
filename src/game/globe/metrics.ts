@@ -20,9 +20,11 @@ export interface AppMetrics {
   /** The trip nine in ten requests beat. */
   readonly p95Ms: number
   readonly worst: { readonly city: string; readonly ms: number } | null
-  readonly clients: number
+  readonly users: number
   readonly cities: number
-  readonly popularity: number
+  /** Users as a share of the target. */
+  readonly share: number
+  readonly resistance: number
   readonly pops: number
   readonly regions: number
   /** Dollars a second the dropped requests cost. */
@@ -51,9 +53,10 @@ export function appMetrics(company: Company, rows: readonly CityRow[]): AppMetri
     avgMs,
     p95Ms,
     worst: worst ? { city: worst.city, ms: worst.ms } : null,
-    clients: company.clients,
+    users: company.users,
     cities: rows.length,
-    popularity: company.popularity,
+    share: company.share,
+    resistance: company.resistance,
     pops: company.pops.length,
     regions: company.regions.length,
     lostPerSec: dropped * REVENUE_PER_DROPPED_RPS,

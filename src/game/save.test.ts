@@ -9,3 +9,25 @@ describe("save: a block from the retired whiteboard", () => {
     expect(hydrate(text, 1_000).save).not.toHaveProperty("interviews")
   })
 })
+
+describe("save: the company's users", () => {
+  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, uptime: "oo", day: 3 }
+
+  it("keeps the block, and drops one from before users and regions without wiping the career", () => {
+    const kept = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company })))
+    expect(kept?.company).toEqual(company)
+    const old = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company: { popularity: 40, leads: 2, uptime: "oo", day: 3 } })))
+    expect(old).not.toBeNull()
+    expect(old).not.toHaveProperty("company")
+  })
+
+  it("grows the company while away and pays the win's multiplier once", () => {
+    const near = Object.fromEntries([["americas-east", 0.04], ["americas-west", 0.043], ["south-america", 0.055], ["europe", 0.093], ["africa", 0.174], ["asia", 0.589], ["oceania", 0.006]].map(([id, share]) => [id, (6.999e9 * (share as number))]))
+    const saved = { ...freshSave(0), gigs: [1, 2, 3], company: { ...company, users: near, resistance: 100 }, equipment: { "110": 40, "109": 40 } }
+    const first = hydrate(JSON.stringify(saved), 24 * 3_600_000)
+    expect(first.save.company?.won).toBe(true)
+    expect(first.save.foreverMult).toBeCloseTo(1.25)
+    const again = hydrate(JSON.stringify(first.save), 25 * 3_600_000)
+    expect(again.save.foreverMult).toBeCloseTo(1.25)
+  })
+})

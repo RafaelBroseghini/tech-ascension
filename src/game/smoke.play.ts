@@ -514,3 +514,60 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   game.tick(60 * 1000)
   expect(game.getState().features.open).toContain("cat")
 })
+
+test("the world: users per region, gear as the throttle, incidents, and the win", () => {
+  game.reset()
+  game.keepProfile()
+  expect(game.getState().world).toMatchObject({ users: 0, target: 7_000_000_000, resistance: 0, incidents: [], won: false })
+
+  // A cleared gig seeds its client's region, and the users grow from there while the gear serves them.
+  game.forceGig(1)
+  game.setMoney(1e9)
+  game.setUsers("americas-east", 200)
+  expect(game.getState().world.users).toBe(200)
+  expect(game.setUsers("americas-east", -1)).toBe(false)
+  game.setUsers("americas-east", 1e15)
+  expect(game.getState().world.regionUsers["americas-east"]).toBeLessThan(330_000_000)
+  game.setUsers("americas-east", 5_000)
+
+  // Demand is users × requests per user; a laptop cannot serve it, so the shortfall costs money.
+  const before = game.getState()
+  expect(before.world.demand).toBeCloseTo(500)
+  expect(before.world.capacity).toBeLessThan(before.world.demand)
+  game.tick(Date.now() + 60_000)
+  expect(game.getState().money).toBeLessThan(before.money)
+
+  // The world fights back: an incident opens, shows its price, and ends when paid.
+  const calm = game.getState().world.demand
+  expect(game.forceIncident("ddos", "americas-east")).toBe(true)
+  const hit = game.getState().world
+  expect(hit.incidents).toHaveLength(1)
+  expect(hit.incidents[0]).toMatchObject({ kind: "ddos", region: "americas-east" })
+  expect(hit.demand).toBeCloseTo(calm * hit.incidents[0]!.strength)
+  game.setMoney(0)
+  expect(game.respondIncident(hit.incidents[0]!.id)).toBe(false)
+  game.setMoney(1e9)
+  expect(game.respondIncident(hit.incidents[0]!.id)).toBe(true)
+  expect(game.getState().world.incidents).toEqual([])
+  expect(game.forceIncident("meteor" as never)).toBe(false)
+
+  // Seven billion users win it once: a card, the journal, a forever multiplier, and the game keeps going.
+  for (const [region, share] of Object.entries({ "americas-east": 0.04, "americas-west": 0.043, "south-america": 0.055, europe: 0.093, africa: 0.174, asia: 0.589, oceania: 0.006 })) {
+    game.setUsers(region, 6.999e9 * share)
+  }
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 31; id++) game.buyJob(id)
+  game.setXp(1e9)
+  game.setMoney(1e15)
+  for (const id of [105, 106, 107, 108, 109, 110]) {
+    for (let i = 0; i < 30; i++) expect(game.buyEquipment(id), `gear ${id} copy ${i}`).toBe(true)
+  }
+  const mult = game.getState().foreverMult
+  for (let i = 0; i < 60 && !game.getState().world.won; i++) game.tick(Date.now() + (i + 2) * 3_600_000)
+  expect(game.getState().world.won).toBe(true)
+  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+  expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
+  game.tick(Date.now() + 99 * 3_600_000)
+  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+})

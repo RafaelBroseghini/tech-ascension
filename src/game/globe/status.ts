@@ -1,4 +1,3 @@
-import { CLIENT_CITIES } from "../../data/geo.ts"
 import type { Company } from "./company.ts"
 import { HEALTH_CHAR, STATUS_DAY_MS, uptimePercent } from "./growth.ts"
 import type { HealthChar } from "./growth.ts"
@@ -53,7 +52,7 @@ export interface Board {
   readonly past: readonly PastIncident[]
   /** How many days of bars the page has, so it can draw the empty ones. */
   readonly days: number
-  readonly popularity: number
+  readonly users: number
 }
 
 export interface StatusFacts {
@@ -72,20 +71,19 @@ const ROUND = (n: number) => Math.round(n).toLocaleString("en-US")
 
 export function statusOf(facts: StatusFacts): Board {
   const { company, retainers, money, uptime } = facts
-  const clients = company.clients
+  const users = company.users
   const serving = HEALTH_OF[company.health]
   const flat = HEALTH_CHAR.operational.repeat(uptime.length)
-  const popularity = Math.round(company.popularity)
   const lost = facts.lostPerSec > 0 ? ` Dropped requests cost ${money(facts.lostPerSec)} a second.` : ""
 
   const components: Component[] = [
     {
       id: "intake",
-      name: "Client intake",
+      name: "Signups",
       health: "operational",
       bars: flat,
       uptime: uptimePercent(flat),
-      detail: clients > 0 ? `${clients} of ${CLIENT_CITIES.length} client cities signed` : "Open for signups. No clients yet.",
+      detail: users > 0 ? `${ROUND(users)} users in ${company.audience.length} cities` : "Open for signups. No users yet.",
     },
     {
       id: "serving",
@@ -94,8 +92,8 @@ export function statusOf(facts: StatusFacts): Board {
       bars: uptime,
       uptime: uptimePercent(uptime),
       detail:
-        clients > 0
-          ? `${ROUND(company.demand)} requests a second asked, ${ROUND(company.capacity)} provisioned. Popularity ${popularity}/100.${lost}`
+        users > 0
+          ? `${ROUND(company.demand)} requests a second asked, ${ROUND(company.capacity)} provisioned.${lost}`
           : `${ROUND(company.capacity)} requests a second provisioned.`,
     },
     {
@@ -125,7 +123,7 @@ export function statusOf(facts: StatusFacts): Board {
     incident,
     past: pastIncidents(uptime),
     days: uptime.length,
-    popularity,
+    users: Math.round(users),
   }
 }
 

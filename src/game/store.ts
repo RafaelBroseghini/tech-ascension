@@ -27,7 +27,7 @@ import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
-import { modFactors, modsOf, pruneTemp } from "./mods.ts"
+import { clampForever, modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
 import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
@@ -35,6 +35,8 @@ import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
+import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, WIN_MULT } from "./globe/world.ts"
+import type { IncidentKind } from "./globe/world.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, FRESH_FOOTPRINT, setPop, setRegion } from "./globe/footprint.ts"
 import type { Footprint } from "./globe/footprint.ts"
@@ -163,7 +165,7 @@ type GameState = {
   journal: CareerJournal
   /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
   profile: SavedIdentity
-  /** Popularity, inbound leads and the uptime bars for the company on the globe. */
+  /** Users by region, the world's resistance, its incidents and the uptime bars for the company on the globe. */
   company: CompanyState
   /** The regions bought and the cities with a point of presence. */
   footprint: Footprint
@@ -186,6 +188,12 @@ type GameState = {
   deployPop: (cityId: string) => boolean
   /** Switch a deployed point of presence on or off. Its traffic goes to the nearest one still on; the last one on stays on. */
   setPopActive: (cityId: string, on: boolean) => boolean
+  /** Pays to end an incident now, in minutes of what the company earns. False when the incident is gone or the money is short. */
+  respondIncident: (id: number) => boolean
+  /** Opens an incident on a region (the biggest one by default) without waiting for a roll. */
+  forceIncident: (kind: IncidentKind, regionId?: string) => boolean
+  /** Sets a region's users, to the region's ceiling at most. */
+  setRegionUsers: (regionId: string, users: number) => boolean
   /** Switch a bought region on or off as a whole. The last region serving stays on. */
   setRegionActive: (regionId: string, on: boolean) => boolean
   /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
@@ -570,6 +578,43 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
+  respondIncident: (id) => {
+    const state = get()
+    const incident = state.company.incidents.find((i) => i.id === id)
+    if (!incident) return false
+    const cost = incidentCost(incident, idlePerSec(state), state.money)
+    if (state.money < cost) return false
+    set({
+      money: state.money - cost,
+      company: {
+        ...state.company,
+        incidents: state.company.incidents.filter((i) => i.id !== id),
+        resistance: Math.max(0, state.company.resistance - RELIEF),
+      },
+      now: Date.now(),
+    })
+    persistNow()
+    return true
+  },
+
+  forceIncident: (kind, regionId) => {
+    const { company, footprint } = get()
+    if (!INCIDENT_KINDS.includes(kind) || company.incidents.length >= MAX_INCIDENTS) return false
+    const biggest = Object.entries(company.users).sort((a, b) => b[1] - a[1])[0]?.[0]
+    const region = regionId ?? biggest ?? footprint.regions[0]!
+    if (!regionById(region)) return false
+    const incident = makeIncident(kind, region, company.resistance, company.incidentSeq + 1, Date.now())
+    set({ company: { ...company, incidents: [...company.incidents, incident], incidentSeq: company.incidentSeq + 1 } })
+    return true
+  },
+
+  setRegionUsers: (regionId, users) => {
+    const { company } = get()
+    if (!Number.isFinite(users) || users < 0 || ceilingOf(regionId) <= 0) return false
+    set({ company: { ...company, users: { ...company.users, [regionId]: Math.min(users, ceilingOf(regionId)) } } })
+    return true
+  },
+
   setRegionActive: (regionId, on) => {
     const { footprint } = get()
     if (!canSetRegion(footprint, regionId, on)) return false
@@ -725,12 +770,14 @@ export const useGame = create<GameState>((set, get) => ({
     const advanced = advanceBoostClock(clock, era, now, Math.random)
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment), now - dt, now, Math.random)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
     if (gain > 0) stats = creditMoney(stats, gain, "idle")
+    const won = !state.company.won && grown.state.won
+    const foreverMult = won ? clampForever(state.foreverMult * WIN_MULT) : state.foreverMult
     const balance = { money: Math.max(0, state.money + gain - grown.lost), xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.
     const eventAdvance = advanceEventClock(
@@ -771,7 +818,7 @@ export const useGame = create<GameState>((set, get) => ({
       xp: balance.xp,
       xpTotal: balance.xpTotal,
       stats,
-      foreverMult: state.foreverMult,
+      foreverMult,
       tempMults,
       event,
       lastEvent: fired ? event : state.lastEvent,

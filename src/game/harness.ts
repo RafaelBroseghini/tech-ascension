@@ -15,6 +15,10 @@ import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
+import { demandAt } from "./globe/growth.ts"
+import { capacityOf } from "./globe/load.ts"
+import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
+import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
 import { readCareerText } from "./ledger.ts"
 import { setMoneyDirect, setXpDirect } from "./admin.ts"
@@ -120,6 +124,21 @@ export type GameSnapshot = {
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
   profile: { handle: string; chosen: boolean }
+  /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
+  world: WorldSnapshot
+}
+
+export type WorldSnapshot = {
+  users: number
+  target: number
+  regionUsers: Record<string, number>
+  /** How hard the world pushes back, 0 to 100. */
+  resistance: number
+  incidents: { id: number; kind: IncidentKind; region: string; endsAt: number; strength: number; cost: number }[]
+  /** Requests a second the users send, against what the gear serves. */
+  demand: number
+  capacity: number
+  won: boolean
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -168,6 +187,12 @@ export type GameHarness = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Switch a bought region on or off as a whole. False for the last region serving. */
   setRegionActive: (regionId: string, on: boolean) => boolean
+  /** Opens an incident (ddos, block, law, rival) on a region, the biggest by default. False at the cap of three or for an unknown region. */
+  forceIncident: (kind: IncidentKind, regionId?: string) => boolean
+  /** Pays to end an incident now. False when it is gone or the money is short. */
+  respondIncident: (id: number) => boolean
+  /** Sets a region's users, up to what the region can hold. */
+  setUsers: (regionId: string, users: number) => boolean
   /** Grant a gold skill now, bypassing XP, order and price. False for an unknown or owned id. */
   forceGold: (goldId: number) => boolean
   /** Set the Buy control. It drops to the largest unlocked amount. Returns the amount now set. */
@@ -309,6 +334,20 @@ function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesS
   }
 }
 
+function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: number): WorldSnapshot {
+  const { company } = state
+  return {
+    users: totalUsers(company.users),
+    target: WORLD_TARGET,
+    regionUsers: { ...company.users },
+    resistance: company.resistance,
+    incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
+    demand: demandAt(company.users, company.incidents),
+    capacity: capacityOf(state.equipment),
+    won: company.won,
+  }
+}
+
 export function installGameHarness(): GameHarness {
   const api: GameHarness = {
     getState: () => {
@@ -363,6 +402,7 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
+        world: worldSnapshot(state, idlePerSec(state) * fx.cps),
       }
     },
 
@@ -390,6 +430,9 @@ export function installGameHarness(): GameHarness {
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
+    forceIncident: (kind, regionId) => useGame.getState().forceIncident(kind, regionId),
+    respondIncident: (id) => useGame.getState().respondIncident(id),
+    setUsers: (regionId, users) => useGame.getState().setRegionUsers(regionId, users),
     deployPop: (cityId) => useGame.getState().deployPop(cityId),
     setPopActive: (cityId, on) => useGame.getState().setPopActive(cityId, on),
     setRegionActive: (regionId, on) => useGame.getState().setRegionActive(regionId, on),

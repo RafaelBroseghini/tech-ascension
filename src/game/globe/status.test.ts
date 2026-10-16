@@ -4,9 +4,9 @@ import { BASE_RPS, capacityOf } from "./load.ts"
 import { pastIncidents, statusOf } from "./status.ts"
 
 const money = (n: number) => `$${n}`
-const board = (gigs: number[], equipment: Record<string, number> = {}, uptime = "", popularity = 0) =>
+const board = (users: number, equipment: Record<string, number> = {}, uptime = "") =>
   statusOf({
-    company: companyOf({ gigs, leads: 0, popularity, footprint: { regions: ["americas-east"], pops: ["ashburn"], off: [], dark: [] }, equipment }),
+    company: companyOf({ users: users > 0 ? { "americas-east": users } : {}, resistance: 0, incidents: [], won: false, footprint: { regions: ["americas-east"], pops: ["ashburn"], off: [], dark: [] }, equipment }),
     retainers: { count: 0, perSec: 0 },
     uptime,
     money,
@@ -15,25 +15,25 @@ const board = (gigs: number[], equipment: Record<string, number> = {}, uptime = 
 const serving = (b: ReturnType<typeof board>) => b.components.find((c) => c.id === "serving")!
 
 describe("the status board", () => {
-  it("is all clear with no clients: nothing asked, nothing down", () => {
-    const b = board([])
+  it("is all clear with no users: nothing asked, nothing down", () => {
+    const b = board(0)
     expect(b.banner).toBe("All Systems Operational")
     expect(b.incident).toBeNull()
     expect(serving(b).health).toBe("operational")
   })
 
   it("stays operational while the base capacity keeps up", () => {
-    const b = board([1])
+    const b = board(100)
     expect(serving(b).health).toBe("operational")
     expect(b.incident).toBeNull()
   })
 
   it("gets slow as demand nears capacity, then drops requests once it outgrows the gear", () => {
-    const warm = board([1, 2], {}, "", 10)
+    const warm = board(250)
     expect(serving(warm).health).toBe("degraded")
     expect(warm.banner).toBe("Degraded Performance")
     expect(warm.incident?.title).toBe("Elevated latency on request serving")
-    const busy = board([1, 2, 3], {}, "", 5)
+    const busy = board(400)
     expect(serving(busy).health).toBe("partial")
     expect(busy.banner).toBe("Partial Outage")
     expect(busy.incident?.title).toBe("Requests failing on request serving")
@@ -41,9 +41,9 @@ describe("the status board", () => {
   })
 
   it("buying gear brings the board back to operational", () => {
-    const busy = board([1, 2, 3], {}, "", 5)
+    const busy = board(400)
     expect(serving(busy).health).toBe("partial")
-    const fixed = board([1, 2, 3], { "44": 1 }, "", 5)
+    const fixed = board(400, { "44": 1 })
     expect(capacityOf({ "44": 1 })).toBeGreaterThan(BASE_RPS)
     expect(serving(fixed).health).toBe("operational")
     expect(fixed.incident).toBeNull()
@@ -51,7 +51,7 @@ describe("the status board", () => {
 
   it("reads retainers and regions", () => {
     const b = statusOf({
-      company: companyOf({ gigs: [1], leads: 0, popularity: 0, footprint: { regions: ["americas-east"], pops: ["ashburn"], off: [], dark: [] }, equipment: {} }),
+      company: companyOf({ users: { "americas-east": 1 }, resistance: 0, incidents: [], won: false, footprint: { regions: ["americas-east"], pops: ["ashburn"], off: [], dark: [] }, equipment: {} }),
       retainers: { count: 2, perSec: 14 },
       uptime: "",
       money,

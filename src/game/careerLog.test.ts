@@ -85,6 +85,8 @@ describe("the career log rows", () => {
       perk: "gold:1",
       interview: "interview:hello-server",
       lead: "lead:tokyo",
+      incident: "incident:ddos",
+      world: "world:1m",
       buzz: "viral",
       event: "event:1",
       review: "review:1",

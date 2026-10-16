@@ -2,17 +2,16 @@ import { describe, expect, it } from "vitest"
 import { CLIENT_CITIES } from "../../data/geo.ts"
 import { companyOf } from "./company.ts"
 import { FRESH_FOOTPRINT } from "./footprint.ts"
-import { popularityLoad } from "./load.ts"
 import { appMetrics, popRows } from "./metrics.ts"
 import { cityRows } from "./tip.ts"
 
-const facts = { gigs: [1, 2, 3, 4, 5, 6], leads: 0, popularity: 0, footprint: FRESH_FOOTPRINT, equipment: {} }
+const facts = { users: { "americas-east": 400, europe: 200 }, resistance: 0, incidents: [], won: false, footprint: FRESH_FOOTPRINT, equipment: {} }
 
 describe("the app's metrics", () => {
   it("shows demand against capacity, and what it costs when the app cannot keep up", () => {
-    const busy = companyOf({ ...facts, popularity: 100 })
+    const busy = companyOf(facts)
     const m = appMetrics(busy, cityRows(busy.audience, busy.demand, busy.pops))
-    expect(m.demand).toBe(6 * 10 * popularityLoad(100))
+    expect(m.demand).toBeCloseTo(600 * 0.1)
     expect(m.capacity).toBe(30)
     expect(m.dropped).toBeCloseTo(m.demand - 30)
     expect(m.servedShare).toBeCloseTo(30 / m.demand)
@@ -20,13 +19,13 @@ describe("the app's metrics", () => {
     expect(m.load).toBeCloseTo(m.demand / 30)
   })
 
-  it("an idle app has no drops and a latency from its clients", () => {
-    const c = companyOf({ ...facts, gigs: [1, 2, 3] })
+  it("an idle app has no drops and a latency from its users", () => {
+    const c = companyOf({ ...facts, users: { "americas-east": 100 } })
     const m = appMetrics(c, cityRows(c.audience, c.demand, c.pops))
     expect(m.dropped).toBe(0)
     expect(m.servedShare).toBe(1)
-    expect(m.clients).toBe(3)
-    expect(m.cities).toBe(3)
+    expect(m.users).toBe(100)
+    expect(m.cities).toBeGreaterThan(0)
     expect(m.avgMs).toBeGreaterThan(10)
     expect(m.p95Ms).toBeGreaterThanOrEqual(m.avgMs)
     expect(m.worst?.ms).toBe(Math.max(...cityRows(c.audience, c.demand, c.pops).map((r) => r.ms)))

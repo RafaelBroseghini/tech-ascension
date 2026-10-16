@@ -1,8 +1,29 @@
-import { CLIENT_CITIES } from "../../data/geo.ts"
+import { REGIONS, regionById } from "../../data/regions.ts"
+import { FRESH_FOOTPRINT } from "./footprint.ts"
+import type { Footprint } from "./footprint.ts"
 import { capacityOf, demandOf, dropShareOf } from "./load.ts"
-
-/** Popularity runs from 0 to this. */
-export const POP_MAX = 100
+import {
+  ceilingOf,
+  GROWTH_PER_SEC,
+  incidentRate,
+  INCIDENT_KINDS,
+  INCIDENT_MIN_USERS,
+  liveRegions,
+  MAX_INCIDENTS,
+  MILESTONES,
+  populationOf,
+  reachOf,
+  RESISTANCE_LAG_S,
+  resistanceTarget,
+  rollIncident,
+  seedsOf,
+  SPILL,
+  stalls,
+  surgeOf,
+  totalUsers,
+  WORLD_POPULATION,
+} from "./world.ts"
+import type { Incident } from "./world.ts"
 
 /** A status day is one minute on the clock, so the bars fill as you play. Each one is a column on the status page. */
 export const STATUS_DAY_MS = 60_000
@@ -13,16 +34,10 @@ export const STATUS_DAYS = 90
 /** Dollars a second lost for each request a second the company drops. */
 export const REVENUE_PER_DROPPED_RPS = 0.02
 
-/** Popularity the company keeps growing with: the share served, the clients, and time. */
-const GROWTH_PER_SEC = 0.04
-const DRAG_PER_CLIENT = 0.1
-/** Lost to drops and to slow decay, both per second. */
-const DROP_DRAG_PER_SEC = 0.15
-const IDLE_DECAY_PER_SEC = 0.005
-const EMPTY_DECAY_PER_SEC = 0.02
-/** A viral spike comes about once every this many milliseconds on average, while there are clients. */
-const VIRAL_EVERY_MS = 8 * 60_000
-const VIRAL_BUMP = 12
+/** Lost to drops, per second and per unit of drop share. */
+const DROP_CHURN_PER_SEC = 0.01
+/** Users a block or a law bleeds a second, per unit of its strength. A server in the region halves it. */
+const BLEED_PER_SEC = 0.002
 
 /** Clients an offline stretch is walked in, so a long away still steps the model. */
 export const STEP_MS = 60_000
@@ -31,30 +46,39 @@ export const HEALTH_CHAR = { operational: "o", degraded: "d", partial: "p", majo
 export type HealthChar = (typeof HEALTH_CHAR)[keyof typeof HEALTH_CHAR]
 const SEVERITY = "odpm"
 
-/** The company's growth: popularity, the clients it has signed by inbound lead, and one status character per day. */
+/** The company's reach: users in each region, the world's resistance, what it has thrown, and one status character per day. */
 export interface CompanyState {
-  readonly popularity: number
-  /** Inbound clients signed. Gig clients come on top of these. */
-  readonly leads: number
+  /** Users by region id. A region with nobody is left out. */
+  readonly users: Readonly<Record<string, number>>
+  /** How hard the world pushes back, 0 to 100. */
+  readonly resistance: number
+  readonly incidents: readonly Incident[]
+  /** Incidents thrown so far, so ids never repeat. */
+  readonly incidentSeq: number
+  /** Latched once the company reaches `WORLD_TARGET` users. */
+  readonly won: boolean
   /** One character per status day, oldest first: o operational, d degraded, p partial outage, m major outage. */
   readonly uptime: string
   /** The status day the last character belongs to, or -1 before the first step. */
   readonly day: number
 }
 
-export const FRESH_COMPANY: CompanyState = { popularity: 0, leads: 0, uptime: "", day: -1 }
+export const FRESH_COMPANY: CompanyState = { users: {}, resistance: 0, incidents: [], incidentSeq: 0, won: false, uptime: "", day: -1 }
 
 export interface GrowthNote {
-  readonly type: "lead" | "buzz"
+  readonly type: "incident" | "world"
   readonly ref: string
   readonly data?: Record<string, number | string>
 }
 
 export interface GrowthFacts {
-  readonly gigs: number
-  readonly cap: number
+  /** Users each region is seeded with by the clients signed there. */
+  readonly seeds: Readonly<Record<string, number>>
+  /** How well the footprint reaches each region. */
+  readonly reach: Readonly<Record<string, number>>
+  /** Regions with a point of presence serving traffic. */
+  readonly live: Readonly<Record<string, boolean>>
   readonly equipment: Readonly<Record<string, number>>
-  readonly cityAt: (index: number) => string
 }
 
 export interface GrowthStep {
@@ -64,8 +88,6 @@ export interface GrowthStep {
   readonly notes: readonly GrowthNote[]
 }
 
-export const leadThreshold = (clients: number): number => 2 + 1.5 * clients
-
 /** Serving is judged on how much of the demand it drops; above 80% of capacity it is only slow. */
 export function servingHealth(dropShare: number, demand: number, capacity: number): HealthChar {
   if (dropShare > 0.5) return HEALTH_CHAR.major
@@ -74,53 +96,70 @@ export function servingHealth(dropShare: number, demand: number, capacity: numbe
   return HEALTH_CHAR.operational
 }
 
-/** Clients signed: the gig clients and the inbound leads, capped at the cities the company can reach. */
-export const clientsOf = (facts: Pick<GrowthFacts, "gigs" | "cap">, leads: number): number => Math.min(facts.gigs + leads, facts.cap)
+/** The requests a second the users of a company send, with every DDoS surge counted. */
+export function demandAt(users: Readonly<Record<string, number>>, incidents: readonly Incident[]): number {
+  return REGIONS.reduce((sum, region) => sum + demandOf(users[region.id] ?? 0) * surgeOf(incidents, region.id), 0)
+}
 
 /**
  * Advances the company over `ms` (a short step, at most `STEP_MS`). `at` is when the step ends. `rand` is in [0, 1)
- * and drives the viral spikes, so a test can pin them.
+ * and drives what the world throws, so a test can pin it.
  */
 export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number, at: number, rand: () => number): GrowthStep {
   const sec = Math.max(0, ms) / 1000
-  let popularity = state.popularity
-  let leads = state.leads
   const notes: GrowthNote[] = []
-  let lost = 0
+  const before = totalUsers(state.users)
+  let incidents = state.incidents.filter((i) => i.until > at)
+  let seq = state.incidentSeq
 
-  let clients = clientsOf(facts, leads)
-  let demand = demandOf(clients, popularity)
-  let capacity = capacityOf(facts.equipment)
-  let dropShare = dropShareOf(demand, capacity)
-  if (clients === 0) {
-    popularity -= EMPTY_DECAY_PER_SEC * sec
-  } else {
-    const served = 1 - dropShare
-    popularity += sec * (GROWTH_PER_SEC * served * (1 + DRAG_PER_CLIENT * clients) - DROP_DRAG_PER_SEC * dropShare - IDLE_DECAY_PER_SEC)
-    if (rand() < ms / VIRAL_EVERY_MS) {
-      popularity += VIRAL_BUMP
-      notes.push({ type: "buzz", ref: "viral", data: { popularity: Math.round(popularity) } })
+  const capacity = capacityOf(facts.equipment)
+  const demand = demandAt(state.users, incidents)
+  const dropShare = dropShareOf(demand, capacity)
+  const served = 1 - dropShare
+
+  const resistance = state.resistance + (resistanceTarget(before) - state.resistance) * (1 - Math.exp(-sec / RESISTANCE_LAG_S))
+  const drag = 1 - (0.5 * resistance) / 100
+
+  const users: Record<string, number> = {}
+  for (const region of REGIONS) {
+    const here = state.users[region.id] ?? 0
+    const ceiling = ceilingOf(region.id)
+    const stalled = stalls(incidents, region.id, facts.live[region.id] === true)
+    const rival = incidents.filter((i) => i.kind === "rival" && i.region === region.id).reduce((mult, i) => mult * i.strength, 1)
+    const seed = (facts.seeds[region.id] ?? 0) + SPILL * before * (populationOf(region.id) / WORLD_POPULATION)
+    const growth = stalled ? 0 : GROWTH_PER_SEC * (facts.reach[region.id] ?? 0) * Math.max(here, seed) * Math.max(0, 1 - here / ceiling) * served * drag * rival
+    const bleed = incidents
+      .filter((i) => (i.kind === "block" || i.kind === "law") && i.region === region.id && stalled)
+      .reduce((rate, i) => rate + BLEED_PER_SEC * i.strength * (facts.live[region.id] ? 0.5 : 1) * (1 + resistance / 100), 0)
+    const churn = Math.min(0.9, (DROP_CHURN_PER_SEC * dropShare + bleed) * sec)
+    const next = Math.min(ceiling, Math.max(0, (here + growth * sec) * (1 - churn)))
+    if (next >= 0.5) users[region.id] = next
+  }
+  const total = totalUsers(users)
+  const lost = demand * dropShare * REVENUE_PER_DROPPED_RPS * sec
+
+  if (incidents.length < MAX_INCIDENTS && total >= INCIDENT_MIN_USERS && rand() < incidentRate(resistance) * sec) {
+    const incident = rollIncident(users, facts.live, resistance, seq + 1, at, rand)
+    if (incident) {
+      seq += 1
+      incidents = [...incidents, incident]
+      notes.push({ type: "incident", ref: `incident:${incident.kind}`, data: { region: incident.region, id: incident.id } })
     }
   }
-  popularity = Math.max(0, Math.min(POP_MAX, popularity))
-  lost = demand * dropShare * REVENUE_PER_DROPPED_RPS * sec
 
-  // Inbound leads land in the next city once popularity clears the bar for the clients already signed, and only when the
-  // gear can serve the new client too. Out of capacity, the company stops signing until it buys more.
-  for (let guard = 0; guard < 4 && clients < facts.cap && popularity >= leadThreshold(clients); guard++) {
-    if (demandOf(clients + 1, popularity) > capacityOf(facts.equipment)) break
-    const city = facts.cityAt(clients)
-    leads += 1
-    notes.push({ type: "lead", ref: `lead:${city}`, data: { clients: clients + 1 } })
-    clients = clientsOf(facts, leads)
+  let won = state.won
+  for (const row of MILESTONES) {
+    if (before < row.users && total >= row.users) {
+      notes.push({ type: "world", ref: `world:${row.id}`, data: { users: Math.round(total) } })
+      if (row.id === "won") won = true
+    }
   }
-  demand = demandOf(clients, popularity)
-  capacity = capacityOf(facts.equipment)
-  dropShare = dropShareOf(demand, capacity)
 
-  const health = clients > 0 ? servingHealth(dropShare, demand, capacity) : HEALTH_CHAR.operational
+  const nowDemand = demandAt(users, incidents)
+  const nowDrop = dropShareOf(nowDemand, capacity)
+  const health = total > 0 ? servingHealth(nowDrop, nowDemand, capacity) : HEALTH_CHAR.operational
   const { uptime, day } = recordDay(state, health, at)
-  return { state: { popularity, leads, uptime, day }, lost, notes }
+  return { state: { users, resistance, incidents, incidentSeq: seq, won, uptime, day }, lost, notes }
 }
 
 /** Writes this step's health into today's bar, opening a new bar for each day that has passed. */
@@ -142,8 +181,8 @@ export function uptimePercent(uptime: string): number {
 }
 
 /** The growth facts the game has right now, for `stepCompany`. */
-export function growthFacts(gigs: readonly number[], equipment: Readonly<Record<string, number>>): GrowthFacts {
-  return { gigs: gigs.length, cap: CLIENT_CITIES.length, equipment, cityAt: (i) => CLIENT_CITIES[i] ?? CLIENT_CITIES[0]! }
+export function growthFacts(gigs: readonly number[], equipment: Readonly<Record<string, number>>, footprint: Footprint = FRESH_FOOTPRINT): GrowthFacts {
+  return { seeds: seedsOf(gigs), reach: reachOf(footprint), live: liveRegions(footprint), equipment }
 }
 
 /**
@@ -164,14 +203,30 @@ export function advanceCompany(state: CompanyState, facts: GrowthFacts, from: nu
   return { state: current, lost, notes }
 }
 
-/** A saved company, checked: anything malformed is dropped, so a bad block never breaks a load. */
+/** A saved company, checked: anything malformed is dropped, so a bad block never breaks a load. A block from before users and regions is dropped whole. */
 export function parseCompany(input: unknown): CompanyState | undefined {
   if (typeof input !== "object" || input === null) return undefined
   const raw = input as Record<string, unknown>
-  const popularity = typeof raw.popularity === "number" && Number.isFinite(raw.popularity) ? Math.max(0, Math.min(POP_MAX, raw.popularity)) : undefined
-  const leads = typeof raw.leads === "number" && Number.isInteger(raw.leads) && raw.leads >= 0 ? raw.leads : undefined
+  if (typeof raw.users !== "object" || raw.users === null || Array.isArray(raw.users)) return undefined
+  const users: Record<string, number> = {}
+  for (const region of REGIONS) {
+    const n = (raw.users as Record<string, unknown>)[region.id]
+    if (typeof n === "number" && Number.isFinite(n) && n >= 0) users[region.id] = Math.min(n, ceilingOf(region.id))
+  }
+  const resistance = typeof raw.resistance === "number" && Number.isFinite(raw.resistance) ? Math.max(0, Math.min(100, raw.resistance)) : undefined
+  const incidentSeq = typeof raw.incidentSeq === "number" && Number.isInteger(raw.incidentSeq) && raw.incidentSeq >= 0 ? raw.incidentSeq : undefined
   const uptime = typeof raw.uptime === "string" && /^[odpm]*$/.test(raw.uptime) ? raw.uptime.slice(-STATUS_DAYS) : undefined
   const day = typeof raw.day === "number" && Number.isInteger(raw.day) && raw.day >= -1 ? raw.day : undefined
-  if (popularity === undefined || leads === undefined || uptime === undefined || day === undefined) return undefined
-  return { popularity, leads, uptime, day }
+  if (resistance === undefined || incidentSeq === undefined || uptime === undefined || day === undefined) return undefined
+  const incidents = Array.isArray(raw.incidents) ? raw.incidents.flatMap(parseIncident) : []
+  return { users, resistance, incidents, incidentSeq, won: raw.won === true, uptime, day }
+}
+
+function parseIncident(input: unknown): Incident[] {
+  if (typeof input !== "object" || input === null) return []
+  const raw = input as Record<string, unknown>
+  const kind = INCIDENT_KINDS.find((k) => k === raw.kind)
+  if (!kind || typeof raw.region !== "string" || !regionById(raw.region)) return []
+  if (typeof raw.id !== "number" || !Number.isInteger(raw.id) || typeof raw.until !== "number" || !Number.isFinite(raw.until) || typeof raw.strength !== "number" || !Number.isFinite(raw.strength)) return []
+  return [{ id: raw.id, kind, region: raw.region, until: raw.until, strength: Math.max(0, Math.min(10, raw.strength)) }]
 }
