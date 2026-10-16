@@ -338,9 +338,9 @@
 
 .mini-globe-users {
   position: absolute;
-  top: 17%;
-  right: 14%;
-  left: 14%;
+  top: 21%;
+  right: 20%;
+  left: 20%;
   z-index: 1;
   overflow: hidden;
   color: var(--ide-text);
@@ -351,6 +351,113 @@
   text-shadow: 0 1px 2px var(--ide-crust);
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* The ring says how the company is doing; it plays once when it changes and sits still after. It is a layer of its own, so the canvas under it is never restyled. */
+.mini-globe::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mini-globe[data-alert="warn"]::after {
+  border-color: color-mix(in srgb, var(--ide-peach) 70%, transparent);
+}
+
+.mini-globe[data-alert="bad"]::after {
+  border-color: var(--ide-red);
+  box-shadow: inset 0 0 16px color-mix(in srgb, var(--ide-red) 45%, transparent);
+  animation: globe-ring 900ms ease-out 1;
+}
+
+@keyframes globe-ring {
+  from { opacity: 0; transform: scale(1.08); }
+  to { opacity: 1; transform: none; }
+}
+
+/* How many incidents are live, on the globe's upper right edge. */
+.mini-globe-badge {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(var(--ide-status) + var(--ide-globe-gap) + var(--ide-globe) * 0.88 - 9px);
+  left: calc(var(--ide-activity) + var(--ide-globe-gap) + var(--ide-globe) * 0.82 - 9px);
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--ide-red);
+  box-shadow: 0 0 0 2px var(--ide-crust);
+  color: var(--ide-on-accent);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* What just happened, one line at a time above the globe. */
+.globe-feed {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(var(--ide-status) + 2 * var(--ide-globe-gap) + var(--ide-globe));
+  left: calc(var(--ide-activity) + var(--ide-globe-gap));
+  max-width: calc(var(--ide-tree) + var(--ide-globe-gap));
+  pointer-events: none;
+}
+
+.globe-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 5px 10px 5px 8px;
+  border: 1px solid var(--ide-surface);
+  border-radius: 999px;
+  background: var(--ide-crust);
+  color: var(--ide-text);
+  font-size: var(--fs-2xs);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: globe-feed-in 220ms var(--ease-out, ease-out) both;
+}
+
+.globe-feed-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globe-feed-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ide-sky);
+}
+
+.globe-feed-item.is-bad .globe-feed-dot {
+  background: var(--ide-red);
+}
+
+.globe-feed-item.is-good .globe-feed-dot {
+  background: var(--ide-green);
+}
+
+@keyframes globe-feed-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-globe[data-alert="bad"]::after,
+  .globe-feed-item {
+    animation: none;
+  }
 }
 
 .mini-globe-open {
@@ -386,7 +493,9 @@
 }
 
 @media (max-width: 860px) {
-  .mini-globe {
+  .mini-globe,
+  .mini-globe-badge,
+  .globe-feed {
     display: none;
   }
 }

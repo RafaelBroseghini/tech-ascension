@@ -22,6 +22,7 @@ export const IdeChrome = memo(function IdeChrome() {
 
   const logOpen = useFeatureOpen("careerLog")
   const studioOpen = useFeatureOpen("studio")
+  const incidents = useGame((state) => state.company.incidents.length)
   const [companyOpen, setCompanyOpen] = useState(false)
   const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
   const showLog = logOpen && sidebar === "log"
@@ -65,6 +66,7 @@ export const IdeChrome = memo(function IdeChrome() {
           >
             <Globe className="ide-activity-icon" {...UI_ICON} aria-hidden />
             <NewMark id="studio" />
+            {incidents > 0 ? <i className="ide-activity-alert" data-testid="ide-company-alert" aria-hidden /> : null}
           </button>
         ) : null}
         {logOpen ? (

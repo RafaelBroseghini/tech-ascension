@@ -58,6 +58,18 @@
   background: var(--ide-surface);
 }
 
+/* A live incident, on the globe button, for the widths where the globe itself is gone. */
+.ide-activity-alert {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ide-red);
+  box-shadow: 0 0 0 2px var(--ide-crust);
+}
+
 .ide-activity-icon {
   flex: none;
   color: var(--ide-overlay);
