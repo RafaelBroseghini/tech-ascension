@@ -338,9 +338,9 @@
 
 .mini-globe-users {
   position: absolute;
-  right: 10%;
-  bottom: 9%;
-  left: 10%;
+  top: 17%;
+  right: 14%;
+  left: 14%;
   z-index: 1;
   overflow: hidden;
   color: var(--ide-text);
@@ -938,6 +938,15 @@
 @media (max-width: 720px) {
   .company-view-body {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  .company-view-body .globe,
+  .company-view-body .globe-body {
+    flex: none;
+    min-height: auto;
   }
 
   .status-components {

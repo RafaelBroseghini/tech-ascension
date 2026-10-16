@@ -170,13 +170,14 @@ export default function GlobeCanvas({ company, rows, home, compact = false }: { 
   // Keyed by what they hold, not by identity: the company is rebuilt every time its users move.
   const popsKey = company.pops.join()
   const idleKey = company.idlePops.join()
-  const clients = company.audience.length
+  const citiesKey = company.audience.map((a) => a.city).join()
   useEffect(() => {
     scene.current?.setPops(latest.current.company.pops, latest.current.company.idlePops)
   }, [popsKey, idleKey])
   useEffect(() => {
-    scene.current?.resetView(latest.current.company.audience)
-  }, [clients])
+    // New cities appear as regions fill, and churn can take them away again: redraw the dots, but leave the camera where the player put it.
+    scene.current?.setAudience(latest.current.company.audience)
+  }, [citiesKey])
 
   const zoom = (factor: number) => scene.current?.zoomBy(factor)
   const reset = () => scene.current?.resetView()
