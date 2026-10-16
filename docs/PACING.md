@@ -49,19 +49,7 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. "Ha
 
 To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
 
-## Whiteboard interviews
-
-Twelve jobs wait on a passed whiteboard interview (`src/data/studio/challenges.ts`). The model gives each one a visit: the interview opens on the visit where lifetime XP reaches the job's requirement, and the player passes it at the start of the next visit. Interviews 6 to 12 (Image upload to Global service) fail once first, so that visit also pays one No hire, 5% of the job's lifetime XP requirement in spendable XP.
-
-Against the numbers before interviews, at the same tables:
-
-- **The finish line barely moves.** Every row of the table above is unchanged except Daily, short for the reinvestor, which goes from 12.0 to 13.0 days. The finish waits on the last capital row, and every schedule has its jobs long before that.
-- **The job ladder takes one more visit.** At `npm run pace -- 3 5 8`, every job is held on day 0.67 instead of 0.33, and the reinvestor's last gear row moves from day 1.67 to 2.00. Senior SWE and capital stay on day 0.33. Lifetime XP passes 160,000 on the first visit, so that interview is already waiting when the second visit starts.
-- **`K` stays 9 and 4.** The best fit moved from 9.19 to 9.19 for the collector and from 4.07 to 4.12 for the reinvestor, which round to the same constants.
-
-### Offers
-
-A pass works out an offer (`offerFor` in `src/game/studio/interviews.ts`). A Strong hire with no paid hints signs a one-time bonus of 30 minutes of the gated job's salary, paid as money; no other pass pays one. The model does not credit it, so `npm run pace` prints the same tables as before offers. As an upper bound, a run of the model that credited the bonus at all twelve interviews, though a Hire pays none, printed the same tables to the digits shown. The first lump is $14,400 (the internship's $8 a second for 30 minutes) and the largest is $7.2 million (Fellow, $4,000 a second).
+> The figures below predate the removal of the whiteboard interviews. Rerun `npm run pace` for the current numbers.
 
 ## Reading it
 
@@ -77,7 +65,7 @@ A pass works out an offer (`offerFor` in `src/game/studio/interviews.ts`). A Str
 
 - You visit `visitsPerDay` times, evenly spaced, for `minutesPerVisit` each, clicking `clicksPerSec` the whole visit. You buy only while you are there.
 - Time away pays idle income and idle XP, up to the offline cap, once, when you return.
-- You take every gig and job as soon as it opens, and buy a first copy of anything as soon as you can afford it. A job with a whiteboard interview opens one visit after its lifetime XP requirement, and interviews 6 to 12 cost one No hire first.
+- You take every gig and job as soon as it opens, and buy a first copy of anything as soon as you can afford it.
 - A second copy of a skill, gear row or capital row is bought only if it earns itself back within the player's payback limit (an hour for the collector, two days for the reinvestor), best payback first.
 - Random events and click boosts are left out, so this is an estimate with no luck in it. They would move the real number, by how much is not modeled.
 
