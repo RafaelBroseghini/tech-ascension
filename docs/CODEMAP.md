@@ -39,7 +39,9 @@
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
 | Your company: the activity-bar button, the modal, and the burst that drives the globe | `src/components/globe/CompanyHost.tsx`, `src/components/globe/traffic.ts` |
 | The globe: three.js scene, canvas (a lazy chunk), the small one on the desk (`MiniGlobe.tsx`, drawn `compact`) and the numbers pane in the details view | `src/components/globe/` (`GlobeScene.ts`, `GlobeCanvas.tsx`, `MiniGlobe.tsx`, `GlobePane.tsx`, `notes.ts`) |
-| Clients and traffic: which cities your cleared gigs sign, and the burst of requests they send | `src/game/globe/company.ts`, `src/game/globe/wave.ts` |
+| Users, incidents and the win: regions, seeds, reach, resistance, the world's rules and calibration | `src/game/globe/world.ts`, `src/game/globe/growth.ts` (`stepCompany`) |
+| What the globe draws of the company, and the burst of requests its users send | `src/game/globe/company.ts`, `src/game/globe/wave.ts` |
+| The world pane: users against the target, regions, resistance and the incidents to Respond to | `src/components/globe/WorldPanel.tsx` |
 | Globe tooltip: the city rows, the trip time and the tally of a burst | `src/game/globe/tip.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |

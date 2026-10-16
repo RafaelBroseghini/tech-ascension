@@ -38,7 +38,7 @@ The desk is earned, not handed over. A new career starts with the XP counter and
 
 | When | What appears | Trigger | Reveal |
 | --- | --- | --- | --- |
-| 45 s | Your company: the activity-bar globe button. The globe sits bottom left of the desk and each cleared gig's client shows up on it. Its card's Try it opens the details | Used laptop (skill 1): its first copy is 90 XP | big |
+| 45 s | Your company: the activity-bar globe button. The globe sits bottom left of the desk and each cleared gig seeds users in its client's region, and they spread from there as locations and gear allow. Its card's Try it opens the details | Used laptop (skill 1): its first copy is 90 XP | big |
 | 7 min | Career log (the Git icon) | Git + GitHug hygiene (skill 10) | big |
 | 7 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 10) | standard |
 | 8 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
