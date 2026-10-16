@@ -30,10 +30,15 @@ import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
-import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, jobState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
+import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
+import type { CompanyState } from "./globe/growth.ts"
+import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, FRESH_FOOTPRINT, setPop, setRegion } from "./globe/footprint.ts"
+import type { Footprint } from "./globe/footprint.ts"
+import { popCostOf, regionById, regionOfCity } from "../data/regions.ts"
 import type { SaveData } from "./save.ts"
 import {
   creditMoney,
@@ -61,15 +66,6 @@ import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
 import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
-import { betterBest, bestOf, copyDesign, interviewById, interviewPassed, isPass, NO_RECORD, noHirePenalty, offerFor, practice, withRecord } from "./studio/interviews.ts"
-import type { InterviewLog, PracticeRun, Submission } from "./studio/interviews.ts"
-import { starsOf } from "./studio/score.ts"
-import type { Stars, Verdict } from "./studio/score.ts"
-import type { Design, TargetName } from "./studio/types.ts"
-import { nextHint } from "./studio/hints.ts"
-import { QUESTION_FOR, questionsFor } from "../data/studio/questions.ts"
-import type { QuestionId } from "../data/studio/questions.ts"
-import type { Interview } from "../data/studio/challenges.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -167,10 +163,10 @@ type GameState = {
   journal: CareerJournal
   /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
   profile: SavedIdentity
-  /** Whiteboard interviews submitted, keyed by interview id. */
-  interviews: InterviewLog
-  /** The latest submission this session. Not saved. */
-  lastInterview: Submission | null
+  /** Popularity, inbound leads and the uptime bars for the company on the globe. */
+  company: CompanyState
+  /** The regions bought and the cities with a point of presence. */
+  footprint: Footprint
   unlocked: FeatureId[]
   fresh: FeatureId[]
   returns: number
@@ -182,40 +178,16 @@ type GameState = {
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
   buyJob: (jobId: number) => boolean
-  /**
-   * Run a design past the interview for a job at `interview`, once. A Hire or Strong hire opens the job for good; a
-   * No hire costs `noHirePenalty` in spendable XP (never below 0) and keeps the design for the next try. Null when the
-   * interview is unknown or its job is not at `interview`.
-   */
-  submitWhiteboard: (interviewId: string, design: Design) => Verdict | null
-  /**
-   * Run a design past an interview the career has passed, with no effect on the career: no verdict, attempt, XP, job or
-   * journal entry. A passing run that beats the interview's best (cheapest, then fastest) is kept as `best`. Null while
-   * the interview is unknown or not passed.
-   */
-  practiceWhiteboard: (interviewId: string, design: Design) => PracticeRun | null
-  /**
-   * Ask the interviewer a question: free, unlimited, and once asked it stays answered. Allowed while the interview is
-   * open or passed. False for an unknown interview, a question it does not ask, or an interview not reached yet.
-   */
-  askInterviewer: (interviewId: string, questionId: QuestionId) => boolean
-  /** Take the nudge about a target: free, and it stays shown. False when the interview has no nudge for that target or is not reached. */
-  takeNudge: (interviewId: string, target: TargetName) => boolean
-  /**
-   * Take the next paid hint for `design`, only while the interview is open. It lowers the offer to the bottom of the
-   * band if the interview is passed. Returns the hint line (the same line again if it was already taken), or null when
-   * the board covers the reference or the interview is not open.
-   */
-  takeHint: (interviewId: string, design: Design) => string | null
-  /**
-   * Look at the engineers' board for a passed interview. Marks the interview studied and returns the reference design;
-   * null while the interview is unknown or not passed. It changes nothing else in the career.
-   */
-  studyReference: (interviewId: string) => Design | null
-  /** Record a pass now, bypassing every gate (tests and the harness). False for an unknown or already passed id. */
-  forceInterview: (interviewId: string) => boolean
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
   buyGold: (goldId: number) => boolean
+  /** Buy a region with money. False when it is unknown, owned, or unaffordable. */
+  buyRegion: (regionId: string) => boolean
+  /** Deploy a point of presence in a city of a region you own, for its cost in money. */
+  deployPop: (cityId: string) => boolean
+  /** Switch a deployed point of presence on or off. Its traffic goes to the nearest one still on; the last one on stays on. */
+  setPopActive: (cityId: string, on: boolean) => boolean
+  /** Switch a bought region on or off as a whole. The last region serving stays on. */
+  setRegionActive: (regionId: string, on: boolean) => boolean
   /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
   setBuyAmount: (amount: BuyAmount) => void
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
@@ -293,7 +265,8 @@ function toSave(state: GameState, now: number): SaveData {
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
   save.profile = state.profile
-  if (Object.keys(state.interviews).length > 0) save.interviews = state.interviews
+  save.company = state.company
+  save.footprint = state.footprint
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -305,12 +278,6 @@ function toSave(state: GameState, now: number): SaveData {
     save.activeBoost = state.activeBoost
   }
   return save
-}
-
-/** An interview the career has reached: its job waits on the interview, or the interview is passed. */
-function engaged(state: GameState, interview: Interview): boolean {
-  const job = jobById(interview.jobId)
-  return job !== undefined && (jobState(state, job) === "interview" || interviewPassed(state, interview))
 }
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
@@ -442,8 +409,8 @@ export const useGame = create<GameState>((set, get) => ({
   journal: booted.career.journal,
   // A save from before names were drawn is a career already under way: it gets one, kept, with no start card.
   profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
-  interviews: booted.save.interviews ?? {},
-  lastInterview: null,
+  company: booted.save.company ?? FRESH_COMPANY,
+  footprint: booted.save.footprint ?? FRESH_FOOTPRINT,
   unlocked: booted.career.unlocked,
   fresh: booted.career.fresh,
   returns: booted.career.returns,
@@ -569,6 +536,48 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
+  buyRegion: (regionId) => {
+    const state = get()
+    const region = regionById(regionId)
+    if (!region || !canBuyRegion(state.footprint, regionId, state.money, region.price)) return false
+    set({
+      money: state.money - region.price,
+      footprint: { ...state.footprint, regions: [...state.footprint.regions, regionId] },
+      now: Date.now(),
+    })
+    persistNow()
+    return true
+  },
+
+  deployPop: (cityId) => {
+    const state = get()
+    const region = regionOfCity(cityId)
+    if (!region || !canDeployPop(state.footprint, cityId, state.money, popCostOf(region))) return false
+    set({
+      money: state.money - popCostOf(region),
+      footprint: { ...state.footprint, pops: [...state.footprint.pops, cityId] },
+      now: Date.now(),
+    })
+    persistNow()
+    return true
+  },
+
+  setPopActive: (cityId, on) => {
+    const { footprint } = get()
+    if (!canSetPop(footprint, cityId, on)) return false
+    set({ footprint: setPop(footprint, cityId, on) })
+    persistNow()
+    return true
+  },
+
+  setRegionActive: (regionId, on) => {
+    const { footprint } = get()
+    if (!canSetRegion(footprint, regionId, on)) return false
+    set({ footprint: setRegion(footprint, regionId, on) })
+    persistNow()
+    return true
+  },
+
   buyJob: (jobId) => {
     const job = jobById(jobId)
     const state = get()
@@ -581,128 +590,6 @@ export const useGame = create<GameState>((set, get) => ({
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
-    })
-    persistNow()
-    return true
-  },
-
-  submitWhiteboard: (interviewId, design) => {
-    const interview = interviewById(interviewId)
-    const job = interview ? jobById(interview.jobId) : undefined
-    const state = get()
-    if (!interview || !job || jobState(state, job) !== "interview") return null
-    const { verdict, result } = practice(interview, design)
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    const attempts = prior.attempts + 1
-    const candidate = bestOf(design, result)
-    const best = isPass(verdict.kind) && betterBest(prior.best, candidate) ? candidate : prior.best
-    // The offer is worked out once, here, from the hints taken so far; a pass closes the interview to further Submits.
-    const offer = prior.offer ?? (isPass(verdict.kind) ? offerFor(verdict.kind, prior.hints.length, job.cps) : undefined)
-    // A retry should not be a guess: the requirement a No hire missed is told for free.
-    const missedAsks = verdict.kind === "noHire" ? verdict.missed.map((m) => QUESTION_FOR[m.target]) : []
-    const stars = Math.max(prior.stars, starsOf(result, interview.targets, verdict)) as Stars
-    const interviews = withRecord(state.interviews, interview.id, {
-      verdict: verdict.kind,
-      attempts,
-      stars,
-      design: copyDesign(design),
-      asked: [...new Set([...prior.asked, ...missedAsks])],
-      ...(best ? { best } : {}),
-      ...(offer ? { offer } : {}),
-    })
-    const penalty = verdict.kind === "noHire" ? Math.min(state.xp, noHirePenalty(interview)) : 0
-    const bonus = prior.offer ? 0 : (offer?.bonus ?? 0)
-    // A pass is logged by the timeline listener from the record; a No hire is logged here, with what it missed.
-    const notes: CareerNote[] =
-      verdict.kind === "noHire"
-        ? [{ type: "interview", ref: `interview:${interview.id}`, data: { verdict: verdict.kind, attempts, missed: verdict.missed.map((m) => m.target).join(","), penalty } }]
-        : []
-    set({
-      xp: state.xp - penalty,
-      money: state.money + bonus,
-      stats: bonus > 0 ? creditMoney(state.stats, bonus, "other") : state.stats,
-      interviews,
-      lastInterview: { interviewId: interview.id, verdict, penalty, offer: isPass(verdict.kind) ? (offer ?? null) : null },
-      now: Date.now(),
-      journal: noted(state.journal, notes, state),
-    })
-    persistNow()
-    return verdict
-  },
-
-  practiceWhiteboard: (interviewId, design) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !interviewPassed(state, interview)) return null
-    const { verdict, result } = practice(interview, design)
-    const prior = state.interviews[interview.id]
-    const candidate = bestOf(design, result)
-    const newBest = isPass(verdict.kind) && betterBest(prior?.best, candidate)
-    const best = newBest ? candidate : prior?.best
-    const stars = starsOf(result, interview.targets, verdict)
-    const bestStars = Math.max(prior?.stars ?? 0, stars) as Stars
-    if (newBest || bestStars !== (prior?.stars ?? 0)) {
-      set({ interviews: withRecord(state.interviews, interview.id, { stars: bestStars, ...(newBest ? { best: candidate } : {}) }) })
-      persistNow()
-    }
-    return { verdict, result, newBest, best, stars, bestStars }
-  },
-
-  studyReference: (interviewId) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !interviewPassed(state, interview)) return null
-    if (!state.interviews[interview.id]?.studied) {
-      set({ interviews: withRecord(state.interviews, interview.id, { studied: true }) })
-      persistNow()
-    }
-    return copyDesign(interview.reference)
-  },
-
-  askInterviewer: (interviewId, questionId) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !engaged(state, interview) || !questionsFor(interview).some((q) => q.id === questionId)) return false
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    if (prior.asked.includes(questionId)) return true
-    set({ interviews: withRecord(state.interviews, interview.id, { asked: [...prior.asked, questionId] }) })
-    persistNow()
-    return true
-  },
-
-  takeNudge: (interviewId, target) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !engaged(state, interview) || interview.nudges[target] === undefined) return false
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    if (prior.nudges.includes(target)) return true
-    set({ interviews: withRecord(state.interviews, interview.id, { nudges: [...prior.nudges, target] }) })
-    persistNow()
-    return true
-  },
-
-  takeHint: (interviewId, design) => {
-    const interview = interviewById(interviewId)
-    const job = interview ? jobById(interview.jobId) : undefined
-    const state = get()
-    if (!interview || !job || jobState(state, job) !== "interview") return null
-    const hint = nextHint(interview, design)
-    if (hint === null) return null
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    if (prior.hints.includes(hint)) return hint
-    set({ interviews: withRecord(state.interviews, interview.id, { hints: [...prior.hints, hint] }) })
-    persistNow()
-    return hint
-  },
-
-  forceInterview: (interviewId) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    const prior = interview ? state.interviews[interview.id] : undefined
-    if (!interview || (prior && isPass(prior.verdict))) return false
-    set({
-      interviews: withRecord(state.interviews, interview.id, { verdict: "hire", design: copyDesign(interview.reference) }),
-      now: Date.now(),
     })
     persistNow()
     return true
@@ -838,12 +725,13 @@ export const useGame = create<GameState>((set, get) => ({
     const advanced = advanceBoostClock(clock, era, now, Math.random)
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
     if (gain > 0) stats = creditMoney(stats, gain, "idle")
-    const balance = { money: state.money + gain, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
+    const balance = { money: Math.max(0, state.money + gain - grown.lost), xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.
     const eventAdvance = advanceEventClock(
       state.nextEventAt,
@@ -895,6 +783,8 @@ export const useGame = create<GameState>((set, get) => ({
       nextReviewAt: reviewAdvance.nextReviewAt,
       previewEra: state.previewEra && now >= state.previewUntil ? null : state.previewEra,
       now,
+      company: grown.state,
+      journal: grown.notes.length > 0 ? noted(state.journal, grown.notes, balance) : state.journal,
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
       idleSince: advanced.clock.idleSince,
@@ -920,6 +810,8 @@ export const useGame = create<GameState>((set, get) => ({
       xp: 0,
       xpTotal: 0,
       peakMoney: 0,
+      company: FRESH_COMPANY,
+      footprint: FRESH_FOOTPRINT,
       stats: emptyStats(),
       skills: {},
       equipment: {},
@@ -953,8 +845,6 @@ export const useGame = create<GameState>((set, get) => ({
       celebrationNonce: 0,
       ...freshCareerSlice(now),
       profile: { ...randomIdentity(), chosen: false },
-      interviews: {},
-      lastInterview: null,
     })
   },
 

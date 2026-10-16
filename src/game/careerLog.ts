@@ -1,3 +1,4 @@
+import { CITIES } from "../data/geo.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
@@ -5,7 +6,6 @@ import { eventById } from "./events.ts"
 import { featureById, triggerLabel } from "./features.ts"
 import { formatNumber } from "./format.ts"
 import { reviewById } from "./reviews.ts"
-import { interviewById } from "./studio/interviews.ts"
 import { formatPlayTime } from "./stats.ts"
 import type { SavedCareer, SavedCareerEntry } from "./save.ts"
 
@@ -28,7 +28,9 @@ export const CAREER_TYPES = [
   "return",
   "event",
   "review",
-  "interview",
+  "interview", // retired with the whiteboard; kept so older journals still parse
+  "lead",
+  "buzz",
   "milestone",
 ] as const
 
@@ -185,7 +187,11 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
     case "review":
       return reviewById(idOf(entry.ref))?.question ?? entry.ref
     case "interview":
-      return interviewById(entry.ref.slice("interview:".length))?.name ?? entry.ref
+      return entry.ref.slice("interview:".length)
+    case "lead":
+      return CITIES[entry.ref.slice("lead:".length)]?.name ?? entry.ref
+    case "buzz":
+      return "Front-page mention"
     case "milestone":
       return BALANCE_MILESTONES.find((row) => `milestone:${row.id}` === entry.ref)?.label ?? entry.ref
     case "start":
@@ -271,14 +277,12 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: name, detail: data.accepted === true ? "event · took it" : "event · passed", tone: "event" }
     case "review":
       return { title: "1:1", detail: typeof data.choice === "string" ? `answered: ${data.choice}` : "left without a reply", tone: "event" }
-    case "interview": {
-      if (data.verdict !== "noHire") {
-        return { title: `Whiteboard: ${name}`, detail: data.verdict === "strongHire" ? "Strong hire" : "Hire", tone: "career" }
-      }
-      const missed = typeof data.missed === "string" ? data.missed.split(",").join(", ") : ""
-      const cost = typeof data.penalty === "number" && data.penalty > 0 ? ` · -${formatNumber(data.penalty)} XP` : ""
-      return { title: `Whiteboard: ${name}`, detail: `No hire${missed ? ` · missed ${missed}` : ""}${cost}`, tone: "event" }
-    }
+    case "interview":
+      return { title: name, detail: "whiteboard, retired", tone: "event" }
+    case "lead":
+      return { title: `New client: ${name}`, detail: "inbound lead", tone: "career" }
+    case "buzz":
+      return { title: "Your app is trending", detail: "popularity up", tone: "career" }
     case "milestone":
       return { title: name, detail: "milestone", tone: "career" }
   }

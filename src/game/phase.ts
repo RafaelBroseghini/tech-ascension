@@ -6,8 +6,6 @@ import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
-import { interviewForJob, interviewPassed } from "./studio/interviews.ts"
-import type { InterviewLog } from "./studio/interviews.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
 export type Phase = "A" | "B" | "C" | "D"
@@ -90,22 +88,16 @@ export function gigState(p: Gates, gig: Gig): GigState {
   return "ready"
 }
 
-export type JobState = "owned" | "board-locked" | "locked" | "interview" | "ready"
+export type JobState = "owned" | "board-locked" | "locked" | "ready"
 
-/** Job gates also read the whiteboard interviews the career has passed. */
-export type JobGates = Gates & { interviews: InterviewLog }
-
-/** A job with a whiteboard interview sits at `interview` from its lifetime XP requirement until the interview is passed. */
-export function jobState(p: JobGates, job: JobTier): JobState {
+export function jobState(p: Gates, job: JobTier): JobState {
   if (p.jobs.includes(job.id)) return "owned"
   if (!jobBoardUnlocked(p)) return "board-locked"
   if (p.xpTotal < job.xpReq) return "locked"
-  const interview = interviewForJob(job.id)
-  if (interview && !interviewPassed(p, interview)) return "interview"
   return "ready"
 }
 
-export function canBuyJob(p: JobGates & Pick<Progress, "xp">, job: JobTier): boolean {
+export function canBuyJob(p: Gates & Pick<Progress, "xp">, job: JobTier): boolean {
   return jobState(p, job) === "ready" && canAfford(p.xp, job.xpCost)
 }
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { CAPITAL_UNLOCK, EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
 import { clickFlat, clickPower, gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
@@ -15,17 +15,15 @@ import {
   stageOf,
 } from "./phase.ts"
 import { useGame } from "./store.ts"
-import { interviewForJob, NO_RECORD } from "./studio/interviews.ts"
-import type { InterviewLog } from "./studio/interviews.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
+import type { CompanyState } from "./globe/growth.ts"
 
-const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[], interviews: {} as InterviewLog }
-
-/** A passed record for the interview that gates `jobId`. */
-function passed(jobId: number): InterviewLog {
-  const interview = interviewForJob(jobId)
-  if (!interview) throw new Error(`job ${jobId} has no interview`)
-  return { [interview.id]: { ...NO_RECORD, verdict: "hire", attempts: 1, design: interview.reference } }
+/** What the company's drops cost over a span. Viral spikes are off in these tests, so the rest of the money adds up. */
+function dropsCost(gigs: readonly number[], from: number, to: number, equipment: Record<string, number> = {}, company: CompanyState = FRESH_COMPANY): number {
+  return advanceCompany(company, growthFacts(gigs, equipment), from, to, () => 0.999).lost
 }
+
+const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
 
 describe("phase gates", () => {
   it("opens the Gig Board at 14K lifetime XP with Portfolio (#15) and React (#16) owned", () => {
@@ -106,7 +104,7 @@ describe("phase gates", () => {
   it("gates jobs on the board, lifetime XP and the price", () => {
     const junior = jobById(2)
     if (!junior) throw new Error("missing job 2")
-    const board = { ...EMPTY, xpTotal: 45_000, gigs: [1, 2, 3, 4, 5, 6], interviews: passed(2) }
+    const board = { ...EMPTY, xpTotal: 45_000, gigs: [1, 2, 3, 4, 5, 6] }
     expect(jobState(EMPTY, junior)).toBe("board-locked")
     expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
     expect(jobState(board, junior)).toBe("ready")
@@ -115,32 +113,7 @@ describe("phase gates", () => {
     expect(jobState({ ...board, jobs: [2] }, junior)).toBe("owned")
   })
 
-  it("a job with an interview is not ready until it is passed", () => {
-    const junior = jobById(2)!
-    const board = { ...EMPTY, xpTotal: 45_000, xp: 1e6, gigs: [1, 2, 3, 4, 5, 6] }
-    expect(jobState({ ...board, xpTotal: 44_999 }, junior)).toBe("locked")
-    expect(jobState(board, junior)).toBe("interview")
-    expect(canBuyJob(board, junior)).toBe(false)
-    const failed: InterviewLog = { "3-tier-app": { ...NO_RECORD, verdict: "noHire", attempts: 3 } }
-    expect(jobState({ ...board, interviews: failed }, junior)).toBe("interview")
-    expect(jobState({ ...board, interviews: passed(2) }, junior)).toBe("ready")
-    expect(canBuyJob({ ...board, interviews: passed(2) }, junior)).toBe(true)
-    // Job 3 has no interview, so lifetime XP is its only gate.
-    expect(jobState({ ...board, xpTotal: 50_000 }, jobById(3)!)).toBe("ready")
-  })
 
-  it("a held job counts its interview as passed", () => {
-    const senior = jobById(14)!
-    const board = { ...EMPTY, xpTotal: 160_000, gigs: [1, 2, 3, 4, 5, 6] }
-    expect(jobState(board, senior)).toBe("interview")
-    expect(jobState({ ...board, jobs: [14] }, senior)).toBe("owned")
-    // Holding a later job latches every interview at or below it, so forced progress never re-locks one.
-    for (const id of [1, 2, 6, 7, 10, 12]) expect(jobState({ ...board, jobs: [14] }, jobById(id)!)).toBe("ready")
-    expect(jobState({ ...board, xpTotal: 220_000, jobs: [14] }, jobById(16)!)).toBe("interview")
-    // A job with no interview never latches one: holding job 15 leaves Senior SWE's whiteboard to pass.
-    expect(jobState({ ...board, xpTotal: 200_000, jobs: [15] }, senior)).toBe("interview")
-    expect(capitalUnlocked({ ...board, jobs: [14] })).toBe(true)
-  })
 
   it("picks the stage art from the furthest thing held", () => {
     const none = { skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
@@ -316,6 +289,7 @@ describe("phase B: gigs", () => {
   })
 
   it("a retainer is the first idle money, paid per second", () => {
+    const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
     useGame.setState({ xpTotal: 25_000 })
     for (let id = 1; id < 8; id++) expect(useGame.getState().clearGig(id, true)).toBe(true)
     expect(idlePerSec(useGame.getState())).toBe(0)
@@ -324,7 +298,10 @@ describe("phase B: gigs", () => {
     expect(idlePerSec(before)).toBe(2)
     expect(before.money).toBe(GIGS.filter((gig) => gig.id <= 8).reduce((sum, gig) => sum + gig.lump, 0))
     useGame.getState().tick(before.now + 10_000)
-    expect(useGame.getState().money - before.money).toBeCloseTo(20)
+    // The eight clients have no gear to serve them, so their drops cost part of the 20.
+    const lost = dropsCost([1, 2, 3, 4, 5, 6, 7, 8], before.now, before.now + 10_000)
+    expect(useGame.getState().money - before.money).toBeCloseTo(20 - lost, 3)
+    spy.mockRestore()
   })
 })
 
@@ -344,8 +321,6 @@ describe("phase C: jobs and equipment", () => {
   })
 
   it("takes the free internship, then salaried roles that add $/s", () => {
-    expect(useGame.getState().buyJob(1)).toBe(false)
-    expect(useGame.getState().forceInterview("hello-server")).toBe(true)
     expect(useGame.getState().buyJob(1)).toBe(true)
     expect(useGame.getState().jobs).toEqual([1])
     expect(idlePerSec(useGame.getState())).toBe(8)
@@ -354,7 +329,6 @@ describe("phase C: jobs and equipment", () => {
     expect(useGame.getState().buyJob(2)).toBe(false)
     const juniorCost = JOB_TIERS[1]?.xpCost ?? 0
     useGame.setState({ xpTotal: 45_000, xp: juniorCost - 1 })
-    useGame.getState().forceInterview("3-tier-app")
     expect(useGame.getState().buyJob(2)).toBe(false)
     useGame.setState({ xp: juniorCost })
     expect(useGame.getState().buyJob(2)).toBe(true)
@@ -365,7 +339,6 @@ describe("phase C: jobs and equipment", () => {
   it("pays a teaching job's lump of XP once, on hire, and lifetime XP rises with it", () => {
     const internship = jobById(1)!
     expect(internship.xpLump).toBeGreaterThan(0)
-    useGame.getState().forceInterview("hello-server")
     const before = useGame.getState()
     expect(useGame.getState().buyJob(1)).toBe(true)
     const hired = useGame.getState()
@@ -379,7 +352,6 @@ describe("phase C: jobs and equipment", () => {
     const junior = jobById(2)!
     expect(junior.xpLump).toBe(0)
     useGame.setState({ xp: junior.xpCost + 5, xpTotal: 45_000 })
-    useGame.getState().forceInterview("3-tier-app")
     expect(useGame.getState().buyJob(2)).toBe(true)
     expect(useGame.getState().xp).toBe(5)
     expect(useGame.getState().xpTotal).toBe(45_000)
@@ -388,7 +360,6 @@ describe("phase C: jobs and equipment", () => {
     useGame.getState().wipe()
     useGame.setState({ xp: 48_600, xpTotal: 48_600, money: 1e6, gigs: [1, 2, 3, 4, 5, 6] })
     expect(useGame.getState().buyJob(3)).toBe(false)
-    useGame.getState().forceInterview("hello-server")
     expect(useGame.getState().buyJob(1)).toBe(true)
     expect(useGame.getState().buyJob(3)).toBe(true)
   })
@@ -412,7 +383,6 @@ describe("phase C: jobs and equipment", () => {
   })
 
   it("equipment is repeatable at 1.15 growth and adds click power and idle", () => {
-    useGame.getState().forceInterview("hello-server")
     useGame.getState().buyJob(1)
     useGame.setState({ money: 1_000_000 })
     useGame.getState().buyEquipment(1)

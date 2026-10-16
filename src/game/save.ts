@@ -10,9 +10,11 @@ import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany } from "./globe/growth.ts"
+import type { CompanyState } from "./globe/growth.ts"
+import { parseFootprint } from "./globe/footprint.ts"
+import type { Footprint } from "./globe/footprint.ts"
 import type { SavedIdentity } from "./identity.ts"
-import { parseInterviews } from "./studio/interviews.ts"
-import type { InterviewLog } from "./studio/interviews.ts"
 
 /** Catalog ids grew in v4. Any other version wipes; there is no migration. */
 export const SAVE_VERSION = 8
@@ -81,8 +83,10 @@ export type SaveData = {
    * (until then the start card offers a reroll). Saves from before it get a random one at boot.
    */
   profile?: SavedIdentity
-  /** Whiteboard interviews submitted, keyed by interview id. Omitted when none; saves from before interviews have none. */
-  interviews?: InterviewLog
+  /** Popularity, inbound leads and the uptime bars. Omitted before the company has a history. */
+  company?: CompanyState
+  /** Regions bought and points of presence deployed. Omitted until the company buys one. */
+  footprint?: Footprint
 }
 
 export type Hydrated = {
@@ -248,8 +252,10 @@ export function parseSave(input: unknown): SaveData | null {
   if (career) save.career = career
   const profile = normalizeIdentity(input.profile)
   if (profile) save.profile = profile
-  const interviews = parseInterviews(input.interviews)
-  if (Object.keys(interviews).length > 0) save.interviews = interviews
+  const company = parseCompany(input.company)
+  if (company) save.company = company
+  const footprint = parseFootprint(input.footprint)
+  if (footprint) save.footprint = footprint
   return save
 }
 
@@ -270,11 +276,14 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const away = Math.min(Math.max(0, now - loaded.savedAt), capMs)
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
+  // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
   const save: SaveData = {
     ...loaded,
-    money: loaded.money + credit,
+    money: Math.max(0, loaded.money + credit - grown.lost),
+    company: grown.state,
     xp: loaded.xp + xpCredit,
     xpTotal: loaded.xpTotal + xpCredit,
     savedAt: now,

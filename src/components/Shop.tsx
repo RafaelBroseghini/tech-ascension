@@ -41,8 +41,6 @@ import { ScrollPanel } from "./ScrollPanel.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useSurface, useUnlockedSet } from "./useFeature.ts"
-import { interviewForJob } from "../game/studio/interviews.ts"
-import { loadStudio, onStudioHire, openStudio } from "./studio/launcher.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 function nextLine(next: NextUnlock): string {
@@ -241,7 +239,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const owned = useGame((s) => s.owned)
   const jobs = useGame((s) => s.jobs)
   const gigs = useGame((s) => s.gigs)
-  const interviews = useGame((s) => s.interviews)
   const gold = useGame((s) => s.gold)
   const buyAmount = useGame((s) => s.buyAmount)
   const setBuyAmount = useGame((s) => s.setBuyAmount)
@@ -279,7 +276,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     setLastPhase(phase)
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
-  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, interviews }
+  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
@@ -304,20 +301,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     setSkillView("tenx")
     setPicked("A")
   })
-  // A Hire closes the whiteboard here, on the job's row. Every setter below is stable, so the first render's closure holds.
-  useEffect(
-    () =>
-      onStudioHire((jobId) => {
-        const row = `job:${jobId}`
-        jumpRow.current = row
-        setPinnedRow(row)
-        setPicked("C")
-        setJumpSeq((n) => n + 1)
-        setFlashKey(row)
-        window.setTimeout(() => setFlashKey((current) => (current === row ? null : current)), 1600)
-      }),
-    [],
-  )
   useSurface("boardGear", () => {
     seeFeature("boardGear")
     setPicked("G")
@@ -796,21 +779,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   unlock={["More XP"]}
                   title={job.name}
                   actions={
-                    status === "interview" ? (
-                      <button
-                        type="button"
-                        data-testid="job-interview"
-                        onPointerEnter={() => void loadStudio()}
-                        onFocus={() => void loadStudio()}
-                        onClick={() => openStudio(interviewForJob(job.id)?.id)}
-                      >
-                        Interview
-                      </button>
-                    ) : (
-                      <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                        {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
-                      </button>
-                    )
+                    <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
+                    </button>
                   }
                 >
                   <Stats

@@ -1,18 +1,16 @@
-import { GitBranch, Presentation } from "lucide-react"
-import { memo, useMemo, useSyncExternalStore } from "react"
+import { GitBranch, Globe } from "lucide-react"
+import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
-import { DeskDiagram } from "./DeskDiagram.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
-import { loadStudio, openStudio } from "./studio/launcher.ts"
-import { StudioHost } from "./studio/StudioHost.tsx"
+import { CompanyHost } from "./globe/CompanyHost.tsx"
 
-/** The desk shell behind the stage: the activity bar, the career log sidebar, the whiteboard backdrop and the status bar. The palette is the saved theme. */
+/** The desk shell behind the stage: the activity bar, the career log sidebar and the status bar. The palette is the saved theme. */
 export const IdeChrome = memo(function IdeChrome() {
   const skills = useGame((state) => state.skills)
   const owned = useGame((state) => state.owned)
@@ -24,6 +22,7 @@ export const IdeChrome = memo(function IdeChrome() {
 
   const logOpen = useFeatureOpen("careerLog")
   const studioOpen = useFeatureOpen("studio")
+  const [companyOpen, setCompanyOpen] = useState(false)
   const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
   const showLog = logOpen && sidebar === "log"
   const { band, previewing } = useMemo(
@@ -36,15 +35,16 @@ export const IdeChrome = memo(function IdeChrome() {
     seeFeature("careerLog")
   }
   useSurface("careerLog", openLog)
-  const openWhiteboard = () => {
+  const openCompany = () => {
     seeFeature("studio")
-    openStudio()
+    setCompanyOpen(true)
   }
-  useSurface("studio", openWhiteboard)
+  const closeCompany = useCallback(() => setCompanyOpen(false), [])
+  useSurface("studio", openCompany)
 
   return (
     <div
-      className="ide"
+      className={studioOpen ? "ide has-globe" : "ide"}
       role="region"
       aria-label="Desk"
       data-testid="ide"
@@ -58,14 +58,12 @@ export const IdeChrome = memo(function IdeChrome() {
           <button
             type="button"
             className="ide-activity-btn"
-            data-testid="ide-view-studio"
-            aria-label="Whiteboard"
-            title="Whiteboard"
-            onPointerEnter={() => void loadStudio()}
-            onFocus={() => void loadStudio()}
-            onClick={openWhiteboard}
+            data-testid="ide-view-company"
+            aria-label="Your company"
+            title="Your company"
+            onClick={openCompany}
           >
-            <Presentation className="ide-activity-icon" {...UI_ICON} aria-hidden />
+            <Globe className="ide-activity-icon" {...UI_ICON} aria-hidden />
             <NewMark id="studio" />
           </button>
         ) : null}
@@ -94,7 +92,6 @@ export const IdeChrome = memo(function IdeChrome() {
           <CareerLog />
         </aside>
       ) : null}
-      {studioOpen ? <DeskDiagram /> : null}
       <footer className="ide-status">
         <a className="ide-status-powered" href="https://emoji.gg/" target="_blank" rel="noopener noreferrer">
           powered by emoji.gg
@@ -104,7 +101,7 @@ export const IdeChrome = memo(function IdeChrome() {
         <span className="ide-status-gap" />
         <IdeStatusDock />
       </footer>
-      <StudioHost />
+      <CompanyHost open={companyOpen} onClose={closeCompany} />
     </div>
   )
 })

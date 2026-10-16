@@ -1,0 +1,991 @@
+/* Your company's globe, and the modal it opens in. Every color is an editor theme token. */
+
+.globe {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--ide-surface);
+  background: radial-gradient(ellipse at 50% 42%, #202025, #131316 75%);
+}
+
+/* The app's dashboard: six figures and a load bar, over the globe. */
+.globe-metrics {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--ide-surface);
+}
+
+.globe-metric {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.globe-metric small {
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.globe-metric b {
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globe-metric span {
+  overflow: hidden;
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globe-metric.is-warn b {
+  color: var(--status-degraded, var(--ide-yellow));
+}
+
+.globe-metric.is-bad b {
+  color: var(--ide-red);
+}
+
+.globe-metric.is-good b {
+  color: var(--ide-green);
+}
+
+.globe-load {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--ide-surface);
+}
+
+.globe-load i {
+  display: block;
+  height: 100%;
+  background: var(--ide-green);
+  transition: width 0.4s ease;
+}
+
+.globe-load.is-warn i {
+  background: var(--ide-yellow);
+}
+
+.globe-load.is-bad i {
+  background: var(--ide-red);
+}
+
+.globe-lists h4 {
+  margin: 0;
+  padding: 6px var(--sp-3) 2px;
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.globe-lists {
+  border-top: 1px solid var(--ide-surface);
+}
+
+.globe-lists h4:last-child {
+  border-top: 1px solid var(--ide-surface);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
+.globe-pops {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px var(--sp-4);
+  max-height: 84px;
+  margin: 0;
+  padding: 2px var(--sp-3) 2px;
+  overflow: auto;
+  list-style: none;
+}
+
+.globe-pops li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 34px auto;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-2xs);
+}
+
+.globe-pops li span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globe-pops li em {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #7dffd0;
+  box-shadow: 0 0 6px 2px rgba(125, 255, 208, 0.55);
+}
+
+.globe-pops li[data-idle] em {
+  opacity: 0.45;
+  box-shadow: 0 0 4px 1px rgba(125, 255, 208, 0.25);
+}
+
+.globe-pops li i {
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  max-width: 100%;
+  border-radius: 1px;
+  background: #7dffd0;
+  opacity: 0.55;
+}
+
+.globe-pops b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.globe-pops small {
+  color: var(--ide-overlay);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.globe-local {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #7dffd0;
+  box-shadow: 0 0 6px 2px rgba(125, 255, 208, 0.55);
+}
+
+.globe-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The globe on the desk: the bottom of the left column, under the career log, clear of the cat on the right. */
+.mini-globe {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(var(--ide-status) + var(--ide-globe-gap));
+  left: calc(var(--ide-activity) + var(--ide-globe-gap));
+  width: var(--ide-globe);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--ide-surface);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #202025, #131316 80%);
+}
+
+.mini-globe-open {
+  position: absolute;
+  right: 22%;
+  bottom: 8%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--ide-surface);
+  border-radius: 50%;
+  background: var(--ide-crust);
+  color: var(--ide-overlay);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.mini-globe:hover .mini-globe-open,
+.mini-globe-open:focus-visible {
+  opacity: 1;
+}
+
+.mini-globe-open:hover {
+  color: var(--ide-text);
+}
+
+/* The career log keeps the room above the globe. */
+.ide.has-globe .ide-tree {
+  padding-bottom: calc(var(--ide-globe) + 2 * var(--ide-globe-gap));
+}
+
+@media (max-width: 860px) {
+  .mini-globe {
+    display: none;
+  }
+}
+
+.globe-host {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.globe-host.is-turning {
+  cursor: grabbing;
+}
+
+.globe-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.globe-zoom {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-3);
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--ide-surface);
+  border-radius: 6px;
+  background: var(--ide-base);
+}
+
+.globe-zoom button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--ide-surface);
+  background: transparent;
+}
+
+.globe-zoom button:last-child {
+  border-bottom: 0;
+}
+
+.globe-zoom button:hover {
+  background: var(--ide-surface);
+}
+
+.globe-notes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.globe-note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--ide-overlay) 45%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ide-crust) 68%, transparent);
+  font-size: var(--fs-2xs);
+  line-height: 13px;
+  white-space: nowrap;
+  visibility: hidden;
+}
+
+.globe-note b {
+  display: flex;
+  align-items: center;
+  color: var(--ide-text);
+}
+
+.globe-note.is-home {
+  box-shadow: 0 0 12px color-mix(in srgb, #7dffd0 35%, transparent);
+}
+
+.globe-tip strong {
+  display: flex;
+  align-items: center;
+}
+
+.globe-note small {
+  color: var(--ide-overlay);
+  font-size: inherit;
+}
+
+.globe-note.is-home {
+  border-color: var(--ide-text);
+}
+
+.globe-note.is-edge {
+  padding: 0 5px;
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+.globe-note.is-lost small {
+  color: var(--ide-red);
+}
+
+.globe-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  max-width: 240px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--ide-overlay);
+  border-radius: 6px;
+  background: var(--ide-crust);
+  font-size: var(--fs-2xs);
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.globe-tip[hidden] {
+  display: none;
+}
+
+.globe-tip strong {
+  color: var(--ide-text);
+  font-size: var(--fs-xs);
+}
+
+.globe-tip span {
+  color: var(--ide-overlay);
+}
+
+.globe-cities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px var(--sp-4);
+  margin: 0;
+  padding: 2px var(--sp-3) var(--sp-3);
+  list-style: none;
+}
+
+.globe-cities li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 34px 46px;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-2xs);
+}
+
+.globe-cities li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.globe-cities li i {
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 2px;
+  max-width: 100%;
+  border-radius: 1px;
+  background: var(--ide-sky);
+  opacity: 0.55;
+}
+
+.globe-cities b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.globe-cities small {
+  color: var(--ide-overlay);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.globe-cities .is-note {
+  display: block;
+  grid-column: 1 / -1;
+  color: var(--ide-overlay);
+}
+
+.globe-legend {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-3);
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-2xs);
+  pointer-events: none;
+}
+
+.globe-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.globe-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind);
+}
+
+@media (max-width: 720px) {
+  .globe-body {
+    flex: none;
+  }
+}
+
+.company-view {
+  position: fixed;
+  inset: 0;
+  z-index: 28;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--ide-mantle);
+  color: var(--ide-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.company-view-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ide-crust);
+}
+
+.company-view-head h2 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.company-view-head span {
+  flex: 1;
+  opacity: 0.7;
+}
+
+.company-view-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.company-view-body {
+  min-height: 0;
+  display: grid;
+  padding: 12px;
+}
+
+.company-view-body .globe {
+  align-self: start;
+  min-height: 0;
+}
+
+.company-view-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(440px, 46%);
+  gap: 12px;
+  padding: 12px;
+}
+
+.company-view-body .globe {
+  align-self: start;
+  min-height: 0;
+}
+
+.globe-fleet {
+  flex: 0 1 auto;
+  max-height: 16vh;
+  overflow: auto;
+  padding: 6px 12px 8px;
+  border-top: 1px solid var(--ide-surface);
+  font-size: var(--fs-2xs);
+}
+
+.globe-fleet h4 {
+  margin: 0 0 4px;
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.globe-fleet p {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.globe-fleet ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.globe-fleet li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: baseline;
+  line-height: 1.3;
+}
+
+/* The status page, laid out like the GitHub status page: a full-width banner, then cards in two columns. Colours are editor theme tokens, so it follows the saved theme. */
+.status-page {
+  --status-degraded: #f9e2af;
+}
+
+:root[data-ide-scheme="light"] .status-page {
+  --status-degraded: #9a6b00;
+}
+
+.status-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px;
+  border-radius: 8px;
+  background: var(--ide-base);
+  color: var(--ide-text);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 4px;
+  background: var(--ide-green);
+  color: var(--ide-crust);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-banner span {
+  font-size: 16px;
+}
+
+.status-banner.is-degraded { background: var(--status-degraded); }
+.status-banner.is-partial { background: var(--ide-peach); }
+.status-banner.is-major { background: var(--ide-red); color: var(--ide-crust); }
+
+.status-incident {
+  padding: 12px 14px;
+  border: 1px solid var(--ide-surface);
+  border-left: 4px solid var(--ide-red);
+  border-radius: 6px;
+}
+
+.status-incident h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.status-incident ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.status-incident li {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.status-incident li b {
+  color: var(--ide-overlay);
+  font-weight: 600;
+}
+
+.status-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-heading h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.status-heading span {
+  color: var(--ide-overlay);
+  font-size: 12px;
+}
+
+.status-components {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ide-surface);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.status-components li {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--ide-surface);
+  background: var(--ide-base);
+}
+
+.status-components li:nth-child(odd) {
+  border-right: 1px solid var(--ide-surface);
+}
+
+.status-components li:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.status-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-title strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-help {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--ide-overlay);
+  border-radius: 50%;
+  color: var(--ide-overlay);
+  font-size: 10px;
+  cursor: help;
+}
+
+.status-icon {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ide-green);
+}
+
+.status-icon.is-degraded { background: var(--status-degraded); }
+.status-icon.is-partial { background: var(--ide-peach); }
+.status-icon.is-major { background: var(--ide-red); }
+
+.status-bars {
+  display: grid;
+  grid-template-columns: repeat(90, minmax(0, 1fr));
+  gap: 1px;
+  height: 34px;
+  min-width: 0;
+}
+
+.status-bars .bar {
+  min-width: 0;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--ide-surface) 70%, var(--ide-overlay));
+}
+
+.status-bars .bar.is-o { background: var(--ide-green); }
+.status-bars .bar.is-d { background: var(--status-degraded); }
+.status-bars .bar.is-p { background: var(--ide-peach); }
+.status-bars .bar.is-m { background: var(--ide-red); }
+
+.status-axis {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ide-overlay);
+  font-size: 11px;
+}
+
+.status-axis i {
+  flex: 1;
+  height: 1px;
+  background: var(--ide-surface);
+}
+
+.status-label {
+  color: var(--ide-overlay);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.status-page h4 {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-past {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.status-past li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ide-surface);
+}
+
+.status-past small {
+  color: var(--ide-overlay);
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .company-view-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .status-components {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Regions and points of presence, inside the status column. */
+.footprint {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ide-surface);
+  font-size: 12px;
+}
+
+.footprint h4 {
+  margin: 0;
+}
+
+.footprint ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footprint-regions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.footprint-owned {
+  display: grid;
+  gap: 6px;
+}
+
+.footprint-owned > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ide-surface);
+}
+
+.footprint .footprint-fold {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 4px 2px 0;
+  border: 0;
+  text-align: left;
+}
+
+.footprint-owned > header strong {
+  font-size: 12px;
+}
+
+.footprint-owned > header small {
+  color: var(--ide-overlay);
+  font-size: 11px;
+}
+
+.footprint-owned.is-dark > header strong,
+.footprint-owned.is-dark ul {
+  opacity: 0.5;
+}
+
+/* An on/off knob. */
+.footprint .knob {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--ide-overlay);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.knob i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ide-overlay);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.footprint .knob.is-on {
+  border-color: var(--ide-green);
+  background: color-mix(in srgb, var(--ide-green) 22%, transparent);
+}
+
+.knob.is-on i {
+  background: var(--ide-green);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--ide-green) 70%, transparent);
+  transform: translateX(12px);
+}
+
+.footprint .knob:disabled {
+  opacity: 0.35;
+}
+
+.footprint-owned ul {
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 4px 6px;
+}
+
+.footprint-owned li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+.footprint-owned li[data-pop="live"] {
+  border-color: color-mix(in srgb, var(--ide-green) 45%, transparent);
+  background: color-mix(in srgb, var(--ide-green) 9%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ide-green) 22%, transparent);
+}
+
+.footprint-owned li[data-pop="off"] .footprint-city {
+  opacity: 0.55;
+}
+
+.footprint-city {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.footprint-city > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footprint button {
+  padding: 3px 8px;
+  border: 1px solid var(--ide-overlay);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ide-text);
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.footprint button:hover:not(:disabled) {
+  border-color: var(--ide-green);
+  color: var(--ide-green);
+}
+
+.footprint button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.footprint li em {
+  font-style: normal;
+  color: var(--ide-green);
+  font-size: 11px;
+}
+
+.city-flag {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ide-text) 18%, transparent);
+}
+
+.footprint-city .city-flag {
+  margin-right: 0;
+}

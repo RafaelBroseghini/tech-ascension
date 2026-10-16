@@ -89,10 +89,10 @@ describe("reveals", () => {
     useGame.setState({ unlocked: ["studio"], reveals: ["studio"] })
     render(UnlockReveals)
     await settle()
-    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Studio" })
+    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Your company" })
     expect($("[data-testid='unlock-card']")).toBeNull()
     await settle(1_000)
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Studio")
+    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Your company")
   })
 
   it("turns a small unlock into a toast", async () => {

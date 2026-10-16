@@ -9,7 +9,7 @@ import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
 import type { NextUnlock } from "./nextUnlock.ts"
-import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, jobState, stageOf } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
@@ -24,11 +24,6 @@ import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
-import { INTERVIEWS } from "../data/studio/challenges.ts"
-import { questionById } from "../data/studio/questions.ts"
-import { interviewById, interviewPassed, parseDesign, startDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
-import type { Band, Submission, VerdictKind } from "./studio/interviews.ts"
-import type { Design, TargetName } from "./studio/types.ts"
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
@@ -55,65 +50,6 @@ export type LastReviewSnapshot = {
   jobId: number
   choice: ReviewChoiceId | null
   lines: string[]
-}
-
-/** One whiteboard submission: the verdict, the targets it missed with the interviewer's line for each, and the XP it took. */
-export type SubmissionSnapshot = {
-  interviewId: string
-  verdict: VerdictKind
-  missed: TargetName[]
-  lines: string[]
-  penalty: number
-  /** The offer a pass earned, or null for a No hire. */
-  offer: { band: Band; bonus: number } | null
-}
-
-/** What a career keeps for one interview. */
-export type InterviewRecordSnapshot = {
-  /** Null until the first real Submit. */
-  verdict: VerdictKind | null
-  attempts: number
-  /** Question ids asked, in order. */
-  asked: string[]
-  /** Targets the player took a nudge about, in order. */
-  nudges: TargetName[]
-  /** The paid hints taken, in order. Any of them lowers a pass to the bottom of the band. */
-  hints: string[]
-  /** Set by the Submit that first passed, and never changed after. */
-  offer: { band: Band; bonus: number } | null
-  /** The most stars any run earned: 1 works, 2 meets the targets, 3 under half the budget. */
-  stars: 0 | 1 | 2 | 3
-  /** The player looked at the reference after a pass. */
-  studied: boolean
-}
-
-/** One practice rerun: whether it clears the interview's targets, what it missed, its numbers, and the best on record after it. */
-export type PracticeSnapshot = {
-  interviewId: string
-  passes: boolean
-  missed: TargetName[]
-  lines: string[]
-  costPerMonth: number
-  p95Ms: number
-  /** True when this run beat the best, or set the first one. */
-  newBest: boolean
-  best: { costPerMonth: number; p95Ms: number } | null
-  /** Stars this run earned, and the most on record: 1 works, 2 meets the targets, 3 under half the budget. */
-  stars: 0 | 1 | 2 | 3
-  bestStars: 0 | 1 | 2 | 3
-  /** How many of the interview's features work in this design. */
-  features: { working: number; total: number }
-}
-
-export type InterviewsSnapshot = {
-  /** Interviews whose job has the lifetime XP and waits on a passed whiteboard. */
-  open: string[]
-  /** Interviews passed by a submission, `forceInterview`, or holding the job or a later gated one. */
-  passed: string[]
-  /** The latest submission this session, or null. */
-  lastVerdict: SubmissionSnapshot | null
-  /** Every interview the player has engaged with (asked, nudged, hinted, submitted, practiced or forced), keyed by interview id. */
-  records: Record<string, InterviewRecordSnapshot>
 }
 
 export type GameSnapshot = {
@@ -184,8 +120,6 @@ export type GameSnapshot = {
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
   profile: { handle: string; chosen: boolean }
-  /** The whiteboard interviews that gate twelve jobs (`src/data/studio/challenges.ts`). */
-  interviews: InterviewsSnapshot
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -223,39 +157,17 @@ export type GameHarness = {
   buy: (tierId: number, amount?: BuyAmount) => boolean
   buySkill: (skillId: number, amount?: BuyAmount) => boolean
   buyJob: (jobId: number) => boolean
-  /**
-   * Run a design past an interview whose job is at `interview`. A No hire costs 5% of the job's lifetime XP
-   * requirement in spendable XP (never below 0). False when the interview is unknown or its job is not at `interview`.
-   */
-  submitWhiteboard: (interviewId: string, design: Design) => SubmissionSnapshot | false
-  /**
-   * Run a design past an interview that is already passed (a submission, `forceInterview`, or holding its job or a
-   * later gated one) without touching the career: no verdict, attempt, XP, job or journal entry. A passing run that is
-   * cheaper (then faster) than the best on record is kept as the best. False for anything not passed; there is no
-   * shortcut around a real Submit.
-   */
-  practiceWhiteboard: (interviewId: string, design: Design) => PracticeSnapshot | false
-  /**
-   * Ask the interviewer a question (`traffic`, `features`, `mix`, `fresh`, `durable`, `later`, `cache`, `fanout`, `speed`, `uptime`, `budget`, `lag`, `faults`;
-   * `lag` only where the reference has a queue). Free and unlimited; the answer stays. False for an unknown interview
-   * or question, or an interview not reached yet.
-   */
-  askInterviewer: (interviewId: string, questionId: string) => boolean
-  /** Take the free nudge about a target (`budget`, `success`, `p95`, `lag`, `availability`, `faults`, `features`). False when the interview has none for it. */
-  takeNudge: (interviewId: string, target: string) => boolean
-  /**
-   * Take the next paid hint for `design` (default: the interview's last submission, else The Users alone), only while
-   * the interview is open. Returns the hint line, or false when the board already covers the reference. Any hint taken
-   * before a pass puts the offer at the bottom of the band.
-   */
-  takeHint: (interviewId: string, design?: Design) => string | false
-  /** Open the engineers' board for a passed interview: marks it studied and returns the reference design. False until the interview is passed. */
-  studyReference: (interviewId: string) => Design | false
-  /** Record a pass now, bypassing every gate. Keeps the questions, nudges and hints already taken and never invents an offer. False for an unknown or already passed id. */
-  forceInterview: (interviewId: string) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
   /** Buy a gold skill with spendable XP through its normal gates (lifetime XP, earlier row of its family, price). */
   buyGold: (goldId: number) => boolean
+  /** Buy a region with money (see src/data/regions.ts). False when unknown, owned or unaffordable. */
+  buyRegion: (regionId: string) => boolean
+  /** Deploy a point of presence in a city of an owned region, for a quarter of its region's price. */
+  deployPop: (cityId: string) => boolean
+  /** Switch a deployed point of presence on or off; its traffic goes to the nearest one still on. False for the last one on. */
+  setPopActive: (cityId: string, on: boolean) => boolean
+  /** Switch a bought region on or off as a whole. False for the last region serving. */
+  setRegionActive: (regionId: string, on: boolean) => boolean
   /** Grant a gold skill now, bypassing XP, order and price. False for an unknown or owned id. */
   forceGold: (goldId: number) => boolean
   /** Set the Buy control. It drops to the largest unlocked amount. Returns the amount now set. */
@@ -384,35 +296,6 @@ function eventSnapshot(
   return { eventId: event.eventId, name: eventById(event.eventId)?.name ?? "", lines }
 }
 
-function submissionSnapshot(submission: Submission): SubmissionSnapshot {
-  const missed = submission.verdict.kind === "noHire" ? submission.verdict.missed : []
-  return {
-    interviewId: submission.interviewId,
-    verdict: submission.verdict.kind,
-    missed: missed.map((m) => m.target),
-    lines: missed.map((m) => m.line),
-    penalty: submission.penalty,
-    offer: submission.offer,
-  }
-}
-
-function interviewsSnapshot(state: ReturnType<typeof useGame.getState>): InterviewsSnapshot {
-  return {
-    open: INTERVIEWS.filter((row) => {
-      const job = jobById(row.jobId)
-      return job !== undefined && jobState(state, job) === "interview"
-    }).map((row) => row.id),
-    passed: INTERVIEWS.filter((row) => interviewPassed(state, row)).map((row) => row.id),
-    lastVerdict: state.lastInterview ? submissionSnapshot(state.lastInterview) : null,
-    records: Object.fromEntries(
-      Object.entries(state.interviews).map(([id, record]) => [
-        id,
-        { verdict: record.verdict, attempts: record.attempts, asked: [...record.asked], nudges: [...record.nudges], hints: [...record.hints], offer: record.offer ?? null, stars: record.stars, studied: record.studied },
-      ]),
-    ),
-  }
-}
-
 function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesSnapshot {
   const progress = progressOf(state)
   const open = new Set<string>(state.unlocked)
@@ -480,7 +363,6 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
-        interviews: interviewsSnapshot(state),
       }
     },
 
@@ -500,52 +382,6 @@ export function installGameHarness(): GameHarness {
 
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
 
-    submitWhiteboard: (interviewId, design) => {
-      const verdict = useGame.getState().submitWhiteboard(interviewId, parseDesign(design))
-      const last = useGame.getState().lastInterview
-      return verdict && last ? submissionSnapshot(last) : false
-    },
-
-    practiceWhiteboard: (interviewId, design) => {
-      const run = useGame.getState().practiceWhiteboard(interviewId, parseDesign(design))
-      if (!run) return false
-      const missed = run.verdict.kind === "noHire" ? run.verdict.missed : []
-      return {
-        interviewId,
-        passes: missed.length === 0,
-        missed: missed.map((m) => m.target),
-        lines: missed.map((m) => m.line),
-        costPerMonth: run.result.costPerMonth,
-        p95Ms: run.result.p95Ms,
-        newBest: run.newBest,
-        best: run.best ? { costPerMonth: run.best.costPerMonth, p95Ms: run.best.p95Ms } : null,
-        stars: run.stars,
-        bestStars: run.bestStars,
-        features: { working: run.result.features.filter((f) => f.served >= (interviewById(interviewId)?.targets.successRate ?? 1)).length, total: run.result.features.length },
-      }
-    },
-
-    askInterviewer: (interviewId, questionId) => {
-      const question = questionById(questionId)
-      return question ? useGame.getState().askInterviewer(interviewId, question.id) : false
-    },
-
-    takeNudge: (interviewId, target) => {
-      const name = TARGET_NAMES.find((t) => t === target)
-      return name ? useGame.getState().takeNudge(interviewId, name) : false
-    },
-
-    takeHint: (interviewId, design) => {
-      const start = interviewById(interviewId)
-      const alone = start ? startDesign(start) : THE_USERS_ALONE
-      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? alone)
-      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : alone) ?? false
-    },
-
-    studyReference: (interviewId) => useGame.getState().studyReference(interviewId) ?? false,
-
-    forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),
-
     buyEquipment: (equipId, amount = 1) => {
       const before = ownedCount(useGame.getState().equipment, equipId)
       useGame.getState().buyEquipment(equipId, amount)
@@ -553,6 +389,10 @@ export function installGameHarness(): GameHarness {
     },
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
+    buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
+    deployPop: (cityId) => useGame.getState().deployPop(cityId),
+    setPopActive: (cityId, on) => useGame.getState().setPopActive(cityId, on),
+    setRegionActive: (regionId, on) => useGame.getState().setRegionActive(regionId, on),
 
     forceGold: (goldId) => {
       const state = useGame.getState()

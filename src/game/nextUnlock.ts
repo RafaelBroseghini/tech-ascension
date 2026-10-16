@@ -6,8 +6,8 @@ import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
 import { canAfford, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked, jobState } from "./phase.ts"
-import type { JobGates, ShopTab } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
+import type { Gates, ShopTab } from "./phase.ts"
 
 export type NextUnlock = {
   key: string
@@ -20,7 +20,7 @@ export type NextUnlock = {
   either: boolean
 }
 
-type Progression = JobGates & Pick<Progress, "equipment"> & Partial<Pick<Progress, "money" | "xp">>
+type Progression = Gates & Pick<Progress, "equipment"> & Partial<Pick<Progress, "money" | "xp">>
 
 /** The shop row a Next click should reveal. `row` matches `data-row` on the offer. */
 export type ShopFocus = {
@@ -77,7 +77,6 @@ const balanceGoal = () => "a bigger balance"
 const gigsLeft = () => "more gigs"
 const cashShort = () => "more money"
 const xpShort = () => "more XP"
-const whiteboard = () => "pass the whiteboard"
 
 /** True once every skill, gig, job, gear row, and capital row is owned at least once. */
 export function ownsEverything(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): boolean {
@@ -116,7 +115,7 @@ function boardTarget(p: Progression, tab: ShopTab): NextUnlock | null {
 
   if (tab === "D" && !capitalUnlocked(p)) {
     const senior = jobById(CAPITAL_UNLOCK.minJobId)
-    const gap = !senior ? null : p.xpTotal < senior.xpReq ? xpLeft() : jobState(p, senior) === "interview" ? whiteboard() : null
+    const gap = !senior ? null : p.xpTotal < senior.xpReq ? xpLeft() : null
     const needs = [
       `${senior?.name ?? "Senior SWE"}${gap ? ` (${gap})` : ""}`,
       balanceGoal(),
@@ -201,9 +200,6 @@ function gigTarget(p: Progression, gig: Gig): NextUnlock {
 function jobTarget(p: Progression, job: JobTier): NextUnlock {
   if (p.xpTotal < job.xpReq) {
     return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }
-  }
-  if (jobState(p, job) === "interview") {
-    return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [whiteboard()], either: false }
   }
   if (job.xpCost > 0 && !canAfford(study(p), job.xpCost)) {
     return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }

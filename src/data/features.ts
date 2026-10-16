@@ -82,8 +82,8 @@ export type FeatureRow = {
 export const FEATURES: readonly FeatureRow[] = [
   {
     id: "studio",
-    name: "Studio",
-    blurb: "Your whiteboard for job interviews. The desk shows the one waiting for you.",
+    name: "Your company",
+    blurb: "Your company, on the globe. Every client you sign sends its traffic home.",
     size: "big",
     trigger: { kind: "skill", id: 1 },
     action: "Try it",

@@ -9,7 +9,7 @@ import { nextUnlock, ownsEverything, shopFocus } from "./nextUnlock.ts"
 import { equipmentOpen, SHOP_TABS } from "./phase.ts"
 import { parseSave, SAVE_VERSION } from "./save.ts"
 
-const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, equipment: {}, jobs: [] as number[], gigs: [] as number[], interviews: {} }
+const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, equipment: {}, jobs: [] as number[], gigs: [] as number[] }
 const ALL_GIGS = GIGS.map((gig) => gig.id)
 const ALL_SKILLS = Object.fromEntries(SKILL_TIERS.map((row) => [String(row.id), 1]))
 const ALL_JOBS = JOB_TIERS.map((job) => job.id)
