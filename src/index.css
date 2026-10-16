@@ -170,14 +170,37 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .metrics .m-rate dd { color: var(--accent); }
 
-.metrics .m-stage { flex: 1 1 180px; }
-.metrics .m-stage dd {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  white-space: normal;
-  line-height: 1.15;
+.metrics .m-world { flex: 1 1 180px; }
+.metrics .m-world.is-hot dt { color: var(--ide-red); }
+.m-world-open {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
+.m-world-open small {
+  color: var(--text-faint);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+}
+.m-world-bar {
+  min-width: 132px;
+  display: block;
+  height: 3px;
+  margin-top: 5px;
+  background: var(--surface-2);
+}
+.m-world-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 600ms var(--ease-out);
+}
+.m-world.is-hot .m-world-bar i { background: var(--ide-red); }
 
 .metric-in { animation: metric-in var(--dur-base) var(--ease-out); }
 
@@ -2172,7 +2195,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .brand h1::after { display: none; }
   .metrics { flex: 1 1 100%; }
   .metrics > div { padding: var(--sp-2) var(--sp-3); }
-  .metrics .m-stage, .metrics .m-xp { display: none; }
+  .metrics .m-world, .metrics .m-xp { display: none; }
   .metrics dd { font-size: var(--fs-md); }
 
   .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); }
