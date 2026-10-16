@@ -167,7 +167,7 @@ export default function GlobeCanvas({ company, rows, home, compact = false }: { 
     }
   }, [compact])
 
-  // Keyed by what they hold, not by identity: the company is rebuilt every time popularity moves.
+  // Keyed by what they hold, not by identity: the company is rebuilt every time its users move.
   const popsKey = company.pops.join()
   const idleKey = company.idlePops.join()
   const clients = company.audience.length

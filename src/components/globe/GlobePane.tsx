@@ -5,6 +5,7 @@ import type { Company } from "../../game/globe/company.ts"
 import { formatNumber } from "../../game/format.ts"
 import { appMetrics, popRows } from "../../game/globe/metrics.ts"
 import { cityRows } from "../../game/globe/tip.ts"
+import { WorldPanel } from "./WorldPanel.tsx"
 
 /** The numbers behind the globe on the desk: the app's dashboard, the points of presence, the busiest client cities and the fleet. */
 export interface FleetRow {
@@ -39,13 +40,14 @@ export const GlobePane = memo(function GlobePane({ company, fleet }: { company: 
         <Metric id="requests" label="Requests" value={`${count(metrics.demand)}/s`} sub={`${count(metrics.capacity)}/s capacity`} tone={metrics.load > 0.8 ? "warn" : undefined} />
         <Metric id="served" label="Served" value={percent(metrics.servedShare)} sub={metrics.dropped > 0 ? `${count(metrics.dropped)}/s dropped` : "none dropped"} tone={stress} />
         <Metric id="latency" label="Latency" value={`${Math.round(metrics.avgMs)} ms`} sub={`p95 ${Math.round(metrics.p95Ms)} ms`} />
-        <Metric id="clients" label="Clients" value={count(metrics.clients)} sub={`${metrics.cities} cities, ${Math.round(metrics.popularity)}% popular`} />
+        <Metric id="users" label="Users" value={count(metrics.users)} sub={`${metrics.cities} cities`} />
         <Metric id="footprint" label="Footprint" value={`${metrics.pops} PoP${metrics.pops === 1 ? "" : "s"}`} sub={`${metrics.regions} region${metrics.regions === 1 ? "" : "s"}`} />
         <Metric id="lost" label="Revenue lost" value={metrics.lostPerSec > 0 ? `$${formatNumber(metrics.lostPerSec)}/s` : "$0/s"} sub={metrics.worst ? `slowest ${CITIES[metrics.worst.city]?.name ?? ""} ${metrics.worst.ms} ms` : "no clients yet"} tone={metrics.lostPerSec > 0 ? "bad" : undefined} />
         <div className={`globe-load is-${stress}`} role="img" aria-label={`Load is ${percent(metrics.load)} of capacity`}>
           <i style={{ width: `${Math.min(100, metrics.load * 100)}%` }} />
         </div>
       </header>
+      <WorldPanel company={company} />
       <div className="globe-body">
         <div className="globe-lists">
           <h4>Points of presence</h4>
@@ -63,7 +65,7 @@ export const GlobePane = memo(function GlobePane({ company, fleet }: { company: 
               </li>
             ))}
           </ul>
-          <h4>Clients</h4>
+          <h4>Cities</h4>
         </div>
         <ul className="globe-cities" data-testid="company-globe-cities">
           {rows.slice(0, 8).map((row) => (
