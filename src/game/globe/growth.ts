@@ -81,6 +81,8 @@ export interface GrowthFacts {
 
 export interface GrowthStep {
   readonly state: CompanyState
+  /** Dollars the served users paid over this step. */
+  readonly earned: number
   /** Dollars the drops cost over this step. */
   readonly lost: number
   readonly notes: readonly GrowthNote[]
@@ -97,7 +99,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   let incidents = state.incidents.filter((i) => i.until > at)
   let seq = state.incidentSeq
 
-  const { dropShare, lostPerSec } = servingOf(state.users, incidents, facts.equipment)
+  const { dropShare, lostPerSec, revenuePerSec } = servingOf(state.users, incidents, facts.equipment)
   const served = 1 - dropShare
 
   const resistance = state.resistance + (resistanceTarget(before) - state.resistance) * (1 - Math.exp(-sec / RESISTANCE_LAG_S))
@@ -120,6 +122,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   }
   const total = totalUsers(users)
   const lost = lostPerSec * sec
+  const earned = revenuePerSec * sec
 
   if (incidents.length < MAX_INCIDENTS && total >= INCIDENT_MIN_USERS && rand() < incidentRate(resistance) * sec) {
     const incident = rollIncident(users, facts.live, resistance, seq + 1, at, rand)
@@ -140,7 +143,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
 
   const { health } = servingOf(users, incidents, facts.equipment)
   const { uptime, day } = recordDay(state, health, at)
-  return { state: { users, resistance, incidents, incidentSeq: seq, won, uptime, day }, lost, notes }
+  return { state: { users, resistance, incidents, incidentSeq: seq, won, uptime, day }, earned, lost, notes }
 }
 
 /** Writes this step's health into today's bar, opening a new bar for each day that has passed. */
@@ -180,16 +183,18 @@ export function growthFacts(gigs: readonly number[], equipment: Readonly<Record<
  */
 export function advanceCompany(state: CompanyState, facts: GrowthFacts, from: number, to: number, rand: () => number): GrowthStep {
   let current = state
+  let earned = 0
   let lost = 0
   const notes: GrowthNote[] = []
   for (let at = from; at < to; at += STEP_MS) {
     const end = Math.min(to, at + STEP_MS)
     const step = stepCompany(current, facts, end - at, end, rand)
     current = step.state
+    earned += step.earned
     lost += step.lost
     notes.push(...step.notes)
   }
-  return { state: current, lost, notes }
+  return { state: current, earned, lost, notes }
 }
 
 /** A saved company, checked: anything malformed is dropped, so a bad block never breaks a load. A block from before users and regions is dropped whole. */
@@ -221,10 +226,10 @@ function parseIncident(input: unknown): Incident[] {
 }
 
 /**
- * What a stretch of growth does to the balance: dropped requests cost money, never below zero, and a win reached during it
+ * What a stretch of growth does to the balance: served users pay, then dropped requests cost money, never below zero, and a win reached during it
  * multiplies everything earned from then on. The tick and a return from away both settle through here.
  */
 export function settleGrowth(money: number, foreverMult: number, wasWon: boolean, grown: GrowthStep): { money: number; foreverMult: number; wonNow: boolean } {
   const wonNow = !wasWon && grown.state.won
-  return { money: Math.max(0, money - grown.lost), foreverMult: wonNow ? clampForever(foreverMult * WIN_MULT) : foreverMult, wonNow }
+  return { money: Math.max(0, money + grown.earned - grown.lost), foreverMult: wonNow ? clampForever(foreverMult * WIN_MULT) : foreverMult, wonNow }
 }

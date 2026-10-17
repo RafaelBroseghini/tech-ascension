@@ -310,8 +310,10 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     savedAt: now,
   }
   save.peakMoney = Math.max(save.peakMoney, save.money)
-  if (credit > 0) {
-    save.stats = creditMoney(save.stats ?? emptyStats(), credit, "idle")
+  // Settling already added what the users paid; this is only what the note and the books show.
+  const income = credit + grown.earned
+  if (income > 0) {
+    save.stats = creditMoney(save.stats ?? emptyStats(), income, "idle")
   }
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
@@ -324,12 +326,12 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
 
   if (save.career) save.career = noteWorld(save.career, grown.notes, now, save.money, save.xpTotal)
   if (save.career && elapsed >= RETURN_BREAK_MS) {
-    save.career = noteReturn(save.career, now, elapsed, credit, xpCredit, save.money, save.xpTotal)
+    save.career = noteReturn(save.career, now, elapsed, income, xpCredit, save.money, save.xpTotal)
   }
 
   let toast: string | null = null
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
-    toast = offlineToastText({ credit, xpCredit, jobs: save.jobs, elapsed })
+    toast = offlineToastText({ credit: income, xpCredit, jobs: save.jobs, elapsed })
     // A win reached while away has no live moment to celebrate it, so it leads the note instead.
     if (settled.wonNow && toast) toast = `${WON_AWAY}${toast.slice(toast.indexOf("\n"))}`
   }

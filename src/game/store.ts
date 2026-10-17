@@ -40,6 +40,7 @@ import type { CompanyPatch } from "./globe/actions.ts"
 import { WIN_MULT } from "./globe/world.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
+import { servingOf } from "./globe/load.ts"
 import type { Footprint } from "./globe/footprint.ts"
 import type { SaveData } from "./save.ts"
 import {
@@ -708,7 +709,7 @@ export const useGame = create<GameState>((set, get) => ({
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
-    if (gain > 0) stats = creditMoney(stats, gain, "idle")
+    stats = creditMoney(stats, gain + grown.earned, "idle")
     const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown)
     const foreverMult = settled.foreverMult
     const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
@@ -965,9 +966,9 @@ useGame.subscribe((state, prev) => {
   if (state.unlocked !== prev.unlocked) syncMusicGate()
 })
 
-/** What the company earns a second right now, with the event multipliers in. Incidents are priced in minutes of this. */
+/** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
 export function earnedPerSec(state: GameState, at = Date.now()): number {
-  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec
 }
 
 const WIN_LABEL = "Seven billion users"

@@ -74,6 +74,7 @@ export function statusOf(facts: StatusFacts): Board {
   const users = company.users
   const serving = HEALTH_OF[company.health]
   const flat = HEALTH_CHAR.operational.repeat(uptime.length)
+  const paid = company.revenuePerSec > 0 ? ` Served users pay ${money(company.revenuePerSec)} a second.` : ""
   const lost = company.lostPerSec > 0 ? ` Dropped requests cost ${money(company.lostPerSec)} a second.` : ""
 
   const components: Component[] = [
@@ -93,7 +94,7 @@ export function statusOf(facts: StatusFacts): Board {
       uptime: uptimePercent(uptime),
       detail:
         users > 0
-          ? `${ROUND(company.demand)} requests a second asked, ${ROUND(company.capacity)} provisioned.${lost}`
+          ? `${ROUND(company.demand)} requests a second asked, ${ROUND(company.capacity)} provisioned.${paid}${lost}`
           : `${ROUND(company.capacity)} requests a second provisioned.`,
     },
     {

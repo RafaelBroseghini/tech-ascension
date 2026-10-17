@@ -1,7 +1,7 @@
 import { GEAR } from "../../data/gear.ts"
 import type { GearKind } from "../../data/gear.ts"
 import { REGIONS } from "../../data/regions.ts"
-import { multiplierOf } from "./world.ts"
+import { multiplierOf, totalUsers } from "./world.ts"
 import type { Incident } from "./world.ts"
 
 /** Requests a second one laptop serves before any gear is bought. */
@@ -34,6 +34,18 @@ export function dropShareOf(demand: number, capacity: number): number {
 /** Dollars a second lost for each request a second the company drops. */
 export const REVENUE_PER_DROPPED_RPS = 0.02
 
+/** Dollars a second each served user pays at the scale of a big crowd. */
+export const ARPU_BASE = 0.0002
+/** How many times `ARPU_BASE` the first users pay, so a small crowd is worth a salary. It fades as the crowd grows. */
+export const ARPU_EARLY = 80
+/** Users at which the early bonus has halved. */
+export const ARPU_KNEE = 1000
+
+/** Dollars a second each served user pays when the product has this many users. Falls with scale: a thousand users pay an internship, a million a Senior SWE. */
+export function arpuOf(users: number): number {
+  return ARPU_BASE * (1 + ARPU_EARLY / (1 + Math.max(0, users) / ARPU_KNEE))
+}
+
 /** How serving went, one character per status day: operational, degraded, partial outage, major outage. */
 export const HEALTH_CHAR = { operational: "o", degraded: "d", partial: "p", major: "m" } as const
 export type HealthChar = (typeof HEALTH_CHAR)[keyof typeof HEALTH_CHAR]
@@ -48,6 +60,8 @@ export interface Serving {
   readonly dropShare: number
   /** Dollars a second the dropped requests cost. */
   readonly lostPerSec: number
+  /** Dollars a second the users who are served pay. Dropped users pay nothing. */
+  readonly revenuePerSec: number
   /** Judged on the share dropped; above 80% of capacity it is only slow. Operational with nobody to serve. */
   readonly health: HealthChar
 }
@@ -62,5 +76,7 @@ export function servingOf(users: Readonly<Record<string, number>>, incidents: re
     : dropShare > 0 ? HEALTH_CHAR.partial
     : capacity > 0 && demand / capacity > 0.8 ? HEALTH_CHAR.degraded
     : HEALTH_CHAR.operational
-  return { demand, capacity, dropShare, lostPerSec: demand * dropShare * REVENUE_PER_DROPPED_RPS, health }
+  const everyone = totalUsers(users)
+  const revenuePerSec = everyone * (1 - dropShare) * arpuOf(everyone)
+  return { demand, capacity, dropShare, lostPerSec: demand * dropShare * REVENUE_PER_DROPPED_RPS, revenuePerSec, health }
 }

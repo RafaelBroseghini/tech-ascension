@@ -26,6 +26,8 @@ export interface AppMetrics {
   readonly resistance: number
   readonly pops: number
   readonly regions: number
+  /** Dollars a second the served users pay. */
+  readonly revenuePerSec: number
   /** Dollars a second the dropped requests cost. */
   readonly lostPerSec: number
 }
@@ -58,6 +60,7 @@ export function appMetrics(company: Company, rows: readonly CityRow[]): AppMetri
     resistance: company.resistance,
     pops: company.pops.length,
     regions: company.regions.length,
+    revenuePerSec: company.revenuePerSec,
     lostPerSec: company.lostPerSec,
   }
 }

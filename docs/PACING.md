@@ -83,3 +83,20 @@ Each is the formula's answer, with the first one checked against the model.
 - **Price of the last capital row.** It is most of a collector's time. A reinvestor barely notices a cut, because their time is set by how fast income grows, because their time is set by how fast income grows, not by the last price.
 - **The 8 hour offline cap** (`OFFLINE_CAP_MS` in `src/game/save.ts`). It is the main limit on a once-a-day player. At 12 hours, the Daily player's `idleShare` goes from 0.35 to 0.52, and pace from 0.38 to 0.55, about 45% faster. It changes nothing for anyone who already visits every 8 hours. If you change the cap, change `OFFLINE_CAP_SECONDS` in `src/game/pace.ts` too; a test checks they match.
 - **Job click share.** `s` is the sum of the jobs' `clickPct`. It only matters to someone who clicks a lot.
+
+## Product revenue
+
+Served users pay a few cents a second, so the product earns next to the day job. Dropped users pay nothing. `arpuOf(users)` in `src/game/globe/load.ts` is the dollars a second one served user pays, and `revenuePerSec` is served users times that. The numbers come from `/tmp/arpu-sim/sim.ts`, which runs the real tables.
+
+Three targets set it: 1,000 served users pay about the internship ($8/s), about 1M pay about the Senior SWE ($200/s), and at 1B the product is a real share of upper-era capital (rows 6-11 pay $695,000/s together; rows 1-5 pay $16,050/s). A flat ARPU cannot do all three. $0.008 matches the internship but pays $8,000/s at 1M, forty Senior salaries. $0.0002 matches the Senior at 1M and gives 29% of upper capital at 1B, but a thousand users then pay $0.20/s, 3% of an internship. So ARPU falls with scale: a small crowd is worth a salary, a big one pays pennies each. The pick is one function, `ARPU_BASE * (1 + ARPU_EARLY / (1 + users / ARPU_KNEE))` with a base of $0.0002, an early bonus of 80 and a knee at 1,000 users. It pays $0.0082 a user at 1k, $0.00022 at 1M and $0.0002 from 100M on. Revenue still rises with every user, only slower per head. The "gear" column is the cheapest serving gear (greedy on price per request) that keeps up with that many users, at 0.1 requests a second each; it is what the crowd costs to serve, and the gear pays its own $/s too.
+
+| Users | Gear to serve them | Flat $0.0002 | Flat $0.002 | Flat $0.008 | Chosen curve |
+| --- | --- | --- | --- | --- | --- |
+| 1k | $1.4k | $0.20/s | $2.00/s | $8.00/s | $8.00/s |
+| 100k | $1.8M | $20/s | $200/s | $800/s | $35/s |
+| 1M | $1.8M | $200/s | $2.0k/s | $8.0k/s | $216/s |
+| 100M | $321M | $20k/s | $200k/s | $800k/s | $20k/s |
+| 1B | $13.5B | $200k/s | $2.0M/s | $8.0M/s | $200k/s |
+| 7B | $520B | $1.4M/s | $14M/s | $56M/s | $1.4M/s |
+
+Reference incomes: internship $8/s, Senior SWE $200/s, capital rows 1-5 $16,050/s, rows 6-11 $695,000/s. The chosen curve gives 1.0 internships at 1k, 1.08 Seniors at 1M, and 29% of upper capital (12.5 times mid capital) at 1B. At 7B it pays $1.4M/s, about the whole of q3 capital (rows 12-14 pay $6.5M/s). Product revenue is not scaled by the event multipliers, so it stays the same size under a boost.

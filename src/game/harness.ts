@@ -140,6 +140,8 @@ export type WorldSnapshot = {
   /** Requests a second the users send, against what the gear serves. */
   demand: number
   capacity: number
+  /** Dollars a second the served users pay. Dropped users pay nothing. Not in `cps`, which stays the idle $/s from owned items. */
+  revenuePerSec: number
   won: boolean
 }
 
@@ -356,6 +358,7 @@ function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: numbe
     incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
     demand: serving.demand,
     capacity: serving.capacity,
+    revenuePerSec: serving.revenuePerSec,
     won: company.won,
   }
 }

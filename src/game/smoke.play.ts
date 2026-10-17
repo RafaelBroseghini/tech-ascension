@@ -3,6 +3,7 @@ import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKI
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { installGameHarness } from "./harness.ts"
+import { formatNumber } from "./format.ts"
 import { hydrate } from "./save.ts"
 import { advanceCompany, growthFacts } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
@@ -251,29 +252,50 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 test("offline catch-up pays 1h and caps at 8h", () => {
   const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
   game.reset()
-  game.setXp(1_000_000)
-  game.buySkill(15)
-  game.buySkill(16)
-  const retainer = GIGS.find((gig) => gig.retainerCps > 0)
-  if (!retainer) throw new Error("missing retainer gig")
-  for (const id of [1, 2, 3, retainer.id]) game.forceGig(id)
+  // A salary and no gigs: no clients means no users, so the income is the whole credit.
+  useGame.setState({ jobs: [1], peakMoney: 1 })
   const cps = game.getState().cps
-  expect(cps).toBeCloseTo(retainer.retainerCps)
+  expect(cps).toBe(JOB_TIERS[0]!.cps)
 
   const hour = 60 * 60 * 1000
-  const beforeHour = useGame.getState()
-  const t0 = Date.now()
   const oneHour = game.advanceOffline(hour)
   expect(oneHour.toast?.split("\n")[0]?.endsWith(".")).toBe(true)
   expect(oneHour.toast?.split("\n")[1]).toMatch(/^credited \$/)
-  expect(Math.abs(oneHour.credited - (cps * 3600 - dropsOver(beforeHour, t0 - hour, t0)))).toBeLessThan(1)
+  expect(Math.abs(oneHour.credited - cps * 3600)).toBeLessThan(1)
 
-  const beforeTen = useGame.getState()
-  const t1 = Date.now()
   const tenHours = game.advanceOffline(10 * hour)
   expect(tenHours.toast?.split("\n")[1]).toMatch(/^credited \$/)
-  expect(Math.abs(tenHours.credited - (cps * 8 * 3600 - dropsOver(beforeTen, t1 - 8 * hour, t1)))).toBeLessThan(1)
+  expect(Math.abs(tenHours.credited - cps * 8 * 3600)).toBeLessThan(1)
   expect(tenHours.credited).toBeLessThan(cps * 10 * 3600)
+  spy.mockRestore()
+})
+
+test("users pay: idle money rises by the product revenue, and the note counts it once", () => {
+  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
+  game.reset()
+  game.keepProfile()
+  game.setXp(1e6)
+  game.setMoney(1e9)
+  for (let i = 0; i < 6; i++) expect(game.buyEquipment(60)).toBe(true)
+  game.setUsers("americas-east", 2_000)
+  const { world, cps, money } = game.getState()
+  expect(world.capacity).toBeGreaterThan(world.demand)
+  expect(world.revenuePerSec).toBeGreaterThan(0)
+  // cps stays what the owned items pay; product revenue is its own figure.
+  game.tick(10_000)
+  const gained = game.getState().money - money
+  expect(gained).toBeGreaterThanOrEqual(world.revenuePerSec * 10)
+  expect(gained).toBeCloseTo((cps + world.revenuePerSec) * 10, 0)
+
+  // Away, the users pay once. The note shows income, the balance also loses the drops.
+  const hour = 60 * 60 * 1000
+  const state = useGame.getState()
+  const t = Date.now()
+  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint), t - hour, t, () => 0.999)
+  const away = game.advanceOffline(hour)
+  expect(walked.earned).toBeGreaterThan(0)
+  expect(away.credited).toBeCloseTo(cps * 3600 + walked.earned - walked.lost, 0)
+  expect(away.toast?.split("\n")[1]).toBe(`credited $${formatNumber(cps * 3600 + walked.earned)}`)
   spy.mockRestore()
 })
 
@@ -540,7 +562,7 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   const before = game.getState()
   expect(before.world.demand).toBeCloseTo(500)
   expect(before.world.capacity).toBeLessThan(before.world.demand)
-  game.tick(Date.now() + 60_000)
+  game.tick(60_000)
   expect(game.getState().money).toBeLessThan(before.money)
 
   // The world fights back: an incident opens, shows its price, and ends when paid.
@@ -578,12 +600,12 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
   expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Seven billion users" })
 
-  // What an incident costs is what the harness says, even with the win's multiplier in the earnings.
+  // What an incident costs is what the harness says: minutes of everything earned, the product's revenue and the win's multiplier in.
   expect(game.forceIncident("block")).toBe(true)
   game.setMoney(5e12)
   const open = game.getState().world.incidents.at(-1)!
   const cash = game.getState().money
-  expect(open.cost).toBeCloseTo(game.getState().cps * 60 * 3, -3)
+  expect(open.cost).toBeCloseTo((game.getState().cps + game.getState().world.revenuePerSec) * 60 * 3, -3)
   expect(open.cost).toBeGreaterThan(cash * 0.01)
   expect(game.respondIncident(open.id)).toBe(true)
   expect(cash - game.getState().money).toBeCloseTo(open.cost, 0)

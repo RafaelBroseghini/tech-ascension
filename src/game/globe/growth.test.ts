@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { advanceCompany, FRESH_COMPANY, settleGrowth, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
 import type { CompanyState } from "./growth.ts"
-import { BASE_RPS, RPS_PER_USER, servingOf } from "./load.ts"
+import { arpuOf, BASE_RPS, RPS_PER_USER, servingOf } from "./load.ts"
 import { ceilingOf, INCIDENT_MIN_USERS, MAX_INCIDENTS, totalUsers, WORLD_CEILING, WORLD_TARGET } from "./world.ts"
 import type { Incident } from "./world.ts"
 import { REGIONS } from "../../data/regions.ts"
@@ -221,15 +221,53 @@ describe("saved company", () => {
 })
 
 describe("settleGrowth", () => {
-  const grown = (won: boolean, lost: number) => ({ state: { ...FRESH_COMPANY, won }, lost, notes: [] })
+  const grown = (won: boolean, lost: number, earned = 0) => ({ state: { ...FRESH_COMPANY, won }, earned, lost, notes: [] })
 
   it("charges the drops, never below zero", () => {
     expect(settleGrowth(100, 1, false, grown(false, 30)).money).toBe(70)
     expect(settleGrowth(100, 1, false, grown(false, 500)).money).toBe(0)
   })
 
+  it("adds what the users paid before the drops are charged", () => {
+    expect(settleGrowth(100, 1, false, grown(false, 30, 50)).money).toBe(120)
+    expect(settleGrowth(0, 1, false, grown(false, 30, 50)).money).toBe(20)
+    expect(settleGrowth(0, 1, false, grown(false, 80, 50)).money).toBe(0)
+  })
+
   it("multiplies everything earned once, on the step that wins", () => {
     expect(settleGrowth(0, 2, false, grown(true, 0))).toMatchObject({ foreverMult: 2.5, wonNow: true })
     expect(settleGrowth(0, 2.5, true, grown(true, 0))).toMatchObject({ foreverMult: 2.5, wonNow: false })
+  })
+})
+
+describe("product revenue", () => {
+  const crowd = { "americas-east": 40_000 }
+
+  it("pays for served users only", () => {
+    const serving = servingOf(crowd, [], roomy)
+    expect(serving.dropShare).toBe(0)
+    expect(serving.revenuePerSec).toBeCloseTo(40_000 * arpuOf(40_000))
+    expect(servingOf({}, [], roomy).revenuePerSec).toBe(0)
+  })
+
+  it("pays nothing for the dropped share", () => {
+    const serving = servingOf({ "americas-east": 1e9 }, [], {})
+    expect(serving.dropShare).toBeGreaterThan(0.999)
+    // Only the users the base laptop can answer pay.
+    expect(serving.revenuePerSec).toBeCloseTo((BASE_RPS / RPS_PER_USER) * arpuOf(1e9))
+    expect(serving.revenuePerSec).toBeLessThan(1e9 * arpuOf(1e9) * 1e-5)
+  })
+
+  it("is paid a step at a time", () => {
+    const step = stepCompany(state({ users: crowd }), facts(3, roomy), 10_000, 10_000, never)
+    expect(step.earned).toBeCloseTo(servingOf(crowd, [], roomy).revenuePerSec * 10)
+    const walked = advanceCompany(state({ users: crowd }), facts(3, roomy), 0, 3 * 60_000, never)
+    expect(walked.earned).toBeGreaterThan(step.earned * 18)
+    expect(stepCompany(state(), facts(3, roomy), 10_000, 10_000, never).earned).toBe(0)
+  })
+
+  it("falls per user as the crowd grows, while the total keeps rising", () => {
+    expect(arpuOf(1e6)).toBeLessThan(arpuOf(1e3))
+    expect(1e9 * arpuOf(1e9)).toBeGreaterThan(1e6 * arpuOf(1e6))
   })
 })
