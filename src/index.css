@@ -170,13 +170,119 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .metrics .m-rate dd { color: var(--accent); }
 
-.metrics .m-stage { flex: 1 1 180px; }
-.metrics .m-stage dd {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  white-space: normal;
-  line-height: 1.15;
+.metrics .m-world { flex: 1 1 180px; }
+.metrics .m-world.is-hot dt { color: var(--ide-red); }
+.m-world-open {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.m-world-open small {
+  color: var(--text-faint);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+}
+.m-world-bar {
+  min-width: 132px;
+  display: block;
+  height: 3px;
+  margin-top: 5px;
+  background: var(--surface-2);
+}
+.m-world-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 600ms var(--ease-out);
+}
+.m-world.is-hot .m-world-bar i { background: var(--ide-red); }
+
+/* The bet (src/components/FullTime.tsx): a round red button in a yellow-black hazard ring, then a chip once quit. */
+.metrics .m-fork { align-items: center; }
+.metrics .m-fork dd { line-height: 0; }
+.nuke {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--dur-base) var(--ease-out), filter var(--dur-base) var(--ease-out);
+}
+.nuke-ring {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 50%;
+  background: repeating-conic-gradient(#f5c400 0 15deg, #15130c 15deg 30deg);
+  box-shadow: var(--lift-2);
+}
+.nuke-cap {
+  width: 28px;
+  height: 28px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #ff8a80 0 12%, #e5271f 46%, #a3120d 100%);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 28%), inset 0 2px 0 rgb(255 255 255 / 30%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.nuke:hover:not([aria-disabled="true"]) { transform: translateY(-2px); filter: brightness(1.08); }
+.nuke:active:not([aria-disabled="true"]) .nuke-cap { transform: translateY(2px) scale(0.94); }
+.nuke:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.nuke[aria-disabled="true"] { cursor: not-allowed; filter: grayscale(0.85) brightness(0.8); opacity: 0.6; }
+.founder-chip {
+  padding: 4px 10px 5px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.founder-chip:hover { background: var(--surface-1); }
+.m-founder.is-hot .founder-chip { color: var(--ide-red); }
+
+/* The fork, pinned at the top of the Company tab: in flow, no backdrop, no focus grab. */
+.fork-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-left: 4px solid var(--accent);
+  background: var(--surface-1);
+  font-size: var(--fs-sm);
+}
+.fork-card.is-broke { border-left-color: var(--ide-red); }
+.fork-card .event-title { font-size: var(--fs-lg, var(--fs-md)); }
+.fork-card .event-lines { margin: 0; gap: var(--sp-1, 4px); }
+.fork-card .event-line { padding: var(--sp-1, 4px) var(--sp-2); font-size: var(--fs-sm); }
+.fork-card .event-choice { padding: 7px 12px 8px; }
+.fork-actions { flex-direction: column; align-items: stretch; }
+.fork-actions .event-choice { width: 100%; }
+.fork-note {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+}
+.fork-note p { margin: 0 0 var(--sp-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nuke, .nuke-cap { transition: none; }
+  .nuke:hover:not([aria-disabled="true"]) { transform: none; }
 }
 
 .metric-in { animation: metric-in var(--dur-base) var(--ease-out); }
@@ -2172,7 +2278,9 @@ img { -webkit-user-drag: none; user-select: none; }
   .brand h1::after { display: none; }
   .metrics { flex: 1 1 100%; }
   .metrics > div { padding: var(--sp-2) var(--sp-3); }
-  .metrics .m-stage, .metrics .m-xp { display: none; }
+  .metrics .m-world, .metrics .m-xp { display: none; }
+  .nuke-ring { width: 40px; height: 40px; }
+  .nuke-cap { width: 25px; height: 25px; }
   .metrics dd { font-size: var(--fs-md); }
 
   .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); }

@@ -10,9 +10,15 @@ import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, settleGrowth } from "./globe/growth.ts"
+import { parseFounder, trackFactsOf, winMultOf, FRESH_FOUNDER } from "./globe/track.ts"
+import type { FounderState } from "./globe/track.ts"
+import type { CompanyState, GrowthNote } from "./globe/growth.ts"
+import { winNote } from "./globe/hires.ts"
+import type { Ending } from "./globe/hires.ts"
+import { parseFootprint } from "./globe/footprint.ts"
+import type { Footprint } from "./globe/footprint.ts"
 import type { SavedIdentity } from "./identity.ts"
-import { parseInterviews } from "./studio/interviews.ts"
-import type { InterviewLog } from "./studio/interviews.ts"
 
 /** Catalog ids grew in v4. Any other version wipes; there is no migration. */
 export const SAVE_VERSION = 8
@@ -81,8 +87,12 @@ export type SaveData = {
    * (until then the start card offers a reroll). Saves from before it get a random one at boot.
    */
   profile?: SavedIdentity
-  /** Whiteboard interviews submitted, keyed by interview id. Omitted when none; saves from before interviews have none. */
-  interviews?: InterviewLog
+  /** Users by region, the resistance, live incidents, the win latch and the uptime bars. Omitted before the company has a history. */
+  company?: CompanyState
+  /** Regions bought and points of presence deployed. Omitted until the company buys one. */
+  footprint?: Footprint
+  /** The fork: the track, whether its modal has shown, the bridges raised, the equity given up, and the run-out choice. Omitted on the ladder before the fork has shown. */
+  founder?: FounderState
 }
 
 export type Hydrated = {
@@ -165,10 +175,15 @@ export function freshCareer(now: number): SavedCareer {
   return { seq: 2, log: [[1, now, "start", "", 0, 0]], unlocked: [], fresh: [], returns: 0 }
 }
 
+/** The next free journal seq: past the counter, and past every entry the log already holds. */
+function nextSeq(career: SavedCareer): number {
+  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
+  return Math.max(career.seq, top + 1)
+}
+
 /** Notes a return in the journal: how long the player was away and what that paid. */
 function noteReturn(career: SavedCareer, now: number, awayMs: number, money: number, xp: number, balance: number, xpTotal: number): SavedCareer {
-  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
-  const seq = Math.max(career.seq, top + 1)
+  const seq = nextSeq(career)
   const entry: SavedCareerEntry = [
     seq,
     now,
@@ -179,6 +194,17 @@ function noteReturn(career: SavedCareer, now: number, awayMs: number, money: num
     { awayMs: Math.round(awayMs), creditedMoney: Math.floor(money), creditedXp: Math.floor(xp) },
   ]
   return { ...career, seq: seq + 1, log: [...career.log, entry].slice(-CAREER_LOG_CAP), returns: career.returns + 1 }
+}
+
+/** Journals what the company went through while the player was away: incidents, milestones, the win. */
+function noteWorld(career: SavedCareer, notes: readonly GrowthNote[], now: number, balance: number, xpTotal: number): SavedCareer {
+  if (notes.length === 0) return career
+  let seq = nextSeq(career)
+  const added = notes.map((note): SavedCareerEntry => {
+    const row: SavedCareerEntry = [seq++, now, note.type, note.ref, Math.floor(balance), Math.floor(xpTotal)]
+    return note.data ? [...row, note.data] as SavedCareerEntry : row
+  })
+  return { ...career, seq, log: [...career.log, ...added].slice(-CAREER_LOG_CAP) }
 }
 
 export function freshSave(now: number): SaveData {
@@ -248,10 +274,16 @@ export function parseSave(input: unknown): SaveData | null {
   if (career) save.career = career
   const profile = normalizeIdentity(input.profile)
   if (profile) save.profile = profile
-  const interviews = parseInterviews(input.interviews)
-  if (Object.keys(interviews).length > 0) save.interviews = interviews
+  const company = parseCompany(input.company)
+  if (company) save.company = company
+  const footprint = parseFootprint(input.footprint)
+  if (footprint) save.footprint = footprint
+  const founder = parseFounder(input.founder)
+  if (founder) save.founder = founder
   return save
 }
+
+const wonAway = (ending: Ending | undefined, product: string, mult: number) => `While you were out: ${winNote(ending, product, mult)}`
 
 export function hydrate(rawText: string | null, now: number): Hydrated {
   if (rawText == null) {
@@ -270,18 +302,28 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const away = Math.min(Math.max(0, now - loaded.savedAt), capMs)
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
+  // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
+  const founder = loaded.founder ?? FRESH_FOUNDER
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, trackFactsOf(founder)), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
+  const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown, { track: founder.track, broke: founder.broke, away: true })
   const save: SaveData = {
     ...loaded,
-    money: loaded.money + credit,
+    // Running out while away is met on return: the choice opens, and nothing was wiped.
+    ...(settled.broke && !founder.broke ? { founder: { ...founder, broke: true } } : {}),
+    ...(settled.wonNow ? { foreverMult: settled.foreverMult } : {}),
+    money: settled.money,
+    company: grown.state,
     xp: loaded.xp + xpCredit,
     xpTotal: loaded.xpTotal + xpCredit,
     savedAt: now,
   }
   save.peakMoney = Math.max(save.peakMoney, save.money)
-  if (credit > 0) {
-    save.stats = creditMoney(save.stats ?? emptyStats(), credit, "idle")
+  // Settling already added what the users paid; this is only what the note and the books show.
+  const income = credit + grown.earned
+  if (income > 0) {
+    save.stats = creditMoney(save.stats ?? emptyStats(), income, "idle")
   }
   if (save.activeBoost && save.activeBoost.endsAt <= now) {
     delete save.activeBoost
@@ -292,13 +334,16 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
     else delete save.tempMults
   }
 
+  if (save.career) save.career = noteWorld(save.career, grown.notes, now, save.money, save.xpTotal)
   if (save.career && elapsed >= RETURN_BREAK_MS) {
-    save.career = noteReturn(save.career, now, elapsed, credit, xpCredit, save.money, save.xpTotal)
+    save.career = noteReturn(save.career, now, elapsed, income, xpCredit, save.money, save.xpTotal)
   }
 
   let toast: string | null = null
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
-    toast = offlineToastText({ credit, xpCredit, jobs: save.jobs, elapsed })
+    toast = offlineToastText({ credit: income, xpCredit, jobs: save.jobs, elapsed })
+    // A win reached while away has no live moment to celebrate it, so it leads the note instead.
+    if (settled.wonNow && toast) toast = `${wonAway(grown.state.ending, save.profile?.product ?? "your app", winMultOf(founder.track))}${toast.slice(toast.indexOf("\n"))}`
   }
 
   return { save, toast, reset: false }

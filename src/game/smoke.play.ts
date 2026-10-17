@@ -1,10 +1,23 @@
-import { expect, test } from "vitest"
+import { createElement } from "react"
+import { flushSync } from "react-dom"
+import { createRoot } from "react-dom/client"
+import { expect, test, vi } from "vitest"
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
-import { INTERVIEWS } from "../data/studio/challenges.ts"
+import { ForkCard } from "../components/globe/ForkCard.tsx"
+import { MetricsBar } from "../components/MetricsBar.tsx"
 import { installGameHarness } from "./harness.ts"
+import { formatNumber } from "./format.ts"
 import { hydrate } from "./save.ts"
+import { advanceCompany, growthFacts } from "./globe/growth.ts"
+import type { CompanyState } from "./globe/growth.ts"
+import { trackFactsOf } from "./globe/track.ts"
+import { useGame } from "./store.ts"
+
+/** The drops the company costs over a span, with incident rolls off. Money tests subtract it so they count the income alone. */
+const dropsOver = (state: { company: CompanyState; gigs: readonly number[]; equipment: Record<string, number> }, from: number, to: number) =>
+  advanceCompany(state.company, growthFacts(state.gigs, state.equipment), from, to, () => 0.999).lost
 
 const game = installGameHarness()
 
@@ -97,7 +110,6 @@ test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gi
 
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   const paid = game.click()
   expect(paid.money).toBe(game.getState().clickPower)
@@ -106,6 +118,7 @@ test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gi
 })
 
 test("B: a retainer gig is the first $/s", () => {
+  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
   game.reset()
   const retainer = GIGS.find((gig) => gig.retainerCps > 0)
   if (!retainer) throw new Error("missing retainer gig")
@@ -117,8 +130,11 @@ test("B: a retainer gig is the first $/s", () => {
   expect(game.completeGig(retainer.id)).toBe(true)
   expect(game.getState().cps).toBe(retainer.retainerCps)
   const before = game.getState()
+  const storeBefore = useGame.getState()
   game.tick(10_000)
-  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10)
+  // The retainer's clients have no gear to serve them, so their drops come out of the income.
+  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10 - dropsOver(storeBefore, storeBefore.now, storeBefore.now + 10_000), 3)
+  spy.mockRestore()
   expect(game.getState().lastPop?.kind).toBe("gigClear")
 })
 
@@ -139,9 +155,6 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   if (!intern || !junior || !senior) throw new Error("missing jobs")
   expect(intern.xpPerSec).toBeGreaterThan(0)
   expect(intern.xpLump).toBeGreaterThan(0)
-  // Each of these jobs waits on a whiteboard interview; the smoke step below plays one for real.
-  expect(game.buyJob(intern.id)).toBe(false)
-  expect(game.forceInterview("hello-server")).toBe(true)
   const unhired = game.getState()
   expect(game.buyJob(intern.id)).toBe(true)
   // Taking the internship pays its lump of XP once, spendable and lifetime.
@@ -157,7 +170,6 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   game.setXp(junior.xpCost - 1)
   expect(game.buyJob(junior.id)).toBe(false)
   game.setXp(45_000)
-  expect(game.forceInterview("3-tier-app")).toBe(true)
   expect(game.buyJob(junior.id)).toBe(true)
   expect(game.getState().xp).toBe(45_000 - junior.xpCost)
   expect(game.getState().jobs).toEqual([intern.id, junior.id])
@@ -166,171 +178,12 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   game.setXp(senior.xpReq)
   game.setMoney(0)
   expect(game.getState().unlocks.capital).toBe(false)
-  expect(game.buyJob(senior.id)).toBe(false)
-  expect(game.forceInterview("read-heavy-feed")).toBe(true)
   expect(game.buyJob(senior.id)).toBe(true)
   const d = game.getState()
   expect(d.unlocks.capital).toBe(true)
   expect(d.phase).toBe("D")
   expect(d.money).toBe(0)
   expect(d.lastPop).toMatchObject({ kind: "unlock", size: "large" })
-})
-
-test("an interview gates the Junior SWE job, a No hire costs XP and a pass opens the job", () => {
-  game.reset()
-  const junior = JOB_TIERS.find((job) => job.id === 2)
-  const threeTier = INTERVIEWS.find((row) => row.jobId === 2)
-  if (!junior || !threeTier) throw new Error("missing Junior SWE or its interview")
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.submitWhiteboard(threeTier.id, threeTier.reference)).toBe(false)
-  expect(game.getState().interviews.open).toEqual(["hello-server"])
-
-  game.setXp(junior.xpReq)
-  expect(game.getState().interviews.open).toEqual(["hello-server", threeTier.id])
-  expect(game.buyJob(junior.id)).toBe(false)
-
-  const naive = threeTier.naive[0]
-  const failed = game.submitWhiteboard(threeTier.id, naive.design)
-  expect(failed).toMatchObject({ interviewId: threeTier.id, verdict: "noHire", penalty: junior.xpReq * 0.05 })
-  expect(failed && failed.missed).toContain(naive.fails)
-  expect(game.getState().xp).toBe(junior.xpReq - junior.xpReq * 0.05)
-  expect(game.getState().xpTotal).toBe(junior.xpReq)
-  expect(game.getState().careerLog.last).toMatchObject({ type: "interview", verdict: "noHire", penalty: 2_250 })
-
-  const hired = game.submitWhiteboard(threeTier.id, threeTier.reference)
-  expect(hired).toMatchObject({ verdict: "hire", missed: [], penalty: 0 })
-  expect(game.getState().interviews).toMatchObject({ open: ["hello-server"], passed: [threeTier.id] })
-  expect(game.getState().careerLog.last).toMatchObject({ type: "interview", verdict: "hire", attempts: 2 })
-  expect(game.buyJob(junior.id)).toBe(true)
-  expect(game.getState().xp).toBe(junior.xpReq - junior.xpReq * 0.05 - junior.xpCost)
-
-  // A passed interview can be practiced: the career stays as it was, and the cheapest passing run is kept.
-  const career = () => JSON.stringify([game.getState().xp, game.getState().jobs, game.getState().interviews, game.careerLog().length])
-  const held = career()
-  const missed = game.practiceWhiteboard(threeTier.id, naive.design)
-  expect(missed).toMatchObject({ passes: false, newBest: false })
-  expect(missed && missed.missed).toContain(naive.fails)
-  expect(career()).toBe(held)
-  const cheaper = game.practiceWhiteboard(threeTier.id, threeTier.strongHire)
-  expect(cheaper).toMatchObject({ passes: true, newBest: true })
-  expect(game.practiceWhiteboard(threeTier.id, threeTier.reference)).toMatchObject({ passes: true, newBest: false, best: cheaper && cheaper.best })
-  expect(game.careerLog().length).toBe(JSON.parse(held)[3])
-  expect(game.practiceWhiteboard("static-site", threeTier.reference)).toBe(false)
-
-  // With every skill and gig done and the internship held, the whole-game target is the open interview.
-  game.reset()
-  game.setXp(1e12)
-  for (const skill of SKILL_TIERS) game.buySkill(skill.id)
-  for (const gig of GIGS) game.forceGig(gig.id)
-  game.forceInterview("hello-server")
-  expect(game.buyJob(1)).toBe(true)
-  expect(game.getState().nextUnlock).toMatchObject({ key: "job:2", name: junior.name, tab: "C", needs: ["pass the whiteboard"] })
-})
-
-test("questions and nudges are free, a hint down-levels the offer, and a Strong hire with no hints signs a bonus", () => {
-  game.reset()
-  const hello = INTERVIEWS.find((row) => row.id === "hello-server")
-  const threeTier = INTERVIEWS.find((row) => row.id === "3-tier-app")
-  const intern = JOB_TIERS.find((job) => job.id === 1)
-  const junior = JOB_TIERS.find((job) => job.id === 2)
-  if (!hello || !threeTier || !intern || !junior) throw new Error("missing interview or job")
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
-
-  // Asking and nudging cost nothing and are idempotent; a question the interview does not ask is refused.
-  const before = { xp: game.getState().xp, money: game.getState().money, log: game.careerLog().length }
-  expect(game.askInterviewer(hello.id, "speed")).toBe(true)
-  expect(game.askInterviewer(hello.id, "speed")).toBe(true)
-  expect(game.askInterviewer(hello.id, "lag")).toBe(false)
-  expect(game.askInterviewer(hello.id, "nonsense")).toBe(false)
-  expect(game.takeNudge(hello.id, "budget")).toBe(true)
-  expect(game.takeNudge(hello.id, "lag")).toBe(false)
-  expect(game.askInterviewer(threeTier.id, "speed")).toBe(false)
-  expect(game.getState().interviews.records[hello.id]).toMatchObject({ verdict: null, attempts: 0, asked: ["speed"], nudges: ["budget"], hints: [], offer: null })
-  expect({ xp: game.getState().xp, money: game.getState().money, log: game.careerLog().length }).toEqual(before)
-
-  // A Strong hire with no hints tops the band and signs 30 minutes of the job's salary, paid as money.
-  const money = game.getState().money
-  const strong = game.submitWhiteboard(hello.id, hello.strongHire)
-  const bonus = 30 * 60 * intern.cps
-  expect(strong).toMatchObject({ verdict: "strongHire", offer: { band: "top", bonus } })
-  expect(game.getState().money).toBe(money + bonus)
-  expect(game.getState().careerLog.last).toMatchObject({ type: "interview", verdict: "strongHire", band: "top" })
-
-  // A pass that took a hint is down-leveled. A No hire in between tells the missed requirement and keeps what was bought.
-  game.setXp(junior.xpReq)
-  const hint = game.takeHint(threeTier.id)
-  expect(hint).toBe("Add a load balancer (Round Robin Hood).")
-  expect(game.takeHint(threeTier.id)).toBe(hint)
-  const naive = threeTier.naive[0]
-  const failed = game.submitWhiteboard(threeTier.id, naive.design)
-  expect(failed).toMatchObject({ verdict: "noHire", offer: null })
-  const record = game.getState().interviews.records[threeTier.id]
-  expect(record).toMatchObject({ attempts: 1, nudges: [], hints: [hint] })
-  expect(record?.asked).toContain("speed")
-  game.askInterviewer(threeTier.id, "traffic")
-  const moneyBeforePass = game.getState().money
-  const down = game.submitWhiteboard(threeTier.id, threeTier.strongHire)
-  expect(down).toMatchObject({ verdict: "strongHire", offer: { band: "bottom", bonus: 0 } })
-  expect(game.getState().money).toBe(moneyBeforePass)
-  expect(game.getState().interviews.records[threeTier.id]).toMatchObject({ attempts: 2, hints: [hint], offer: { band: "bottom", bonus: 0 } })
-
-  // Practice and forceInterview never change a locked-in offer.
-  const offers = () => JSON.stringify([hello.id, threeTier.id].map((id) => game.getState().interviews.records[id]?.offer))
-  const locked = offers()
-  expect(game.practiceWhiteboard(hello.id, hello.reference)).toMatchObject({ passes: true })
-  expect(game.practiceWhiteboard(threeTier.id, threeTier.reference)).toMatchObject({ passes: true })
-  expect(game.forceInterview(hello.id)).toBe(false)
-  expect(offers()).toBe(locked)
-
-  // A forced pass keeps what was asked and never invents an offer.
-  game.reset()
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
-  game.askInterviewer(hello.id, "budget")
-  expect(game.forceInterview(hello.id)).toBe(true)
-  expect(game.getState().interviews.records[hello.id]).toMatchObject({ verdict: "hire", asked: ["budget"], offer: null })
-})
-
-test("the whiteboard wires like real infrastructure: forbidden wires are dropped, features are judged, stars and the reference follow a pass", () => {
-  game.reset()
-  const hello = INTERVIEWS.find((row) => row.id === "hello-server")
-  if (!hello) throw new Error("missing interview")
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
-
-  // The functional questions are free like the rest.
-  const before = { xp: game.getState().xp, money: game.getState().money }
-  for (const id of ["features", "mix", "fresh", "durable", "later"]) expect(game.askInterviewer(hello.id, id)).toBe(true)
-  expect({ xp: game.getState().xp, money: game.getState().money }).toEqual(before)
-  expect(game.getState().interviews.records[hello.id]?.asked).toEqual(["features", "mix", "fresh", "durable", "later"])
-
-  // The Users cannot call a database directly: that wire is dropped, so nothing answers and the features break.
-  const direct = { nodes: [{ id: "users", kind: "users" as const, replicas: 1 }, { id: "db", kind: "sql" as const, replicas: 1 }], edges: [{ from: "users", to: "db" }] }
-  const failed = game.submitWhiteboard(hello.id, direct)
-  expect(failed).toMatchObject({ verdict: "noHire" })
-  expect(failed && failed.missed).toContain("features")
-
-  // A forbidden extra wire changes nothing about a design that passes.
-  const sneaky = { nodes: hello.strongHire.nodes, edges: [...hello.strongHire.edges, { from: "users", to: "db" }] }
-  expect(game.submitWhiteboard(hello.id, sneaky)).toMatchObject({ verdict: "strongHire" })
-  expect(game.getState().interviews.records[hello.id]).toMatchObject({ stars: 3, studied: false })
-
-  // A board that works but is dear earns one star, and nothing is lost from the most on record.
-  const dear = hello.naive.find((row) => row.fails === "budget")
-  if (!dear) throw new Error("missing budget design")
-  expect(game.practiceWhiteboard(hello.id, dear.design)).toMatchObject({ passes: false, stars: 1, bestStars: 3, features: { working: 2, total: 2 } })
-  expect(game.practiceWhiteboard(hello.id, direct)).toMatchObject({ stars: 0, bestStars: 3 })
-
-  // The engineers' board opens only after a pass, and marks the interview studied.
-  game.reset()
-  game.setXp(JOB_BOARD_UNLOCK.minXp)
-  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
-  expect(game.studyReference(hello.id)).toBe(false)
-  game.forceInterview(hello.id)
-  expect(game.studyReference(hello.id)).toMatchObject({ nodes: hello.reference.nodes })
-  expect(game.getState().interviews.records[hello.id]).toMatchObject({ studied: true })
 })
 
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
@@ -377,7 +230,6 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
   game.reset()
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   const row = tierByName("WhyCombinator batch investment")
   game.setMoney(row.baseCost)
@@ -404,15 +256,12 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 })
 
 test("offline catch-up pays 1h and caps at 8h", () => {
+  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
   game.reset()
-  game.setXp(1_000_000)
-  game.buySkill(15)
-  game.buySkill(16)
-  const retainer = GIGS.find((gig) => gig.retainerCps > 0)
-  if (!retainer) throw new Error("missing retainer gig")
-  for (const id of [1, 2, 3, retainer.id]) game.forceGig(id)
+  // A salary and no gigs: no clients means no users, so the income is the whole credit.
+  useGame.setState({ jobs: [1], peakMoney: 1 })
   const cps = game.getState().cps
-  expect(cps).toBeCloseTo(retainer.retainerCps)
+  expect(cps).toBe(JOB_TIERS[0]!.cps)
 
   const hour = 60 * 60 * 1000
   const oneHour = game.advanceOffline(hour)
@@ -424,6 +273,36 @@ test("offline catch-up pays 1h and caps at 8h", () => {
   expect(tenHours.toast?.split("\n")[1]).toMatch(/^credited \$/)
   expect(Math.abs(tenHours.credited - cps * 8 * 3600)).toBeLessThan(1)
   expect(tenHours.credited).toBeLessThan(cps * 10 * 3600)
+  spy.mockRestore()
+})
+
+test("users pay: idle money rises by the product revenue, and the note counts it once", () => {
+  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
+  game.reset()
+  game.keepProfile()
+  game.setXp(1e6)
+  game.setMoney(1e9)
+  for (let i = 0; i < 6; i++) expect(game.buyEquipment(60)).toBe(true)
+  game.setUsers("americas-east", 2_000)
+  const { world, cps, money } = game.getState()
+  expect(world.capacity).toBeGreaterThan(world.demand)
+  expect(world.revenuePerSec).toBeGreaterThan(0)
+  // cps stays what the owned items pay; product revenue is its own figure.
+  game.tick(10_000)
+  const gained = game.getState().money - money
+  expect(gained).toBeGreaterThanOrEqual(world.revenuePerSec * 10)
+  expect(gained).toBeCloseTo((cps + world.revenuePerSec) * 10, 0)
+
+  // Away, the users pay once. The note shows income, the balance also loses the drops.
+  const hour = 60 * 60 * 1000
+  const state = useGame.getState()
+  const t = Date.now()
+  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder)), t - hour, t, () => 0.999)
+  const away = game.advanceOffline(hour)
+  expect(walked.earned).toBeGreaterThan(0)
+  expect(away.credited).toBeCloseTo(cps * 3600 + walked.earned - walked.lost, 0)
+  expect(away.toast?.split("\n")[1]).toBe(`credited $${formatNumber(cps * 3600 + walked.earned)}`)
+  spy.mockRestore()
 })
 
 test("offline study credits XP in phase A and adds no idle money", () => {
@@ -495,7 +374,6 @@ test("events: a trade scales to the pile, and Yes is refused when you cannot pay
   game.forceGig(1)
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 2; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   expect(game.click().money).toBeGreaterThan(0)
 })
@@ -506,7 +384,6 @@ test("a 1:1 waits for a job, then the three replies pay, sit, or bill you", () =
 
   game.setXp(JOB_BOARD_UNLOCK.minXp)
   for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) expect(game.forceGig(id)).toBe(true)
-  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
 
   expect(game.forceReview(1)).toBe(true)
@@ -593,7 +470,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(start.careerLog.last).toMatchObject({ seq: 1, type: "start" })
   expect(start.features.upNext.map((row) => row.id)).toEqual(["studio", "careerLog", "githug"])
 
-  // The first skill opens the studio: logged twice (the skill, the unlock) and queued to reveal.
+  // The first skill opens Your company: logged twice (the skill, the unlock) and queued to reveal.
   game.setXp(90)
   expect(game.buySkill(1)).toBe(true)
   let state = game.getState()
@@ -618,7 +495,6 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   game.setXp(60_000)
   for (let id = 11; id <= 16; id++) game.buySkill(id)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
-  expect(game.forceInterview("hello-server")).toBe(true)
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()
   expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "githug", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
@@ -647,13 +523,19 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
 
   // The career has a drawn handle, rerolled from the word lists until kept.
   const drawn = game.getState().profile
-  expect(drawn).toEqual({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/) })
+  expect(drawn).toEqual({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/), product: expect.stringMatching(/^[A-Z][a-z]+$/) })
+  const animal = drawn.handle.split("-")[1]!
+  expect(drawn.product.toLowerCase().startsWith(animal)).toBe(true)
+  expect(game.rerollProduct()).toBe(true)
+  expect(game.getState().profile.handle).toBe(drawn.handle)
+  expect(game.getState().profile.product).not.toBe(drawn.product)
   expect(game.rerollProfile()).toBe(true)
   expect(game.getState().profile.chosen).toBe(false)
   expect(game.getState().profile.handle).not.toBe(drawn.handle)
   game.keepProfile()
   expect(game.getState().profile.chosen).toBe(true)
   expect(game.rerollProfile()).toBe(false)
+  expect(game.rerollProduct()).toBe(false)
 
   // A wipe starts the timeline over.
   game.reset()
@@ -665,4 +547,203 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.getState().features.open).not.toContain("cat")
   game.tick(60 * 1000)
   expect(game.getState().features.open).toContain("cat")
+})
+
+test("the world: users per region, gear as the throttle, incidents, and the win", () => {
+  game.reset()
+  game.keepProfile()
+  expect(game.getState().world).toMatchObject({ users: 0, target: 7_000_000_000, resistance: 0, incidents: [], won: false })
+
+  // A cleared gig seeds its client's region, and the users grow from there while the gear serves them.
+  game.forceGig(1)
+  game.setMoney(1e9)
+  game.setUsers("americas-east", 200)
+  expect(game.getState().world.users).toBe(200)
+  expect(game.setUsers("americas-east", -1)).toBe(false)
+  game.setUsers("americas-east", 1e15)
+  expect(game.getState().world.regionUsers["americas-east"]).toBeLessThan(330_000_000)
+  game.setUsers("americas-east", 5_000)
+
+  // Demand is users × requests per user; a laptop cannot serve it, so the shortfall costs money.
+  const before = game.getState()
+  expect(before.world.demand).toBeCloseTo(500)
+  expect(before.world.capacity).toBeLessThan(before.world.demand)
+  game.tick(60_000)
+  expect(game.getState().money).toBeLessThan(before.money)
+
+  // The world fights back: an incident opens, shows its price, and ends when paid.
+  const calm = game.getState().world.demand
+  expect(game.forceIncident("ddos", "americas-east")).toBe(true)
+  const hit = game.getState().world
+  expect(hit.incidents).toHaveLength(1)
+  expect(hit.incidents[0]).toMatchObject({ kind: "ddos", region: "americas-east" })
+  expect(hit.demand).toBeCloseTo(calm * hit.incidents[0]!.strength)
+  game.setMoney(0)
+  expect(game.respondIncident(hit.incidents[0]!.id)).toBe(false)
+  game.setMoney(1e9)
+  expect(game.respondIncident(hit.incidents[0]!.id)).toBe(true)
+  expect(game.getState().world.incidents).toEqual([])
+  expect(game.forceIncident("meteor" as never)).toBe(false)
+
+  // Seven billion users win it once: a card, the journal, a forever multiplier, and the game keeps going.
+  for (const [region, share] of Object.entries({ "americas-east": 0.04, "americas-west": 0.043, "south-america": 0.055, europe: 0.093, africa: 0.174, asia: 0.589, oceania: 0.006 })) {
+    game.setUsers(region, 6.999e9 * share)
+  }
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 31; id++) game.buyJob(id)
+  game.setXp(1e9)
+  game.setMoney(1e15)
+  for (const id of [105, 106, 107, 108, 109, 110]) {
+    for (let i = 0; i < 30; i++) expect(game.buyEquipment(id), `gear ${id} copy ${i}`).toBe(true)
+  }
+  const mult = game.getState().foreverMult
+  for (let i = 0; i < 60 && !game.getState().world.won; i++) game.tick(Date.now() + (i + 2) * 3_600_000)
+  expect(game.getState().world.won).toBe(true)
+  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+  expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
+  game.tick(Date.now() + 99 * 3_600_000)
+  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+  expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Seven billion users" })
+
+  // What an incident costs is what the harness says: minutes of everything earned, the product's revenue and the win's multiplier in.
+  expect(game.forceIncident("block")).toBe(true)
+  game.setMoney(5e12)
+  const open = game.getState().world.incidents.at(-1)!
+  const cash = game.getState().money
+  expect(open.cost).toBeCloseTo((game.getState().cps + game.getState().world.revenuePerSec) * 60 * 3, -3)
+  expect(open.cost).toBeGreaterThan(cash * 0.01)
+  expect(game.respondIncident(open.id)).toBe(true)
+  expect(cash - game.getState().money).toBeCloseTo(open.cost, 0)
+})
+
+test("the world while away: the win is journaled and paid when it happens offline", () => {
+  game.reset()
+  game.keepProfile()
+  game.forceGig(1)
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 31; id++) game.buyJob(id)
+  game.setMoney(1e15)
+  for (const id of [109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
+  for (const [region, share] of Object.entries({ "americas-east": 0.04, "americas-west": 0.043, "south-america": 0.055, europe: 0.093, africa: 0.174, asia: 0.589, oceania: 0.006 })) {
+    game.setUsers(region, 6.999e9 * share)
+  }
+  const mult = game.getState().foreverMult
+  game.advanceOffline(8 * 3_600_000)
+  expect(game.getState().world.won).toBe(true)
+  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
+  expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
+})
+
+test("the fork: quit for the product, run out, raise a bridge, go back one rung down, and the red button reopens the choice", () => {
+  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
+  game.reset()
+  game.keepProfile()
+  game.setXp(1_000_000)
+  for (let id = 1; id <= 8; id++) game.forceGig(id)
+  for (const id of [1, 2, 3]) expect(game.buyJob(id)).toBe(true)
+  game.setMoney(1e9)
+  // One workstation GPU serves 5,000 users; the rest is the day job and the product's own pay.
+  expect(game.buyEquipment(60)).toBe(true)
+  game.setMoney(100_000)
+  expect(game.goFullTime()).toBe(false)
+  game.setUsers("americas-east", 500)
+  game.tick(1_000)
+  expect(game.getState().founder.offered).toBe(false)
+  expect(game.goFullTime()).toBe(false)
+  game.setUsers("americas-east", 5_000)
+  game.tick(1_000)
+  const ladder = game.getState()
+  // The fork opened at 1,000 users and a job held: the card shows, and the offer is latched for the red button.
+  expect(ladder).toMatchObject({ track: "ladder", founder: { offered: true, bridges: 0, broke: false, burnPerSec: 0, runwaySec: null } })
+
+  const host = document.createElement("div")
+  document.body.append(host)
+  const root = createRoot(host)
+  flushSync(() => root.render(createElement("div", null, createElement(MetricsBar), createElement(ForkCard))))
+  const hidden = () => host.querySelector("[data-testid='fork-card']") === null
+  const button = () => host.querySelector<HTMLButtonElement>("[data-testid='go-full-time']")
+  expect(hidden()).toBe(false)
+  flushSync(() => host.querySelector<HTMLButtonElement>("[data-testid='fork-keep']")?.click())
+  expect(hidden()).toBe(true)
+  expect(game.getState().track).toBe("ladder")
+  // The red button is always there from now on, and reopens the choice without quitting.
+  expect(button()).not.toBeNull()
+  flushSync(() => button()?.click())
+  expect(hidden()).toBe(false)
+  expect(host.querySelector("[data-testid='fork-lines']")?.textContent).toContain("Runway at today's numbers")
+  expect(game.getState().track).toBe("ladder")
+  flushSync(() => host.querySelector<HTMLButtonElement>("[data-testid='fork-keep']")?.click())
+
+  // Quitting stops the salary and the job's teaching, keeps the jobs, and triples what the users pay.
+  const salaried = game.getState()
+  expect(salaried.xpPerSec).toBeGreaterThan(0)
+  flushSync(() => expect(game.goFullTime()).toBe(true))
+  const founded = game.getState()
+  expect(founded.track).toBe("founder")
+  expect(founded.jobs).toEqual([1, 2, 3])
+  expect(founded.cps).toBeLessThan(salaried.cps)
+  expect(founded.xpPerSec).toBeLessThan(salaried.xpPerSec)
+  expect(founded.world.revenuePerSec).toBeCloseTo(salaried.world.revenuePerSec * 3, 6)
+  expect(founded.founder.burnPerSec).toBeGreaterThan(0)
+  expect(founded.founder.runwaySec).toBeGreaterThan(0)
+  expect(game.goFullTime()).toBe(false)
+  expect(game.buyJob(4)).toBe(false)
+  expect(button()).toBeNull()
+  expect(host.querySelector("[data-testid='founder-chip']")?.textContent).toMatch(/^Runway /)
+  const before = game.getState().money
+  game.tick(10_000)
+  expect(game.getState().money).toBeLessThan(before)
+
+  // Running out stops the burn and opens the choice.
+  game.setMoney(100)
+  flushSync(() => game.tick(10_000))
+  const out = game.getState()
+  expect(out.founder.broke).toBe(true)
+  expect(out.money).toBe(0)
+  expect(host.querySelector("[data-testid='runway-card']")).not.toBeNull()
+  game.tick(10_000)
+  expect(game.getState().money).toBeGreaterThanOrEqual(0)
+  expect(game.getState().founder.broke).toBe(true)
+
+  // A bridge: cash worth thirty minutes of burn, a tenth of the revenue gone for good.
+  const noBridge = out.world.revenuePerSec
+  expect(game.raiseBridge()).toBe(true)
+  const bridged = game.getState()
+  expect(bridged.founder).toMatchObject({ bridges: 1, broke: false })
+  expect(bridged.founder.equityCut).toBeCloseTo(0.1)
+  expect(bridged.money).toBeGreaterThan(bridged.founder.burnPerSec * 60 * 29)
+  expect(bridged.world.revenuePerSec).toBeLessThan(noBridge)
+  expect(game.raiseBridge()).toBe(false)
+  for (let i = 0; i < 2; i++) {
+    game.setMoney(0)
+    game.tick(10_000)
+    expect(game.getState().founder.broke).toBe(true)
+    expect(game.raiseBridge()).toBe(true)
+  }
+  game.setMoney(0)
+  game.tick(10_000)
+  expect(game.getState().founder).toMatchObject({ bridges: 3, broke: true })
+  expect(game.raiseBridge()).toBe(false)
+
+  expect(game.returnToLadder()).toBe(true)
+  const back = game.getState()
+  expect(back.track).toBe("ladder")
+  // Back on a job: one rung down, the salary resumes, and quitting again waits for twice the users.
+  expect(back.jobs).toEqual([1, 2])
+  expect(back.cps).toBeGreaterThan(founded.cps)
+  expect(game.goFullTime()).toBe(false)
+  game.setUsers("americas-east", Math.ceil(back.world.users * 2) + 1)
+  // Away: the burn runs, the balance never falls under a minute of it, and the choice is waiting on return.
+  expect(game.goFullTime()).toBe(true)
+  game.setMoney(50_000)
+  game.advanceOffline(2 * 60 * 60 * 1000)
+  const home = game.getState()
+  expect(home.founder.broke).toBe(true)
+  expect(home.money).toBeGreaterThan(0)
+  expect(home.money).toBeLessThanOrEqual(50_000)
+  root.unmount()
+  host.remove()
+  spy.mockRestore()
 })

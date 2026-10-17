@@ -162,6 +162,11 @@
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
+.identity-product { color: var(--ide-text); font-size: var(--fs-2xl); }
+.identity-bet { margin: var(--sp-3) 0; }
+.identity-dots { display: flex; justify-content: center; gap: 6px; margin: var(--sp-2) 0; }
+.identity-dots i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.25; }
+.identity-dots i.is-on { opacity: 1; background: var(--ide-green); }
 .identity-reroll { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 
 @keyframes identity-in {
@@ -169,5 +174,7 @@
 }
 
 @media (max-width: 480px) {
+  .identity-card .event-actions { gap: var(--sp-2); }
+  .identity-card .event-choice { flex: 1 1 0; min-width: 0; padding-inline: 10px; }
   .identity-handle { font-size: var(--fs-lg); }
 }

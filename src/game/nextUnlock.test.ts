@@ -9,7 +9,7 @@ import { nextUnlock, ownsEverything, shopFocus } from "./nextUnlock.ts"
 import { equipmentOpen, SHOP_TABS } from "./phase.ts"
 import { parseSave, SAVE_VERSION } from "./save.ts"
 
-const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, equipment: {}, jobs: [] as number[], gigs: [] as number[], interviews: {} }
+const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, equipment: {}, jobs: [] as number[], gigs: [] as number[] }
 const ALL_GIGS = GIGS.map((gig) => gig.id)
 const ALL_SKILLS = Object.fromEntries(SKILL_TIERS.map((row) => [String(row.id), 1]))
 const ALL_JOBS = JOB_TIERS.map((job) => job.id)
@@ -190,7 +190,7 @@ describe("next click focus", () => {
 
 describe("gear tab", () => {
   it("sits between Jobs and Capital and opens at 10,000 lifetime XP", () => {
-    expect(SHOP_TABS).toEqual(["A", "B", "C", "G", "D"])
+    expect(SHOP_TABS).toEqual(["A", "B", "C", "G", "D", "W"])
     expect(equipmentOpen({ xpTotal: 9_999, equipment: {} })).toBe(false)
     expect(equipmentOpen({ xpTotal: 10_000, equipment: {} })).toBe(true)
     expect(equipmentOpen({ xpTotal: 0, equipment: { "1": 1 } })).toBe(true)

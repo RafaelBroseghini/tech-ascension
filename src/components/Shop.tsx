@@ -40,9 +40,9 @@ import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
-import { useSurface, useUnlockedSet } from "./useFeature.ts"
-import { interviewForJob } from "../game/studio/interviews.ts"
-import { loadStudio, onStudioHire, openStudio } from "./studio/launcher.ts"
+import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
+import { CompanyTab } from "./globe/CompanyTab.tsx"
+import { useForkPending } from "./globe/useForkPending.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 function nextLine(next: NextUnlock): string {
@@ -56,6 +56,7 @@ const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; g
   C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "var(--ide-peach)", done: "Every job held" },
   G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "var(--ide-sky)", done: "Every gear row bought" },
   D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "var(--ide-mauve)", done: "Every capital row bought" },
+  W: { label: "Company", title: "Run the company", hint: "Users, team, uptime", glow: "var(--ide-teal, var(--ide-green))", done: "" },
 }
 
 function OwnedCount({ value }: { value: number }) {
@@ -241,7 +242,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const owned = useGame((s) => s.owned)
   const jobs = useGame((s) => s.jobs)
   const gigs = useGame((s) => s.gigs)
-  const interviews = useGame((s) => s.interviews)
   const gold = useGame((s) => s.gold)
   const buyAmount = useGame((s) => s.buyAmount)
   const setBuyAmount = useGame((s) => s.setBuyAmount)
@@ -252,6 +252,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const buyJob = useGame((s) => s.buyJob)
   const buy = useGame((s) => s.buy)
   const clearGig = useGame((s) => s.clearGig)
+  const isFounder = useGame((s) => s.founder.track === "founder")
+  const dayJob = useGame((s) => s.returnToLadder)
+  const product = useGame((s) => s.profile.product)
 
   const [picked, setPickedState] = useState<ShopTab | null>(() => readSavedShopTab())
   const setPicked = (tab: ShopTab | null) => {
@@ -279,13 +282,16 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     setLastPhase(phase)
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
-  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, interviews }
+  const companyOpen = useFeatureOpen("studio")
+  const forkPending = useForkPending()
+  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
     C: jobBoardUnlocked(gates),
     G: equipmentOpen({ xpTotal, equipment }),
     D: capitalUnlocked(gates),
+    W: companyOpen,
   }
   // Closed boards stay out of the bar, except the next one to open, which waits there dimmed.
   const nextLockedTab = (["G", "B", "C", "D"] as const).find((id) => !unlocked[id]) ?? null
@@ -304,20 +310,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     setSkillView("tenx")
     setPicked("A")
   })
-  // A Hire closes the whiteboard here, on the job's row. Every setter below is stable, so the first render's closure holds.
-  useEffect(
-    () =>
-      onStudioHire((jobId) => {
-        const row = `job:${jobId}`
-        jumpRow.current = row
-        setPinnedRow(row)
-        setPicked("C")
-        setJumpSeq((n) => n + 1)
-        setFlashKey(row)
-        window.setTimeout(() => setFlashKey((current) => (current === row ? null : current)), 1600)
-      }),
-    [],
-  )
+  useSurface("company", () => setPicked("W"))
   useSurface("boardGear", () => {
     seeFeature("boardGear")
     setPicked("G")
@@ -337,7 +330,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     (row) => pin("gear", row.id),
   )
   // The banner speaks for the open panel only: its closed board, or its first row not bought yet.
-  const next = nextUnlock({ ...gates, equipment, money, xp }, tab)
+  const next = tab === "W" ? null : nextUnlock({ ...gates, equipment, money, xp }, tab)
   const goldOpen = goldSectionOpen({ xpTotal, gold })
   // The Skills tab splits in two once the first 10x dev skill is in reach: the 104 skills, or the perks.
   const tenx = tab === "A" && goldOpen && skillView === "tenx"
@@ -365,10 +358,10 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
+    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   const [listOverflows, setListOverflows] = useState(false)
-  const showJumpEnd = unlocked[tab] && listOverflows
+  const showJumpEnd = tab !== "W" && unlocked[tab] && listOverflows
 
   function scrollToLastAvailable() {
     const list = listRef.current
@@ -406,7 +399,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     if (shownScope.current === rowScope) return
     shownScope.current = rowScope
     const list = listRef.current
-    if (list) list.scrollTop = list.scrollHeight
+    if (list) list.scrollTop = rowScope === "W" ? 0 : list.scrollHeight
   }, [rowScope])
 
   useLayoutEffect(() => {
@@ -486,7 +479,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
       <div className="shop-head">
         <div className="shop-head-top">
           <p className="eyebrow">
-            {tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
+            {tab === "W" ? "Company · Users" : tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
           </p>
           {showJumpEnd ? (
             <button
@@ -521,7 +514,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           if (locked && id !== nextLockedTab) return null
           const affordable =
             !locked &&
-            ((id === "A" &&
+            ((id === "W" && forkPending) ||
+              (id === "A" &&
               (skillRows.some((row) => canAfford(xp, skillCost(row, ownedCount(skills, row.id)))) ||
                 visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)))) ||
               (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
@@ -553,6 +547,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         })}
       </div>
 
+      {tab === "W" ? null : (
       <button
         type="button"
         className="next-unlock"
@@ -576,6 +571,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           <span className="next-needs">{PHASE_TAB[tab].done}</span>
         )}
       </button>
+      )}
 
       {tab === "A" && goldOpen ? (
         <div className="era-tabs era-sub" role="tablist" aria-label="Skill kinds">
@@ -639,6 +635,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         showArrow={false}
         onOverflowChange={setListOverflows}
       >
+        {tab === "W" ? <CompanyTab /> : null}
+
         {tab === "A" && !tenx ? (
           <>
             {skillRows.map((row, index) => {
@@ -777,9 +775,18 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
 
         {tab === "C" ? (
           unlocked.C ? (
-            jobRows.map((job, index) => {
+            <>
+              {isFounder ? (
+                <div className="fork-note" data-testid="founder-jobs">
+                  <p>{`A founder doesn't take a salary. Your jobs stay on the résumé, and ${product} pays the bills.`}</p>
+                  <button type="button" data-testid="take-day-job" onClick={() => dayJob()}>
+                    Take a day job again
+                  </button>
+                </div>
+              ) : null}
+            {jobRows.map((job, index) => {
               const status = jobState(gates, job)
-              const afford = status === "ready" && canAfford(xp, job.xpCost)
+              const afford = !isFounder && status === "ready" && canAfford(xp, job.xpCost)
               const key = `job:${job.id}`
               return (
                 <Offer
@@ -796,21 +803,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   unlock={["More XP"]}
                   title={job.name}
                   actions={
-                    status === "interview" ? (
-                      <button
-                        type="button"
-                        data-testid="job-interview"
-                        onPointerEnter={() => void loadStudio()}
-                        onFocus={() => void loadStudio()}
-                        onClick={() => openStudio(interviewForJob(job.id)?.id)}
-                      >
-                        Interview
-                      </button>
-                    ) : (
-                      <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                        {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
-                      </button>
-                    )
+                    <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
+                    </button>
                   }
                 >
                   <Stats
@@ -823,7 +818,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   />
                 </Offer>
               )
-            })
+            })}
+            </>
           ) : (
             <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />
           )

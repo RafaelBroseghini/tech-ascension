@@ -6,8 +6,14 @@ import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { TEMP_TARGETS } from "../game/mods.ts"
 import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
-import { clickPaysMoney, PHASE_NAME, stageOf } from "../game/phase.ts"
+import { servingOf } from "../game/globe/load.ts"
+import { productRevenueOf } from "../game/globe/track.ts"
+import { totalUsers, WORLD_TARGET } from "../game/globe/world.ts"
+import { clickPaysMoney, PHASE_NAME } from "../game/phase.ts"
+import { openSurface } from "../game/surfaces.ts"
 import { useGame } from "../game/store.ts"
+import { FullTimeCell } from "./FullTime.tsx"
+import { useFeatureOpen } from "./useFeature.ts"
 
 // The bar follows XP and the clock every tick; the buttons on its right do not.
 const CornerActionsMemo = memo(CornerActions)
@@ -20,14 +26,20 @@ export function MetricsBar() {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
+  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
-  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults }))
   // clickPower is $1 before any gear, but a click does not pay that dollar until the first job.
   const paidClick = clickPaysMoney({ jobs }) ? rates.click : 0
-  const stage = stageOf({ skills, owned, jobs, gigs })
+  const worldOpen = useFeatureOpen("studio")
+  const company = useGame((state) => state.company)
+  const users = totalUsers(company.users)
+  const incidents = company.incidents.length
+  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, founder)
+  const product = useGame((state) => state.profile.product)
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
 
@@ -42,10 +54,10 @@ export function MetricsBar() {
           <dt>Phase {phase}</dt>
           <dd data-testid="phase">{PHASE_NAME[phase]}</dd>
         </div>
-        {rates.idle > 0 ? (
+        {perSec > 0 ? (
           <div className="metric-in m-rate">
             <dt>$ / Second</dt>
-            <dd data-testid="per-sec">${formatNumber(rates.idle)}</dd>
+            <dd data-testid="per-sec">${formatNumber(perSec)}</dd>
           </div>
         ) : null}
         {clickPaysMoney({ jobs }) ? (
@@ -94,10 +106,21 @@ export function MetricsBar() {
             </div>
           )
         })}
-        <div className="m-stage">
-          <dt>Stage</dt>
-          <dd data-testid="stage-name">{stage?.name ?? "High school"}</dd>
-        </div>
+        {worldOpen ? (
+          <div className={incidents > 0 ? "m-world is-hot" : "m-world"}>
+            <dt>{incidents > 0 ? `${product} · ${incidents} incident${incidents === 1 ? "" : "s"}` : product}</dt>
+            <dd>
+              <button type="button" className="m-world-open" data-testid="world-users" title={product} onClick={() => openSurface("studio")}>
+                {users > 0 ? formatNumber(Math.floor(users), 1000) : "0"}
+                <small> / {formatNumber(WORLD_TARGET, 1000)}</small>
+                <span className="m-world-bar" aria-hidden>
+                  <i style={{ width: `${Math.min(100, Math.max(users > 0 ? 2 : 0, (users / WORLD_TARGET) * 100))}%` }} />
+                </span>
+              </button>
+            </dd>
+          </div>
+        ) : null}
+        <FullTimeCell />
       </dl>
       <CornerActionsMemo />
     </header>

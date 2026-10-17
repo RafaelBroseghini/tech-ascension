@@ -10,11 +10,8 @@
  * - They take every gig and job as soon as it opens, and buy a first copy of anything as soon as they can.
  * - They buy a second copy of a skill, gear row or capital row only when it pays for itself within
  *   `paybackSeconds`, best payback first. That one number is how well they reinvest.
- * - A job with a whiteboard interview waits one visit: the interview opens on one visit and is passed at the start
- *   of the next. Interviews 6 to 12 fail once first, so that visit also pays one No hire penalty in spendable XP.
  * It leaves out random events and click boosts, so the answer is a plain estimate with no luck in it.
  */
-import { INTERVIEWS } from "../data/studio/challenges.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
@@ -34,9 +31,7 @@ import {
 } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { ownsEverything } from "./nextUnlock.ts"
-import { canBuyJob, capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigState, jobBoardUnlocked, jobState } from "./phase.ts"
-import { NO_RECORD, noHirePenalty } from "./studio/interviews.ts"
-import type { InterviewRecord } from "./studio/interviews.ts"
+import { canBuyJob, capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigState, jobBoardUnlocked } from "./phase.ts"
 
 const DAY_SECONDS = 86_400
 
@@ -128,16 +123,9 @@ export type PaceResult = {
   clicksPerWallSecond: number
 }
 
-/** Interviews from this one on (1-based, in job order) fail their first attempt in the model. */
-export const FIRST_FAILED_INTERVIEW = 6
-
 type Sim = Omit<Progress, "jobs" | "gigs"> & {
   jobs: number[]
   gigs: number[]
-  interviews: Record<string, InterviewRecord>
-  /** Interviews waiting to be sat, keyed by id, with the visit they opened on. */
-  waiting: Map<string, number>
-  visit: number
 }
 
 function freshSim(): Sim {
@@ -151,9 +139,6 @@ function freshSim(): Sim {
     owned: {},
     jobs: [],
     gigs: [],
-    interviews: {},
-    waiting: new Map(),
-    visit: 0,
   }
 }
 
@@ -193,29 +178,10 @@ function clearGigs(s: Sim): boolean {
   return any
 }
 
-/** An interview that opened on an earlier visit is passed now, after one No hire for the hard ones. */
-function sitInterviews(s: Sim) {
-  for (const [id, opened] of s.waiting) {
-    if (opened >= s.visit) continue
-    const index = INTERVIEWS.findIndex((row) => row.id === id)
-    const interview = INTERVIEWS[index]
-    if (!interview) continue
-    const failsFirst = index + 1 >= FIRST_FAILED_INTERVIEW
-    if (failsFirst) s.xp = Math.max(0, s.xp - noHirePenalty(interview))
-    s.interviews[id] = { ...NO_RECORD, verdict: "hire", attempts: failsFirst ? 2 : 1, design: interview.reference }
-    s.waiting.delete(id)
-  }
-}
-
 /** A job pays salary and, for the teaching ones, XP, so it is taken the moment it can be afforded. */
 function takeJobs(s: Sim): boolean {
   let any = false
   for (const job of JOB_TIERS) {
-    if (jobState(s, job) === "interview") {
-      const interview = INTERVIEWS.find((row) => row.jobId === job.id)
-      if (interview && !s.waiting.has(interview.id)) s.waiting.set(interview.id, s.visit)
-      continue
-    }
     if (!canBuyJob(s, job)) continue
     s.xp -= job.xpCost
     s.jobs.push(job.id)
@@ -341,13 +307,11 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
 
   for (let cycle = 0; cycle * cad.cycleSeconds < maxSeconds; cycle++) {
     t = cycle * cad.cycleSeconds
-    s.visit = cycle
     if (cycle > 0) {
       // Coming back pays the time away, up to the cap, at the rates held when they left.
       const away = Math.min(cad.awaySeconds, OFFLINE_CAP_SECONDS)
       earn(s, idlePerSec(s) * away, xpPerSec(s) * away)
     }
-    sitInterviews(s)
     shop(s, cad, paybackSeconds)
     note()
     if (ownsEverything(s)) return result(true)

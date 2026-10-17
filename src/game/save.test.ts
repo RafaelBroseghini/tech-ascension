@@ -1,54 +1,35 @@
 import { describe, expect, it } from "vitest"
-import { INTERVIEWS } from "../data/studio/challenges.ts"
 import { freshSave, hydrate, parseSave } from "./save.ts"
 
-const hello = INTERVIEWS[0]!
+describe("save: a block from the retired whiteboard", () => {
+  it("still loads, and its interview block is dropped", () => {
+    const raw = { ...freshSave(1_000), interviews: { "hello-server": { verdict: "hire", attempts: 1, design: { nodes: [], edges: [] } } } }
+    const text = JSON.stringify(raw)
+    expect(parseSave(JSON.parse(text))).not.toHaveProperty("interviews")
+    expect(hydrate(text, 1_000).save).not.toHaveProperty("interviews")
+  })
+})
 
-describe("save: interviews", () => {
-  it("interviews round-trip", () => {
-    const interviews = {
-      [hello.id]: {
-        verdict: "hire" as const,
-        attempts: 2,
-        design: hello.reference,
-        asked: ["traffic" as const, "budget" as const],
-        nudges: ["success" as const],
-        hints: ["Add an API server (Hamster Wheel API)."],
-        offer: { band: "bottom" as const, bonus: 0 },
-        stars: 2 as const,
-        studied: true,
-      },
-      "3-tier-app": { verdict: "noHire" as const, attempts: 1, design: INTERVIEWS[1]!.naive[0].design, asked: [], nudges: [], hints: [], stars: 0 as const, studied: false },
-    }
-    const text = JSON.stringify({ ...freshSave(1_000), interviews })
-    expect(parseSave(JSON.parse(text))?.interviews).toEqual(interviews)
-    expect(hydrate(text, 1_000).save.interviews).toEqual(interviews)
+describe("save: the company's users", () => {
+  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "oo", day: 3 }
+
+  it("keeps the block, and drops one from before users and regions without wiping the career", () => {
+    const kept = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company })))
+    expect(kept?.company).toEqual(company)
+    const old = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company: { popularity: 40, leads: 2, uptime: "oo", day: 3 } })))
+    expect(old).not.toBeNull()
+    expect(old).not.toHaveProperty("company")
   })
 
-  it("an unknown interview id is dropped", () => {
-    const raw = {
-      ...freshSave(1_000),
-      interviews: {
-        "leetcode-hard": { verdict: "hire", attempts: 1, design: hello.reference },
-        [hello.id]: { verdict: "hire", attempts: 1, design: hello.reference },
-      },
-    }
-    expect(Object.keys(parseSave(raw)?.interviews ?? {})).toEqual([hello.id])
-  })
-
-  it("drops a record with an unknown verdict and empties a broken design", () => {
-    const raw = {
-      ...freshSave(1_000),
-      interviews: {
-        [hello.id]: { verdict: "maybe", attempts: 1, design: hello.reference },
-        "3-tier-app": { verdict: "hire", attempts: -4, design: { nodes: [{ id: "x", kind: "mainframe", replicas: 1 }], edges: "nope" } },
-      },
-    }
-    expect(parseSave(raw)?.interviews).toEqual({ "3-tier-app": { verdict: "hire", attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [], stars: 0, studied: false } })
-  })
-
-  it("leaves the block out when there is nothing in it", () => {
-    expect(parseSave(freshSave(1_000))).not.toHaveProperty("interviews")
-    expect(parseSave({ ...freshSave(1_000), interviews: { nope: {} } })).not.toHaveProperty("interviews")
+  it("grows the company while away and pays the win's multiplier once", () => {
+    const near = Object.fromEntries([["americas-east", 0.04], ["americas-west", 0.043], ["south-america", 0.055], ["europe", 0.093], ["africa", 0.174], ["asia", 0.589], ["oceania", 0.006]].map(([id, share]) => [id, (6.999e9 * (share as number))]))
+    const saved = { ...freshSave(0), gigs: [1, 2, 3], company: { ...company, users: near, resistance: 100 }, equipment: { "110": 40, "109": 40 } }
+    const first = hydrate(JSON.stringify(saved), 24 * 3_600_000)
+    expect(first.save.company?.won).toBe(true)
+    expect(first.save.foreverMult).toBeCloseTo(1.25)
+    expect(first.toast?.split("\n")[0]).toContain("Seven billion users")
+    const again = hydrate(JSON.stringify(first.save), 25 * 3_600_000)
+    expect(again.save.foreverMult).toBeCloseTo(1.25)
+    expect(again.toast ?? "").not.toContain("Seven billion users")
   })
 })

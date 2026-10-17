@@ -21,6 +21,7 @@ import { HeroMoney } from "./HeroMoney.tsx"
 import { DeskCat } from "./DeskCat.tsx"
 import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
+import { MiniGlobe } from "./globe/MiniGlobe.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
@@ -367,6 +368,7 @@ export function Stage() {
       <IdeChrome />
       <StickyNoteMemo />
       <DeskCatMemo />
+      <MiniGlobe />
       <span className="era-sweep" aria-hidden="true" />
       <div className="boost-chip-slot" aria-live="polite">
         {boosted ? <BoostChip mult={mult} /> : null}

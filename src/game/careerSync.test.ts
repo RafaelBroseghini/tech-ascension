@@ -6,7 +6,7 @@ import { freshCareer, freshSave } from "./save.ts"
 
 const rows = (...ids: string[]) => ids.map((id) => featureById(id) as FeatureRow)
 const empty = { unlocked: [], fresh: [], reveals: [] }
-const base = { skills: {}, equipment: {}, owned: {}, jobs: [] as number[], gigs: [] as number[], gold: [] as number[], interviews: {}, xpTotal: 0, peakMoney: 0 }
+const base = { skills: {}, equipment: {}, owned: {}, jobs: [] as number[], gigs: [] as number[], gold: [] as number[], xpTotal: 0, peakMoney: 0 }
 
 describe("purchase notes", () => {
   it("notes first copies, clears, hires, perks, eras and phases, and nothing for a repeat", () => {

@@ -2,8 +2,6 @@ import { EQUIPMENT, SKILL_TIERS } from "../data/phases.ts"
 import { ownedCount } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { linkedOutProfile, type LinkedOutPost, type RecruiterInMail } from "./linkedout.ts"
-import { offerLine } from "./studio/interviews.ts"
-import type { Band } from "./studio/interviews.ts"
 
 export type ResumeEntry = {
   title: string
@@ -11,8 +9,6 @@ export type ResumeEntry = {
   when: string
   place: string
   summary: string
-  /** The offer line for a job whose interview carried one. */
-  offer: string | null
 }
 
 /** A company stay. One role is flat; several roles share the company header. */
@@ -44,8 +40,6 @@ type Owners = {
   gigs: readonly number[]
   /** The career's handle (the store's `profile.handle`), the name the résumé goes by. */
   handle?: string
-  /** The band of the offer each job's interview earned, by job id. */
-  bands?: Readonly<Record<number, Band>>
 }
 
 function when(start: string, end: string, duration: string): string {
@@ -68,7 +62,7 @@ function toolNames(equipment: OwnedMap): string[] {
 export function resumeDocument(owned: Owners): ResumeDoc | null {
   const skills = skillNames(owned.skills)
   const tools = toolNames(owned.equipment)
-  const profile = linkedOutProfile({ jobs: owned.jobs, gigs: owned.gigs, skills, bands: owned.bands })
+  const profile = linkedOutProfile({ jobs: owned.jobs, gigs: owned.gigs, skills })
   if (!profile && skills.length === 0 && tools.length === 0) return null
 
   const experience: ResumeGroup[] = (profile?.experience ?? []).map((stint) => {
@@ -80,7 +74,6 @@ export function resumeDocument(owned: Owners): ResumeDoc | null {
       when: when(role.startLabel, role.endLabel, role.duration),
       place: stint.place,
       summary: role.summary,
-      offer: role.offer ? offerLine(role.offer) : null,
     }))
     if (entries.length === 1 && entries[0]) {
       return { title: entries[0].title, meta: null, place: null, entries }
@@ -99,7 +92,6 @@ export function resumeDocument(owned: Owners): ResumeDoc | null {
     when: when(project.startLabel, project.endLabel, project.duration),
     place: project.place,
     summary: project.summary,
-    offer: null,
   }))
 
   return {
@@ -121,7 +113,6 @@ function entryLines(entry: ResumeEntry, depth: "###" | "####"): string[] {
   const lines = [`${depth} ${entry.title}`]
   if (entry.orgLine) lines.push(entry.orgLine)
   lines.push(entry.when, entry.place, "", entry.summary)
-  if (entry.offer) lines.push("", `*${entry.offer}*`)
   lines.push("")
   return lines
 }

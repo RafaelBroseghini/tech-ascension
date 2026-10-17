@@ -13,7 +13,6 @@
 | The desk band and the shop-era preview that snaps back | `src/game/ide.ts` |
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
-| The desk backdrop: the opener of the interview that is open, else nothing | `src/components/DeskDiagram.tsx`, `src/components/studio/status.ts` (`nextInterview`) |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
@@ -38,14 +37,14 @@
 | Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
-| Interview catalog: the vague opener, pass bar, nudges and the reference and naive designs of each interview | `src/data/studio/challenges.ts` |
-| Interview questions: the nine questions, their answers written from the scenario, and which targets each puts on the meters | `src/data/studio/questions.ts` |
-| Interview record (asked, nudges, hints, offer, best), the offer and its signing bonus, practice, and the save parser | `src/game/studio/interviews.ts` (`offerFor`, `practice`, `parseInterviews`; the store actions `askInterviewer`, `takeNudge`, `takeHint`, `submitWhiteboard` are in `src/game/store.ts`) |
-| Paid hints: the next missing piece of the reference | `src/game/studio/hints.ts` |
-| Whiteboard entry: open state, the lazy chunk and its preload, the host portal | `src/components/studio/launcher.ts`, `src/components/studio/StudioHost.tsx` |
-| Whiteboard screen (its own chunk): layout, board, nodes, traffic canvas, palette, brief, questions and hints, sticky notes, run meters, interview list | `src/components/studio/` (`Studio.tsx`, `Board.tsx`, `ComponentNode.tsx`, `TrafficLayer.tsx`, `Palette.tsx`, `Brief.tsx`, `Ask.tsx`, `Notes.tsx`, `RunMeters.tsx`, `MeterList.tsx`, `Readout.tsx`, `meters.ts`, `ChallengeList.tsx`), `src/styles/studio.css` |
-| Whiteboard board state (one sheet per interview, kept across closing; writes the game store only on Submit) | `src/components/studio/boardStore.ts` |
-| A design's cells and traffic routes, and the traffic dot math and loop | `src/components/studio/diagram.ts`, `src/components/studio/traffic.ts` |
+| Your company: the activity-bar button, the shop's Company tab, and the burst that drives the globe | `src/components/globe/CompanyTab.tsx`, `src/components/globe/traffic.ts` |
+| The globe: three.js scene, canvas (a lazy chunk), the small one on the desk (`MiniGlobe.tsx`, drawn `compact`) and the numbers pane in the details view | `src/components/globe/` (`GlobeScene.ts`, `GlobeCanvas.tsx`, `MiniGlobe.tsx`, `GlobePane.tsx`, `notes.ts`, `feed.ts` and `GlobeFeed.tsx` for the desk globe's one-line feed, `nextStep.ts` for the world pane's lead line) |
+| Users, incidents and the win: regions, seeds, reach, resistance, the world's rules (the `INCIDENTS` table) and calibration | `src/game/globe/world.ts`, `src/game/globe/growth.ts` (`stepCompany`, `settleGrowth`) |
+| Serving: demand, capacity, drops, lost dollars and health in one `servingOf` | `src/game/globe/load.ts` |
+| The company's actions (buy a region, deploy or switch a PoP, respond to an incident) as pure patches the store commits | `src/game/globe/actions.ts` |
+| What the globe draws of the company, and the burst of requests its users send | `src/game/globe/company.ts`, `src/game/globe/wave.ts` |
+| The world pane: users against the target, regions, resistance and the incidents to Respond to | `src/components/globe/WorldPanel.tsx` |
+| Globe tooltip: the city rows, the trip time and the tally of a burst | `src/game/globe/tip.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |

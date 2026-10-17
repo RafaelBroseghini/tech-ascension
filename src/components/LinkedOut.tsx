@@ -2,9 +2,9 @@ import { SKILL_TIERS } from "../data/phases.ts"
 import { ownedCount } from "../game/economy.ts"
 import { linkedOutProfile } from "../game/linkedout.ts"
 import type { CompanyStint, LinkedRole, SideProject } from "../game/linkedout.ts"
+import { productRole } from "../game/globe/hires.ts"
 import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
-import { bandsByJob, offerLine } from "../game/studio/interviews.ts"
 import { useMemo, useState } from "react"
 
 const VISIBLE = 5
@@ -23,11 +23,6 @@ function RoleBody({ role, place, companyLine }: { role: LinkedRole; place: strin
       </span>
       <span className="lo-meta">{place}</span>
       <p className="lo-summary">{role.summary}</p>
-      {role.offer ? (
-        <span className="lo-meta" data-testid="lo-offer" data-band={role.offer}>
-          {offerLine(role.offer)}
-        </span>
-      ) : null}
     </>
   )
 }
@@ -89,6 +84,21 @@ function Project({ project }: { project: SideProject }) {
   )
 }
 
+/** The product on the résumé: what the win made of the player, or the founder's job while the company is theirs. */
+function ProductRole({ role, product, ended }: { role: string; product: string; ended: boolean }) {
+  return (
+    <li className="lo-stint" data-kind="product">
+      <span className="lo-logo" style={{ background: "#c0392b" }} aria-hidden="true">
+        {initialOf(product)}
+      </span>
+      <div className="lo-stint-body">
+        <strong className="lo-title">{role}</strong>
+        <span className="lo-meta">{ended ? "Seven billion users" : "Present"}</span>
+      </div>
+    </li>
+  )
+}
+
 function ShowAll({ hidden, open, onOpen }: { hidden: number; open: boolean; onOpen: () => void }) {
   if (hidden <= 0 || open) return null
   return (
@@ -103,13 +113,15 @@ export function LinkedOut() {
   const gigs = useGame((state) => state.gigs)
   const skills = useGame((state) => state.skills)
   const handle = useGame((state) => state.profile.handle)
-  const interviews = useGame((state) => state.interviews)
+  const product = useGame((state) => state.profile.product)
+  const ending = useGame((state) => state.company.ending ?? null)
+  const isFounder = useGame((state) => state.founder.track === "founder")
   const [experienceOpen, setExperienceOpen] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const profile = useMemo(() => {
     const names = SKILL_TIERS.filter((row) => ownedCount(skills, row.id) > 0).map((row) => row.name)
-    return linkedOutProfile({ jobs, gigs, skills: names, bands: bandsByJob(interviews) })
-  }, [jobs, gigs, skills, interviews])
+    return linkedOutProfile({ jobs, gigs, skills: names })
+  }, [jobs, gigs, skills])
 
   if (!profile) return null
 
@@ -143,6 +155,7 @@ export function LinkedOut() {
         <section className="lo-block" aria-label="Experience">
           <h4>Experience</h4>
           <ol className="lo-timeline">
+            {ending || isFounder ? <ProductRole role={productRole(ending, product)} product={product} ended={ending !== null} /> : null}
             {experience.map((stint) => (
               <Stint key={`${stint.orgId}-${stint.roles[0]?.id ?? stint.org}`} stint={stint} />
             ))}

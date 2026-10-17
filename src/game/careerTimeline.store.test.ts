@@ -3,6 +3,7 @@ import { careerJson } from "./careerLog.ts"
 import { bootCareer } from "./careerSync.ts"
 import { readCareerText } from "./ledger.ts"
 import { freshSave, hydrate, parseSave } from "./save.ts"
+import { productsOf } from "./identity.ts"
 import { persistNow, useGame } from "./store.ts"
 
 const types = () => useGame.getState().journal.entries.map((entry) => `${entry.type}:${entry.ref}`)
@@ -128,11 +129,18 @@ describe("career timeline", () => {
     expect(useGame.getState().rerollProfile()).toBe(true)
     expect(useGame.getState().profile.chosen).toBe(false)
     expect(useGame.getState().profile.handle).not.toBe(first.handle)
+    expect(productsOf(useGame.getState().profile.handle)).toContain(useGame.getState().profile.product)
+    const before = useGame.getState().profile
+    expect(useGame.getState().rerollProduct()).toBe(true)
+    expect(useGame.getState().profile.handle).toBe(before.handle)
+    expect(useGame.getState().profile.product).not.toBe(before.product)
     const kept = useGame.getState().profile
     useGame.getState().keepProfile()
     expect(useGame.getState().profile).toEqual({ ...kept, chosen: true })
     expect(useGame.getState().rerollProfile()).toBe(false)
+    expect(useGame.getState().rerollProduct()).toBe(false)
     expect(useGame.getState().profile.handle).toBe(kept.handle)
+    expect(useGame.getState().profile.product).toBe(kept.product)
     persistNow()
     const saved = parseSave(JSON.parse(readCareerText() ?? "null"))
     expect(saved?.profile).toEqual({ ...kept, chosen: true })

@@ -83,6 +83,8 @@ describe("the career log rows", () => {
       phase: "phase:C",
       era: "era:mid",
       perk: "gold:1",
+      incident: "incident:ddos",
+      world: "world:1m",
       event: "event:1",
       review: "review:1",
       milestone: "milestone:money-1337",

@@ -1,5 +1,4 @@
 import { gigById, jobById } from "./economy.ts"
-import type { Band } from "./studio/interviews.ts"
 
 /**
  * A LinkedIn-shaped career, built from the jobs and gigs the player actually holds.
@@ -122,8 +121,6 @@ export type LinkedRole = {
   endLabel: string
   duration: string
   summary: string
-  /** Where the offer for this job landed in the salary band, when its interview carried one. */
-  offer?: Band
 }
 
 export type CompanyStint = {
@@ -291,8 +288,6 @@ export function linkedOutProfile(input: {
   jobs: readonly number[]
   gigs: readonly number[]
   skills?: readonly string[]
-  /** The band of the offer each job's interview earned, by job id. */
-  bands?: Readonly<Record<number, Band>>
 }): LinkedOutProfile | null {
   const jobs = [...new Set(input.jobs)].filter((id) => jobById(id) && POSTS[id])
   const gigs = [...new Set(input.gigs)].filter((id) => gigById(id))
@@ -305,8 +300,7 @@ export function linkedOutProfile(input: {
       const post = POSTS[id]
       const dated = jobDates.get(id)
       if (!job || !post || !dated) return null
-      const band = input.bands?.[id]
-      return { post, role: { ...toRole(`job:${id}`, job.name, post.employment, dated, BLURBS[id] ?? job.name), ...(band ? { offer: band } : {}) } }
+      return { post, role: toRole(`job:${id}`, job.name, post.employment, dated, BLURBS[id] ?? job.name) }
     })
     .filter((row): row is { post: (typeof POSTS)[number]; role: LinkedRole } => row !== null)
     .sort((a, b) => b.role.end.year - a.role.end.year || b.role.end.month - a.role.end.month || b.role.start.year - a.role.start.year)

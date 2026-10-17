@@ -30,10 +30,21 @@ import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
-import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, jobState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
+import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./globe/growth.ts"
+import * as companyActions from "./globe/actions.ts"
+import type { CompanyPatch } from "./globe/actions.ts"
+import { totalUsers } from "./globe/world.ts"
+import { canGoFullTime, FRESH_FOUNDER, goFullTime as startFullTime, productRevenueOf, forkOpen, raiseBridge as raiseFounderBridge, returnToLadder as returnFounderToLadder, trackFactsOf, winMultOf } from "./globe/track.ts"
+import type { FounderState } from "./globe/track.ts"
+import type { CompanyState } from "./globe/growth.ts"
+import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
+import { winNote } from "./globe/hires.ts"
+import { servingOf } from "./globe/load.ts"
+import type { Footprint } from "./globe/footprint.ts"
 import type { SaveData } from "./save.ts"
 import {
   creditMoney,
@@ -59,17 +70,8 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
-import { randomHandle, randomIdentity } from "./identity.ts"
+import { randomHandle, randomIdentity, randomProduct } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
-import { betterBest, bestOf, copyDesign, interviewById, interviewPassed, isPass, NO_RECORD, noHirePenalty, offerFor, practice, withRecord } from "./studio/interviews.ts"
-import type { InterviewLog, PracticeRun, Submission } from "./studio/interviews.ts"
-import { starsOf } from "./studio/score.ts"
-import type { Stars, Verdict } from "./studio/score.ts"
-import type { Design, TargetName } from "./studio/types.ts"
-import { nextHint } from "./studio/hints.ts"
-import { QUESTION_FOR, questionsFor } from "../data/studio/questions.ts"
-import type { QuestionId } from "../data/studio/questions.ts"
-import type { Interview } from "../data/studio/challenges.ts"
 
 const SAVE_EVERY_MS = 4_000
 
@@ -167,10 +169,14 @@ type GameState = {
   journal: CareerJournal
   /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
   profile: SavedIdentity
-  /** Whiteboard interviews submitted, keyed by interview id. */
-  interviews: InterviewLog
-  /** The latest submission this session. Not saved. */
-  lastInterview: Submission | null
+  /** Users by region, the world's resistance, its incidents and the uptime bars for the company on the globe. */
+  company: CompanyState
+  /** The regions bought and the cities with a point of presence. */
+  footprint: Footprint
+  /** The fork: ladder or founder, the bridges raised, and the run-out choice. */
+  founder: FounderState
+  /** The "Go full-time?" modal is on screen. Not saved; the red button opens it again. */
+  forkModal: boolean
   unlocked: FeatureId[]
   fresh: FeatureId[]
   returns: number
@@ -182,40 +188,30 @@ type GameState = {
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
   buyJob: (jobId: number) => boolean
-  /**
-   * Run a design past the interview for a job at `interview`, once. A Hire or Strong hire opens the job for good; a
-   * No hire costs `noHirePenalty` in spendable XP (never below 0) and keeps the design for the next try. Null when the
-   * interview is unknown or its job is not at `interview`.
-   */
-  submitWhiteboard: (interviewId: string, design: Design) => Verdict | null
-  /**
-   * Run a design past an interview the career has passed, with no effect on the career: no verdict, attempt, XP, job or
-   * journal entry. A passing run that beats the interview's best (cheapest, then fastest) is kept as `best`. Null while
-   * the interview is unknown or not passed.
-   */
-  practiceWhiteboard: (interviewId: string, design: Design) => PracticeRun | null
-  /**
-   * Ask the interviewer a question: free, unlimited, and once asked it stays answered. Allowed while the interview is
-   * open or passed. False for an unknown interview, a question it does not ask, or an interview not reached yet.
-   */
-  askInterviewer: (interviewId: string, questionId: QuestionId) => boolean
-  /** Take the nudge about a target: free, and it stays shown. False when the interview has no nudge for that target or is not reached. */
-  takeNudge: (interviewId: string, target: TargetName) => boolean
-  /**
-   * Take the next paid hint for `design`, only while the interview is open. It lowers the offer to the bottom of the
-   * band if the interview is passed. Returns the hint line (the same line again if it was already taken), or null when
-   * the board covers the reference or the interview is not open.
-   */
-  takeHint: (interviewId: string, design: Design) => string | null
-  /**
-   * Look at the engineers' board for a passed interview. Marks the interview studied and returns the reference design;
-   * null while the interview is unknown or not passed. It changes nothing else in the career.
-   */
-  studyReference: (interviewId: string) => Design | null
-  /** Record a pass now, bypassing every gate (tests and the harness). False for an unknown or already passed id. */
-  forceInterview: (interviewId: string) => boolean
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
   buyGold: (goldId: number) => boolean
+  /** Buy a region with money. False when it is unknown, owned, or unaffordable. */
+  buyRegion: (regionId: string) => boolean
+  /** Deploy a point of presence in a city of a region you own, for its cost in money. */
+  deployPop: (cityId: string) => boolean
+  /** Switch a deployed point of presence on or off. Its traffic goes to the nearest one still on; the last one on stays on. */
+  setPopActive: (cityId: string, on: boolean) => boolean
+  /** Pays to end an incident now, in minutes of what the company earns. False when the incident is gone or the money is short. */
+  respondIncident: (id: number) => boolean
+  /** Quit the ladder for the product. False before the fork opens, after quitting, or while below the users a return asked for. */
+  goFullTime: () => boolean
+  /** Open the "Go full-time?" modal again from the red button. False before the fork has been offered, or as a founder. */
+  openFork: () => boolean
+  /** Close the modal and keep climbing. Does nothing while the out-of-runway choice is open. */
+  keepClimbing: () => void
+  /** Raise a bridge after running out. False with bridges used up or when not out of runway. */
+  raiseBridge: () => boolean
+  /** Hire a kind of person on the ladder (see `HIRES`), as many as the Buy control allows. False as a founder, in a closed row, or short of the price. */
+  hire: (id: string, amount?: BuyAmount) => boolean
+  /** Take a job again. After running out it gives up the highest job; by choice it keeps them all. False off the founder track. */
+  returnToLadder: () => boolean
+  /** Switch a bought region on or off as a whole. The last region serving stays on. */
+  setRegionActive: (regionId: string, on: boolean) => boolean
   /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
   setBuyAmount: (amount: BuyAmount) => void
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
@@ -247,8 +243,10 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
-  /** Draw another handle from the word lists. Only before the player keeps it; false after. */
+  /** Draw another handle from the word lists, and a product from its animal. Only before the player keeps it; false after. */
   rerollProfile: () => boolean
+  /** Draw another suffix for the product. Only before the player keeps it; false after. */
+  rerollProduct: () => boolean
   /** Keep the current handle for the rest of the career. */
   keepProfile: () => void
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
@@ -293,7 +291,9 @@ function toSave(state: GameState, now: number): SaveData {
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
   save.profile = state.profile
-  if (Object.keys(state.interviews).length > 0) save.interviews = state.interviews
+  save.company = state.company
+  save.footprint = state.footprint
+  if (state.founder.offered || Object.keys(state.founder.hires).length > 0) save.founder = state.founder
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -305,12 +305,6 @@ function toSave(state: GameState, now: number): SaveData {
     save.activeBoost = state.activeBoost
   }
   return save
-}
-
-/** An interview the career has reached: its job waits on the interview, or the interview is passed. */
-function engaged(state: GameState, interview: Interview): boolean {
-  const job = jobById(interview.jobId)
-  return job !== undefined && (jobState(state, job) === "interview" || interviewPassed(state, interview))
 }
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
@@ -346,6 +340,14 @@ function boot() {
 }
 
 const booted = boot()
+
+/** Applies a company action's patch and saves. Spending stamps the clock, as every purchase does. False when it was refused. */
+function commitCompany(patch: CompanyPatch, spends: boolean): boolean {
+  if (!patch) return false
+  useGame.setState(spends ? { ...patch, now: Date.now() } : patch)
+  persistNow()
+  return true
+}
 
 function makePop(state: Pick<GameState, "popSeq">, kind: PopKind, amount: number, label: string) {
   const popSeq = state.popSeq + 1
@@ -442,8 +444,10 @@ export const useGame = create<GameState>((set, get) => ({
   journal: booted.career.journal,
   // A save from before names were drawn is a career already under way: it gets one, kept, with no start card.
   profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
-  interviews: booted.save.interviews ?? {},
-  lastInterview: null,
+  company: booted.save.company ?? FRESH_COMPANY,
+  footprint: booted.save.footprint ?? FRESH_FOOTPRINT,
+  founder: booted.save.founder ?? FRESH_FOUNDER,
+  forkModal: false,
   unlocked: booted.career.unlocked,
   fresh: booted.career.fresh,
   returns: booted.career.returns,
@@ -569,10 +573,55 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
+  hire: (id, amount) => commitCompany(companyActions.hire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
+  buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
+  deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
+  setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),
+  respondIncident: (id) => commitCompany(companyActions.respondIncident(get(), id, earnedPerSec(get())), true),
+  setRegionActive: (regionId, on) => commitCompany(companyActions.setRegionActive(get(), regionId, on), false),
+
+  goFullTime: () => {
+    const state = get()
+    if (!canGoFullTime(state.founder, totalUsers(state.company.users), state.jobs)) return false
+    set({ founder: startFullTime(state.founder), forkModal: false, now: Date.now() })
+    persistNow()
+    return true
+  },
+
+  openFork: () => {
+    const state = get()
+    if (!state.founder.offered || state.founder.track !== "ladder") return false
+    set({ forkModal: true })
+    return true
+  },
+
+  keepClimbing: () => {
+    if (get().forkModal) set({ forkModal: false })
+  },
+
+  raiseBridge: () => {
+    const state = get()
+    const raised = raiseFounderBridge(state.founder, totalUsers(state.company.users))
+    if (!raised) return false
+    set({ founder: raised.founder, money: state.money + raised.cash, now: Date.now() })
+    persistNow()
+    return true
+  },
+
+  returnToLadder: () => {
+    const state = get()
+    const back = returnFounderToLadder(state.founder, totalUsers(state.company.users), state.jobs, state.founder.broke)
+    if (!back) return false
+    set({ founder: back.founder, jobs: back.jobs, now: Date.now(), buyStamp: state.buyStamp + 1 })
+    persistNow()
+    return true
+  },
+
   buyJob: (jobId) => {
     const job = jobById(jobId)
     const state = get()
-    if (!job || !canBuyJob(state, job)) return false
+    // A founder draws no salary and climbs no ladder: taking a job is going back to one.
+    if (!job || state.founder.track === "founder" || !canBuyJob(state, job)) return false
     set({
       // A job costs spendable XP, then a job that teaches pays its lump of XP once, on hire. Lifetime XP rises with the lump.
       xp: Math.max(0, state.xp - job.xpCost) + job.xpLump,
@@ -581,128 +630,6 @@ export const useGame = create<GameState>((set, get) => ({
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
-    })
-    persistNow()
-    return true
-  },
-
-  submitWhiteboard: (interviewId, design) => {
-    const interview = interviewById(interviewId)
-    const job = interview ? jobById(interview.jobId) : undefined
-    const state = get()
-    if (!interview || !job || jobState(state, job) !== "interview") return null
-    const { verdict, result } = practice(interview, design)
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    const attempts = prior.attempts + 1
-    const candidate = bestOf(design, result)
-    const best = isPass(verdict.kind) && betterBest(prior.best, candidate) ? candidate : prior.best
-    // The offer is worked out once, here, from the hints taken so far; a pass closes the interview to further Submits.
-    const offer = prior.offer ?? (isPass(verdict.kind) ? offerFor(verdict.kind, prior.hints.length, job.cps) : undefined)
-    // A retry should not be a guess: the requirement a No hire missed is told for free.
-    const missedAsks = verdict.kind === "noHire" ? verdict.missed.map((m) => QUESTION_FOR[m.target]) : []
-    const stars = Math.max(prior.stars, starsOf(result, interview.targets, verdict)) as Stars
-    const interviews = withRecord(state.interviews, interview.id, {
-      verdict: verdict.kind,
-      attempts,
-      stars,
-      design: copyDesign(design),
-      asked: [...new Set([...prior.asked, ...missedAsks])],
-      ...(best ? { best } : {}),
-      ...(offer ? { offer } : {}),
-    })
-    const penalty = verdict.kind === "noHire" ? Math.min(state.xp, noHirePenalty(interview)) : 0
-    const bonus = prior.offer ? 0 : (offer?.bonus ?? 0)
-    // A pass is logged by the timeline listener from the record; a No hire is logged here, with what it missed.
-    const notes: CareerNote[] =
-      verdict.kind === "noHire"
-        ? [{ type: "interview", ref: `interview:${interview.id}`, data: { verdict: verdict.kind, attempts, missed: verdict.missed.map((m) => m.target).join(","), penalty } }]
-        : []
-    set({
-      xp: state.xp - penalty,
-      money: state.money + bonus,
-      stats: bonus > 0 ? creditMoney(state.stats, bonus, "other") : state.stats,
-      interviews,
-      lastInterview: { interviewId: interview.id, verdict, penalty, offer: isPass(verdict.kind) ? (offer ?? null) : null },
-      now: Date.now(),
-      journal: noted(state.journal, notes, state),
-    })
-    persistNow()
-    return verdict
-  },
-
-  practiceWhiteboard: (interviewId, design) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !interviewPassed(state, interview)) return null
-    const { verdict, result } = practice(interview, design)
-    const prior = state.interviews[interview.id]
-    const candidate = bestOf(design, result)
-    const newBest = isPass(verdict.kind) && betterBest(prior?.best, candidate)
-    const best = newBest ? candidate : prior?.best
-    const stars = starsOf(result, interview.targets, verdict)
-    const bestStars = Math.max(prior?.stars ?? 0, stars) as Stars
-    if (newBest || bestStars !== (prior?.stars ?? 0)) {
-      set({ interviews: withRecord(state.interviews, interview.id, { stars: bestStars, ...(newBest ? { best: candidate } : {}) }) })
-      persistNow()
-    }
-    return { verdict, result, newBest, best, stars, bestStars }
-  },
-
-  studyReference: (interviewId) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !interviewPassed(state, interview)) return null
-    if (!state.interviews[interview.id]?.studied) {
-      set({ interviews: withRecord(state.interviews, interview.id, { studied: true }) })
-      persistNow()
-    }
-    return copyDesign(interview.reference)
-  },
-
-  askInterviewer: (interviewId, questionId) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !engaged(state, interview) || !questionsFor(interview).some((q) => q.id === questionId)) return false
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    if (prior.asked.includes(questionId)) return true
-    set({ interviews: withRecord(state.interviews, interview.id, { asked: [...prior.asked, questionId] }) })
-    persistNow()
-    return true
-  },
-
-  takeNudge: (interviewId, target) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    if (!interview || !engaged(state, interview) || interview.nudges[target] === undefined) return false
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    if (prior.nudges.includes(target)) return true
-    set({ interviews: withRecord(state.interviews, interview.id, { nudges: [...prior.nudges, target] }) })
-    persistNow()
-    return true
-  },
-
-  takeHint: (interviewId, design) => {
-    const interview = interviewById(interviewId)
-    const job = interview ? jobById(interview.jobId) : undefined
-    const state = get()
-    if (!interview || !job || jobState(state, job) !== "interview") return null
-    const hint = nextHint(interview, design)
-    if (hint === null) return null
-    const prior = state.interviews[interview.id] ?? NO_RECORD
-    if (prior.hints.includes(hint)) return hint
-    set({ interviews: withRecord(state.interviews, interview.id, { hints: [...prior.hints, hint] }) })
-    persistNow()
-    return hint
-  },
-
-  forceInterview: (interviewId) => {
-    const interview = interviewById(interviewId)
-    const state = get()
-    const prior = interview ? state.interviews[interview.id] : undefined
-    if (!interview || (prior && isPass(prior.verdict))) return false
-    set({
-      interviews: withRecord(state.interviews, interview.id, { verdict: "hire", design: copyDesign(interview.reference) }),
-      now: Date.now(),
     })
     persistNow()
     return true
@@ -838,12 +765,18 @@ export const useGame = create<GameState>((set, get) => ({
     const advanced = advanceBoostClock(clock, era, now, Math.random)
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder)), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
-    if (gain > 0) stats = creditMoney(stats, gain, "idle")
-    const balance = { money: state.money + gain, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
+    stats = creditMoney(stats, gain + grown.earned, "idle")
+    const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown, { track: state.founder.track, broke: state.founder.broke, away: false })
+    // Running out stops the burn and opens the choice. The first time the product has its users and a job is held, the fork opens too.
+    const founder: FounderState = settled.broke && !state.founder.broke ? { ...state.founder, broke: true } : state.founder
+    const offerFork = !founder.offered && forkOpen(totalUsers(grown.state.users), state.jobs)
+    const foreverMult = settled.foreverMult
+    const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.
     const eventAdvance = advanceEventClock(
       state.nextEventAt,
@@ -883,7 +816,7 @@ export const useGame = create<GameState>((set, get) => ({
       xp: balance.xp,
       xpTotal: balance.xpTotal,
       stats,
-      foreverMult: state.foreverMult,
+      foreverMult,
       tempMults,
       event,
       lastEvent: fired ? event : state.lastEvent,
@@ -895,6 +828,10 @@ export const useGame = create<GameState>((set, get) => ({
       nextReviewAt: reviewAdvance.nextReviewAt,
       previewEra: state.previewEra && now >= state.previewUntil ? null : state.previewEra,
       now,
+      company: grown.state,
+      founder: offerFork ? { ...founder, offered: true } : founder,
+      forkModal: offerFork || state.forkModal,
+      journal: grown.notes.length > 0 ? noted(state.journal, grown.notes, balance) : state.journal,
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
       idleSince: advanced.clock.idleSince,
@@ -920,6 +857,10 @@ export const useGame = create<GameState>((set, get) => ({
       xp: 0,
       xpTotal: 0,
       peakMoney: 0,
+      company: FRESH_COMPANY,
+      footprint: FRESH_FOOTPRINT,
+      founder: FRESH_FOUNDER,
+      forkModal: false,
       stats: emptyStats(),
       skills: {},
       equipment: {},
@@ -953,8 +894,6 @@ export const useGame = create<GameState>((set, get) => ({
       celebrationNonce: 0,
       ...freshCareerSlice(now),
       profile: { ...randomIdentity(), chosen: false },
-      interviews: {},
-      lastInterview: null,
     })
   },
 
@@ -979,7 +918,16 @@ export const useGame = create<GameState>((set, get) => ({
   rerollProfile: () => {
     const { profile } = get()
     if (profile.chosen) return false
-    set({ profile: { handle: randomHandle(Math.random, profile.handle), chosen: false } })
+    const handle = randomHandle(Math.random, profile.handle)
+    set({ profile: { handle, product: randomProduct(handle), chosen: false } })
+    persistNow()
+    return true
+  },
+
+  rerollProduct: () => {
+    const { profile } = get()
+    if (profile.chosen) return false
+    set({ profile: { ...profile, product: randomProduct(profile.handle, Math.random, profile.product) } })
     persistNow()
     return true
   },
@@ -1084,6 +1032,22 @@ syncMusicGate()
 subscribeAdminMode(syncMusicGate)
 useGame.subscribe((state, prev) => {
   if (state.unlocked !== prev.unlocked) syncMusicGate()
+})
+
+/** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
+export function earnedPerSec(state: GameState, at = Date.now()): number {
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.founder)
+}
+
+// The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).
+useGame.subscribe((state, prev) => {
+  if (!state.company.won || prev.company.won) return
+  const toastSeq = state.toastSeq + 1
+  useGame.setState({
+    ...makePop(state, "unlock", 0, "Seven billion users"),
+    celebrationNonce: state.celebrationNonce + 1,
+    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, state.profile.product, winMultOf(state.founder.track)) }, toastSeq }),
+  })
 })
 
 export function persistNow(): void {

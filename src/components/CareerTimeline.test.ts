@@ -89,10 +89,10 @@ describe("reveals", () => {
     useGame.setState({ unlocked: ["studio"], reveals: ["studio"] })
     render(UnlockReveals)
     await settle()
-    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Studio" })
+    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Your company" })
     expect($("[data-testid='unlock-card']")).toBeNull()
     await settle(1_000)
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Studio")
+    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Your company")
   })
 
   it("turns a small unlock into a toast", async () => {
@@ -165,7 +165,8 @@ describe("the shop teases what is next", () => {
     useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 9).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
     render(Shop, { onCollapse: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
-    expect(tabs).toEqual(["A", "G"])
+    // Skill 1 opened the studio, so the Company tab is there too.
+    expect(tabs).toEqual(["A", "G", "W"])
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
     expect($$("[data-row='skill:10'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
     expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.textContent).toBe("Unlocks Career log")
@@ -202,7 +203,7 @@ describe("the GitHug corner", () => {
   })
 
   it("shows the career's own handle, with nothing to edit", () => {
-    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { handle: "brisk-axolotl", chosen: true } })
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { handle: "brisk-axolotl", product: "Axolotlly", chosen: true } })
     render(GitHugCorner)
     click($("[data-testid='view-githug']"))
     expect($("[data-testid='githug-handle']")?.textContent).toBe("brisk-axolotl")
@@ -221,9 +222,30 @@ describe("the start card", () => {
     const second = useGame.getState().profile
     expect(second.handle).not.toBe(first.handle)
     expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${second.handle}`)
-    expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${second.handle}`)
+    expect($("[data-testid='identity-keep']")).toBeNull()
+    click($("[data-testid='identity-next']"))
+    // The second step names the product after the new animal; its Reroll changes only the suffix.
+    expect($("[data-testid='identity-product']")?.textContent).toBe(second.product)
+    click($("[data-testid='identity-product-reroll']"))
+    const third = useGame.getState().profile
+    expect(third.handle).toBe(second.handle)
+    expect(third.product).not.toBe(second.product)
+    expect($("[data-testid='identity-product']")?.textContent).toBe(third.product)
+    click($("[data-testid='identity-back']"))
+    expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${third.handle}`)
+    click($("[data-testid='identity-next']"))
+    click($("[data-testid='identity-next']"))
+    expect($("[data-testid='identity-picker']")?.textContent).toContain(`go full-time on ${third.product}`)
+    expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${third.handle}`)
     click($("[data-testid='identity-keep']"))
-    expect(useGame.getState().profile).toEqual({ ...second, chosen: true })
+    expect(useGame.getState().profile).toEqual({ ...third, chosen: true })
+    expect($("[data-testid='identity-picker']")).toBeNull()
+  })
+
+  it("keeps the whole card from any step in one call", () => {
+    render(IdentityPicker)
+    click($("[data-testid='identity-next']"))
+    flushSync(() => useGame.getState().keepProfile())
     expect($("[data-testid='identity-picker']")).toBeNull()
   })
 

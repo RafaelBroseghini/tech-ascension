@@ -9,26 +9,33 @@ import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
 import type { NextUnlock } from "./nextUnlock.ts"
-import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, jobState, stageOf } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
+import { forceIncident, setRegionUsers } from "./globe/actions.ts"
+import type { CompanyPatch } from "./globe/actions.ts"
+import { FRESH_COMPANY } from "./globe/growth.ts"
+import { servingOf } from "./globe/load.ts"
+import { founderOutlook } from "./founderOutlook.ts"
+import { creditOf, headcountOf } from "./globe/hires.ts"
+import type { Ending } from "./globe/hires.ts"
+import { productRevenueOf } from "./globe/track.ts"
+import type { Track } from "./globe/track.ts"
+import { FRESH_FOUNDER } from "./globe/track.ts"
+import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
+import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
 import { readCareerText } from "./ledger.ts"
 import { setMoneyDirect, setXpDirect } from "./admin.ts"
-import { persistNow, useGame, writeStateAt } from "./store.ts"
+import { earnedPerSec, persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
 import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
-import { INTERVIEWS } from "../data/studio/challenges.ts"
-import { questionById } from "../data/studio/questions.ts"
-import { interviewById, interviewPassed, parseDesign, startDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
-import type { Band, Submission, VerdictKind } from "./studio/interviews.ts"
-import type { Design, TargetName } from "./studio/types.ts"
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
@@ -55,65 +62,6 @@ export type LastReviewSnapshot = {
   jobId: number
   choice: ReviewChoiceId | null
   lines: string[]
-}
-
-/** One whiteboard submission: the verdict, the targets it missed with the interviewer's line for each, and the XP it took. */
-export type SubmissionSnapshot = {
-  interviewId: string
-  verdict: VerdictKind
-  missed: TargetName[]
-  lines: string[]
-  penalty: number
-  /** The offer a pass earned, or null for a No hire. */
-  offer: { band: Band; bonus: number } | null
-}
-
-/** What a career keeps for one interview. */
-export type InterviewRecordSnapshot = {
-  /** Null until the first real Submit. */
-  verdict: VerdictKind | null
-  attempts: number
-  /** Question ids asked, in order. */
-  asked: string[]
-  /** Targets the player took a nudge about, in order. */
-  nudges: TargetName[]
-  /** The paid hints taken, in order. Any of them lowers a pass to the bottom of the band. */
-  hints: string[]
-  /** Set by the Submit that first passed, and never changed after. */
-  offer: { band: Band; bonus: number } | null
-  /** The most stars any run earned: 1 works, 2 meets the targets, 3 under half the budget. */
-  stars: 0 | 1 | 2 | 3
-  /** The player looked at the reference after a pass. */
-  studied: boolean
-}
-
-/** One practice rerun: whether it clears the interview's targets, what it missed, its numbers, and the best on record after it. */
-export type PracticeSnapshot = {
-  interviewId: string
-  passes: boolean
-  missed: TargetName[]
-  lines: string[]
-  costPerMonth: number
-  p95Ms: number
-  /** True when this run beat the best, or set the first one. */
-  newBest: boolean
-  best: { costPerMonth: number; p95Ms: number } | null
-  /** Stars this run earned, and the most on record: 1 works, 2 meets the targets, 3 under half the budget. */
-  stars: 0 | 1 | 2 | 3
-  bestStars: 0 | 1 | 2 | 3
-  /** How many of the interview's features work in this design. */
-  features: { working: number; total: number }
-}
-
-export type InterviewsSnapshot = {
-  /** Interviews whose job has the lifetime XP and waits on a passed whiteboard. */
-  open: string[]
-  /** Interviews passed by a submission, `forceInterview`, or holding the job or a later gated one. */
-  passed: string[]
-  /** The latest submission this session, or null. */
-  lastVerdict: SubmissionSnapshot | null
-  /** Every interview the player has engaged with (asked, nudged, hinted, submitted, practiced or forced), keyed by interview id. */
-  records: Record<string, InterviewRecordSnapshot>
 }
 
 export type GameSnapshot = {
@@ -183,9 +131,48 @@ export type GameSnapshot = {
   /** Journal entries kept (the newest 2,000) and the latest one. */
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
-  profile: { handle: string; chosen: boolean }
-  /** The whiteboard interviews that gate twelve jobs (`src/data/studio/challenges.ts`). */
-  interviews: InterviewsSnapshot
+  profile: { handle: string; product: string; chosen: boolean }
+  /** `ladder` until the player quits for the product. */
+  track: Track
+  /** The fork: whether its modal has shown, the bridges raised and the equity given up, and the money picture a founder lives by. */
+  founder: FounderSnapshot
+  /** Heads hired of each kind, by id (`HIRES` in `src/game/globe/hires.ts`). A kind with nobody is left out. A founder keeps them. */
+  hires: Record<string, number>
+  /** Everyone hired, all kinds together. */
+  headcount: number
+  /** The share of the users that came from growth the hires added, 0 to 1. */
+  hiredShare: number
+  /** How the win read, once it latched: `founder`, `sponsor` (over half the users from hires) or `nightOwl`. Null before. */
+  ending: Ending | null
+  /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
+  world: WorldSnapshot
+}
+
+export type FounderSnapshot = {
+  offered: boolean
+  bridges: number
+  equityCut: number
+  /** True while the out-of-runway choice is open. */
+  broke: boolean
+  /** The burn running now, $/s. 0 on the ladder and while the out-of-runway choice is open. */
+  burnPerSec: number
+  /** Seconds of money left at today's income and burn, or null off the founder track or when it is not running down. */
+  runwaySec: number | null
+}
+
+export type WorldSnapshot = {
+  users: number
+  target: number
+  regionUsers: Record<string, number>
+  /** How hard the world pushes back, 0 to 100. */
+  resistance: number
+  incidents: { id: number; kind: IncidentKind; region: string; endsAt: number; strength: number; cost: number }[]
+  /** Requests a second the users send, against what the gear serves. */
+  demand: number
+  capacity: number
+  /** Dollars a second the served users pay, with the track's multiplier and the equity given up in. Dropped users pay nothing. Not in `cps`, which stays the idle $/s from owned items. */
+  revenuePerSec: number
+  won: boolean
 }
 
 /** A closed timeline row: what opens it and how close it is. */
@@ -223,39 +210,33 @@ export type GameHarness = {
   buy: (tierId: number, amount?: BuyAmount) => boolean
   buySkill: (skillId: number, amount?: BuyAmount) => boolean
   buyJob: (jobId: number) => boolean
-  /**
-   * Run a design past an interview whose job is at `interview`. A No hire costs 5% of the job's lifetime XP
-   * requirement in spendable XP (never below 0). False when the interview is unknown or its job is not at `interview`.
-   */
-  submitWhiteboard: (interviewId: string, design: Design) => SubmissionSnapshot | false
-  /**
-   * Run a design past an interview that is already passed (a submission, `forceInterview`, or holding its job or a
-   * later gated one) without touching the career: no verdict, attempt, XP, job or journal entry. A passing run that is
-   * cheaper (then faster) than the best on record is kept as the best. False for anything not passed; there is no
-   * shortcut around a real Submit.
-   */
-  practiceWhiteboard: (interviewId: string, design: Design) => PracticeSnapshot | false
-  /**
-   * Ask the interviewer a question (`traffic`, `features`, `mix`, `fresh`, `durable`, `later`, `cache`, `fanout`, `speed`, `uptime`, `budget`, `lag`, `faults`;
-   * `lag` only where the reference has a queue). Free and unlimited; the answer stays. False for an unknown interview
-   * or question, or an interview not reached yet.
-   */
-  askInterviewer: (interviewId: string, questionId: string) => boolean
-  /** Take the free nudge about a target (`budget`, `success`, `p95`, `lag`, `availability`, `faults`, `features`). False when the interview has none for it. */
-  takeNudge: (interviewId: string, target: string) => boolean
-  /**
-   * Take the next paid hint for `design` (default: the interview's last submission, else The Users alone), only while
-   * the interview is open. Returns the hint line, or false when the board already covers the reference. Any hint taken
-   * before a pass puts the offer at the bottom of the band.
-   */
-  takeHint: (interviewId: string, design?: Design) => string | false
-  /** Open the engineers' board for a passed interview: marks it studied and returns the reference design. False until the interview is passed. */
-  studyReference: (interviewId: string) => Design | false
-  /** Record a pass now, bypassing every gate. Keeps the questions, nudges and hints already taken and never invents an offer. False for an unknown or already passed id. */
-  forceInterview: (interviewId: string) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
   /** Buy a gold skill with spendable XP through its normal gates (lifetime XP, earlier row of its family, price). */
   buyGold: (goldId: number) => boolean
+  /** Buy a region with money (see src/data/regions.ts). False when unknown, owned or unaffordable. */
+  buyRegion: (regionId: string) => boolean
+  /** Deploy a point of presence in a city of an owned region, for a quarter of its region's price. */
+  deployPop: (cityId: string) => boolean
+  /** Switch a deployed point of presence on or off; its traffic goes to the nearest one still on. False for the last one on. */
+  setPopActive: (cityId: string, on: boolean) => boolean
+  /** Switch a bought region on or off as a whole. False for the last region serving. */
+  setRegionActive: (regionId: string, on: boolean) => boolean
+  /** Hire a kind of person on the ladder, as many as the shop's Buy control allows (`amount` overrides it, clamped to what the gold skills unlock). False as a founder, in a closed row, or short of the price. */
+  hire: (id: string, amount?: 1 | 5 | 10 | "max") => boolean
+  /** Quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for. */
+  goFullTime: () => boolean
+  /** Close the fork's modal. */
+  keepClimbing: () => void
+  /** After running out: cash worth 30 minutes of burn, 10% of revenue given up for good, at most three times. */
+  raiseBridge: () => boolean
+  /** Take a job again. After running out it gives up the highest job held (a lone first job stays); by choice all jobs stay. Both set the users needed to quit again to twice today's. */
+  returnToLadder: () => boolean
+  /** Opens an incident (ddos, block, law, rival) on a region, the biggest by default. False at the cap of three or for an unknown region. */
+  forceIncident: (kind: IncidentKind, regionId?: string) => boolean
+  /** Pays to end an incident now. False when it is gone or the money is short. */
+  respondIncident: (id: number) => boolean
+  /** Sets a region's users, up to what the region can hold. */
+  setUsers: (regionId: string, users: number) => boolean
   /** Grant a gold skill now, bypassing XP, order and price. False for an unknown or owned id. */
   forceGold: (goldId: number) => boolean
   /** Set the Buy control. It drops to the largest unlocked amount. Returns the amount now set. */
@@ -292,8 +273,10 @@ export type GameHarness = {
   seeFeature: (id: string) => boolean
   /** Drop the reveals waiting to play. */
   clearReveals: () => void
-  /** Draw another handle, as the start card's Reroll does. False once it is kept. */
+  /** Draw another handle (and a product to match), as the start card's first Reroll does. False once it is kept. */
   rerollProfile: () => boolean
+  /** Draw another product suffix, as the second step's Reroll does. False once it is kept. */
+  rerollProduct: () => boolean
   /** Keep the current handle, as the start card's Start does. */
   keepProfile: () => void
   reset: () => void
@@ -384,35 +367,6 @@ function eventSnapshot(
   return { eventId: event.eventId, name: eventById(event.eventId)?.name ?? "", lines }
 }
 
-function submissionSnapshot(submission: Submission): SubmissionSnapshot {
-  const missed = submission.verdict.kind === "noHire" ? submission.verdict.missed : []
-  return {
-    interviewId: submission.interviewId,
-    verdict: submission.verdict.kind,
-    missed: missed.map((m) => m.target),
-    lines: missed.map((m) => m.line),
-    penalty: submission.penalty,
-    offer: submission.offer,
-  }
-}
-
-function interviewsSnapshot(state: ReturnType<typeof useGame.getState>): InterviewsSnapshot {
-  return {
-    open: INTERVIEWS.filter((row) => {
-      const job = jobById(row.jobId)
-      return job !== undefined && jobState(state, job) === "interview"
-    }).map((row) => row.id),
-    passed: INTERVIEWS.filter((row) => interviewPassed(state, row)).map((row) => row.id),
-    lastVerdict: state.lastInterview ? submissionSnapshot(state.lastInterview) : null,
-    records: Object.fromEntries(
-      Object.entries(state.interviews).map(([id, record]) => [
-        id,
-        { verdict: record.verdict, attempts: record.attempts, asked: [...record.asked], nudges: [...record.nudges], hints: [...record.hints], offer: record.offer ?? null, stars: record.stars, studied: record.studied },
-      ]),
-    ),
-  }
-}
-
 function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesSnapshot {
   const progress = progressOf(state)
   const open = new Set<string>(state.unlocked)
@@ -424,6 +378,35 @@ function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesS
     next: ghost ? teaseSnapshot(ghost) : null,
     upNext: upNext(progress, open).map(teaseSnapshot),
   }
+}
+
+/** Applies a company patch the way a test hook does: no save, false when it was refused. */
+function adoptCompany(patch: CompanyPatch): boolean {
+  if (!patch) return false
+  useGame.setState(patch)
+  return true
+}
+
+function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: number): WorldSnapshot {
+  const { company } = state
+  const serving = servingOf(company.users, company.incidents, state.equipment)
+  return {
+    users: totalUsers(company.users),
+    target: WORLD_TARGET,
+    regionUsers: { ...company.users },
+    resistance: company.resistance,
+    incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
+    demand: serving.demand,
+    capacity: serving.capacity,
+    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.founder),
+    won: company.won,
+  }
+}
+
+function founderSnapshot(state: ReturnType<typeof useGame.getState>, now: number): FounderSnapshot {
+  const outlook = founderOutlook(state, now)
+  const { offered, bridges, equityCut, broke } = state.founder
+  return { offered, bridges, equityCut, broke, burnPerSec: outlook.burn, runwaySec: outlook.runwaySec }
 }
 
 export function installGameHarness(): GameHarness {
@@ -480,7 +463,13 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
-        interviews: interviewsSnapshot(state),
+        track: state.founder.track,
+        founder: founderSnapshot(state, now),
+        hires: { ...state.founder.hires },
+        headcount: headcountOf(state.founder.hires),
+        hiredShare: creditOf(state.company).hiredShare,
+        ending: state.company.ending ?? null,
+        world: worldSnapshot(state, earnedPerSec(state, now)),
       }
     },
 
@@ -500,52 +489,6 @@ export function installGameHarness(): GameHarness {
 
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
 
-    submitWhiteboard: (interviewId, design) => {
-      const verdict = useGame.getState().submitWhiteboard(interviewId, parseDesign(design))
-      const last = useGame.getState().lastInterview
-      return verdict && last ? submissionSnapshot(last) : false
-    },
-
-    practiceWhiteboard: (interviewId, design) => {
-      const run = useGame.getState().practiceWhiteboard(interviewId, parseDesign(design))
-      if (!run) return false
-      const missed = run.verdict.kind === "noHire" ? run.verdict.missed : []
-      return {
-        interviewId,
-        passes: missed.length === 0,
-        missed: missed.map((m) => m.target),
-        lines: missed.map((m) => m.line),
-        costPerMonth: run.result.costPerMonth,
-        p95Ms: run.result.p95Ms,
-        newBest: run.newBest,
-        best: run.best ? { costPerMonth: run.best.costPerMonth, p95Ms: run.best.p95Ms } : null,
-        stars: run.stars,
-        bestStars: run.bestStars,
-        features: { working: run.result.features.filter((f) => f.served >= (interviewById(interviewId)?.targets.successRate ?? 1)).length, total: run.result.features.length },
-      }
-    },
-
-    askInterviewer: (interviewId, questionId) => {
-      const question = questionById(questionId)
-      return question ? useGame.getState().askInterviewer(interviewId, question.id) : false
-    },
-
-    takeNudge: (interviewId, target) => {
-      const name = TARGET_NAMES.find((t) => t === target)
-      return name ? useGame.getState().takeNudge(interviewId, name) : false
-    },
-
-    takeHint: (interviewId, design) => {
-      const start = interviewById(interviewId)
-      const alone = start ? startDesign(start) : THE_USERS_ALONE
-      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? alone)
-      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : alone) ?? false
-    },
-
-    studyReference: (interviewId) => useGame.getState().studyReference(interviewId) ?? false,
-
-    forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),
-
     buyEquipment: (equipId, amount = 1) => {
       const before = ownedCount(useGame.getState().equipment, equipId)
       useGame.getState().buyEquipment(equipId, amount)
@@ -553,6 +496,18 @@ export function installGameHarness(): GameHarness {
     },
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
+    buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
+    hire: (id, amount) => useGame.getState().hire(id, amount),
+    goFullTime: () => useGame.getState().goFullTime(),
+    keepClimbing: () => useGame.getState().keepClimbing(),
+    raiseBridge: () => useGame.getState().raiseBridge(),
+    returnToLadder: () => useGame.getState().returnToLadder(),
+    forceIncident: (kind, regionId) => adoptCompany(forceIncident(useGame.getState(), kind, regionId, Date.now())),
+    respondIncident: (id) => useGame.getState().respondIncident(id),
+    setUsers: (regionId, users) => adoptCompany(setRegionUsers(useGame.getState(), regionId, users)),
+    deployPop: (cityId) => useGame.getState().deployPop(cityId),
+    setPopActive: (cityId, on) => useGame.getState().setPopActive(cityId, on),
+    setRegionActive: (regionId, on) => useGame.getState().setRegionActive(regionId, on),
 
     forceGold: (goldId) => {
       const state = useGame.getState()
@@ -608,6 +563,9 @@ export function installGameHarness(): GameHarness {
         owned: hydrated.save.owned,
         ...(hydrated.save.career ? { journal: journalFromSave(hydrated.save.career), returns: hydrated.save.career.returns } : {}),
         tempMults: hydrated.save.tempMults ?? {},
+        foreverMult: hydrated.save.foreverMult ?? 1,
+        company: hydrated.save.company ?? FRESH_COMPANY,
+        founder: hydrated.save.founder ?? FRESH_FOUNDER,
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
         idleSince: now,
@@ -639,6 +597,7 @@ export function installGameHarness(): GameHarness {
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
     rerollProfile: () => useGame.getState().rerollProfile(),
+    rerollProduct: () => useGame.getState().rerollProduct(),
     keepProfile: () => useGame.getState().keepProfile(),
 
     seeFeature: (id) => {

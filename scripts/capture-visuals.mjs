@@ -69,13 +69,11 @@ try {
   shot("03-gig-clear-pop")
   await settle(1800)
 
-  // Phase C: six gigs and 40K XP open the Job Board; both jobs wait on their interviews.
+  // Phase C: six gigs and 40K XP open the Job Board.
   game(`
     g.setXp(60000)
     for (const id of [1, 2, 3, 4, 5, 6]) g.forceGig(id)
-    g.forceInterview("hello-server")
     g.buyJob(1)
-    g.forceInterview("3-tier-app")
     g.buyJob(2)
     g.setMoney(60000)
     g.buyEquipment(1)
