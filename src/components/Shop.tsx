@@ -249,6 +249,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const buyJob = useGame((s) => s.buyJob)
   const buy = useGame((s) => s.buy)
   const clearGig = useGame((s) => s.clearGig)
+  const isFounder = useGame((s) => s.founder.track === "founder")
+  const dayJob = useGame((s) => s.returnToLadder)
+  const product = useGame((s) => s.profile.product)
 
   const [picked, setPickedState] = useState<ShopTab | null>(() => readSavedShopTab())
   const setPicked = (tab: ShopTab | null) => {
@@ -760,9 +763,18 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
 
         {tab === "C" ? (
           unlocked.C ? (
-            jobRows.map((job, index) => {
+            <>
+              {isFounder ? (
+                <div className="fork-note" data-testid="founder-jobs">
+                  <p>{`A founder doesn't take a salary. Your jobs stay on the résumé, and ${product} pays the bills.`}</p>
+                  <button type="button" data-testid="take-day-job" onClick={() => dayJob()}>
+                    Take a day job again
+                  </button>
+                </div>
+              ) : null}
+            {jobRows.map((job, index) => {
               const status = jobState(gates, job)
-              const afford = status === "ready" && canAfford(xp, job.xpCost)
+              const afford = !isFounder && status === "ready" && canAfford(xp, job.xpCost)
               const key = `job:${job.id}`
               return (
                 <Offer
@@ -794,7 +806,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   />
                 </Offer>
               )
-            })
+            })}
+            </>
           ) : (
             <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />
           )

@@ -1,12 +1,18 @@
+import { createElement } from "react"
+import { flushSync } from "react-dom"
+import { createRoot } from "react-dom/client"
 import { expect, test, vi } from "vitest"
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
+import { ForkModal } from "../components/ForkModal.tsx"
+import { MetricsBar } from "../components/MetricsBar.tsx"
 import { installGameHarness } from "./harness.ts"
 import { formatNumber } from "./format.ts"
 import { hydrate } from "./save.ts"
 import { advanceCompany, growthFacts } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
+import { trackFactsOf } from "./globe/track.ts"
 import { useGame } from "./store.ts"
 
 /** The drops the company costs over a span, with incident rolls off. Money tests subtract it so they count the income alone. */
@@ -291,7 +297,7 @@ test("users pay: idle money rises by the product revenue, and the note counts it
   const hour = 60 * 60 * 1000
   const state = useGame.getState()
   const t = Date.now()
-  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint), t - hour, t, () => 0.999)
+  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder)), t - hour, t, () => 0.999)
   const away = game.advanceOffline(hour)
   expect(walked.earned).toBeGreaterThan(0)
   expect(away.credited).toBeCloseTo(cps * 3600 + walked.earned - walked.lost, 0)
@@ -628,4 +634,116 @@ test("the world while away: the win is journaled and paid when it happens offlin
   expect(game.getState().world.won).toBe(true)
   expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
   expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
+})
+
+test("the fork: quit for the product, run out, raise a bridge, go back one rung down, and the red button reopens the choice", () => {
+  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
+  game.reset()
+  game.keepProfile()
+  game.setXp(1_000_000)
+  for (let id = 1; id <= 8; id++) game.forceGig(id)
+  for (const id of [1, 2, 3]) expect(game.buyJob(id)).toBe(true)
+  game.setMoney(1e9)
+  // One workstation GPU serves 5,000 users; the rest is the day job and the product's own pay.
+  expect(game.buyEquipment(60)).toBe(true)
+  game.setMoney(100_000)
+  expect(game.goFullTime()).toBe(false)
+  game.setUsers("americas-east", 500)
+  game.tick(1_000)
+  expect(game.getState().founder.offered).toBe(false)
+  expect(game.goFullTime()).toBe(false)
+  game.setUsers("americas-east", 5_000)
+  game.tick(1_000)
+  const ladder = game.getState()
+  // The fork opened at 1,000 users and a job held: the modal shows once, and the offer is latched for the red button.
+  expect(ladder).toMatchObject({ track: "ladder", founder: { offered: true, bridges: 0, broke: false, burnPerSec: 0, runwaySec: null } })
+
+  const host = document.createElement("div")
+  document.body.append(host)
+  const root = createRoot(host)
+  flushSync(() => root.render(createElement("div", null, createElement(MetricsBar), createElement(ForkModal))))
+  const hidden = () => host.querySelector("[data-testid='fork-modal']") === null
+  const button = () => host.querySelector<HTMLButtonElement>("[data-testid='go-full-time']")
+  expect(hidden()).toBe(false)
+  flushSync(() => host.querySelector<HTMLButtonElement>("[data-testid='fork-keep']")?.click())
+  expect(hidden()).toBe(true)
+  expect(game.getState().track).toBe("ladder")
+  // The red button is always there from now on, and reopens the choice without quitting.
+  expect(button()).not.toBeNull()
+  flushSync(() => button()?.click())
+  expect(hidden()).toBe(false)
+  expect(host.querySelector("[data-testid='fork-lines']")?.textContent).toContain("Runway at today's numbers")
+  expect(game.getState().track).toBe("ladder")
+  flushSync(() => host.querySelector<HTMLButtonElement>("[data-testid='fork-keep']")?.click())
+
+  // Quitting stops the salary and the job's teaching, keeps the jobs, and triples what the users pay.
+  const salaried = game.getState()
+  expect(salaried.xpPerSec).toBeGreaterThan(0)
+  flushSync(() => expect(game.goFullTime()).toBe(true))
+  const founded = game.getState()
+  expect(founded.track).toBe("founder")
+  expect(founded.jobs).toEqual([1, 2, 3])
+  expect(founded.cps).toBeLessThan(salaried.cps)
+  expect(founded.xpPerSec).toBeLessThan(salaried.xpPerSec)
+  expect(founded.world.revenuePerSec).toBeCloseTo(salaried.world.revenuePerSec * 3, 6)
+  expect(founded.founder.burnPerSec).toBeGreaterThan(0)
+  expect(founded.founder.runwaySec).toBeGreaterThan(0)
+  expect(game.goFullTime()).toBe(false)
+  expect(game.buyJob(4)).toBe(false)
+  expect(button()).toBeNull()
+  expect(host.querySelector("[data-testid='founder-chip']")?.textContent).toMatch(/^Runway /)
+  const before = game.getState().money
+  game.tick(10_000)
+  expect(game.getState().money).toBeLessThan(before)
+
+  // Running out stops the burn and opens the choice.
+  game.setMoney(100)
+  flushSync(() => game.tick(10_000))
+  const out = game.getState()
+  expect(out.founder.broke).toBe(true)
+  expect(out.money).toBe(0)
+  expect(host.querySelector("[data-testid='runway-modal']")).not.toBeNull()
+  game.tick(10_000)
+  expect(game.getState().money).toBeGreaterThanOrEqual(0)
+  expect(game.getState().founder.broke).toBe(true)
+
+  // A bridge: cash worth thirty minutes of burn, a tenth of the revenue gone for good.
+  const noBridge = out.world.revenuePerSec
+  expect(game.raiseBridge()).toBe(true)
+  const bridged = game.getState()
+  expect(bridged.founder).toMatchObject({ bridges: 1, broke: false })
+  expect(bridged.founder.equityCut).toBeCloseTo(0.1)
+  expect(bridged.money).toBeGreaterThan(bridged.founder.burnPerSec * 60 * 29)
+  expect(bridged.world.revenuePerSec).toBeLessThan(noBridge)
+  expect(game.raiseBridge()).toBe(false)
+  for (let i = 0; i < 2; i++) {
+    game.setMoney(0)
+    game.tick(10_000)
+    expect(game.getState().founder.broke).toBe(true)
+    expect(game.raiseBridge()).toBe(true)
+  }
+  game.setMoney(0)
+  game.tick(10_000)
+  expect(game.getState().founder).toMatchObject({ bridges: 3, broke: true })
+  expect(game.raiseBridge()).toBe(false)
+
+  expect(game.returnToLadder()).toBe(true)
+  const back = game.getState()
+  expect(back.track).toBe("ladder")
+  // Back on a job: one rung down, the salary resumes, and quitting again waits for twice the users.
+  expect(back.jobs).toEqual([1, 2])
+  expect(back.cps).toBeGreaterThan(founded.cps)
+  expect(game.goFullTime()).toBe(false)
+  game.setUsers("americas-east", Math.ceil(back.world.users * 2) + 1)
+  // Away: the burn runs, the balance never falls under a minute of it, and the choice is waiting on return.
+  expect(game.goFullTime()).toBe(true)
+  game.setMoney(50_000)
+  game.advanceOffline(2 * 60 * 60 * 1000)
+  const home = game.getState()
+  expect(home.founder.broke).toBe(true)
+  expect(home.money).toBeGreaterThan(0)
+  expect(home.money).toBeLessThanOrEqual(50_000)
+  root.unmount()
+  host.remove()
+  spy.mockRestore()
 })

@@ -19,6 +19,10 @@ import { forceIncident, setRegionUsers } from "./globe/actions.ts"
 import type { CompanyPatch } from "./globe/actions.ts"
 import { FRESH_COMPANY } from "./globe/growth.ts"
 import { servingOf } from "./globe/load.ts"
+import { founderOutlook } from "./founderOutlook.ts"
+import { productRevenueOf } from "./globe/track.ts"
+import type { Track } from "./globe/track.ts"
+import { FRESH_FOUNDER } from "./globe/track.ts"
 import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
@@ -126,8 +130,24 @@ export type GameSnapshot = {
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
   profile: { handle: string; product: string; chosen: boolean }
+  /** `ladder` until the player quits for the product. */
+  track: Track
+  /** The fork: whether its modal has shown, the bridges raised and the equity given up, and the money picture a founder lives by. */
+  founder: FounderSnapshot
   /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
   world: WorldSnapshot
+}
+
+export type FounderSnapshot = {
+  offered: boolean
+  bridges: number
+  equityCut: number
+  /** True while the out-of-runway choice is open. */
+  broke: boolean
+  /** The burn running now, $/s. 0 on the ladder and while the out-of-runway choice is open. */
+  burnPerSec: number
+  /** Seconds of money left at today's income and burn, or null off the founder track or when it is not running down. */
+  runwaySec: number | null
 }
 
 export type WorldSnapshot = {
@@ -140,7 +160,7 @@ export type WorldSnapshot = {
   /** Requests a second the users send, against what the gear serves. */
   demand: number
   capacity: number
-  /** Dollars a second the served users pay. Dropped users pay nothing. Not in `cps`, which stays the idle $/s from owned items. */
+  /** Dollars a second the served users pay, with the track's multiplier and the equity given up in. Dropped users pay nothing. Not in `cps`, which stays the idle $/s from owned items. */
   revenuePerSec: number
   won: boolean
 }
@@ -191,6 +211,14 @@ export type GameHarness = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Switch a bought region on or off as a whole. False for the last region serving. */
   setRegionActive: (regionId: string, on: boolean) => boolean
+  /** Quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for. */
+  goFullTime: () => boolean
+  /** Close the fork's modal. */
+  keepClimbing: () => void
+  /** After running out: cash worth 30 minutes of burn, 10% of revenue given up for good, at most three times. */
+  raiseBridge: () => boolean
+  /** Take a job again. After running out it gives up the highest job held (a lone first job stays); by choice all jobs stay. Both set the users needed to quit again to twice today's. */
+  returnToLadder: () => boolean
   /** Opens an incident (ddos, block, law, rival) on a region, the biggest by default. False at the cap of three or for an unknown region. */
   forceIncident: (kind: IncidentKind, regionId?: string) => boolean
   /** Pays to end an incident now. False when it is gone or the money is short. */
@@ -358,9 +386,15 @@ function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: numbe
     incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
     demand: serving.demand,
     capacity: serving.capacity,
-    revenuePerSec: serving.revenuePerSec,
+    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.founder),
     won: company.won,
   }
+}
+
+function founderSnapshot(state: ReturnType<typeof useGame.getState>, now: number): FounderSnapshot {
+  const outlook = founderOutlook(state, now)
+  const { offered, bridges, equityCut, broke } = state.founder
+  return { offered, bridges, equityCut, broke, burnPerSec: outlook.burn, runwaySec: outlook.runwaySec }
 }
 
 export function installGameHarness(): GameHarness {
@@ -417,6 +451,8 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
+        track: state.founder.track,
+        founder: founderSnapshot(state, now),
         world: worldSnapshot(state, earnedPerSec(state, now)),
       }
     },
@@ -445,6 +481,10 @@ export function installGameHarness(): GameHarness {
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
+    goFullTime: () => useGame.getState().goFullTime(),
+    keepClimbing: () => useGame.getState().keepClimbing(),
+    raiseBridge: () => useGame.getState().raiseBridge(),
+    returnToLadder: () => useGame.getState().returnToLadder(),
     forceIncident: (kind, regionId) => adoptCompany(forceIncident(useGame.getState(), kind, regionId, Date.now())),
     respondIncident: (id) => useGame.getState().respondIncident(id),
     setUsers: (regionId, users) => adoptCompany(setRegionUsers(useGame.getState(), regionId, users)),
@@ -508,6 +548,7 @@ export function installGameHarness(): GameHarness {
         tempMults: hydrated.save.tempMults ?? {},
         foreverMult: hydrated.save.foreverMult ?? 1,
         company: hydrated.save.company ?? FRESH_COMPANY,
+        founder: hydrated.save.founder ?? FRESH_FOUNDER,
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
         idleSince: now,

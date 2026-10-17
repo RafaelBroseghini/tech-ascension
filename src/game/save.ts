@@ -11,7 +11,8 @@ import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, settleGrowth } from "./globe/growth.ts"
-import { WIN_MULT } from "./globe/world.ts"
+import { parseFounder, trackFactsOf, winMultOf, FRESH_FOUNDER } from "./globe/track.ts"
+import type { FounderState } from "./globe/track.ts"
 import type { CompanyState, GrowthNote } from "./globe/growth.ts"
 import { parseFootprint } from "./globe/footprint.ts"
 import type { Footprint } from "./globe/footprint.ts"
@@ -88,6 +89,8 @@ export type SaveData = {
   company?: CompanyState
   /** Regions bought and points of presence deployed. Omitted until the company buys one. */
   footprint?: Footprint
+  /** The fork: the track, whether its modal has shown, the bridges raised, the equity given up, and the run-out choice. Omitted on the ladder before the fork has shown. */
+  founder?: FounderState
 }
 
 export type Hydrated = {
@@ -273,10 +276,12 @@ export function parseSave(input: unknown): SaveData | null {
   if (company) save.company = company
   const footprint = parseFootprint(input.footprint)
   if (footprint) save.footprint = footprint
+  const founder = parseFounder(input.founder)
+  if (founder) save.founder = founder
   return save
 }
 
-const WON_AWAY = `While you were out, the app reached seven billion people. Everything you earn is ×${WIN_MULT} for good.`
+const wonAway = (mult: number) => `While you were out, the app reached seven billion people. Everything you earn is ×${mult} for good.`
 
 export function hydrate(rawText: string | null, now: number): Hydrated {
   if (rawText == null) {
@@ -296,12 +301,15 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
   // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
-  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint), loaded.savedAt, loaded.savedAt + away, Math.random)
+  const founder = loaded.founder ?? FRESH_FOUNDER
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, trackFactsOf(founder)), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
-  const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown)
+  const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown, { track: founder.track, broke: founder.broke, away: true })
   const save: SaveData = {
     ...loaded,
+    // Running out while away is met on return: the choice opens, and nothing was wiped.
+    ...(settled.broke && !founder.broke ? { founder: { ...founder, broke: true } } : {}),
     ...(settled.wonNow ? { foreverMult: settled.foreverMult } : {}),
     money: settled.money,
     company: grown.state,
@@ -333,7 +341,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
     toast = offlineToastText({ credit: income, xpCredit, jobs: save.jobs, elapsed })
     // A win reached while away has no live moment to celebrate it, so it leads the note instead.
-    if (settled.wonNow && toast) toast = `${WON_AWAY}${toast.slice(toast.indexOf("\n"))}`
+    if (settled.wonNow && toast) toast = `${wonAway(winMultOf(founder.track))}${toast.slice(toast.indexOf("\n"))}`
   }
 
   return { save, toast, reset: false }

@@ -1,6 +1,6 @@
 # Company arc: one product, and the bet to go full-time
 
-Status: plan. Nothing here is built yet.
+Status: steps 1 (names and the intro), 2 (users pay) and 3 (the fork) are built. The rest is plan.
 
 ## The story
 
@@ -32,7 +32,7 @@ There are two modes, saved as `track: "ladder" | "founder"`. Every career starts
 
 **The risk.** If money reaches $0 while you're a founder, you have run out of runway. The game stops the burn and opens a choice.
 - **Raise a bridge.** Keep the company, give up equity: a permanent −10% on product revenue, stacking. You can do this at most three times.
-- **Go back to a job.** Rehired one rung below your best job, onto the ladder. The product keeps its users, but growth goes back to × 0.5. You can quit again later, but the fork comes back only after the product's users double.
+- **Go back to a job.** Rehired one rung below your best job, onto the ladder. The product keeps its users, but growth goes back to the ladder's × 0.25. You can quit again later, but the fork comes back only after the product's users double.
 
 Nothing is ever wiped, and there is no game over, because an idle game should not punish leaving the tab open.
 

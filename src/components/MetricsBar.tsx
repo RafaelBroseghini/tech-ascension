@@ -7,10 +7,12 @@ import { TEMP_TARGETS } from "../game/mods.ts"
 import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
 import { servingOf } from "../game/globe/load.ts"
+import { productRevenueOf } from "../game/globe/track.ts"
 import { totalUsers, WORLD_TARGET } from "../game/globe/world.ts"
 import { clickPaysMoney, PHASE_NAME } from "../game/phase.ts"
 import { openSurface } from "../game/surfaces.ts"
 import { useGame } from "../game/store.ts"
+import { FullTimeCell } from "./FullTime.tsx"
 import { useFeatureOpen } from "./useFeature.ts"
 
 // The bar follows XP and the clock every tick; the buttons on its right do not.
@@ -24,18 +26,19 @@ export function MetricsBar() {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
+  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
-  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults }))
   // clickPower is $1 before any gear, but a click does not pay that dollar until the first job.
   const paidClick = clickPaysMoney({ jobs }) ? rates.click : 0
   const worldOpen = useFeatureOpen("studio")
   const company = useGame((state) => state.company)
   const users = totalUsers(company.users)
   const incidents = company.incidents.length
-  const perSec = rates.idle + servingOf(company.users, company.incidents, equipment).revenuePerSec
+  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, founder)
   const product = useGame((state) => state.profile.product)
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
@@ -117,6 +120,7 @@ export function MetricsBar() {
             </dd>
           </div>
         ) : null}
+        <FullTimeCell />
       </dl>
       <CornerActionsMemo />
     </header>

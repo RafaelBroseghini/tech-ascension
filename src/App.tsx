@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { EventModal } from "./components/EventModal.tsx"
+import { ForkModal } from "./components/ForkModal.tsx"
 import { ReviewModal } from "./components/ReviewModal.tsx"
 import { MetricsBar } from "./components/MetricsBar.tsx"
 import { MobilePlayGate } from "./components/MobilePlayWarning.tsx"
@@ -53,6 +54,7 @@ export default function App() {
         <Toast />
         <EventModal />
         <ReviewModal />
+        <ForkModal />
         <UnlockReveals />
         <IdentityPicker />
       </div>

@@ -2,7 +2,9 @@ import { memo } from "react"
 import { REGIONS } from "../../data/regions.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
-import { ceilingOf, incidentCost, INCIDENTS, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
+import { ceilingOf, incidentCost, INCIDENTS, regionName, WORLD_TARGET } from "../../game/globe/world.ts"
+import { winMultOf } from "../../game/globe/track.ts"
+import { founderOutlook } from "../../game/founderOutlook.ts"
 import { earnedPerSec, useGame } from "../../game/store.ts"
 import { nextStep } from "./nextStep.ts"
 
@@ -15,7 +17,17 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const perSec = useGame((state) => earnedPerSec(state, state.now))
   const respond = useGame((state) => state.respondIncident)
   const bar = Math.min(100, company.share * 100)
-  const next = nextStep(company)
+  const equipment = useGame((state) => state.equipment)
+  const owned = useGame((state) => state.owned)
+  const jobs = useGame((state) => state.jobs)
+  const gigs = useGame((state) => state.gigs)
+  const founder = useGame((state) => state.founder)
+  const raw = useGame((state) => state.company)
+  const foreverMult = useGame((state) => state.foreverMult)
+  const tempMults = useGame((state) => state.tempMults)
+  const now = useGame((state) => state.now)
+  const outlook = founderOutlook({ money: cash, equipment, owned, jobs, gigs, founder, company: raw, foreverMult, tempMults }, now)
+  const next = nextStep(company, founder.track === "founder" && !founder.broke ? { net: outlook.net, runwaySec: outlook.runwaySec } : undefined)
   return (
     <section className="world" data-testid="company-world" aria-label="The world">
       <p className={`world-next is-${next.tone}`} data-testid="world-next">
@@ -38,7 +50,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
       </div>
       {company.won ? (
         <p className="world-won" data-testid="world-won">
-          {`Everything you earn is ×${WIN_MULT} for good.`}
+          {`Everything you earn is ×${winMultOf(founder.track)} for good.`}
         </p>
       ) : null}
       <ul className="world-regions" data-testid="world-regions">

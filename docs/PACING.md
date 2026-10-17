@@ -100,3 +100,39 @@ Three targets set it: 1,000 served users pay about the internship ($8/s), about 
 | 7B | $520B | $1.4M/s | $14M/s | $56M/s | $1.4M/s |
 
 Reference incomes: internship $8/s, Senior SWE $200/s, capital rows 1-5 $16,050/s, rows 6-11 $695,000/s. The chosen curve gives 1.0 internships at 1k, 1.08 Seniors at 1M, and 29% of upper capital (12.5 times mid capital) at 1B. At 7B it pays $1.4M/s, about the whole of q3 capital (rows 12-14 pay $6.5M/s). Product revenue is not scaled by the event multipliers, so it stays the same size under a boost.
+
+## The fork
+
+The fork (`src/game/globe/track.ts`) opens at 1,000 users with a job held. A founder loses the salary, grows twice as fast, earns three times as much from served users, and carries a burn: `burnOf(users) = 60 + 1.2 × √users` dollars a second. The numbers come from `/tmp/fork-sim/` (`gear.ts` and `table.ts` for the static table, `dyn.ts` for the walk), which run the real tables: `stepCompany` with the track's multipliers, `isGearRevealed` with the jobs held, the 1.15 price growth, and a founder who buys the cheapest serving gear (price per `cps`) whenever demand passes 70% of capacity.
+
+The shape of the pick. Revenue grows about linearly with users once the crowd is big, and gear income grows faster than that, so a burn that grows with the square root of the crowd loses at the fork, where the gear is a laptop's worth, and wins later, where it is a rack. The floor of 60 sets the loss at 1,000 users (about what a mid-C player holds covers 10 to 40 minutes of it). The root term keeps the burn near a quarter of revenue-plus-gear at a million users, so a founder who has bought the gear that serves his users is far in profit, and one who has not is dropping requests and bleeding.
+
+Static, with the cheapest gear that serves the crowd (no salary, no equity given up):
+
+| Users | Burn | Gear to serve them | Gear $/s | Revenue ×3 | Net |
+| --- | --- | --- | --- | --- | --- |
+| 1.00k | $97.9/s | $1.36k | $13.0/s | $24.6/s | -$60.3/s |
+| 3.00k | $126/s | $3.06k | $28.0/s | $37.8/s | -$59.9/s |
+| 10.0k | $180/s | $10.2k | $84.0/s | $49.6/s | -$46.4/s |
+| 100k | $439/s | $1.81M | $8.64k/s | $108/s | +$8.31k/s |
+| 1.00M | $1.26k/s | $1.81M | $8.64k/s | $648/s | +$8.03k/s |
+| 10.0M | $3.85k/s | $21.9M | $90.0k/s | $6.05k/s | +$92.2k/s |
+| 100M | $12.1k/s | $321M | $970k/s | $60.0k/s | +$1.02M/s |
+| 1.00B | $38.0k/s | $13.5B | $8.36M/s | $600k/s | +$8.92M/s |
+| 7.00B | $100k/s | $520B | $59.7M/s | $4.20M/s | +$63.8M/s |
+
+The gear cliff is in the existing tables: $10k of gear serves 10k users and 100k users need $1.8M. A founder that outgrows the cheap gear before he can afford the next tier drops requests, and the burn keeps running. That is the risk the fork prices.
+
+Walked with `stepCompany` (a founder buying gear greedily, six hours, no incidents), from three starting points a player might quit at:
+
+| Start | Jobs | Money | Users | Net at the fork | Runway at the fork | Founder, six hours | Ladder, six hours |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A, thin gear | 1-3 | $20k | 1k | +$19/s | none | runs out at 10 min, 48k users | 1.3M users |
+| B | 1-5 | $50k | 3k | -$58/s | 14 min | never, 1.9M users | 1.3M users |
+| C | 1-8 | $100k | 10k | -$44/s | 38 min | never, 5.0M users | 3.4M users |
+
+A is the gamble: little cash, thin gear, and growth that outruns it. B and C show a loss at the fork with a runway of tens of minutes, and a founder who keeps buying serving gear is net positive within an hour (B: +$887/s at 60 minutes; C: +$4,988/s at 30). Burns tried and left: `20 + 2.5√u` (all three starts run out within 6 minutes), `30 + 1.5√u` (A and B run out at 9 to 10 minutes), `40 + 1.2√u` (nobody runs out, but A is already profitable at the fork, and B has 22 minutes of runway with no pressure to buy gear).
+
+What the ladder multiplier does to the road to the fork. With two serving cloud packs and gigs 1-8, a ladder career reaches 1,000 users in about 64 minutes, against 16 before the track (×1) and 8 as a founder (×2). That is the cost of nights and weekends, and it is the point: the fork is something you reach, not something the game starts with.
+
+Decisions behind the numbers: a founder cannot take a job (`buyJob` is refused), so gear gated on a higher job than he holds stays out of reach until he returns to the ladder; going back for the run-out choice gives up the highest job, and a lone first job stays; the equity given up applies to the product revenue on either track; ×0.25 on the ladder is the figure from the build brief, not the ×0.5 that `docs/COMPANY_ARC.md` mentions for the return.

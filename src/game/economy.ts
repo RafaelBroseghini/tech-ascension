@@ -5,6 +5,7 @@ import type { ActiveBoost } from "../data/boosts.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital } from "../data/capital.ts"
 import { modFactors, NO_MODS } from "./mods.ts"
+import type { Track } from "./globe/track.ts"
 
 import type { EventMods } from "./mods.ts"
 /**
@@ -37,7 +38,12 @@ export type Progress = {
   jobs: readonly number[]
   /** Completed gig ids (each gig clears once). */
   gigs: readonly number[]
+  /** The fork. A founder draws no salary and learns nothing on the job; the jobs stay held. Left out, the ladder. */
+  founder?: { readonly track: Track }
 }
+
+/** Whether the jobs held pay and teach. Founders keep the jobs on the résumé, and this is the one place that stops what they pay. */
+const jobsPay = (p: { founder?: { readonly track: Track } }): boolean => p.founder?.track !== "founder"
 
 export const BASE_CLICK = 1
 
@@ -119,10 +125,10 @@ export function xpPerClick(skills: OwnedMap): number {
 }
 
 /** Idle XP/s: skills (study time, in every phase) plus the jobs held that teach on the job. */
-export function xpPerSec(p: Pick<Progress, "skills" | "jobs">): number {
+export function xpPerSec(p: Pick<Progress, "skills" | "jobs" | "founder">): number {
   let sum = 0
   for (const row of SKILL_TIERS) sum += ownedCount(p.skills, row.id) * row.xpPerSec
-  for (const id of p.jobs) sum += jobById(id)?.xpPerSec ?? 0
+  if (jobsPay(p)) for (const id of p.jobs) sum += jobById(id)?.xpPerSec ?? 0
   return sum
 }
 
@@ -146,17 +152,17 @@ export function clickShare(p: Pick<Progress, "jobs">): number {
  * Money per click before boosts: the flat part plus the jobs' share of idle $/s, so a click stays worth
  * something next to salaries and capital. Phase B+ only pays it out.
  */
-export function clickPower(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs">): number {
+export function clickPower(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder">): number {
   return clickFlat(p) + clickShare(p) * idlePerSec(p)
 }
 
 export type IdleParts = { retainers: number; jobs: number; equipment: number; capital: number }
 
-export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs">): IdleParts {
+export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder">): IdleParts {
   let retainers = 0
   for (const id of p.gigs) retainers += gigById(id)?.retainerCps ?? 0
   let jobs = 0
-  for (const id of p.jobs) jobs += jobById(id)?.cps ?? 0
+  if (jobsPay(p)) for (const id of p.jobs) jobs += jobById(id)?.cps ?? 0
   let equipment = 0
   for (const row of EQUIPMENT) equipment += ownedCount(p.equipment, row.id) * row.cps
   let capital = 0
@@ -165,7 +171,7 @@ export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gi
 }
 
 /** Idle $/s: gig retainers + salaries + equipment + capital. Click boosts never apply. */
-export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs">): number {
+export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder">): number {
   const parts = idleParts(p)
   return parts.retainers + parts.jobs + parts.equipment + parts.capital
 }
@@ -212,7 +218,7 @@ export type OwnedSource = {
 const KIND_RANK: Record<OwnedKind, number> = { capital: 0, job: 1, equipment: 2, gig: 3, skill: 4 }
 
 /** Everything owned: capital, jobs, equipment, gig retainers, skills. Biggest $/s first, then biggest XP/s. */
-export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): OwnedSource[] {
+export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "founder">): OwnedSource[] {
   const rows: OwnedSource[] = []
   for (const tier of CAPITAL) {
     const count = ownedCount(p.owned, tier.id)
@@ -222,7 +228,7 @@ export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" 
   for (const id of p.jobs) {
     const job = jobById(id)
     if (job)
-      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: job.cps, xpIdle: job.xpPerSec, click: job.clickBonus })
+      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: jobsPay(p) ? job.cps : 0, xpIdle: jobsPay(p) ? job.xpPerSec : 0, click: job.clickBonus })
   }
   for (const row of EQUIPMENT) {
     const count = ownedCount(p.equipment, row.id)
@@ -293,7 +299,7 @@ export function boostMultiplier(boost: ActiveBoost | null | undefined, now: numb
  * the permanent one scales every stream, a timed one scales its own (click, idle $, idle XP).
  */
 export function production(
-  p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">,
+  p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "founder">,
   boost: ActiveBoost | null | undefined,
   now: number,
   mods: EventMods = NO_MODS,
