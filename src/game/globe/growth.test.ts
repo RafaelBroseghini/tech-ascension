@@ -32,6 +32,18 @@ describe("users", () => {
     expect(Object.keys(step.state.users).length).toBeGreaterThan(1)
   })
 
+  it("grow at the live tick, and a tenth of a second at a time lands where minute steps do", () => {
+    const tick = (ms: number) => {
+      let current = state()
+      for (let at = 0; at < 3_600_000; at += ms) current = advanceCompany(current, facts(3, roomy), at, at + ms, never).state
+      return totalUsers(current.users)
+    }
+    const live = tick(100)
+    const away = tick(60_000)
+    expect(live).toBeGreaterThan(3 * 40)
+    expect(Math.abs(live - away) / away).toBeLessThan(0.1)
+  })
+
   it("are held back by the gear: a laptop alone settles near what it serves", () => {
     const step = advanceCompany(state(), facts(3), 0, 4 * 3_600_000, never)
     expect(totalUsers(step.state.users)).toBeLessThan((BASE_RPS / RPS_PER_USER) * 2.2)

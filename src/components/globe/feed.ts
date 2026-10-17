@@ -45,7 +45,7 @@ export function feedItems(prev: FeedFacts, next: FeedFacts): FeedItem[] {
     items.push({ key: `over:${incident.id}`, tone: "good", text: `${INCIDENT_LABEL[incident.kind].name} over · ${regionName(incident.region)}` })
   }
   for (const [region, users] of Object.entries(next.users)) {
-    if (users > 0 && !((prev.users[region] ?? 0) > 0)) items.push({ key: `first:${region}`, tone: "info", text: `First users in ${regionName(region)}` })
+    if (users >= 1 && !((prev.users[region] ?? 0) >= 1)) items.push({ key: `first:${region}`, tone: "info", text: `First users in ${regionName(region)}` })
   }
   const was = totalUsers(prev.users)
   const now = totalUsers(next.users)

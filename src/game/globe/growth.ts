@@ -133,7 +133,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
       .reduce((rate, i) => rate + BLEED_PER_SEC * i.strength * (facts.live[region.id] ? 0.5 : 1) * (1 + resistance / 100), 0)
     const churn = Math.min(0.9, (DROP_CHURN_PER_SEC * dropShare + bleed) * sec)
     const next = Math.min(ceiling, Math.max(0, (here + growth * sec) * (1 - churn)))
-    if (next >= 0.5) users[region.id] = next
+    if (next > 0) users[region.id] = next
   }
   const total = totalUsers(users)
   const lost = demand * dropShare * REVENUE_PER_DROPPED_RPS * sec

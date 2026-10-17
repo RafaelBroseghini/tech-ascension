@@ -26,6 +26,11 @@ describe("feedItems", () => {
     expect(items.map((i) => i.key)).toEqual(["first:asia", "milestone:1m"])
   })
 
+  it("waits for a whole user before a region counts as reached", () => {
+    expect(feedItems(calm, { ...calm, users: { europe: 500, asia: 0.3 } })).toEqual([])
+    expect(feedItems({ ...calm, users: { europe: 500, asia: 0.3 } }, { ...calm, users: { europe: 500, asia: 1.2 } }).map((i) => i.key)).toEqual(["first:asia"])
+  })
+
   it("tracks the win and serving dropping and recovering", () => {
     expect(feedItems(calm, { ...calm, won: true }).map((i) => i.key)).toEqual(["won"])
     expect(feedItems(calm, { ...calm, health: "m" }).map((i) => i.key)).toEqual(["drop"])
