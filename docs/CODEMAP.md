@@ -38,8 +38,10 @@
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
 | Your company: the activity-bar button, the modal, and the burst that drives the globe | `src/components/globe/CompanyHost.tsx`, `src/components/globe/traffic.ts` |
-| The globe: three.js scene, canvas (a lazy chunk), the small one on the desk (`MiniGlobe.tsx`, drawn `compact`) and the numbers pane in the details view | `src/components/globe/` (`GlobeScene.ts`, `GlobeCanvas.tsx`, `MiniGlobe.tsx`, `GlobePane.tsx`, `notes.ts`, `feed.ts` and `GlobeFeed.tsx` for the desk globe's one-line feed) |
-| Users, incidents and the win: regions, seeds, reach, resistance, the world's rules and calibration | `src/game/globe/world.ts`, `src/game/globe/growth.ts` (`stepCompany`) |
+| The globe: three.js scene, canvas (a lazy chunk), the small one on the desk (`MiniGlobe.tsx`, drawn `compact`) and the numbers pane in the details view | `src/components/globe/` (`GlobeScene.ts`, `GlobeCanvas.tsx`, `MiniGlobe.tsx`, `GlobePane.tsx`, `notes.ts`, `feed.ts` and `GlobeFeed.tsx` for the desk globe's one-line feed, `nextStep.ts` for the world pane's lead line) |
+| Users, incidents and the win: regions, seeds, reach, resistance, the world's rules (the `INCIDENTS` table) and calibration | `src/game/globe/world.ts`, `src/game/globe/growth.ts` (`stepCompany`, `settleGrowth`) |
+| Serving: demand, capacity, drops, lost dollars and health in one `servingOf` | `src/game/globe/load.ts` |
+| The company's actions (buy a region, deploy or switch a PoP, respond to an incident) as pure patches the store commits | `src/game/globe/actions.ts` |
 | What the globe draws of the company, and the burst of requests its users send | `src/game/globe/company.ts`, `src/game/globe/wave.ts` |
 | The world pane: users against the target, regions, resistance and the incidents to Respond to | `src/components/globe/WorldPanel.tsx` |
 | Globe tooltip: the city rows, the trip time and the tally of a burst | `src/game/globe/tip.ts` |

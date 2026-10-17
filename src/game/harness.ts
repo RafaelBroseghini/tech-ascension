@@ -15,6 +15,8 @@ import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
+import { forceIncident, setRegionUsers } from "./globe/actions.ts"
+import type { CompanyPatch } from "./globe/actions.ts"
 import { FRESH_COMPANY } from "./globe/growth.ts"
 import { servingOf } from "./globe/load.ts"
 import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
@@ -334,6 +336,13 @@ function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesS
   }
 }
 
+/** Applies a company patch the way a test hook does: no save, false when it was refused. */
+function adoptCompany(patch: CompanyPatch): boolean {
+  if (!patch) return false
+  useGame.setState(patch)
+  return true
+}
+
 function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: number): WorldSnapshot {
   const { company } = state
   const serving = servingOf(company.users, company.incidents, state.equipment)
@@ -431,9 +440,9 @@ export function installGameHarness(): GameHarness {
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
-    forceIncident: (kind, regionId) => useGame.getState().forceIncident(kind, regionId),
+    forceIncident: (kind, regionId) => adoptCompany(forceIncident(useGame.getState(), kind, regionId, Date.now())),
     respondIncident: (id) => useGame.getState().respondIncident(id),
-    setUsers: (regionId, users) => useGame.getState().setRegionUsers(regionId, users),
+    setUsers: (regionId, users) => adoptCompany(setRegionUsers(useGame.getState(), regionId, users)),
     deployPop: (cityId) => useGame.getState().deployPop(cityId),
     setPopActive: (cityId, on) => useGame.getState().setPopActive(cityId, on),
     setRegionActive: (regionId, on) => useGame.getState().setRegionActive(regionId, on),

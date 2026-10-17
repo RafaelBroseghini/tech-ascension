@@ -35,12 +35,12 @@ import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./globe/growth.ts"
-import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, WIN_MULT } from "./globe/world.ts"
-import type { IncidentKind } from "./globe/world.ts"
+import * as companyActions from "./globe/actions.ts"
+import type { CompanyPatch } from "./globe/actions.ts"
+import { WIN_MULT } from "./globe/world.ts"
 import type { CompanyState } from "./globe/growth.ts"
-import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, FRESH_FOOTPRINT, setPop, setRegion } from "./globe/footprint.ts"
+import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import type { Footprint } from "./globe/footprint.ts"
-import { popCostOf, regionById, regionOfCity } from "../data/regions.ts"
 import type { SaveData } from "./save.ts"
 import {
   creditMoney,
@@ -190,10 +190,6 @@ type GameState = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Pays to end an incident now, in minutes of what the company earns. False when the incident is gone or the money is short. */
   respondIncident: (id: number) => boolean
-  /** Opens an incident on a region (the biggest one by default) without waiting for a roll. */
-  forceIncident: (kind: IncidentKind, regionId?: string) => boolean
-  /** Sets a region's users, to the region's ceiling at most. */
-  setRegionUsers: (regionId: string, users: number) => boolean
   /** Switch a bought region on or off as a whole. The last region serving stays on. */
   setRegionActive: (regionId: string, on: boolean) => boolean
   /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
@@ -321,6 +317,14 @@ function boot() {
 }
 
 const booted = boot()
+
+/** Applies a company action's patch and saves. Spending stamps the clock, as every purchase does. False when it was refused. */
+function commitCompany(patch: CompanyPatch, spends: boolean): boolean {
+  if (!patch) return false
+  useGame.setState(spends ? { ...patch, now: Date.now() } : patch)
+  persistNow()
+  return true
+}
 
 function makePop(state: Pick<GameState, "popSeq">, kind: PopKind, amount: number, label: string) {
   const popSeq = state.popSeq + 1
@@ -544,84 +548,11 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
-  buyRegion: (regionId) => {
-    const state = get()
-    const region = regionById(regionId)
-    if (!region || !canBuyRegion(state.footprint, regionId, state.money, region.price)) return false
-    set({
-      money: state.money - region.price,
-      footprint: { ...state.footprint, regions: [...state.footprint.regions, regionId] },
-      now: Date.now(),
-    })
-    persistNow()
-    return true
-  },
-
-  deployPop: (cityId) => {
-    const state = get()
-    const region = regionOfCity(cityId)
-    if (!region || !canDeployPop(state.footprint, cityId, state.money, popCostOf(region))) return false
-    set({
-      money: state.money - popCostOf(region),
-      footprint: { ...state.footprint, pops: [...state.footprint.pops, cityId] },
-      now: Date.now(),
-    })
-    persistNow()
-    return true
-  },
-
-  setPopActive: (cityId, on) => {
-    const { footprint } = get()
-    if (!canSetPop(footprint, cityId, on)) return false
-    set({ footprint: setPop(footprint, cityId, on) })
-    persistNow()
-    return true
-  },
-
-  respondIncident: (id) => {
-    const state = get()
-    const incident = state.company.incidents.find((i) => i.id === id)
-    if (!incident) return false
-    const cost = incidentCost(incident, earnedPerSec(state), state.money)
-    if (state.money < cost) return false
-    set({
-      money: state.money - cost,
-      company: {
-        ...state.company,
-        incidents: state.company.incidents.filter((i) => i.id !== id),
-        resistance: Math.max(0, state.company.resistance - RELIEF),
-      },
-      now: Date.now(),
-    })
-    persistNow()
-    return true
-  },
-
-  forceIncident: (kind, regionId) => {
-    const { company, footprint } = get()
-    if (!INCIDENT_KINDS.includes(kind) || company.incidents.length >= MAX_INCIDENTS) return false
-    const biggest = Object.entries(company.users).sort((a, b) => b[1] - a[1])[0]?.[0]
-    const region = regionId ?? biggest ?? footprint.regions[0]!
-    if (!regionById(region)) return false
-    const incident = makeIncident(kind, region, company.resistance, company.incidentSeq + 1, Date.now())
-    set({ company: { ...company, incidents: [...company.incidents, incident], incidentSeq: company.incidentSeq + 1 } })
-    return true
-  },
-
-  setRegionUsers: (regionId, users) => {
-    const { company } = get()
-    if (!Number.isFinite(users) || users < 0 || ceilingOf(regionId) <= 0) return false
-    set({ company: { ...company, users: { ...company.users, [regionId]: Math.min(users, ceilingOf(regionId)) } } })
-    return true
-  },
-
-  setRegionActive: (regionId, on) => {
-    const { footprint } = get()
-    if (!canSetRegion(footprint, regionId, on)) return false
-    set({ footprint: setRegion(footprint, regionId, on) })
-    persistNow()
-    return true
-  },
+  buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
+  deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
+  setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),
+  respondIncident: (id) => commitCompany(companyActions.respondIncident(get(), id, earnedPerSec(get())), true),
+  setRegionActive: (regionId, on) => commitCompany(companyActions.setRegionActive(get(), regionId, on), false),
 
   buyJob: (jobId) => {
     const job = jobById(jobId)
