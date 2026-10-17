@@ -4,6 +4,7 @@ import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
 import { ceilingOf, incidentCost, INCIDENT_LABEL, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
 import { earnedPerSec, useGame } from "../../game/store.ts"
+import { nextStep } from "./nextStep.ts"
 
 const money = (n: number) => `$${formatNumber(n)}`
 const users = (n: number) => formatNumber(Math.round(n))
@@ -14,8 +15,12 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const perSec = useGame((state) => earnedPerSec(state, state.now))
   const respond = useGame((state) => state.respondIncident)
   const bar = Math.min(100, company.share * 100)
+  const next = nextStep(company)
   return (
     <section className="world" data-testid="company-world" aria-label="The world">
+      <p className={`world-next is-${next.tone}`} data-testid="world-next">
+        {next.text}
+      </p>
       <header className="world-head">
         <div>
           <small>Users</small>
@@ -24,7 +29,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
         </div>
         <div className={`world-resistance${company.resistance > 66 ? " is-hot" : company.resistance > 33 ? " is-warm" : ""}`} data-testid="world-resistance">
           <small>Resistance</small>
-          <b>{`${Math.round(company.resistance)}%`}</b>
+          <b>{company.resistance < 1 ? "Calm" : `${Math.round(company.resistance)}%`}</b>
           <i aria-hidden style={{ width: `${company.resistance}%` }} />
         </div>
       </header>
@@ -33,7 +38,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
       </div>
       {company.won ? (
         <p className="world-won" data-testid="world-won">
-          {`The world is yours. Everything you earn is ×${WIN_MULT} for good. The seven billion keep using you.`}
+          {`Everything you earn is ×${WIN_MULT} for good.`}
         </p>
       ) : null}
       <ul className="world-regions" data-testid="world-regions">

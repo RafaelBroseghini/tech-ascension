@@ -7,7 +7,7 @@ import { appMetrics, popRows } from "../../game/globe/metrics.ts"
 import { cityRows } from "../../game/globe/tip.ts"
 import { WorldPanel } from "./WorldPanel.tsx"
 
-/** The numbers behind the globe on the desk: the app's dashboard, the points of presence, the busiest client cities and the fleet. */
+/** The numbers behind the globe on the desk: the app's dashboard, the points of presence, the busiest cities and the fleet. */
 export interface FleetRow {
   readonly id: number
   readonly name: string
@@ -35,14 +35,13 @@ export const GlobePane = memo(function GlobePane({ company, fleet }: { company: 
   const servers = useMemo(() => popRows(rows, company.pops), [rows, company.pops])
   const stress = metrics.dropped > 0 ? "bad" : metrics.load > 0.8 ? "warn" : "good"
   return (
-    <section className="globe" data-testid="company-globe" aria-label="Where the clients are">
+    <section className="globe" data-testid="company-globe" aria-label="Where the users are">
       <header className="globe-metrics" data-testid="company-metrics">
         <Metric id="requests" label="Requests" value={`${count(metrics.demand)}/s`} sub={`${count(metrics.capacity)}/s capacity`} tone={metrics.load > 0.8 ? "warn" : undefined} />
         <Metric id="served" label="Served" value={percent(metrics.servedShare)} sub={metrics.dropped > 0 ? `${count(metrics.dropped)}/s dropped` : "none dropped"} tone={stress} />
         <Metric id="latency" label="Latency" value={`${Math.round(metrics.avgMs)} ms`} sub={`p95 ${Math.round(metrics.p95Ms)} ms`} />
-        <Metric id="users" label="Users" value={count(metrics.users)} sub={`${metrics.cities} cities`} />
         <Metric id="footprint" label="Footprint" value={`${metrics.pops} PoP${metrics.pops === 1 ? "" : "s"}`} sub={`${metrics.regions} region${metrics.regions === 1 ? "" : "s"}`} />
-        <Metric id="lost" label="Revenue lost" value={metrics.lostPerSec > 0 ? `$${formatNumber(metrics.lostPerSec)}/s` : "$0/s"} sub={metrics.worst ? `slowest ${CITIES[metrics.worst.city]?.name ?? ""} ${metrics.worst.ms} ms` : "no clients yet"} tone={metrics.lostPerSec > 0 ? "bad" : undefined} />
+        <Metric id="lost" label="Revenue lost" value={metrics.lostPerSec > 0 ? `$${formatNumber(metrics.lostPerSec)}/s` : "$0/s"} sub={metrics.worst ? `slowest ${CITIES[metrics.worst.city]?.name ?? ""} ${metrics.worst.ms} ms` : "no users yet"} tone={metrics.lostPerSec > 0 ? "bad" : undefined} />
         <div className={`globe-load is-${stress}`} role="img" aria-label={`Load is ${percent(metrics.load)} of capacity`}>
           <i style={{ width: `${Math.min(100, metrics.load * 100)}%` }} />
         </div>

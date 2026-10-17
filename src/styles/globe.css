@@ -247,6 +247,32 @@
   transition: width 0.4s ease;
 }
 
+/* The one thing to do next, first in the pane. */
+.world-next {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--ide-sky);
+  background: color-mix(in srgb, var(--ide-sky) 8%, transparent);
+  color: var(--ide-text);
+  font-size: var(--fs-xs, var(--fs-sm));
+  line-height: 1.4;
+}
+
+.world-next.is-warn {
+  border-color: var(--ide-peach);
+  background: color-mix(in srgb, var(--ide-peach) 8%, transparent);
+}
+
+.world-next.is-bad {
+  border-color: var(--ide-red);
+  background: color-mix(in srgb, var(--ide-red) 10%, transparent);
+}
+
+.world-next.is-won {
+  border-color: var(--ide-green);
+  background: color-mix(in srgb, var(--ide-green) 10%, transparent);
+}
+
 .world-won {
   margin: 0;
   padding: var(--sp-2);
