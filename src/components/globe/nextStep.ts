@@ -1,6 +1,6 @@
 import { regionById, REGIONS } from "../../data/regions.ts"
 import type { Company } from "../../game/globe/company.ts"
-import { regionName } from "../../game/globe/world.ts"
+import { INCIDENTS, regionName } from "../../game/globe/world.ts"
 
 /** The one thing the company should do next, as the world pane leads with it. */
 export interface NextStep {
@@ -17,11 +17,11 @@ const hasLivePop = (company: Company, region: string): boolean =>
  */
 export function nextStep(company: Company): NextStep {
   if (company.users < 1) return { tone: "calm", text: "Clear a gig to sign your first users. Each client brings people from their own region." }
-  const law = company.incidents.find((i) => i.kind === "law" && !hasLivePop(company, i.region))
+  const law = company.incidents.find((i) => INCIDENTS[i.kind].waivedByPop && !hasLivePop(company, i.region))
   if (law) {
     const where = regionName(law.region)
     const how = company.regions.includes(law.region) ? "Deploy a point of presence there" : `Buy ${where} and deploy a point of presence there`
-    return { tone: "bad", text: `${where} wants a local server. ${how}, or respond to the law.` }
+    return { tone: "bad", text: `${where} wants a local server. ${how}, or respond to the ${INCIDENTS[law.kind].name.toLowerCase()}.` }
   }
   if (company.dropShare > 0) {
     return { tone: "bad", text: `Dropping ${Math.max(1, Math.round(company.dropShare * 100))}% of requests. Serving gear in the Gear tab adds capacity.` }

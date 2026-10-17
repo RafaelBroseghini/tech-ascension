@@ -2,7 +2,7 @@ import { memo } from "react"
 import { REGIONS } from "../../data/regions.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
-import { ceilingOf, incidentCost, INCIDENT_LABEL, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
+import { ceilingOf, incidentCost, INCIDENTS, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
 import { earnedPerSec, useGame } from "../../game/store.ts"
 import { nextStep } from "./nextStep.ts"
 
@@ -57,7 +57,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
       {company.incidents.length > 0 ? (
         <ul className="world-incidents" data-testid="world-incidents">
           {company.incidents.map((incident) => {
-            const label = INCIDENT_LABEL[incident.kind]
+            const label = INCIDENTS[incident.kind]
             const cost = incidentCost(incident, perSec, cash)
             return (
               <li key={incident.id} data-incident={incident.kind}>

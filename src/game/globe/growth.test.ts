@@ -132,6 +132,15 @@ describe("the world pushing back", () => {
     expect(hosted.state.users["europe"]!).toBeGreaterThan(100_000)
   })
 
+  it("a law beside a block bleeds nothing more from a region with its own server", () => {
+    const block: Incident = { id: 1, kind: "block", region: "europe", until: 10 * 60_000, strength: 1 }
+    const law: Incident = { id: 2, kind: "law", region: "europe", until: 10 * 60_000, strength: 1 }
+    const hosted = growthFacts([1], roomy, { regions: ["americas-east", "europe"], pops: ["ashburn", "frankfurt"], off: [], dark: [] })
+    const alone = stepCompany(state({ users: { europe: 100_000 }, incidents: [block] }), hosted, 60_000, 60_000, never)
+    const both = stepCompany(state({ users: { europe: 100_000 }, incidents: [block, law] }), hosted, 60_000, 60_000, never)
+    expect(both.state.users["europe"]).toBeCloseTo(alone.state.users["europe"]!, 6)
+  })
+
   it("a rival halves the growth in its region", () => {
     const rival: Incident = { id: 1, kind: "rival", region: "americas-east", until: 10 * 60_000, strength: 0.5 }
     const users = { "americas-east": 100_000 }

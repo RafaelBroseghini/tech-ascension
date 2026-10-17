@@ -3,6 +3,7 @@ import { FRESH_FOOTPRINT } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
 import { capacityOf, demandOf, dropShareOf } from "./load.ts"
 import {
+  biting,
   ceilingOf,
   GROWTH_PER_SEC,
   incidentRate,
@@ -11,6 +12,7 @@ import {
   liveRegions,
   MAX_INCIDENTS,
   MILESTONES,
+  multiplierOf,
   populationOf,
   reachOf,
   RESISTANCE_LAG_S,
@@ -18,8 +20,6 @@ import {
   rollIncident,
   seedsOf,
   SPILL,
-  stalls,
-  surgeOf,
   totalUsers,
   WORLD_POPULATION,
 } from "./world.ts"
@@ -98,7 +98,7 @@ export function servingHealth(dropShare: number, demand: number, capacity: numbe
 
 /** The requests a second the users of a company send, with every DDoS surge counted. */
 export function demandAt(users: Readonly<Record<string, number>>, incidents: readonly Incident[]): number {
-  return REGIONS.reduce((sum, region) => sum + demandOf(users[region.id] ?? 0) * surgeOf(incidents, region.id), 0)
+  return REGIONS.reduce((sum, region) => sum + demandOf(users[region.id] ?? 0) * multiplierOf(incidents, region.id, "surge"), 0)
 }
 
 /**
@@ -124,13 +124,13 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   for (const region of REGIONS) {
     const here = state.users[region.id] ?? 0
     const ceiling = ceilingOf(region.id)
-    const stalled = stalls(incidents, region.id, facts.live[region.id] === true)
-    const rival = incidents.filter((i) => i.kind === "rival" && i.region === region.id).reduce((mult, i) => mult * i.strength, 1)
+    const hasPop = facts.live[region.id] === true
+    const stalling = biting(incidents, region.id, "stall", hasPop)
+    const stalled = stalling.length > 0
+    const rival = multiplierOf(incidents, region.id, "drag")
     const seed = (facts.seeds[region.id] ?? 0) + SPILL * before * (populationOf(region.id) / WORLD_POPULATION)
     const growth = stalled ? 0 : GROWTH_PER_SEC * (facts.reach[region.id] ?? 0) * Math.max(here, seed) * Math.max(0, 1 - here / ceiling) * served * drag * rival
-    const bleed = incidents
-      .filter((i) => (i.kind === "block" || i.kind === "law") && i.region === region.id && stalled)
-      .reduce((rate, i) => rate + BLEED_PER_SEC * i.strength * (facts.live[region.id] ? 0.5 : 1) * (1 + resistance / 100), 0)
+    const bleed = stalling.reduce((rate, i) => rate + BLEED_PER_SEC * i.strength * (hasPop ? 0.5 : 1) * (1 + resistance / 100), 0)
     const churn = Math.min(0.9, (DROP_CHURN_PER_SEC * dropShare + bleed) * sec)
     const next = Math.min(ceiling, Math.max(0, (here + growth * sec) * (1 - churn)))
     if (next > 0) users[region.id] = next

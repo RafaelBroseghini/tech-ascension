@@ -1,7 +1,7 @@
 import type { Company } from "./company.ts"
 import { HEALTH_CHAR, STATUS_DAY_MS, uptimePercent } from "./growth.ts"
 import type { HealthChar } from "./growth.ts"
-import { INCIDENT_LABEL, regionName } from "./world.ts"
+import { INCIDENTS, regionName } from "./world.ts"
 
 /** The four states a real status page uses. */
 export type Health = "operational" | "degraded" | "partial" | "major"
@@ -113,7 +113,7 @@ export function statusOf(facts: StatusFacts): Board {
       uptime: uptimePercent(flat),
       detail:
         company.incidents.length > 0
-          ? company.incidents.map((i) => `${INCIDENT_LABEL[i.kind].name} in ${regionName(i.region)}`).join(". ") + "."
+          ? company.incidents.map((i) => `${INCIDENTS[i.kind].name} in ${regionName(i.region)}`).join(". ") + "."
           : `${company.pops.length} point${company.pops.length === 1 ? "" : "s"} of presence in ${company.regions.length} region${company.regions.length === 1 ? "" : "s"}`,
     },
   ]
@@ -131,9 +131,9 @@ export function statusOf(facts: StatusFacts): Board {
   }
 }
 
-/** A block or a law cuts a region off, a surge or a rival only slows it. */
+/** An incident that stalls a region cuts it off; a surge or a drag only slows it. */
 function regionsHealth(company: Company): Health {
-  if (company.incidents.some((i) => i.kind === "block" || i.kind === "law")) return "partial"
+  if (company.incidents.some((i) => INCIDENTS[i.kind].effect === "stall")) return "partial"
   return company.incidents.length > 0 ? "degraded" : "operational"
 }
 

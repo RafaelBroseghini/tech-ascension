@@ -7,7 +7,7 @@ import { featureById, triggerLabel } from "./features.ts"
 import { formatNumber } from "./format.ts"
 import { reviewById } from "./reviews.ts"
 import { formatPlayTime } from "./stats.ts"
-import { INCIDENT_LABEL, MILESTONES, regionName } from "./globe/world.ts"
+import { INCIDENTS, MILESTONES, regionName } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import type { SavedCareer, SavedCareerEntry } from "./save.ts"
 
@@ -197,7 +197,7 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
     case "buzz":
       return "Front-page mention"
     case "incident":
-      return INCIDENT_LABEL[entry.ref.slice("incident:".length) as IncidentKind]?.name ?? entry.ref
+      return INCIDENTS[entry.ref.slice("incident:".length) as IncidentKind]?.name ?? entry.ref
     case "world":
       return MILESTONES.find((row) => `world:${row.id}` === entry.ref)?.label ?? entry.ref
     case "milestone":

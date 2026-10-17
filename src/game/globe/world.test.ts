@@ -14,8 +14,8 @@ import {
   rollIncident,
   SEED_PER_GIG,
   seedsOf,
-  stalls,
-  surgeOf,
+  biting,
+  multiplierOf,
   WORLD_CEILING,
   WORLD_POPULATION,
   WORLD_TARGET,
@@ -102,12 +102,12 @@ describe("resistance and incidents", () => {
   it("only a block, or a law with no server, stalls a region, and only a surge raises traffic", () => {
     const block = makeIncident("block", "europe", 0, 1, 0)
     const law = makeIncident("law", "europe", 0, 2, 0)
-    expect(stalls([block], "europe", true)).toBe(true)
-    expect(stalls([law], "europe", true)).toBe(false)
-    expect(stalls([law], "europe", false)).toBe(true)
-    expect(stalls([block], "asia", false)).toBe(false)
-    expect(surgeOf([block], "europe")).toBe(1)
-    expect(surgeOf([makeIncident("ddos", "europe", 0, 3, 0)], "europe")).toBeGreaterThan(1)
+    expect(biting([block], "europe", "stall", true)).toHaveLength(1)
+    expect(biting([law], "europe", "stall", true)).toHaveLength(0)
+    expect(biting([law], "europe", "stall", false)).toHaveLength(1)
+    expect(biting([block], "asia", "stall", false)).toHaveLength(0)
+    expect(multiplierOf([block], "europe", "surge")).toBe(1)
+    expect(multiplierOf([makeIncident("ddos", "europe", 0, 3, 0)], "europe", "surge")).toBeGreaterThan(1)
   })
 
   it("ending an incident costs minutes of income, with a floor and 1% of the balance", () => {

@@ -4,7 +4,7 @@ import "../../styles/globe.css"
 import { HOME } from "../../data/geo.ts"
 import { formatCompact } from "../../game/format.ts"
 import { cityRows } from "../../game/globe/tip.ts"
-import { INCIDENT_LABEL } from "../../game/globe/world.ts"
+import { INCIDENTS } from "../../game/globe/world.ts"
 import { openSurface } from "../../game/surfaces.ts"
 import { useFeatureOpen } from "../useFeature.ts"
 import { canDrawWave } from "./support.ts"
@@ -43,7 +43,7 @@ export const MiniGlobe = memo(function MiniGlobe() {
           className="mini-globe-badge"
           data-testid="mini-globe-badge"
           aria-label={`${count} incident${count === 1 ? "" : "s"}. Open your company`}
-          title={company.incidents.map((i) => INCIDENT_LABEL[i.kind].name).join(", ")}
+          title={company.incidents.map((i) => INCIDENTS[i.kind].name).join(", ")}
           onClick={() => openSurface("studio")}
         >
           {count}

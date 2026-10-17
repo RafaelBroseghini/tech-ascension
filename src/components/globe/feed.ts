@@ -1,4 +1,4 @@
-import { INCIDENT_LABEL, MILESTONES, regionName, totalUsers, WORLD_TARGET } from "../../game/globe/world.ts"
+import { INCIDENTS, MILESTONES, regionName, totalUsers, WORLD_TARGET } from "../../game/globe/world.ts"
 import type { HealthChar } from "../../game/globe/growth.ts"
 import type { Incident } from "../../game/globe/world.ts"
 
@@ -38,11 +38,11 @@ export function feedItems(prev: FeedFacts, next: FeedFacts): FeedItem[] {
   const after = new Set(next.incidents.map((i) => i.id))
   for (const incident of next.incidents) {
     if (before.has(incident.id)) continue
-    items.push({ key: `incident:${incident.id}`, tone: "bad", text: `${INCIDENT_LABEL[incident.kind].name} · ${regionName(incident.region)}` })
+    items.push({ key: `incident:${incident.id}`, tone: "bad", text: `${INCIDENTS[incident.kind].name} · ${regionName(incident.region)}` })
   }
   for (const incident of prev.incidents) {
     if (after.has(incident.id)) continue
-    items.push({ key: `over:${incident.id}`, tone: "good", text: `${INCIDENT_LABEL[incident.kind].name} over · ${regionName(incident.region)}` })
+    items.push({ key: `over:${incident.id}`, tone: "good", text: `${INCIDENTS[incident.kind].name} over · ${regionName(incident.region)}` })
   }
   for (const [region, users] of Object.entries(next.users)) {
     if (users >= 1 && !((prev.users[region] ?? 0) >= 1)) items.push({ key: `first:${region}`, tone: "info", text: `First users in ${regionName(region)}` })

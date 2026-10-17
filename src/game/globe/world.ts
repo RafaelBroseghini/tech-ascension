@@ -52,7 +52,64 @@ export const WIN_MULT = 1.25
 
 export type IncidentKind = "ddos" | "block" | "law" | "rival"
 
-export const INCIDENT_KINDS: readonly IncidentKind[] = ["ddos", "block", "law", "rival"]
+/** What an incident does to its region: multiply its traffic, cut off its growth and bleed its users, or drag its growth. */
+export type IncidentEffect = "surge" | "stall" | "drag"
+
+interface IncidentRule {
+  readonly name: string
+  readonly line: (region: string) => string
+  /** Share of the rolls that pick this kind. */
+  readonly weight: number
+  /** Minutes of earnings it costs to end it early. */
+  readonly costMinutes: number
+  /** How hard it bites, from the world's heat (resistance over 100). */
+  readonly strength: (heat: number) => number
+  readonly effect: IncidentEffect
+  /** A live point of presence in the region takes the bite out of it. */
+  readonly waivedByPop: boolean
+}
+
+/** Everything the game knows about each kind of incident. */
+export const INCIDENTS: Readonly<Record<IncidentKind, IncidentRule>> = {
+  ddos: {
+    name: "DDoS surge",
+    line: (region) => `Botnets are hammering ${region}. Traffic there has multiplied.`,
+    weight: 0.35,
+    costMinutes: 2,
+    strength: (heat) => 2 + 3 * heat,
+    effect: "surge",
+    waivedByPop: false,
+  },
+  block: {
+    name: "Censorship block",
+    line: (region) => `${region} has blocked the app. Users there stall and drift away.`,
+    weight: 0.2,
+    costMinutes: 3,
+    strength: (heat) => 1 + heat,
+    effect: "stall",
+    waivedByPop: false,
+  },
+  law: {
+    name: "Data-residency law",
+    line: (region) => `${region} demands a local point of presence. Without one the app is cut off.`,
+    weight: 0.2,
+    costMinutes: 3,
+    strength: (heat) => 1 + heat,
+    effect: "stall",
+    waivedByPop: true,
+  },
+  rival: {
+    name: "Rival app",
+    line: (region) => `A local rival is eating ${region}'s signups.`,
+    weight: 0.25,
+    costMinutes: 2,
+    strength: () => 0.5,
+    effect: "drag",
+    waivedByPop: false,
+  },
+}
+
+export const INCIDENT_KINDS = Object.keys(INCIDENTS) as readonly IncidentKind[]
 
 /** One thing the world has thrown at a region. It runs until `until`, or until the player pays to end it. */
 export interface Incident {
@@ -61,15 +118,8 @@ export interface Incident {
   readonly region: string
   /** Epoch ms it ends on its own. */
   readonly until: number
-  /** How hard it bites: ddos multiplies the region's traffic by it, a block and a law bleed users by it, a rival drags growth by it. */
+  /** How hard it bites: a surge multiplies the region's traffic by it, a stall bleeds users by it, a drag multiplies growth by it. */
   readonly strength: number
-}
-
-export const INCIDENT_LABEL: Readonly<Record<IncidentKind, { name: string; line: (region: string) => string }>> = {
-  ddos: { name: "DDoS surge", line: (region) => `Botnets are hammering ${region}. Traffic there has multiplied.` },
-  block: { name: "Censorship block", line: (region) => `${region} has blocked the app. Users there stall and drift away.` },
-  law: { name: "Data-residency law", line: (region) => `${region} demands a local point of presence. Without one the app is cut off.` },
-  rival: { name: "Rival app", line: (region) => `A local rival is eating ${region}'s signups.` },
 }
 
 /** The most incidents live at once. */
@@ -136,29 +186,19 @@ export function liveRegions(fp: Footprint): Record<string, boolean> {
   return Object.fromEntries(REGIONS.map((region) => [region.id, live.some((city) => region.cities.includes(city))]))
 }
 
-/** Incidents on a region that stall it. A law only bites a region without a live point of presence. */
-export function stalls(incidents: readonly Incident[], region: string, hasPop: boolean): boolean {
-  return incidents.some((i) => i.region === region && (i.kind === "block" || (i.kind === "law" && !hasPop)))
+/** The incidents biting a region with an effect. One a point of presence waives does not bite a region that has one live. */
+export function biting(incidents: readonly Incident[], region: string, effect: IncidentEffect, hasPop: boolean): Incident[] {
+  return incidents.filter((i) => i.region === region && INCIDENTS[i.kind].effect === effect && !(hasPop && INCIDENTS[i.kind].waivedByPop))
 }
 
-/** Traffic multiplier from DDoS surges in a region. */
-export function surgeOf(incidents: readonly Incident[], region: string): number {
-  return incidents.filter((i) => i.kind === "ddos" && i.region === region).reduce((mult, i) => mult * i.strength, 1)
-}
+/** How much the incidents with an effect multiply a region by: its traffic for a surge, its growth for a drag. */
+export const multiplierOf = (incidents: readonly Incident[], region: string, effect: "surge" | "drag"): number =>
+  biting(incidents, region, effect, false).reduce((mult, i) => mult * i.strength, 1)
 
 /** What ending an incident costs: minutes of what the company earns, and never less than 1% of the balance or a floor. */
 export function incidentCost(incident: Incident, perSec: number, money: number): number {
-  const minutes = incident.kind === "ddos" || incident.kind === "rival" ? 2 : 3
-  return Math.max(100, perSec * 60 * minutes, money * 0.01)
+  return Math.max(100, perSec * 60 * INCIDENTS[incident.kind].costMinutes, money * 0.01)
 }
-
-/** Incident kinds in the order a roll in [0, 1) picks them, with their weights. */
-const PICK: readonly [IncidentKind, number][] = [
-  ["ddos", 0.35],
-  ["block", 0.2],
-  ["law", 0.2],
-  ["rival", 0.25],
-]
 
 /** A new incident for a roll, or null when the roll finds nothing to hit. `rand` draws the region and the kind. */
 export function rollIncident(
@@ -179,22 +219,21 @@ export function rollIncident(
     if (pick <= 0) break
   }
   let roll = rand()
-  let kind: IncidentKind = "ddos"
-  for (const [k, weight] of PICK) {
+  let kind: IncidentKind = INCIDENT_KINDS[0]!
+  for (const k of INCIDENT_KINDS) {
     kind = k
-    roll -= weight
+    roll -= INCIDENTS[k].weight
     if (roll <= 0) break
   }
-  // A law has nothing to say to a region that already hosts a server.
-  if (kind === "law" && live[region]) kind = "block"
+  // A kind a local server answers has nothing to say to a region that already hosts one, so the world blocks it instead.
+  if (INCIDENTS[kind].waivedByPop && live[region]) kind = "block"
   return makeIncident(kind, region, resistance, id, at)
 }
 
 /** An incident of a kind on a region. The hotter the world, the harder it bites and the longer it lasts. */
 export function makeIncident(kind: IncidentKind, region: string, resistance: number, id: number, at: number): Incident {
   const heat = resistance / 100
-  const strength = kind === "ddos" ? 2 + 3 * heat : kind === "rival" ? 0.5 : 1 + heat
-  return { id, kind, region, until: at + INCIDENT_BASE_MS * (1 + heat), strength }
+  return { id, kind, region, until: at + INCIDENT_BASE_MS * (1 + heat), strength: INCIDENTS[kind].strength(heat) }
 }
 
 export function regionName(regionId: string): string {
