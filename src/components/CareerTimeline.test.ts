@@ -165,7 +165,8 @@ describe("the shop teases what is next", () => {
     useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 9).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
     render(Shop, { onCollapse: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
-    expect(tabs).toEqual(["A", "G"])
+    // Skill 1 opened the studio, so the Company tab is there too.
+    expect(tabs).toEqual(["A", "G", "W"])
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
     expect($$("[data-row='skill:10'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
     expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.textContent).toBe("Unlocks Career log")

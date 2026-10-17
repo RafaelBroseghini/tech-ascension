@@ -1,19 +1,17 @@
-/* Your company's globe, and the modal it opens in. Every color is an editor theme token. */
+/* Your company's globe, and the Company tab it fills. Every color is an editor theme token. */
 
 .globe {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  border-right: 1px solid var(--ide-surface);
-  background: radial-gradient(ellipse at 50% 42%, #202025, #131316 75%);
 }
 
 /* The app's dashboard: six figures and a load bar, over the globe. */
 .globe-metrics {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   padding-bottom: 3px;
   border-bottom: 1px solid var(--ide-surface);
@@ -107,9 +105,9 @@
 
 .globe-pops {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 5px var(--sp-4);
-  max-height: 84px;
+  max-height: 120px;
   margin: 0;
   padding: 2px var(--sp-3) 2px;
   overflow: auto;
@@ -339,6 +337,103 @@
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
+}
+
+/* The team: a row for each kind open to hire, with its heads and payroll, and the credit. */
+.world-team {
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-2xs);
+}
+
+.world-team h4 {
+  margin: 0;
+  color: var(--ide-overlay);
+  font-size: var(--fs-2xs);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.world-hired {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.world-hired li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+}
+
+.world-hired b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.world-hire {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1, 2px) var(--sp-2);
+  border-left: 2px solid var(--ide-blue);
+  background: var(--ide-crust);
+}
+
+.world-hire span {
+  display: grid;
+  gap: 1px;
+  color: var(--ide-overlay);
+}
+
+.world-hire small {
+  font-size: inherit;
+}
+
+.world-hire button,
+.world-incidents button {
+  border: var(--stroke, 2px) solid var(--ink, var(--ide-crust));
+  border-radius: var(--radius, 4px);
+  padding: 5px 9px 6px;
+  background: var(--ide-green);
+  color: var(--ide-crust);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink, var(--ide-crust));
+}
+
+.world-hire button:hover:not(:disabled),
+.world-incidents button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ide-green) 70%, white);
+}
+
+.world-hire button:active:not(:disabled),
+.world-incidents button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.world-hire button:disabled,
+.world-incidents button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.world-hire strong {
+  color: var(--ide-text);
+  font-weight: 600;
+}
+
+.world-credit {
+  margin: 0;
+  color: var(--ide-overlay);
 }
 
 .globe-body {
@@ -661,7 +756,7 @@
 
 .globe-cities {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 5px var(--sp-4);
   margin: 0;
   padding: 2px var(--sp-3) var(--sp-3);
@@ -743,79 +838,22 @@
   }
 }
 
-.company-view {
-  position: fixed;
-  inset: 0;
-  z-index: 28;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  background: var(--ide-mantle);
+/* The Company tab on the shop: one narrow column. */
+.company-tab {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   color: var(--ide-text);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
 }
 
-.company-view-head {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--ide-crust);
-}
-
-.company-view-head h2 {
-  margin: 0;
-  font-size: var(--fs-sm);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.company-view-head span {
-  flex: 1;
-  opacity: 0.7;
-}
-
-.company-view-close {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid currentColor;
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.company-view-body {
-  min-height: 0;
-  display: grid;
-  padding: 12px;
-}
-
-.company-view-body .globe {
-  align-self: start;
-  min-height: 0;
-}
-
-.company-view-body {
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(440px, 46%);
-  gap: 12px;
-  padding: 12px;
-}
-
-.company-view-body .globe {
-  align-self: start;
-  min-height: 0;
+.company-tab > * + * {
+  border-top: 1px solid var(--ide-surface);
 }
 
 .globe-fleet {
   flex: 0 1 auto;
-  max-height: 16vh;
-  overflow: auto;
   padding: 6px 12px 8px;
   border-top: 1px solid var(--ide-surface);
   font-size: var(--fs-2xs);
@@ -862,11 +900,9 @@
 .status-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px 20px;
-  border-radius: 8px;
+  gap: 12px;
+  min-width: 0;
+  padding: var(--sp-3);
   background: var(--ide-base);
   color: var(--ide-text);
   font-family: var(--font-sans, system-ui, sans-serif);
@@ -943,7 +979,7 @@
 
 .status-components {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -960,11 +996,7 @@
   background: var(--ide-base);
 }
 
-.status-components li:nth-child(odd) {
-  border-right: 1px solid var(--ide-surface);
-}
-
-.status-components li:nth-last-child(-n + 2) {
+.status-components li:last-child {
   border-bottom: 0;
 }
 
@@ -1068,25 +1100,6 @@
 .status-past small {
   color: var(--ide-overlay);
   text-align: right;
-}
-
-@media (max-width: 720px) {
-  .company-view-body {
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: max-content;
-    align-content: start;
-    overflow-y: auto;
-  }
-
-  .company-view-body .globe,
-  .company-view-body .globe-body {
-    flex: none;
-    min-height: auto;
-  }
-
-  .status-components {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .visually-hidden {
@@ -1282,4 +1295,9 @@
 
 .footprint-city .city-flag {
   margin-right: 0;
+}
+
+.company-tab .footprint {
+  padding: var(--sp-3);
+  border-top: 0;
 }

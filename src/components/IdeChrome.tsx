@@ -1,5 +1,5 @@
 import { GitBranch, Globe } from "lucide-react"
-import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react"
+import { memo, useMemo, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
@@ -8,7 +8,9 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
-import { CompanyHost } from "./globe/CompanyHost.tsx"
+import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
+import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
+import { openSurface } from "../game/surfaces.ts"
 
 /** The desk shell behind the stage: the activity bar, the career log sidebar and the status bar. The palette is the saved theme. */
 export const IdeChrome = memo(function IdeChrome() {
@@ -24,7 +26,6 @@ export const IdeChrome = memo(function IdeChrome() {
   const studioOpen = useFeatureOpen("studio")
   const incidents = useGame((state) => state.company.incidents.length)
   const product = useGame((state) => state.profile.product)
-  const [companyOpen, setCompanyOpen] = useState(false)
   const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
   const showLog = logOpen && sidebar === "log"
   const { band, previewing } = useMemo(
@@ -39,9 +40,11 @@ export const IdeChrome = memo(function IdeChrome() {
   useSurface("careerLog", openLog)
   const openCompany = () => {
     seeFeature("studio")
-    setCompanyOpen(true)
+    // The company lives on the shop's Company tab: show the shop (it mounts on the saved tab), or tell the open one.
+    writeSavedShopTab("W")
+    writeShopPanelOpen(true)
+    openSurface("company")
   }
-  const closeCompany = useCallback(() => setCompanyOpen(false), [])
   useSurface("studio", openCompany)
 
   return (
@@ -104,7 +107,6 @@ export const IdeChrome = memo(function IdeChrome() {
         <span className="ide-status-gap" />
         <IdeStatusDock />
       </footer>
-      <CompanyHost open={companyOpen} onClose={closeCompany} />
     </div>
   )
 })

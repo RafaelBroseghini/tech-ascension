@@ -190,7 +190,7 @@ describe("next click focus", () => {
 
 describe("gear tab", () => {
   it("sits between Jobs and Capital and opens at 10,000 lifetime XP", () => {
-    expect(SHOP_TABS).toEqual(["A", "B", "C", "G", "D"])
+    expect(SHOP_TABS).toEqual(["A", "B", "C", "G", "D", "W"])
     expect(equipmentOpen({ xpTotal: 9_999, equipment: {} })).toBe(false)
     expect(equipmentOpen({ xpTotal: 10_000, equipment: {} })).toBe(true)
     expect(equipmentOpen({ xpTotal: 0, equipment: { "1": 1 } })).toBe(true)

@@ -13,9 +13,9 @@ export type Phase = "A" | "B" | "C" | "D"
 export const PHASES: readonly Phase[] = ["A", "B", "C", "D"]
 
 /** Shop tabs, left to right. "G" (Gear) sits between Jobs and Capital and never becomes the current phase. */
-export type ShopTab = Phase | "G"
+export type ShopTab = Phase | "G" | "W"
 
-export const SHOP_TABS: readonly ShopTab[] = ["A", "B", "C", "G", "D"]
+export const SHOP_TABS: readonly ShopTab[] = ["A", "B", "C", "G", "D", "W"]
 
 export const PHASE_NAME: Record<Phase, string> = {
   A: "Skill grind",

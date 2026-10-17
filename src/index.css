@@ -253,7 +253,21 @@ img { -webkit-user-drag: none; user-select: none; }
 .founder-chip:hover { background: var(--surface-1); }
 .m-founder.is-hot .founder-chip { color: var(--ide-red); }
 
-.fork-modal { width: min(460px, 100%); }
+/* The fork, pinned at the top of the Company tab: in flow, no backdrop, no focus grab. */
+.fork-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-left: 4px solid var(--accent);
+  background: var(--surface-1);
+  font-size: var(--fs-sm);
+}
+.fork-card.is-broke { border-left-color: var(--ide-red); }
+.fork-card .event-title { font-size: var(--fs-lg, var(--fs-md)); }
+.fork-card .event-lines { margin: 0; gap: var(--sp-1, 4px); }
+.fork-card .event-line { padding: var(--sp-1, 4px) var(--sp-2); font-size: var(--fs-sm); }
+.fork-card .event-choice { padding: 7px 12px 8px; }
 .fork-actions { flex-direction: column; align-items: stretch; }
 .fork-actions .event-choice { width: 100%; }
 .fork-note {

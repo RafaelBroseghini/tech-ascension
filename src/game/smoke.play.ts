@@ -5,7 +5,7 @@ import { expect, test, vi } from "vitest"
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
-import { ForkModal } from "../components/ForkModal.tsx"
+import { ForkCard } from "../components/globe/ForkCard.tsx"
 import { MetricsBar } from "../components/MetricsBar.tsx"
 import { installGameHarness } from "./harness.ts"
 import { formatNumber } from "./format.ts"
@@ -655,14 +655,14 @@ test("the fork: quit for the product, run out, raise a bridge, go back one rung 
   game.setUsers("americas-east", 5_000)
   game.tick(1_000)
   const ladder = game.getState()
-  // The fork opened at 1,000 users and a job held: the modal shows once, and the offer is latched for the red button.
+  // The fork opened at 1,000 users and a job held: the card shows, and the offer is latched for the red button.
   expect(ladder).toMatchObject({ track: "ladder", founder: { offered: true, bridges: 0, broke: false, burnPerSec: 0, runwaySec: null } })
 
   const host = document.createElement("div")
   document.body.append(host)
   const root = createRoot(host)
-  flushSync(() => root.render(createElement("div", null, createElement(MetricsBar), createElement(ForkModal))))
-  const hidden = () => host.querySelector("[data-testid='fork-modal']") === null
+  flushSync(() => root.render(createElement("div", null, createElement(MetricsBar), createElement(ForkCard))))
+  const hidden = () => host.querySelector("[data-testid='fork-card']") === null
   const button = () => host.querySelector<HTMLButtonElement>("[data-testid='go-full-time']")
   expect(hidden()).toBe(false)
   flushSync(() => host.querySelector<HTMLButtonElement>("[data-testid='fork-keep']")?.click())
@@ -702,7 +702,7 @@ test("the fork: quit for the product, run out, raise a bridge, go back one rung 
   const out = game.getState()
   expect(out.founder.broke).toBe(true)
   expect(out.money).toBe(0)
-  expect(host.querySelector("[data-testid='runway-modal']")).not.toBeNull()
+  expect(host.querySelector("[data-testid='runway-card']")).not.toBeNull()
   game.tick(10_000)
   expect(game.getState().money).toBeGreaterThanOrEqual(0)
   expect(game.getState().founder.broke).toBe(true)

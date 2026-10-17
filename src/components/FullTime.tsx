@@ -6,8 +6,8 @@ import { useGame } from "../game/store.ts"
 import { openSurface } from "../game/surfaces.ts"
 
 /**
- * The top bar's bet. Once the fork has been offered, a ladder career always has the red button: it reopens the choice and
- * never quits in one click. A founder gets a chip with the runway instead, which opens the company view.
+ * The top bar's bet. Once the fork has been offered, a ladder career always has the red button: it reopens the choice (the card at the top
+ * of the Company tab) and never quits in one click. A founder gets a chip with the runway instead, which opens the Company tab.
  */
 export function FullTimeCell() {
   const offered = useGame((state) => state.founder.offered)
@@ -34,7 +34,9 @@ function NuclearButton() {
           aria-disabled={shut}
           title={reason}
           onClick={() => {
-            if (!shut) open()
+            if (shut) return
+            open()
+            openSurface("studio")
           }}
         >
           <span className="nuke-ring" aria-hidden>
@@ -65,7 +67,7 @@ function FounderChip() {
     <div className={hot ? "m-fork m-founder is-hot" : "m-fork m-founder"} data-testid="founder-cell">
       <dt>Founder</dt>
       <dd>
-        <button type="button" className="founder-chip" data-testid="founder-chip" title={`Founder of ${product}. Open the company view.`} onClick={() => openSurface("studio")}>
+        <button type="button" className="founder-chip" data-testid="founder-chip" title={`Founder of ${product}. Open the Company tab.`} onClick={() => openSurface("studio")}>
           {text}
         </button>
       </dd>
