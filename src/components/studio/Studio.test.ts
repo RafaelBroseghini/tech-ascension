@@ -9,7 +9,7 @@ import { SHORTENER_CDN_READS_ONLY } from "../../data/studio/fixtures.ts"
 import { useGame } from "../../game/store.ts"
 import type { Design } from "../../game/studio/types.ts"
 import { showInterview, useBoard } from "./boardStore.ts"
-import { closeStudio, getStudioView, loadStudio, openStudio } from "./launcher.ts"
+import { closeStudio, getStudioView, loadStudio, onStudioHire, openStudio } from "./launcher.ts"
 import { StudioHost } from "./StudioHost.tsx"
 
 const interview = (id: string) => INTERVIEWS.find((row) => row.id === id) ?? INTERVIEWS[0]
@@ -94,6 +94,152 @@ describe("whiteboard", () => {
     await submitAndSkip()
     expect($("[data-testid='studio']")?.dataset.interview).toBe(THREE_TIER.id)
     expect($("[data-testid='studio-verdict']")?.dataset.verdict).toBe("hire")
+  })
+
+  it("lists only the interviews the career has reached", async () => {
+    careerAt(40_000, [], [1, 2, 3, 4, 5, 6])
+    await open(THREE_TIER.id)
+    expect($$("[data-testid='studio-interview']").map((row) => row.dataset.interview)).toEqual(["hello-server"])
+    expect($$(".studio-list-select option").map((option) => option.getAttribute("value"))).toEqual(["hello-server"])
+    // The request for a locked interview falls back to the one the career can take.
+    expect($("[data-testid='studio']")?.dataset.interview).toBe("hello-server")
+    const text = document.body.textContent ?? ""
+    for (const row of INTERVIEWS.filter((r) => r.id !== "hello-server")) expect(text).not.toContain(row.name)
+  })
+
+  it("before the Job Board the whiteboard names no interview", async () => {
+    careerAt(0, [], [])
+    await open(THREE_TIER.id)
+    expect($("[data-testid='studio-empty']")?.textContent).toBe("Your next interview opens with the Job Board.")
+    expect($$("[data-testid='studio-interview']")).toEqual([])
+    expect($("[data-testid='studio-submit']")).toBeNull()
+    expect($("[data-testid='studio']")?.dataset.interview).toBeUndefined()
+    const text = document.body.textContent ?? ""
+    for (const row of INTERVIEWS) expect(text).not.toContain(row.name)
+  })
+
+  it("keeps passed interviews listed for replay", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().forceInterview(THREE_TIER.id)
+    await open(THREE_TIER.id)
+    expect($$("[data-testid='studio-interview']").map((row) => row.dataset.status)).toEqual(["hired", "passed"])
+  })
+
+  it("every meter moves with an edit, and none says pass or fail before a Submit", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+    const read = () => $$("[data-testid='studio-live-meter']").map((meter) => meter.textContent)
+    const before = read()
+    expect($$("[data-testid='studio-live-meter']").map((meter) => meter.dataset.meter)).toEqual(["Money", "Performance", "Availability", "Fault tolerance"])
+    await click($("[data-testid='studio-tile'][data-kind='cache']"))
+    const after = read()
+    expect(after[0]).not.toBe(before[0])
+    expect(document.body.querySelector(".is-fail, .is-over")).toBeNull()
+    await click($("[data-testid='studio-tile'][data-kind='lb']"))
+    expect(read()[0]).not.toBe(after[0])
+    expect($("[data-testid='studio-run']")).toBeNull()
+  })
+
+  it("the live readout counts requests and names the busiest node, and the run report holds the node lines until the reveal ends", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "Two APIs, no spare"))
+    const line = (testid: string, key: string) => $(`[data-testid='${testid}'] [data-line='${key}']`)?.textContent
+    expect(line("studio-live-readout", "requests")).toBe("72,000 requests over 120 s, peak 600 rps")
+    expect(line("studio-live-readout", "hottest")).toBe("Busiest: Hamster Wheel API, 120% busy")
+    expect(line("studio-live-readout", "singlePoints")).toBe("Single points of failure: PostgreSloth, Round Robin Hood")
+    await click($("[data-testid='studio-submit']"))
+    expect($$("[data-testid='studio-run-readout'] li").map((li) => li.dataset.line)).toEqual(["requests", "answered"])
+    await act(async () => {
+      $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+    })
+    expect($$("[data-testid='studio-run-readout'] li").map((li) => li.dataset.line)).toEqual(["requests", "answered", "hottest", "singlePoints"])
+    expect(line("studio-run-readout", "requests")).toBe("72,000 requests over 120 s, peak 600 rps")
+  })
+
+  it("an edit after a Submit labels the report as the last submission", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+    await submitAndSkip()
+    expect($("[data-testid='studio-run']")?.dataset.stale).toBe("false")
+    expect($(".studio-run-label")).toBeNull()
+    await click($("[data-testid='studio-tile'][data-kind='cache']"))
+    expect($("[data-testid='studio-run']")?.dataset.stale).toBe("true")
+    expect($(".studio-run-label")?.textContent).toBe("Last submission")
+  })
+
+  describe("practice", () => {
+    const practiceCareer = () => {
+      careerAt(60_000, [1, 2])
+      useGame.getState().forceInterview(THREE_TIER.id)
+    }
+
+    it("a passed interview reads as practice and a miss changes nothing in the career", async () => {
+      practiceCareer()
+      await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+      expect($("[data-testid='studio-kicker']")?.dataset.practice).toBe("true")
+      expect($("[data-testid='studio-kicker']")?.textContent).toContain("Practice")
+      expect($("[data-testid='studio-submit']")?.textContent).toBe("Run it again (practice)")
+      expect($("[data-testid='studio-penalty']")).toBeNull()
+      const career = () => {
+        const s = useGame.getState()
+        return [s.xp, s.xpTotal, s.jobs, s.interviews, s.journal.entries.length, s.lastInterview]
+      }
+      const before = career()
+      await submitAndSkip()
+      const verdict = $("[data-testid='studio-verdict']")
+      expect(verdict?.dataset.verdict).toBe("misses")
+      expect(verdict?.textContent).toContain("Misses the bar")
+      expect(verdict?.textContent).not.toMatch(/Hire|XP/)
+      expect($("[data-testid='studio-xp-lost']")).toBeNull()
+      expect($("[data-testid='studio-to-jobs']")).toBeNull()
+      expect($$("[data-testid='studio-meter'].is-fail").length).toBeGreaterThan(0)
+      expect(career()).toEqual(before)
+    })
+
+    it("a cheaper passing run says New best and shows the best beside the meters", async () => {
+      practiceCareer()
+      await open(THREE_TIER.id, THREE_TIER.reference)
+      expect($("[data-testid='studio-best']")).toBeNull()
+      await submitAndSkip()
+      expect($("[data-testid='studio-verdict']")?.dataset.verdict).toBe("passes")
+      expect($("[data-testid='studio-verdict']")?.textContent).toContain("Passes the bar")
+      expect($("[data-testid='studio-new-best']")?.textContent).toBe("New best")
+      expect($("[data-testid='studio-best']")?.textContent).toMatch(/^Best: \$[\d,]+\/mo at p95 \d+ ms$/)
+      expect($$("[data-testid='studio-live-meter'].is-fail")).toEqual([])
+      await submitAndSkip()
+      expect($("[data-testid='studio-new-best']")).toBeNull()
+    })
+
+    it("closing after a practice pass does not land on the Job Board", async () => {
+      careerAt(60_000, [1])
+      useGame.getState().forceInterview(THREE_TIER.id)
+      const hired = vi.fn()
+      const off = onStudioHire(hired)
+      await open(THREE_TIER.id, THREE_TIER.reference)
+      await submitAndSkip()
+      await act(async () => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+      })
+      off()
+      expect(hired).not.toHaveBeenCalled()
+    })
+
+    it("an open interview shows no pass or fail signal, and a real pass reads as practice only once the reveal ends", async () => {
+      careerAt(60_000, [1])
+      await open(THREE_TIER.id, THREE_TIER.reference)
+      expect($("[data-testid='studio-kicker']")?.dataset.practice).toBe("false")
+      expect($("[data-testid='studio-submit']")?.textContent).toBe("Submit to interviewer")
+      expect($("[data-testid='studio-best']")).toBeNull()
+      await click($("[data-testid='studio-submit']"))
+      expect($("[data-testid='studio-kicker']")?.dataset.practice).toBe("false")
+      expect($("[data-testid='studio-penalty']")).not.toBeNull()
+      await act(async () => {
+        $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+      })
+      expect($("[data-testid='studio-verdict']")?.dataset.verdict).toBe("hire")
+      expect($("[data-testid='studio-kicker']")?.dataset.practice).toBe("true")
+      expect($("[data-testid='studio-best']")).not.toBeNull()
+    })
   })
 
   it("the palette lists only unlocked kinds", async () => {

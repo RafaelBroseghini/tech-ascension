@@ -205,6 +205,19 @@ test("an interview gates the Junior SWE job, a No hire costs XP and a pass opens
   expect(game.buyJob(junior.id)).toBe(true)
   expect(game.getState().xp).toBe(junior.xpReq - junior.xpReq * 0.05 - junior.xpCost)
 
+  // A passed interview can be practiced: the career stays as it was, and the cheapest passing run is kept.
+  const career = () => JSON.stringify([game.getState().xp, game.getState().jobs, game.getState().interviews, game.careerLog().length])
+  const held = career()
+  const missed = game.practiceWhiteboard(threeTier.id, naive.design)
+  expect(missed).toMatchObject({ passes: false, newBest: false })
+  expect(missed && missed.missed).toContain(naive.fails)
+  expect(career()).toBe(held)
+  const cheaper = game.practiceWhiteboard(threeTier.id, threeTier.strongHire)
+  expect(cheaper).toMatchObject({ passes: true, newBest: true })
+  expect(game.practiceWhiteboard(threeTier.id, threeTier.reference)).toMatchObject({ passes: true, newBest: false, best: cheaper && cheaper.best })
+  expect(game.careerLog().length).toBe(JSON.parse(held)[3])
+  expect(game.practiceWhiteboard("static-site", threeTier.reference)).toBe(false)
+
   // With every skill and gig done and the internship held, the whole-game target is the open interview.
   game.reset()
   game.setXp(1e12)

@@ -15,7 +15,7 @@ import { parseInterviews } from "./studio/interviews.ts"
 import type { InterviewLog } from "./studio/interviews.ts"
 
 /** Catalog ids grew in v4. Any other version wipes; there is no migration. */
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000
 export const OFFLINE_TOAST_MIN_MS = 5_000
 /** Away at least this long and the next load counts as a return: a career log line, and the desk cat's cue. */

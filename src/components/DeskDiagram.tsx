@@ -1,13 +1,9 @@
 import { Presentation } from "lucide-react"
-import { lazy, memo, Suspense } from "react"
-import { INTERVIEWS } from "../data/studio/challenges.ts"
+import { memo } from "react"
 import type { Interview } from "../data/studio/challenges.ts"
 import { useGame } from "../game/store.ts"
-import { interviewById } from "../game/studio/interviews.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
-import { jobOf, lastPassed, nextInterview, passedDesign, statusLine, useStatuses } from "./studio/status.ts"
-
-const DeskDrawing = lazy(() => import("./DeskDrawing.tsx"))
+import { jobOf, nextInterview, statusLine, useStatuses } from "./studio/status.ts"
 
 function NextPrompt({ interview, status }: { interview: Interview; status: string }) {
   return (
@@ -26,24 +22,12 @@ function NextPrompt({ interview, status }: { interview: Interview; status: strin
 }
 
 /**
- * The desk's backdrop, where the editor buffer used to be: the last passed whiteboard, drawn as a still SVG with slow
- * traffic dots, or before the first pass a dim card with the next interview's prompt. It sits behind the click
- * target and takes no pointer events.
+ * The desk's backdrop, where the editor buffer used to be: a dim card with the prompt of the interview waiting for a
+ * submission, and nothing otherwise, so a locked interview is never named. It sits behind the click target and takes no
+ * pointer events.
  */
 export const DeskDiagram = memo(function DeskDiagram() {
-  const shownId = useGame((s) => lastPassed(s, s.journal.entries))
   const log = useGame((s) => s.interviews)
-  const statuses = useStatuses()
-  const shown = shownId ? interviewById(shownId) : undefined
-  if (shown) {
-    const design = passedDesign(log, shown.id) ?? shown.reference
-    return (
-      <Suspense fallback={null}>
-        <DeskDrawing interview={shown} design={design} />
-      </Suspense>
-    )
-  }
-  const next = nextInterview(statuses)
-  if (!next) return null
-  return <NextPrompt interview={next} status={statusLine(statuses[INTERVIEWS.indexOf(next)], next, log)} />
+  const next = nextInterview(useStatuses())
+  return next ? <NextPrompt interview={next} status={statusLine("open", next, log)} /> : null
 })

@@ -12,7 +12,7 @@ const STEPS: readonly { title: string; text: string }[] = [
   { title: "Gigs open jobs", text: "Jobs cost XP and pay a salary every second, even while you are away." },
   {
     title: "Pass the whiteboard",
-    text: "Twelve jobs also want a system design interview. Open the whiteboard from the bar on the left, drag in servers, databases and caches, wire them up and submit. A No hire costs some XP. Your last passed design hangs on the desk behind the emoji.",
+    text: "Twelve jobs also want a system design interview. Open the whiteboard from the bar on the left, drag in servers, databases and caches, wire them up and submit. A No hire costs some XP.",
   },
   { title: "Gear and capital", text: "Spend dollars on desk upgrades, then on companies, rockets and Mars. Bigger clicks, bigger income." },
   { title: "Leave and come back", text: "The game keeps earning while you are gone, up to 8 hours. Check in, shop, leave again." },

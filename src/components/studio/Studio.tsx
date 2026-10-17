@@ -8,27 +8,33 @@ import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { Board } from "./Board.tsx"
-import { endReveal, showInterview, submitBoard, useBoard } from "./boardStore.ts"
+import { endReveal, practiceBoard, showInterview, submitBoard, useBoard } from "./boardStore.ts"
 import { Brief } from "./Brief.tsx"
 import { ChallengeList } from "./ChallengeList.tsx"
-import { nextInterview, useStatuses } from "./status.ts"
-import type { InterviewStatus } from "./status.ts"
+import { reachable, useStatuses } from "./status.ts"
+import type { InterviewStatus, ReachableStatus } from "./status.ts"
 import { closeStudio, openStudio } from "./launcher.ts"
 import { Palette } from "./Palette.tsx"
 import { RunMeters } from "./RunMeters.tsx"
 
 const PANEL = { type: "spring", stiffness: 420, damping: 36 } as const
 
-/** The interview the whiteboard opens on when none was asked for: the one the desk's prompt card names, else the first. */
-function pickInterview(requested: string | null, statuses: readonly InterviewStatus[]): Interview {
-  return INTERVIEWS.find((row) => row.id === requested) ?? nextInterview(statuses) ?? INTERVIEWS[0]
+type Picked = { readonly interview: Interview; readonly status: ReachableStatus }
+
+/**
+ * The interview the whiteboard opens on: the one asked for if the career has reached it, else the first waiting for a
+ * submission, else the furthest one passed. Null before the first interview opens, so a locked one is never named.
+ */
+function pickInterview(requested: string | null, statuses: readonly InterviewStatus[]): Picked | null {
+  const asked = INTERVIEWS.findIndex((row) => row.id === requested)
+  const open = statuses.indexOf("open")
+  const index = asked >= 0 && reachable(statuses[asked]) ? asked : open >= 0 ? open : statuses.findLastIndex(reachable)
+  const status = statuses[index]
+  return status !== undefined && reachable(status) ? { interview: INTERVIEWS[index], status } : null
 }
 
-/** The full-screen whiteboard: interviews on the left, the board in the middle, the brief and meters on the right. */
-export default function Studio({ interviewId }: { interviewId: string | null }) {
-  const statuses = useStatuses()
-  const interview = pickInterview(interviewId, statuses)
-  const status = statuses[INTERVIEWS.indexOf(interview)]
+/** The list, the board with its palette, and the brief with the run for one interview the career has reached. */
+function Room({ interview, status }: { interview: Interview; status: ReachableStatus }) {
   const shown = useBoard((s) => s.interviewId === interview.id)
   const skills = useGame((s) => s.skills)
   const gigs = useGame((s) => s.gigs)
@@ -39,18 +45,40 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
     showInterview(interview.id, useGame.getState().interviews[interview.id]?.design ?? null)
   }, [interview.id])
 
+  const toJobs = useCallback(() => closeStudio(interview.jobId), [interview.jobId])
+  const submit = useCallback(() => (status === "open" ? submitBoard(interview) : practiceBoard(interview)), [interview, status])
+
+  return (
+    <>
+      <ChallengeList activeId={interview.id} onPick={openStudio} />
+      <main className="studio-main">
+        {shown ? <Board key={interview.id} /> : <div className="studio-board" />}
+        <Palette career={career} />
+      </main>
+      <aside className="studio-side">
+        <Brief interview={interview} status={status} onSubmit={submit} />
+        <RunMeters interview={interview} onHired={toJobs} />
+      </aside>
+    </>
+  )
+}
+
+/** The full-screen whiteboard: interviews on the left, the board in the middle, the brief and meters on the right. */
+export default function Studio({ interviewId }: { interviewId: string | null }) {
+  const statuses = useStatuses()
+  const picked = pickInterview(interviewId, statuses)
+  const interview = picked?.interview ?? null
+
   // Opened without an interview, the pick follows the statuses; pin it so a Hire does not swap the board for the next one.
   useLayoutEffect(() => {
-    if (interviewId === null) openStudio(interview.id)
-  }, [interviewId, interview.id])
+    if (interviewId === null && interview) openStudio(interview.id)
+  }, [interviewId, interview])
 
   const close = useCallback(() => {
     const run = useBoard.getState().run
-    const hired = run !== null && run.verdict.kind !== "noHire" && !useGame.getState().jobs.includes(interview.jobId)
+    const hired = interview !== null && run !== null && !run.practice && run.verdict.kind !== "noHire" && !useGame.getState().jobs.includes(interview.jobId)
     closeStudio(hired ? interview.jobId : undefined)
-  }, [interview.jobId])
-  const toJobs = useCallback(() => closeStudio(interview.jobId), [interview.jobId])
-  const submit = useCallback(() => submitBoard(interview), [interview])
+  }, [interview])
 
   // The desk keeps earning behind the dialog but leaves the tab order, and closing hands focus back to the opener.
   const dialog = useRef<HTMLDivElement>(null)
@@ -85,7 +113,7 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
             aria-modal="true"
             aria-labelledby="studio-title"
             data-testid="studio"
-            data-interview={interview.id}
+            data-interview={interview?.id}
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={PANEL}
@@ -100,15 +128,13 @@ export default function Studio({ interviewId }: { interviewId: string | null }) 
                 <X size={16} strokeWidth={2} aria-hidden />
               </button>
             </header>
-            <ChallengeList activeId={interview.id} onPick={openStudio} />
-            <main className="studio-main">
-              {shown ? <Board key={interview.id} /> : <div className="studio-board" />}
-              <Palette career={career} />
-            </main>
-            <aside className="studio-side">
-              <Brief interview={interview} status={status} onSubmit={submit} />
-              <RunMeters interview={interview} onHired={toJobs} />
-            </aside>
+            {picked ? (
+              <Room interview={picked.interview} status={picked.status} />
+            ) : (
+              <p className="studio-empty" data-testid="studio-empty">
+                Your next interview opens with the Job Board.
+              </p>
+            )}
           </m.div>
         </ReactFlowProvider>
       </MotionConfig>

@@ -57,7 +57,7 @@ function failoverPairs(design: Design): Map<string, number> {
   return pairs
 }
 
-export function costPerMonth(design: Design): number {
+function costPerMonth(design: Design): number {
   const autoscale = present(design, "autoscale")
   const region = present(design, "secondRegion")
   const total = design.nodes.reduce((sum, node) => {

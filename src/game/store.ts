@@ -61,8 +61,8 @@ import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
 import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
-import { copyDesign, interviewById, isPass, judge, noHirePenalty } from "./studio/interviews.ts"
-import type { InterviewLog, Submission } from "./studio/interviews.ts"
+import { betterBest, bestOf, copyDesign, interviewById, interviewPassed, isPass, noHirePenalty, practice } from "./studio/interviews.ts"
+import type { InterviewLog, PracticeRun, Submission } from "./studio/interviews.ts"
 import type { Verdict } from "./studio/score.ts"
 import type { Design } from "./studio/types.ts"
 
@@ -183,6 +183,12 @@ type GameState = {
    * interview is unknown or its job is not at `interview`.
    */
   submitWhiteboard: (interviewId: string, design: Design) => Verdict | null
+  /**
+   * Run a design past an interview the career has passed, with no effect on the career: no verdict, attempt, XP, job or
+   * journal entry. A passing run that beats the interview's best (cheapest, then fastest) is kept as `best`. Null while
+   * the interview is unknown or not passed.
+   */
+  practiceWhiteboard: (interviewId: string, design: Design) => PracticeRun | null
   /** Record a pass now, bypassing every gate (tests and the harness). False for an unknown or already passed id. */
   forceInterview: (interviewId: string) => boolean
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
@@ -556,9 +562,15 @@ export const useGame = create<GameState>((set, get) => ({
     const job = interview ? jobById(interview.jobId) : undefined
     const state = get()
     if (!interview || !job || jobState(state, job) !== "interview") return null
-    const verdict = judge(interview, design)
-    const attempts = (state.interviews[interview.id]?.attempts ?? 0) + 1
-    const interviews = { ...state.interviews, [interview.id]: { verdict: verdict.kind, attempts, design: copyDesign(design) } }
+    const { verdict, result } = practice(interview, design)
+    const prior = state.interviews[interview.id]
+    const attempts = (prior?.attempts ?? 0) + 1
+    const candidate = bestOf(design, result)
+    const best = isPass(verdict.kind) && betterBest(prior?.best, candidate) ? candidate : prior?.best
+    const interviews = {
+      ...state.interviews,
+      [interview.id]: { verdict: verdict.kind, attempts, design: copyDesign(design), ...(best ? { best } : {}) },
+    }
     const penalty = verdict.kind === "noHire" ? Math.min(state.xp, noHirePenalty(interview)) : 0
     // A pass is logged by the timeline listener from the record; a No hire is logged here, with what it missed.
     const notes: CareerNote[] =
@@ -576,13 +588,29 @@ export const useGame = create<GameState>((set, get) => ({
     return verdict
   },
 
+  practiceWhiteboard: (interviewId, design) => {
+    const interview = interviewById(interviewId)
+    const state = get()
+    if (!interview || !interviewPassed(state, interview)) return null
+    const { verdict, result } = practice(interview, design)
+    const prior = state.interviews[interview.id]
+    const candidate = bestOf(design, result)
+    const newBest = isPass(verdict.kind) && betterBest(prior?.best, candidate)
+    const best = newBest ? candidate : prior?.best
+    if (newBest) {
+      set({ interviews: { ...state.interviews, [interview.id]: { ...(prior ?? { verdict: null, attempts: 0, design: { nodes: [], edges: [] } }), best: candidate } } })
+      persistNow()
+    }
+    return { verdict, result, newBest, best }
+  },
+
   forceInterview: (interviewId) => {
     const interview = interviewById(interviewId)
     const state = get()
     const prior = interview ? state.interviews[interview.id] : undefined
     if (!interview || (prior && isPass(prior.verdict))) return false
     set({
-      interviews: { ...state.interviews, [interview.id]: { verdict: "hire", attempts: prior?.attempts ?? 0, design: copyDesign(interview.reference) } },
+      interviews: { ...state.interviews, [interview.id]: { ...prior, verdict: "hire", attempts: prior?.attempts ?? 0, design: copyDesign(interview.reference) } },
       now: Date.now(),
     })
     persistNow()

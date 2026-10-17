@@ -57,12 +57,14 @@ function lineFor(target: TargetName, result: RunResult, targets: Targets, design
   }
 }
 
-export function verdict(result: RunResult, targets: Targets, design: Design): Verdict {
+/** How many of the phases that carry a fault kept the success target. */
+export function faultTally(result: RunResult, targets: Targets): FaultTally {
   const faulted = result.phases.filter((p) => p.fault !== null)
-  const faults: FaultTally = {
-    survived: faulted.filter((p) => p.successRate >= targets.successRate).length,
-    total: faulted.length,
-  }
+  return { survived: faulted.filter((p) => p.successRate >= targets.successRate).length, total: faulted.length }
+}
+
+export function verdict(result: RunResult, targets: Targets, design: Design): Verdict {
+  const faults = faultTally(result, targets)
   const failed: Record<TargetName, boolean> = {
     budget: result.costPerMonth > targets.budgetPerMonth,
     success: result.successRate < targets.successRate,

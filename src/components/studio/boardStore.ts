@@ -6,7 +6,8 @@ import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
 import type { Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
-import { edgeFlows, edgeId, placeDesign, snap } from "./diagram.ts"
+import { edgeId, leafPaths, placeDesign, snap } from "./diagram.ts"
+import type { TrafficPath } from "./diagram.ts"
 
 export type NodeData = { readonly kind: ComponentKind; readonly replicas: number }
 export type BoardNode = Node<NodeData, "component">
@@ -17,11 +18,19 @@ export const REVEAL_MS = 2500
 /** One submission as the board shows it. Heat and the traffic only apply while the board is still the one sent. */
 export interface Run {
   readonly verdict: Verdict
+  /** A rerun of a passed interview: it judges the board against the targets and changes nothing in the career. */
+  readonly practice: boolean
+  /** A practice run that beat the best on record. */
+  readonly newBest: boolean
   /** Spendable XP the No hire took. */
   readonly penalty: number
   readonly result: RunResult
-  /** Edge id to the share of requests that cross it in the first phase. */
-  readonly flows: Readonly<Record<string, number>>
+  /** The board that was sent, so the report can name its nodes after the board changes. */
+  readonly design: Design
+  /** The routes the first phase's requests take, from The Users down, for the traffic dots. */
+  readonly paths: readonly TrafficPath[]
+  /** The interview's p95 target, which sets how fast the dots travel against `result.p95Ms`. */
+  readonly targetP95Ms: number
   /** `edits` when it was sent. */
   readonly edits: number
   readonly startedAt: number
@@ -150,7 +159,15 @@ export function removeNode(id: string): void {
   })
 }
 
-export function startRun(run: Omit<Run, "edits" | "startedAt" | "revealing">): void {
+type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty">
+
+function startRun(interview: Interview, design: Design, judged: Judged): void {
+  const run: Omit<Run, "edits" | "startedAt" | "revealing"> = {
+    ...judged,
+    design,
+    paths: leafPaths(design, interview.scenario),
+    targetP95Ms: interview.targets.p95Ms,
+  }
   useBoard.setState((s) => ({ run: { ...run, edits: s.edits, startedAt: performance.now(), revealing: true } }))
 }
 
@@ -160,7 +177,15 @@ export function submitBoard(interview: Interview): void {
   const verdict = useGame.getState().submitWhiteboard(interview.id, design)
   if (!verdict) return
   const penalty = useGame.getState().lastInterview?.penalty ?? 0
-  startRun({ verdict, penalty, result: evaluate(design, interview.scenario), flows: edgeFlows(design, interview.scenario) })
+  startRun(interview, design, { verdict, result: evaluate(design, interview.scenario), practice: false, newBest: false, penalty })
+}
+
+/** Reruns a passed interview against its targets and plays the same reveal. Nothing in the career changes. */
+export function practiceBoard(interview: Interview): void {
+  const design = draftOf(useBoard.getState())
+  const run = useGame.getState().practiceWhiteboard(interview.id, design)
+  if (!run) return
+  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0 })
 }
 
 export function endReveal(): void {

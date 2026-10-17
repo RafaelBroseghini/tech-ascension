@@ -4,7 +4,7 @@ import { JOB_TIERS } from "../../data/phases.ts"
 import { careerJson } from "../careerLog.ts"
 import { jobState } from "../phase.ts"
 import { useGame } from "../store.ts"
-import { interviewById, interviewForJob, noHirePenalty } from "./interviews.ts"
+import { betterBest, interviewById, interviewForJob, isPass, noHirePenalty, parseInterviews } from "./interviews.ts"
 
 const HELLO = interviewById("hello-server")!
 const THREE_TIER = interviewById("3-tier-app")!
@@ -92,5 +92,109 @@ describe("whiteboard interviews", () => {
     expect(useGame.getState().forceInterview("nope")).toBe(false)
     expect(jobState(useGame.getState(), junior)).toBe("ready")
     expect(lastLog()).toMatchObject({ type: "interview", ref: "interview:3-tier-app", verdict: "hire" })
+  })
+})
+
+describe("practice", () => {
+  const empty = { nodes: [], edges: [] }
+  const snapshot = () => {
+    const s = useGame.getState()
+    return [s.xp, s.xpTotal, s.jobs, s.journal, s.lastInterview, s.money]
+  }
+
+  beforeEach(() => atJuniorInterview(10_000))
+
+  it("is refused on an interview that is still open", () => {
+    const before = snapshot()
+    const interviews = useGame.getState().interviews
+    expect(useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.reference)).toBeNull()
+    expect(snapshot()).toEqual(before)
+    expect(useGame.getState().interviews).toBe(interviews)
+    expect(useGame.getState().practiceWhiteboard("no-such-interview", THREE_TIER.reference)).toBeNull()
+    // Locked interviews are refused too: 3-tier with too little lifetime XP.
+    useGame.setState({ xpTotal: 44_999 })
+    expect(useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.reference)).toBeNull()
+  })
+
+  it("a miss on a passed interview takes no XP, adds no journal entry, and keeps the verdict, attempts and jobs", () => {
+    useGame.getState().submitWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    useGame.setState({ jobs: [1, 2] })
+    const record = useGame.getState().interviews[THREE_TIER.id]
+    const before = snapshot()
+    const run = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.naive[0].design)
+    expect(run?.verdict.kind).toBe("noHire")
+    expect(run?.newBest).toBe(false)
+    expect(snapshot()).toEqual(before)
+    expect(useGame.getState().interviews[THREE_TIER.id]).toBe(record)
+    expect(record).toMatchObject({ verdict: "hire", attempts: 1 })
+  })
+
+  it("a pass adds no second interview note", () => {
+    useGame.getState().submitWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    const notes = () => useGame.getState().journal.entries.filter((entry) => entry.type === "interview")
+    expect(notes()).toHaveLength(1)
+    useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.strongHire)
+    expect(notes()).toHaveLength(1)
+    expect(useGame.getState().interviews[THREE_TIER.id]).toMatchObject({ verdict: "hire", attempts: 1 })
+  })
+
+  it("keeps the cheaper passing run as the best and ignores a dearer one", () => {
+    useGame.getState().submitWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    const first = useGame.getState().interviews[THREE_TIER.id]?.best
+    expect(first?.design.nodes.length).toBe(THREE_TIER.reference.nodes.length)
+    const cheaper = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.strongHire)
+    expect(cheaper?.newBest).toBe(true)
+    const best = useGame.getState().interviews[THREE_TIER.id]?.best
+    expect(best?.costPerMonth).toBeLessThan(first?.costPerMonth ?? 0)
+    expect(best?.design.nodes.length).toBe(THREE_TIER.strongHire.nodes.length)
+    const dearer = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    expect(dearer?.newBest).toBe(false)
+    expect(useGame.getState().interviews[THREE_TIER.id]?.best).toBe(best)
+    // A miss never becomes the best, however cheap.
+    const miss = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.naive[0].design)
+    expect(miss?.newBest).toBe(false)
+    expect(useGame.getState().interviews[THREE_TIER.id]?.best).toBe(best)
+  })
+
+  it("a job held from a save with no record can practice and gets a record with no verdict and no pass note", () => {
+    useGame.setState({ jobs: [1, 2], interviews: {} })
+    const notes = useGame.getState().journal.entries.length
+    const run = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    expect(run?.newBest).toBe(true)
+    const record = useGame.getState().interviews[THREE_TIER.id]
+    expect(record).toMatchObject({ verdict: null, attempts: 0, design: empty })
+    expect(record?.best?.costPerMonth).toBeGreaterThan(0)
+    expect(useGame.getState().journal.entries).toHaveLength(notes)
+    // The held job still counts as passed.
+    expect(useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.naive[0].design)).not.toBeNull()
+  })
+
+  it("an interview that only has a best is not a pass", () => {
+    expect(isPass(null)).toBe(false)
+    useGame.setState({ jobs: [1, 2] })
+    useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    expect(useGame.getState().forceInterview(THREE_TIER.id)).toBe(true)
+    expect(useGame.getState().interviews[THREE_TIER.id]).toMatchObject({ verdict: "hire", best: expect.anything() })
+  })
+
+  it("ranks by cost, then p95", () => {
+    const a = { design: empty, costPerMonth: 100, p95Ms: 50 }
+    expect(betterBest(undefined, a)).toBe(true)
+    expect(betterBest(a, { ...a, costPerMonth: 99, p95Ms: 90 })).toBe(true)
+    expect(betterBest(a, { ...a, costPerMonth: 101, p95Ms: 1 })).toBe(false)
+    expect(betterBest(a, { ...a, p95Ms: 49 })).toBe(true)
+    expect(betterBest(a, a)).toBe(false)
+  })
+
+  it("loads a null verdict and a best, and drops a verdict outside the set", () => {
+    const best = { design: THREE_TIER.reference, costPerMonth: 700, p95Ms: 40 }
+    const log = parseInterviews({
+      [THREE_TIER.id]: { verdict: null, attempts: 0, design: empty, best },
+      [HELLO.id]: { verdict: "maybe", attempts: 1, design: empty },
+      "static-site": { verdict: "hire", attempts: 2, design: empty, best: { design: empty, costPerMonth: "x", p95Ms: 1 } },
+    })
+    expect(Object.keys(log).sort()).toEqual([THREE_TIER.id, "static-site"].sort())
+    expect(log[THREE_TIER.id]).toMatchObject({ verdict: null, best: { costPerMonth: 700, p95Ms: 40 } })
+    expect(log["static-site"]).toEqual({ verdict: "hire", attempts: 2, design: empty })
   })
 })

@@ -1,9 +1,7 @@
-/**
- * Traffic dots on a canvas: the whiteboard's reveal and the desk drawing share the path math and the loop. Nothing here
- * imports `@xyflow/react` or Motion, so the desk can.
- */
+/** Traffic dots on a canvas: the path math and the animation loop for the whiteboard's reveal. */
 
 export type Pt = { readonly x: number; readonly y: number }
+/** A polyline from The Users to a leaf, with how many dots ride it. */
 export type Lane = { readonly points: readonly Pt[]; readonly length: readonly number[]; readonly total: number; readonly dots: number }
 
 export function laneOf(points: readonly Pt[], dots: number): Lane {
@@ -24,16 +22,60 @@ export function pointAt(lane: Lane, f: number): Pt {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
 }
 
-/** `lane.dots` dots, evenly spaced and shifted `phase` (0 to 1) along the lane. At phase 0 they sit mid-slot. */
-export function paintDots(ctx: CanvasRenderingContext2D, lanes: readonly Lane[], phase: number, radius: number): void {
-  for (const lane of lanes) {
-    for (let k = 0; k < lane.dots; k++) {
-      const p = pointAt(lane, (phase + (k + 0.5) / lane.dots) % 1)
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2)
-      ctx.fill()
-    }
+/** A whole path takes this long at or under the target p95. */
+export const FAST_TRAVEL_MS = 600
+/** ...and this long at 3 times the target p95 or worse, so a slow board looks slow inside the reveal. */
+export const SLOW_TRAVEL_MS = 2500
+
+/**
+ * How long a dot takes to cross a whole path: `FAST_TRAVEL_MS` at or under the target, rising in a line to
+ * `SLOW_TRAVEL_MS` at 3 times the target. A p95 that is not finite never arrives, so it gets the slow time as well.
+ */
+export function travelMs(p95Ms: number, targetMs: number): number {
+  if (!Number.isFinite(p95Ms)) return SLOW_TRAVEL_MS
+  const over = Math.min(1, Math.max(0, (p95Ms / targetMs - 1) / 2))
+  return FAST_TRAVEL_MS + (SLOW_TRAVEL_MS - FAST_TRAVEL_MS) * over
+}
+
+/** Dots that never arrive get this far down a path before they stall and fade. */
+const STALL_AT = 0.5
+
+export type Dot = { readonly at: Pt; readonly alpha: number }
+
+/**
+ * Where the dots of one path are `elapsed` ms after the reveal began. Dot `k` leaves The Users (the path's first point)
+ * at `k * gap`, so no dot exists before then, and crosses the path every `travel` ms. With `stalls`, each dot stops
+ * halfway and fades out instead of arriving.
+ */
+export function dotsAt(lane: Lane, elapsed: number, travel: number, stalls: boolean): Dot[] {
+  const gap = travel / lane.dots
+  const dots: Dot[] = []
+  for (let k = 0; k < lane.dots; k++) {
+    const age = elapsed - k * gap
+    if (age < 0) continue
+    const t = (age % travel) / travel
+    dots.push(
+      stalls
+        ? { at: pointAt(lane, STALL_AT * Math.min(1, t / 0.6)), alpha: t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4 }
+        : { at: pointAt(lane, t), alpha: 1 },
+    )
   }
+  return dots
+}
+
+/** Without motion, the dots sit evenly along the lane. */
+export const stillDots = (lane: Lane): Dot[] => Array.from({ length: lane.dots }, (_, k) => ({ at: pointAt(lane, (k + 0.5) / lane.dots), alpha: 1 }))
+
+/** Fills `dots` at the context's current alpha, each scaled by its own. */
+export function paintDots(ctx: CanvasRenderingContext2D, dots: readonly Dot[], radius: number): void {
+  const base = ctx.globalAlpha
+  for (const dot of dots) {
+    ctx.globalAlpha = base * dot.alpha
+    ctx.beginPath()
+    ctx.arc(dot.at.x, dot.at.y, radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = base
 }
 
 /**
