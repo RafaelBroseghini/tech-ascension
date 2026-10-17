@@ -495,13 +495,19 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
 
   // The career has a drawn handle, rerolled from the word lists until kept.
   const drawn = game.getState().profile
-  expect(drawn).toEqual({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/) })
+  expect(drawn).toEqual({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/), product: expect.stringMatching(/^[A-Z][a-z]+$/) })
+  const animal = drawn.handle.split("-")[1]!
+  expect(drawn.product.toLowerCase().startsWith(animal)).toBe(true)
+  expect(game.rerollProduct()).toBe(true)
+  expect(game.getState().profile.handle).toBe(drawn.handle)
+  expect(game.getState().profile.product).not.toBe(drawn.product)
   expect(game.rerollProfile()).toBe(true)
   expect(game.getState().profile.chosen).toBe(false)
   expect(game.getState().profile.handle).not.toBe(drawn.handle)
   game.keepProfile()
   expect(game.getState().profile.chosen).toBe(true)
   expect(game.rerollProfile()).toBe(false)
+  expect(game.rerollProduct()).toBe(false)
 
   // A wipe starts the timeline over.
   game.reset()

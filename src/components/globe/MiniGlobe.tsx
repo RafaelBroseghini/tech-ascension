@@ -5,6 +5,7 @@ import { HOME } from "../../data/geo.ts"
 import { formatCompact } from "../../game/format.ts"
 import { cityRows } from "../../game/globe/tip.ts"
 import { INCIDENTS } from "../../game/globe/world.ts"
+import { useGame } from "../../game/store.ts"
 import { openSurface } from "../../game/surfaces.ts"
 import { useFeatureOpen } from "../useFeature.ts"
 import { canDrawWave } from "./support.ts"
@@ -18,6 +19,7 @@ const GlobeCanvas = lazy(() => import("./GlobeCanvas.tsx"))
 /** The company's globe on the desk, bottom left: small and always turning, with a button for the numbers and the status page. */
 export const MiniGlobe = memo(function MiniGlobe() {
   const open = useFeatureOpen("studio")
+  const product = useGame((state) => state.profile.product)
   const company = useCompany()
   const rows = useMemo(() => cityRows(company.audience, company.demand, company.pops), [company])
   if (!open || !canDrawWave()) return null
@@ -33,7 +35,7 @@ export const MiniGlobe = memo(function MiniGlobe() {
         <span className="mini-globe-users" data-testid="mini-globe-users">
           {company.users > 0 ? `${formatCompact(Math.round(company.users))} users` : "No users yet"}
         </span>
-        <button type="button" className="mini-globe-open" aria-label="Your company" title="Your company" onClick={() => openSurface("studio")}>
+        <button type="button" className="mini-globe-open" aria-label={product} title={product} onClick={() => openSurface("studio")}>
           <Maximize2 size={12} aria-hidden />
         </button>
       </aside>
@@ -42,7 +44,7 @@ export const MiniGlobe = memo(function MiniGlobe() {
           type="button"
           className="mini-globe-badge"
           data-testid="mini-globe-badge"
-          aria-label={`${count} incident${count === 1 ? "" : "s"}. Open your company`}
+          aria-label={`${count} incident${count === 1 ? "" : "s"}. Open ${product}`}
           title={company.incidents.map((i) => INCIDENTS[i.kind].name).join(", ")}
           onClick={() => openSurface("studio")}
         >

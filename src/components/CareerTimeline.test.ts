@@ -202,7 +202,7 @@ describe("the GitHug corner", () => {
   })
 
   it("shows the career's own handle, with nothing to edit", () => {
-    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { handle: "brisk-axolotl", chosen: true } })
+    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["githug"], profile: { handle: "brisk-axolotl", product: "Axolotlly", chosen: true } })
     render(GitHugCorner)
     click($("[data-testid='view-githug']"))
     expect($("[data-testid='githug-handle']")?.textContent).toBe("brisk-axolotl")
@@ -221,9 +221,30 @@ describe("the start card", () => {
     const second = useGame.getState().profile
     expect(second.handle).not.toBe(first.handle)
     expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${second.handle}`)
-    expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${second.handle}`)
+    expect($("[data-testid='identity-keep']")).toBeNull()
+    click($("[data-testid='identity-next']"))
+    // The second step names the product after the new animal; its Reroll changes only the suffix.
+    expect($("[data-testid='identity-product']")?.textContent).toBe(second.product)
+    click($("[data-testid='identity-product-reroll']"))
+    const third = useGame.getState().profile
+    expect(third.handle).toBe(second.handle)
+    expect(third.product).not.toBe(second.product)
+    expect($("[data-testid='identity-product']")?.textContent).toBe(third.product)
+    click($("[data-testid='identity-back']"))
+    expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${third.handle}`)
+    click($("[data-testid='identity-next']"))
+    click($("[data-testid='identity-next']"))
+    expect($("[data-testid='identity-picker']")?.textContent).toContain(`go full-time on ${third.product}`)
+    expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${third.handle}`)
     click($("[data-testid='identity-keep']"))
-    expect(useGame.getState().profile).toEqual({ ...second, chosen: true })
+    expect(useGame.getState().profile).toEqual({ ...third, chosen: true })
+    expect($("[data-testid='identity-picker']")).toBeNull()
+  })
+
+  it("keeps the whole card from any step in one call", () => {
+    render(IdentityPicker)
+    click($("[data-testid='identity-next']"))
+    flushSync(() => useGame.getState().keepProfile())
     expect($("[data-testid='identity-picker']")).toBeNull()
   })
 

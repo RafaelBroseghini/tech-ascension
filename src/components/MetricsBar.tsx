@@ -34,6 +34,7 @@ export function MetricsBar() {
   const company = useGame((state) => state.company)
   const users = totalUsers(company.users)
   const incidents = company.incidents.length
+  const product = useGame((state) => state.profile.product)
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
 
@@ -102,9 +103,9 @@ export function MetricsBar() {
         })}
         {worldOpen ? (
           <div className={incidents > 0 ? "m-world is-hot" : "m-world"}>
-            <dt>{incidents > 0 ? `World · ${incidents} incident${incidents === 1 ? "" : "s"}` : "World"}</dt>
+            <dt>{incidents > 0 ? `${product} · ${incidents} incident${incidents === 1 ? "" : "s"}` : product}</dt>
             <dd>
-              <button type="button" className="m-world-open" data-testid="world-users" title="Your company" onClick={() => openSurface("studio")}>
+              <button type="button" className="m-world-open" data-testid="world-users" title={product} onClick={() => openSurface("studio")}>
                 {users > 0 ? formatNumber(Math.floor(users), 1000) : "0"}
                 <small> / {formatNumber(WORLD_TARGET, 1000)}</small>
                 <span className="m-world-bar" aria-hidden>

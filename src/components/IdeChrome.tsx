@@ -23,6 +23,7 @@ export const IdeChrome = memo(function IdeChrome() {
   const logOpen = useFeatureOpen("careerLog")
   const studioOpen = useFeatureOpen("studio")
   const incidents = useGame((state) => state.company.incidents.length)
+  const product = useGame((state) => state.profile.product)
   const [companyOpen, setCompanyOpen] = useState(false)
   const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
   const showLog = logOpen && sidebar === "log"
@@ -60,8 +61,8 @@ export const IdeChrome = memo(function IdeChrome() {
             type="button"
             className="ide-activity-btn"
             data-testid="ide-view-company"
-            aria-label="Your company"
-            title="Your company"
+            aria-label={product}
+            title={product}
             onClick={openCompany}
           >
             <Globe className="ide-activity-icon" {...UI_ICON} aria-hidden />

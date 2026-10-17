@@ -20,6 +20,7 @@ const STATUS_LABEL = { operational: "Normal", degraded: "Degraded performance", 
 
 /** The company's details: the numbers behind the globe on the desk, the fleet that serves it, and the status page for the app. */
 export function CompanyHost({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const product = useGame((state) => state.profile.product)
   const gigs = useGame((state) => state.gigs)
   const equipment = useGame((state) => state.equipment)
   const uptime = useGame((state) => state.company.uptime)
@@ -53,10 +54,10 @@ export function CompanyHost({ open, onClose }: { open: boolean; onClose: () => v
 
   if (!open) return null
   return createPortal(
-    <div className="company-view" role="dialog" aria-modal aria-label="Your company" data-testid="company-view">
+    <div className="company-view" role="dialog" aria-modal aria-label={product} data-testid="company-view">
       <header className="company-view-head">
-        <h2 className="visually-hidden">Your company</h2>
-        <button type="button" className="company-view-close" aria-label="Close your company" onClick={onClose}>
+        <h2 className="visually-hidden">{product}</h2>
+        <button type="button" className="company-view-close" aria-label={`Close ${product}`} onClick={onClose}>
           <X size={16} aria-hidden />
         </button>
       </header>
@@ -81,7 +82,7 @@ export function CompanyHost({ open, onClose }: { open: boolean; onClose: () => v
             </article>
           ) : null}
           <div className="status-heading">
-            <h3>Current Status: Tech Ascension</h3>
+            <h3>Current Status: {product}</h3>
             <span>{`Uptime over the past ${STATUS_DAYS} days.`}</span>
           </div>
           <ul className="status-components">
