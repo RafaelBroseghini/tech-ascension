@@ -7,6 +7,7 @@ import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { ForkCard } from "../components/globe/ForkCard.tsx"
 import { MetricsBar } from "../components/MetricsBar.tsx"
+import { PRESTIGE_MULT_PER } from "../data/legacy.ts"
 import { installGameHarness } from "./harness.ts"
 import { formatNumber } from "./format.ts"
 import { hydrate } from "./save.ts"
@@ -297,7 +298,7 @@ test("users pay: idle money rises by the product revenue, and the note counts it
   const hour = 60 * 60 * 1000
   const state = useGame.getState()
   const t = Date.now()
-  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder)), t - hour, t, () => 0.999)
+  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder, state.legacy)), t - hour, t, () => 0.999)
   const away = game.advanceOffline(hour)
   expect(walked.earned).toBeGreaterThan(0)
   expect(away.credited).toBeCloseTo(cps * 3600 + walked.earned - walked.lost, 0)
@@ -746,4 +747,80 @@ test("the fork: quit for the product, run out, raise a bridge, go back one rung 
   root.unmount()
   host.remove()
   spy.mockRestore()
+})
+
+test("prestige: selling the product pays Prestige, restarts the career and the product, keeps the Legacy, and perks start the next one", () => {
+  game.reset()
+  game.keepProfile()
+  game.setXp(200_000)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  expect(game.buyJob(1)).toBe(true)
+  game.forceGold(1)
+  const { handle, product } = game.getState().profile
+  // The product has users, a region bought, and a hire to throw away.
+  game.setMoney(1e13)
+  game.setUsers("americas-east", 5_000)
+  expect(game.buyRegion("europe")).toBe(true)
+  expect(game.hire("outsourced")).toBe(true)
+
+  // Shut until the career has earned its first Prestige (`PRESTIGE_EARN_SCALE`, counted from dollars credited).
+  expect(game.getState().legacy).toMatchObject({ runs: 1, prestige: 0, prestigeTotal: 0, mult: 1, exitOpen: true })
+  const before = game.getState()
+  expect(before.legacy.prestigeOnExit).toBeGreaterThan(0)
+  expect(before.world.users).toBe(5_000)
+
+  const prestige = game.exit()
+  expect(prestige).not.toBe(false)
+  expect(prestige).toBeGreaterThan(0)
+  const after = game.getState()
+  expect(after.legacy).toMatchObject({ runs: 2, prestige, prestigeTotal: prestige, perks: [], endings: [] })
+  expect(after.legacy.mult).toBeCloseTo(1 + PRESTIGE_MULT_PER * (prestige as number))
+  expect(after).toMatchObject({ money: 0, xp: 0, xpTotal: 0, cps: 0, phase: "A", era: "early", track: "ladder", headcount: 0 })
+  expect(after.skills).toEqual({})
+  expect(after.jobs).toEqual([])
+  expect(after.gigs).toEqual([])
+  expect(after.owned).toEqual({})
+  // The product starts over, with a new name.
+  expect(after.world).toMatchObject({ users: 0, regionUsers: {}, resistance: 0, incidents: [], won: false })
+  expect(after.hires).toEqual({})
+  expect(after.founder).toMatchObject({ bridges: 0, equityCut: 0, broke: false })
+  expect(after.profile.handle).toBe(handle)
+  expect(after.profile.product).not.toBe(product)
+  expect(after.profile.chosen).toBe(false)
+  // Kept: 10x dev skills, the handle, the journal.
+  expect(after.gold).toEqual([1])
+  expect(game.careerLog().some((line) => line.type === "exit" && line.prestigeEarned === prestige)).toBe(true)
+  game.keepProfile()
+  // Taken once: the new career has earned nothing yet.
+  expect(game.exit()).toBe(false)
+
+  // The multiplier is in the rates: the first skill pays its click bonus times it.
+  game.setXp(90)
+  expect(game.buySkill(1)).toBe(true)
+  const skill1 = SKILL_TIERS[0]
+  if (!skill1) throw new Error("missing skill 1")
+  expect(game.getState().xpPerClick).toBeCloseTo((1 + skill1.xpPerClick) * after.legacy.mult)
+  for (let id = 1; id <= 8; id++) game.forceGig(id)
+  expect(game.getState().cps).toBeCloseTo(GIGS.slice(0, 8).reduce((sum, gig) => sum + gig.retainerCps, 0) * after.legacy.mult)
+
+  // Long weekend lifts the offline cap by four hours, now.
+  expect(game.getState().offlineCapHours).toBe(8)
+  game.setPrestige(2)
+  expect(game.buyLegacy("capital.offline")).toBe(true)
+  expect(game.getState().offlineCapHours).toBe(12)
+
+  // Prestige buys Network perks in order; they start the next career.
+  game.setPrestige(3)
+  expect(game.buyLegacy("network.gigBoard")).toBe(false)
+  expect(game.buyLegacy("network.skills")).toBe(true)
+  expect(game.getState().legacy.perks).toEqual(["capital.offline", "network.skills"])
+  game.setMoney(1e14)
+  const second = game.exit()
+  expect(second).toBeGreaterThan(0)
+  const next = game.getState()
+  for (let id = 1; id <= 10; id++) expect(next.skills[String(id)]).toBe(1)
+  expect(next.legacy.runs).toBe(3)
+  expect(next.legacy.prestigeTotal).toBeGreaterThan(after.legacy.prestigeTotal)
+  expect(next.money).toBe(0)
+  expect(next.offlineCapHours).toBe(12)
 })

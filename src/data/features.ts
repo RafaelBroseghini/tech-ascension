@@ -30,6 +30,8 @@ export type FeatureTrigger =
   | { kind: "era"; era: Era }
   /** A quarter of an hour at the desk (`CAT_DESK_MS`, tab open counts, in front or behind), or coming back after a break, whichever is first. */
   | { kind: "settled" }
+  /** The Exit (prestige): it would pay at least 1 Prestige (a win included), or this is a later career. */
+  | { kind: "exit" }
 
 /**
  * How loud the reveal is. `big` gets the centred UNLOCKED slam, confetti and a card; `standard` lights up where it
@@ -56,6 +58,7 @@ export type FeatureId =
   | "music"
   | "boardCapital"
   | "cat"
+  | "exit"
   | `kit:${string}`
   | `theme:${string}`
   | `music:${string}`
@@ -77,6 +80,11 @@ export type FeatureRow = {
   action?: string
   /** False for rows with no place on screen to stand in for (the cat is a surprise). Defaults to true. */
   ghost?: boolean
+  /**
+   * Behind admin mode for now: the row still unlocks and is logged, but it plays no reveal, wears no NEW marker and is
+   * not teased, since the thing it opens is not on screen outside admin mode.
+   */
+  admin?: boolean
 }
 
 export const FEATURES: readonly FeatureRow[] = [
@@ -210,6 +218,16 @@ export const FEATURES: readonly FeatureRow[] = [
     size: "big",
     trigger: { kind: "settled" },
     ghost: false,
+  },
+  {
+    id: "exit",
+    name: "The Exit",
+    blurb: "Sell your product for Prestige, a permanent bonus, and start a faster career with a new one. Your Legacy perks and the Hall of Fame stay.",
+    size: "big",
+    trigger: { kind: "exit" },
+    action: "Show me",
+    ghost: false,
+    admin: true,
   },
 
   // Cosmetics. Each waits on its picker (`parent`).

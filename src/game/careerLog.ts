@@ -1,4 +1,5 @@
 import { GOLD_SKILLS } from "../data/gold.ts"
+import { LEGACY_PERKS } from "../data/legacy.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
 import { eventById } from "./events.ts"
@@ -32,6 +33,8 @@ export const CAREER_TYPES = [
   "incident",
   "world",
   "milestone",
+  "exit",
+  "legacy",
 ] as const
 
 export type CareerType = (typeof CAREER_TYPES)[number]
@@ -192,8 +195,11 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
       return MILESTONES.find((row) => `world:${row.id}` === entry.ref)?.label ?? entry.ref
     case "milestone":
       return BALANCE_MILESTONES.find((row) => `milestone:${row.id}` === entry.ref)?.label ?? entry.ref
+    case "legacy":
+      return LEGACY_PERKS.find((perk) => perk.id === entry.ref.slice("legacy:".length))?.name ?? entry.ref
     case "start":
     case "return":
+    case "exit":
       return ""
   }
 }
@@ -283,6 +289,15 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: name, detail: entry.ref === "world:won" ? "the world is yours" : "users", tone: "career" }
     case "milestone":
       return { title: name, detail: "milestone", tone: "career" }
+    case "exit": {
+      const run = typeof data.run === "number" ? data.run : 1
+      const prestige = typeof data.prestigeEarned === "number" ? data.prestigeEarned : 0
+      return { title: `Exit: career ${run} closed`, detail: `+${formatNumber(prestige)} Prestige`, tone: "career" }
+    }
+    case "legacy": {
+      const perk = LEGACY_PERKS.find((row) => `legacy:${row.id}` === entry.ref)
+      return { title: `Legacy: ${name}`, detail: perk ? `${perk.cost} Prestige` : "perk", tone: "buy" }
+    }
   }
 }
 

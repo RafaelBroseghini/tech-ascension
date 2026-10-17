@@ -51,6 +51,34 @@ To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visi
 
 > The figures below predate the removal of the whiteboard interviews. Rerun `npm run pace` for the current numbers.
 
+## Over several careers (the Exit)
+
+`simulateExits` in `src/game/pace.ts` plays the same player through the Exit (`docs/PRESTIGE.md`): the first career leaves once capital row 6 is owned and the Exit pays enough, every career after that can leave at any visit. It buys the Network perks in order as Prestige allows, keeps passed interviews, applies the Prestige multiplier to every income and XP rate, and stops when a career owns everything. `npm run pace` prints it for the Regular player after the table; `npm run pace -- exit [visits minutes clicks] [falling]` prints it for any profile. The single-run model above is untouched (its output is byte for byte what it was).
+
+The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: it never fires early here, because income grows faster than the cube root of the clock, so the average keeps rising until the economy is nearly full. With it the reinvestor owns everything in the first career (day 4.3) and never leaves, and the collector leaves on day 4.0 for 27 Prestige and finishes in career 3, so it would not test the replay at all.
+
+Tuned constants (`src/data/legacy.ts`): `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers, so the Exit is open at row 6 around day 0.7 but pays nothing until about day 1.3) and `PRESTIGE_MULT_PER = 0.03`. A scale of 1e8 pays the first Exit on day 0.7 for 11 Prestige, and 0.05 per Prestige finishes the game in about 6 days; both are too fast for the targets. Regular player (3 visits a day of 15 minutes, 2 clicks a second):
+
+| | Reinvestor | Collector |
+| --- | --- | --- |
+| First Exit | day 1.67, +5 Prestige (×1.15) | day 2.00, +6 Prestige (×1.18) |
+| Row 6 in career 2 | 0.34 days in | 0.34 days in |
+| Career that owns everything | 6th, day 13.0 | 6th, day 18.0 |
+| Prestige when it does | 58 (×2.74) | 44 (×2.32) |
+
+The reinvestor, career by career:
+
+| Career | Day in | Day out | Prestige paid | Prestige total | Bonus |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 0.00 | 1.67 | 5 | 5 | ×1.15 |
+| 2 | 1.67 | 3.67 | 7 | 12 | ×1.36 |
+| 3 | 3.67 | 6.00 | 14 | 26 | ×1.78 |
+| 4 | 6.00 | 8.33 | 14 | 40 | ×2.20 |
+| 5 | 8.33 | 10.67 | 18 | 58 | ×2.74 |
+| 6 | 10.67 | 13.00 (done) | - | 58 | ×2.74 |
+
+All three targets hold for both players: the first Exit lands on day 1.5 to 2 for 3 to 6 Prestige, career 2 reaches row 6 in under half a day, and a full career is done in the sixth, about two weeks in. `pace.test.ts` checks them. Visits are 8 hours apart, so "under half a day" is one visit: the model cannot tell 0.34 days from anything faster, and the Network perks (which save minutes, not hours) barely move it. The perks are for the player who plays the early game by hand.
+
 ## Reading it
 
 - **Leaving is free up to 8 hours.** While your visits are no more than 8 hours apart, `idleShare` is 1 and nothing is wasted. Past that, every extra hour away earns nothing. A night's sleep is fine; a long work day on top of it loses the hours past 8.

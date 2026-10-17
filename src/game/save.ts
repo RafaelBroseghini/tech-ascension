@@ -4,7 +4,9 @@ import { clampBuyAmount, goldById, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import type { OwnedMap } from "./economy.ts"
 import { offlineToastText } from "./offlineNote.ts"
-import { clampForever, modFactors, pruneTemp, TEMP_TARGETS } from "./mods.ts"
+import { clampForever, modFactors, pruneTemp, prestigeMult, TEMP_TARGETS } from "./mods.ts"
+import { freshLegacy, isFreshLegacy, normalizeLegacy } from "./legacy.ts"
+import type { LegacyState } from "./legacy.ts"
 import type { TempMults } from "./mods.ts"
 import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
@@ -93,6 +95,8 @@ export type SaveData = {
   footprint?: Footprint
   /** The fork: the track, whether its modal has shown, the bridges raised, the equity given up, and the run-out choice. Omitted on the ladder before the fork has shown. */
   founder?: FounderState
+  /** Prestige: runs, Prestige, earnings of earlier careers, Legacy perks. Omitted on a first career with nothing in it; a save without it is run 1 with no Prestige. */
+  legacy?: LegacyState
 }
 
 export type Hydrated = {
@@ -280,6 +284,10 @@ export function parseSave(input: unknown): SaveData | null {
   if (footprint) save.footprint = footprint
   const founder = parseFounder(input.founder)
   if (founder) save.founder = founder
+  if (input.legacy !== undefined) {
+    const legacy = normalizeLegacy(input.legacy)
+    if (!isFreshLegacy(legacy)) save.legacy = legacy
+  }
   return save
 }
 
@@ -298,13 +306,17 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   }
   if (!loaded) return { save: freshSave(now), toast: UNREADABLE, reset: true }
 
-  const capMs = offlineCapMs(loaded.gold ?? [], OFFLINE_CAP_MS)
+  const capMs = offlineCapMs(loaded.gold ?? [], OFFLINE_CAP_MS, loaded.legacy?.perks)
   const away = Math.min(Math.max(0, now - loaded.savedAt), capMs)
-  const fx = modFactors({ foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {} }, loaded.savedAt, loaded.savedAt + away)
+  const fx = modFactors(
+    { foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {}, legacyMult: prestigeMult(loaded.legacy?.prestigeTotal ?? 0) },
+    loaded.savedAt,
+    loaded.savedAt + away,
+  )
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
   // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
   const founder = loaded.founder ?? FRESH_FOUNDER
-  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, trackFactsOf(founder)), loaded.savedAt, loaded.savedAt + away, Math.random)
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, trackFactsOf(founder, loaded.legacy ?? freshLegacy())), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
   const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown, { track: founder.track, broke: founder.broke, away: true })

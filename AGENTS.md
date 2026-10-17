@@ -121,6 +121,9 @@ returnToLadder(): boolean         // back to a job, from the founder track. Out 
 rerollProfile(): boolean          // draw another handle (and a product from its animal), as the start card's first Reroll does; false once kept
 rerollProduct(): boolean          // draw another product suffix for the same animal, as the second step's Reroll does; false once kept
 keepProfile(): void               // keep the current one for good, as the start card's Start (agents: call it to clear the card)
+exit(): number | false            // Prestige: Prestige earned, or false when the Exit is not open or would pay 0
+buyLegacy(perkId: string): boolean // "network.skills" > "network.gigBoard" > "network.gigs" > "network.internship" > "network.seed", in order, for Prestige
+setPrestige(n: number): void           // sets spendable Prestige; prestigeTotal rises to match (tests only)
 reset(): void
 ```
 

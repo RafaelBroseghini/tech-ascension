@@ -1,14 +1,16 @@
 import { CAPITAL } from "../data/capital.ts"
+import { PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
 import type { Era } from "../data/capital.ts"
 import { BASE_CLICK_KIT, BASE_THEMES, CAT_DESK_MS, FEATURES } from "../data/features.ts"
 import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { bandForTier } from "../data/idePacks.ts"
 import { GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, CAPITAL_UNLOCK } from "../data/phases.ts"
-import { canAfford, equipById, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
+import { canAfford, equipById, gearBase, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { goldSectionOpen, hoverRate } from "./gold.ts"
+import { prestigeTotalFor } from "./legacy.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, moneyMode, stageOf } from "./phase.ts"
 
@@ -19,6 +21,12 @@ export type FeatureProgress = Progress & {
   returns: number
   /** Time the game has been played, for the cat's fallback. */
   playTimeMs: number
+  /** Careers started (`legacy.runs`); the Exit stays open on every later one. Omitted means the first. */
+  runs?: number
+  /** This career's lifetime earnings (`stats.lifetimeEarned`); the first career's Exit opens once they would pay a Prestige. Omitted means 0. */
+  earned?: number
+  /** The product has won the world: the Exit opens on the first career with the ending's bonus. */
+  won?: boolean
 }
 
 const BY_ID = new Map<string, FeatureRow>(FEATURES.map((row) => [row.id, row]))
@@ -70,6 +78,8 @@ export function triggerMet(trigger: FeatureTrigger, p: FeatureProgress): boolean
       return reachedEra(p, trigger.era)
     case "settled":
       return p.returns > 0 || p.playTimeMs >= CAT_DESK_MS
+    case "exit":
+      return (p.runs ?? 1) > 1 || p.won === true || prestigeTotalFor(p.earned ?? 0) >= 1
   }
 }
 
@@ -109,6 +119,8 @@ export function triggerLabel(trigger: FeatureTrigger): string {
       return `the ${trigger.era === "q3" ? "scale" : trigger.era} era`
     case "settled":
       return `${CAT_DESK_MS / 60_000} minutes at the desk, or a break`
+    case "exit":
+      return "earning enough for your first Prestige, or winning the world"
   }
 }
 
@@ -181,7 +193,7 @@ function gearProgress(p: FeatureProgress, id: number): TriggerProgress {
     if (job) return { fill: 0.4, left: `the ${job.name} job` }
     return { fill: 0.4 + ratio(p.peakMoney, row.unlockMoney) * 0.3, left: "a bigger balance" }
   }
-  const cost = nextCost(row.baseCost, 0)
+  const cost = nextCost(gearBase(row, p), 0)
   if (canAfford(p.money, cost)) return { fill: 1, left: "ready to buy" }
   return { fill: 0.7 + ratio(p.money, cost) * 0.3, left: "more money" }
 }
@@ -228,6 +240,9 @@ export function triggerProgress(trigger: FeatureTrigger, p: FeatureProgress): Tr
     case "art":
     case "era":
       return { fill: 0, left: "" }
+    case "exit": {
+      return { fill: ratio(p.earned ?? 0, PRESTIGE_EARN_SCALE) * 0.9, left: "more earnings" }
+    }
     case "settled": {
       if (p.returns > 0) return { fill: 1, left: "" }
       return { fill: ratio(p.playTimeMs, CAT_DESK_MS), left: p.playTimeMs < CAT_DESK_MS ? "more time at the desk" : "" }
@@ -267,7 +282,7 @@ export function upNext(p: FeatureProgress, open: ReadonlySet<string>, count = 3)
   const out: FeatureTease[] = []
   for (const row of FEATURES) {
     if (out.length >= count) break
-    if (isCosmetic(row) || open.has(row.id) || triggerMet(row.trigger, p)) continue
+    if (isCosmetic(row) || row.admin || open.has(row.id) || triggerMet(row.trigger, p)) continue
     out.push(teaseOf(row, p))
   }
   return out
@@ -279,7 +294,7 @@ export function upNext(p: FeatureProgress, open: ReadonlySet<string>, count = 3)
  */
 export function nextGhost(p: FeatureProgress, open: ReadonlySet<string>): FeatureTease | null {
   for (const row of FEATURES) {
-    if (isCosmetic(row) || row.size === "phase" || open.has(row.id) || triggerMet(row.trigger, p)) continue
+    if (isCosmetic(row) || row.admin || row.size === "phase" || open.has(row.id) || triggerMet(row.trigger, p)) continue
     if (row.ghost === false) continue
     return teaseOf(row, p)
   }

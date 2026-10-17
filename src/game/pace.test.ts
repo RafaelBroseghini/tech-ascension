@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest"
 import {
   cadenceOf,
-  COLLECTOR_PAYBACK_SECONDS,
+  ONE_OF_EACH_PAYBACK_SECONDS,
   estimateDays,
   FINAL_CLICK_SHARE,
   OFFLINE_CAP_SECONDS,
   PACE_K,
   PACE_MILESTONES,
   paceOf,
-  REINVESTOR_PAYBACK_SECONDS,
+  STACKER_PAYBACK_SECONDS,
+  simulateExits,
   simulatePace,
 } from "./pace.ts"
 import type { PlayProfile } from "./pace.ts"
@@ -70,11 +71,11 @@ describe("pace model", () => {
   })
 
   it("finishes sooner with more visits, with more clicking, and with better reinvesting", () => {
-    const days = (p: PlayProfile, paybackSeconds = REINVESTOR_PAYBACK_SECONDS) =>
+    const days = (p: PlayProfile, paybackSeconds = STACKER_PAYBACK_SECONDS) =>
       simulatePace(p, { maxDays: 800, paybackSeconds }).days
     expect(days(profile(3, 15, 2))).toBeLessThan(days(profile(1, 15, 2)))
     expect(days(profile(1, 30, 3))).toBeLessThan(days(profile(1, 30, 1)))
-    expect(days(profile(3, 15, 2))).toBeLessThan(days(profile(3, 15, 2), COLLECTOR_PAYBACK_SECONDS))
+    expect(days(profile(3, 15, 2))).toBeLessThan(days(profile(3, 15, 2), ONE_OF_EACH_PAYBACK_SECONDS))
   })
 
   // The constants in docs/PACING.md. If a table change moves the game far enough that these fail, rerun
@@ -87,10 +88,60 @@ describe("pace model", () => {
       ["daily", profile(1, 30, 2)],
     ]
     for (const [name, p] of fits) {
-      const collector = simulatePace(p, { maxDays: 800, paybackSeconds: COLLECTOR_PAYBACK_SECONDS }).days
-      const reinvestor = simulatePace(p, { maxDays: 800, paybackSeconds: REINVESTOR_PAYBACK_SECONDS }).days
-      expect(Math.abs(estimateDays(p, PACE_K.collector) / collector - 1), `${name} collector`).toBeLessThan(0.12)
-      expect(Math.abs(estimateDays(p, PACE_K.reinvestor) / reinvestor - 1), `${name} reinvestor`).toBeLessThan(0.2)
+      const oneOfEach = simulatePace(p, { maxDays: 800, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS }).days
+      const stacker = simulatePace(p, { maxDays: 800, paybackSeconds: STACKER_PAYBACK_SECONDS }).days
+      expect(Math.abs(estimateDays(p, PACE_K.oneOfEach) / oneOfEach - 1), `${name} one-of-each`).toBeLessThan(0.12)
+      expect(Math.abs(estimateDays(p, PACE_K.stacker) / stacker - 1), `${name} stacker`).toBeLessThan(0.2)
     }
+  })
+})
+
+describe("pace over several careers (the Exit)", () => {
+  const regular = profile(3, 15, 2)
+
+  it("changes nothing for a single run: no Prestige means a multiplier of 1", () => {
+    // A run that never leaves has the single-run result.
+    const single = simulatePace(regular, { maxDays: 400 })
+    const never = simulateExits(regular, { maxDays: 400, minGrowth: Number.POSITIVE_INFINITY })
+    expect(never.complete).toBe(true)
+    expect(never.runs).toHaveLength(1)
+    expect(never.days).toBeCloseTo(single.days, 6)
+  })
+
+  for (const [name, payback] of [
+    ["stacker", STACKER_PAYBACK_SECONDS],
+    ["oneOfEach", ONE_OF_EACH_PAYBACK_SECONDS],
+  ] as const) {
+    it(`meets the pacing targets for the Regular ${name}`, () => {
+      const result = simulateExits(regular, { maxDays: 400, paybackSeconds: payback })
+      expect(result.complete).toBe(true)
+      const [first, second] = result.runs
+      // The first Exit is taken around day 1.5 to 2 for a few Prestige, and a bonus of about 15%.
+      expect(first!.endDay).toBeGreaterThanOrEqual(1.5)
+      expect(first!.endDay).toBeLessThanOrEqual(2.1)
+      expect(first!.prestigeEarned).toBeGreaterThanOrEqual(3)
+      expect(first!.prestigeEarned).toBeLessThanOrEqual(8)
+      // The second career reaches capital row 6 in under half a day.
+      expect(second!.row6Days).not.toBeNull()
+      expect(second!.row6Days!).toBeLessThan(0.5)
+      // A full career is finished by the sixth, in about two weeks (the one-of-each player is slower).
+      expect(result.finishRun).toBeLessThanOrEqual(6)
+      expect(result.days).toBeGreaterThan(8)
+      expect(result.days).toBeLessThan(22)
+    })
+
+    it(`only ever gains Prestige and bonus across careers (${name})`, () => {
+      const result = simulateExits(regular, { maxDays: 400, paybackSeconds: payback })
+      let total = 0
+      for (const run of result.runs) {
+        expect(run.prestigeTotal).toBeGreaterThanOrEqual(total)
+        total = run.prestigeTotal
+      }
+    })
+  }
+
+  it("the optimal rule (Prestige per hour starts to fall) waits until a career is nearly done", () => {
+    const result = simulateExits(regular, { maxDays: 400, exitRule: "falling" })
+    expect(result.runs[0]!.endDay).toBeGreaterThan(3)
   })
 })

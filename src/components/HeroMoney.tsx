@@ -90,6 +90,7 @@ function HeroMoneyBody() {
   const activeBoost = useGame((state) => state.activeBoost)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
+  const legacy = useGame((state) => state.legacy)
   const now = useGame((state) => state.now)
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
@@ -104,7 +105,7 @@ function HeroMoneyBody() {
   const paysClickMoney = clickPaysMoney({ jobs })
   // Until the first dollar the card is about XP: no "$0" for money that cannot be earned yet.
   const moneyOpen = useFeatureOpen("money")
-  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
 
   useEffect(() => {
     const el = valueRef.current

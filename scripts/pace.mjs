@@ -3,28 +3,32 @@
 //
 //   npm run pace                          the table in the docs
 //   npm run pace -- 3 15 2                one profile: visits per day, minutes per visit, clicks per second
+//   npm run pace -- exit [3 15 2] [falling]   the same player over several careers, leaving through the Exit
+//                                         (docs/PRESTIGE.md); "falling" leaves when Prestige per hour starts to fall
 //
 // Needs Node 22.18 or newer, which runs the TypeScript the game is written in without a build step.
 import { CAPITAL } from "../src/data/capital.ts"
+import { PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
 import { GEAR } from "../src/data/gear.ts"
 import { JOB_TIERS } from "../src/data/phases.ts"
 import {
   cadenceOf,
   PACE_MILESTONES,
-  COLLECTOR_PAYBACK_SECONDS,
+  ONE_OF_EACH_PAYBACK_SECONDS,
   estimateDays,
   FINAL_CLICK_SHARE,
   OFFLINE_CAP_SECONDS,
   PACE_K,
   paceOf,
-  REINVESTOR_PAYBACK_SECONDS,
+  STACKER_PAYBACK_SECONDS,
+  simulateExits,
   simulatePace,
 } from "../src/game/pace.ts"
 
 const MAX_DAYS = 5000
 const PLAYERS = [
-  { name: "collector", k: PACE_K.collector, paybackSeconds: COLLECTOR_PAYBACK_SECONDS },
-  { name: "reinvestor", k: PACE_K.reinvestor, paybackSeconds: REINVESTOR_PAYBACK_SECONDS },
+  { name: "oneOfEach", k: PACE_K.oneOfEach, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS },
+  { name: "stacker", k: PACE_K.stacker, paybackSeconds: STACKER_PAYBACK_SECONDS },
 ]
 
 const TABLE = [
@@ -45,8 +49,8 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
   const cad = cadenceOf(profile)
   const cells = PLAYERS.map((player) => {
     const run = simulatePace(profile, { maxDays: MAX_DAYS, paybackSeconds: player.paybackSeconds })
-    // The reinvestor's constant needs a visit at least daily: further apart, a two-day payback is out of reach.
-    const valid = player.name === "collector" || profile.visitsPerDay >= 1
+    // The stacker's constant needs a visit at least daily: further apart, a two-day payback is out of reach.
+    const valid = player.name === "oneOfEach" || profile.visitsPerDay >= 1
     return {
       model: run.complete ? days(run.days) : `>${MAX_DAYS}`,
       formula: valid ? days(estimateDays(profile, player.k)) : "n/a",
@@ -56,6 +60,34 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
     }
   })
   return { name, profile, cad, pace: paceOf(profile), cells }
+}
+
+const REGULAR = { visitsPerDay: 3, minutesPerVisit: 15, clicksPerSec: 2 }
+
+// The multi-run model: when each Exit happens, what it pays, the bonus, and the career that finally owns everything.
+function printExits(profile, exitRule) {
+  const rule = exitRule === "falling" ? "Prestige per hour starts to fall" : "an Exit raises the bonus by 15% or more"
+  console.log(`Exits: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s; leaves when ${rule}; Prestige ladder scale ${PRESTIGE_EARN_SCALE.toExponential(0)}, ${PRESTIGE_MULT_PER} per Prestige`)
+  for (const player of PLAYERS) {
+    const run = simulateExits(profile, { maxDays: MAX_DAYS, paybackSeconds: player.paybackSeconds, exitRule })
+    console.log("")
+    console.log(`${player.name}: ${run.complete ? `owns everything in career ${run.finishRun}, day ${days(run.days)}` : `not finished by day ${MAX_DAYS}`}`)
+    console.log("| Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Perks held | Earned | Prestige paid | Prestige total | Bonus |")
+    console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    for (const r of run.runs) {
+      const row6 = r.row6Days === null ? "-" : r.row6Days.toFixed(2)
+      const open = r.exitOpenDays === null ? "-" : r.exitOpenDays.toFixed(2)
+      const out = r.finished ? `${r.endDay.toFixed(2)} (done)` : r.endDay.toFixed(2)
+      console.log(`| ${r.run} | ${r.startDay.toFixed(2)} | ${out} | ${open} | ${row6} | ${r.perks} | ${r.earned.toExponential(1)} | ${r.finished ? "-" : r.prestigeEarned} | ${r.prestigeTotal} | x${r.mult.toFixed(2)} |`)
+    }
+  }
+}
+
+if (process.argv[2] === "exit") {
+  const nums = process.argv.slice(3, 6).map(Number)
+  const given = nums.length === 3 && nums.every((n) => Number.isFinite(n) && n > 0)
+  printExits(given ? { visitsPerDay: nums[0], minutesPerVisit: nums[1], clicksPerSec: nums[2] } : REGULAR, process.argv.includes("falling") ? "falling" : "worth")
+  process.exit(0)
 }
 
 const args = process.argv.slice(2).map(Number)
@@ -70,21 +102,21 @@ const firstCopyIncome =
   GEAR.reduce((sum, r) => sum + r.cps, 0) +
   JOB_TIERS.reduce((sum, r) => sum + r.cps, 0)
 
-console.log(`offline cap ${OFFLINE_CAP_SECONDS / 3600}h · final click share ${FINAL_CLICK_SHARE.toFixed(2)} · K ${PACE_K.collector} (collector) / ${PACE_K.reinvestor} (reinvestor)`)
+console.log(`offline cap ${OFFLINE_CAP_SECONDS / 3600}h · final click share ${FINAL_CLICK_SHARE.toFixed(2)} · K ${PACE_K.oneOfEach} (one-of-each) / ${PACE_K.stacker} (stacker)`)
 console.log(`last row: ${last.name}, $${last.baseCost.toExponential(1)}; first-copy income without it $${firstCopyIncome.toExponential(2)}/s, so its price alone is ${(last.baseCost / firstCopyIncome / 86400).toFixed(1)} days of full income`)
 console.log("")
-console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Reinvestor: model / formula | Collector: model / formula | Hands-on (reinvestor / collector) |")
+console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: model / formula | One-of-each: model / formula | Hands-on (stacker / one-of-each) |")
 console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 for (const { name, profile, cad, pace, cells } of rows) {
-  const [collector, reinvestor] = cells
+  const [oneOfEach, stacker] = cells
   console.log(
-    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${reinvestor.model} / ${reinvestor.formula} days | ${collector.model} / ${collector.formula} days | ${reinvestor.handsOn} / ${collector.handsOn} |`,
+    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${stacker.model} / ${stacker.formula} days | ${oneOfEach.model} / ${oneOfEach.formula} days | ${stacker.handsOn} / ${oneOfEach.handsOn} |`,
   )
 }
 
 if (!custom) {
   // Least squares on the relative error of `k / pace` against the model, over the schedules that visit at least
-  // daily (the reinvestor's constant only holds there). This is the number to put in `PACE_K`.
+  // daily (the stacker's constant only holds there). This is the number to put in `PACE_K`.
   const daily = rows.filter((r) => r.profile.visitsPerDay >= 1)
   const fit = PLAYERS.map((player, index) => {
     const a = daily.map((r) => 1 / (r.pace * r.cells[index].run.days))
@@ -102,4 +134,9 @@ if (custom) {
     const { milestones } = rows[0].cells[index].run
     console.log(`- ${player.name}: ${PACE_MILESTONES.filter((id) => milestones[id] !== undefined).map((id) => `${id} ${milestones[id].toFixed(2)}`).join(", ")}`)
   }
+}
+
+if (!custom) {
+  console.log("")
+  printExits(REGULAR, "worth")
 }

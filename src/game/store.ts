@@ -13,6 +13,8 @@ import {
   ownedCount,
   production,
   quotePurchase,
+  capitalBase,
+  gearBase,
   skillById,
   equipById,
   capitalById,
@@ -27,7 +29,10 @@ import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
-import { modFactors, modsOf, pruneTemp } from "./mods.ts"
+import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
+import { HALL_OF_FAME } from "../data/legacy.ts"
+import { canBuyPerk, canExit, earningsPrestige, endingBonus, exitHeadline, freshLegacy, isFreshLegacy, legacyPerkById, mergeGrant, startingGrant, withStartUsers } from "./legacy.ts"
+import type { ExitCard, LegacyState } from "./legacy.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
 import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
@@ -177,6 +182,10 @@ type GameState = {
   founder: FounderState
   /** The "Go full-time?" modal is on screen. Not saved; the red button opens it again. */
   forkModal: boolean
+  /** Prestige: careers started, Prestige, earnings of earlier careers, Legacy perks, the Hall of Fame. Survives an Exit; `wipe` clears it. */
+  legacy: LegacyState
+  /** The headline card after the latest Exit, until dismissed. Not saved. */
+  exitCard: ExitCard | null
   unlocked: FeatureId[]
   fresh: FeatureId[]
   returns: number
@@ -188,6 +197,15 @@ type GameState = {
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
   buyJob: (jobId: number) => boolean
+  /**
+   * Leave this career: pay the Prestige its earnings climbed to, reset the run and the product (see `exit` in the store),
+   * start the next career under the Network and Founder perks held. Returns the Prestige earned, or false when the Exit is not open or would pay nothing.
+   */
+  exit: () => number | false
+  /** Spend Prestige on a Legacy perk. It lands in the career under way and starts every later one. False when unknown, owned, out of order, or too dear. */
+  buyLegacy: (perkId: string) => boolean
+  /** Close the headline card an Exit opened. */
+  dismissExitCard: () => void
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
   buyGold: (goldId: number) => boolean
   /** Buy a region with money. False when it is unknown, owned, or unaffordable. */
@@ -285,6 +303,7 @@ function toSave(state: GameState, now: number): SaveData {
     stats: state.stats,
   }
   if (state.gold.length > 0) save.gold = state.gold
+  if (!isFreshLegacy(state.legacy)) save.legacy = state.legacy
   if (state.buyAmount !== 1) save.buyAmount = state.buyAmount
   if (state.foreverMult !== 1) save.foreverMult = state.foreverMult
   const temp = pruneTemp(state.tempMults, now)
@@ -448,6 +467,8 @@ export const useGame = create<GameState>((set, get) => ({
   footprint: booted.save.footprint ?? FRESH_FOOTPRINT,
   founder: booted.save.founder ?? FRESH_FOUNDER,
   forkModal: false,
+  legacy: booted.save.legacy ?? freshLegacy(),
+  exitCard: null,
   unlocked: booted.career.unlocked,
   fresh: booted.career.fresh,
   returns: booted.career.returns,
@@ -491,7 +512,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!capitalUnlocked(state)) return
     const have = ownedCount(state.owned, tier.id)
     if (have === 0 && !isRevealed(tier, state.owned, state.peakMoney)) return
-    const quote = quotePurchase(state.money, tier.baseCost, have, allowedMode(state, mode))
+    const quote = quotePurchase(state.money, capitalBase(tier, state), have, allowedMode(state, mode))
     if (quote.count <= 0) return
 
     const owned: OwnedMap = { ...state.owned, [String(tier.id)]: have + quote.count }
@@ -542,7 +563,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!equipmentOpen(state)) return
     const have = ownedCount(state.equipment, equip.id)
     if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs)) return
-    const quote = quotePurchase(state.money, equip.baseCost, have, allowedMode(state, mode))
+    const quote = quotePurchase(state.money, gearBase(equip, state), have, allowedMode(state, mode))
     if (quote.count <= 0) return
     set({
       money: Math.max(0, state.money - quote.total),
@@ -601,7 +622,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   raiseBridge: () => {
     const state = get()
-    const raised = raiseFounderBridge(state.founder, totalUsers(state.company.users))
+    const raised = raiseFounderBridge(state.founder, totalUsers(state.company.users), state.legacy.perks)
     if (!raised) return false
     set({ founder: raised.founder, money: state.money + raised.cash, now: Date.now() })
     persistNow()
@@ -613,6 +634,123 @@ export const useGame = create<GameState>((set, get) => ({
     const back = returnFounderToLadder(state.founder, totalUsers(state.company.users), state.jobs, state.founder.broke)
     if (!back) return false
     set({ founder: back.founder, jobs: back.jobs, now: Date.now(), buyStamp: state.buyStamp + 1 })
+    persistNow()
+    return true
+  },
+
+  exit: () => {
+    const state = get()
+    const earned = state.stats.lifetimeEarned
+    const win = { won: state.company.won, ending: state.company.ending }
+    if (!canExit(state.legacy, earned, win)) return false
+    const bonus = endingBonus(state.legacy, win)
+    const gained = earningsPrestige(state.legacy, earned) + bonus
+    const newEnding = bonus > 0 && win.ending ? win.ending : null
+    const endings = newEnding ? HALL_OF_FAME.filter((entry) => entry.id === newEnding || state.legacy.endings.includes(entry.id)).map((entry) => entry.id) : state.legacy.endings
+    const legacy: LegacyState = {
+      ...state.legacy,
+      runs: state.legacy.runs + 1,
+      prestige: state.legacy.prestige + gained,
+      prestigeTotal: state.legacy.prestigeTotal + gained,
+      earnedAllRuns: state.legacy.earnedAllRuns + earned,
+      endings,
+    }
+    const start = mergeGrant({ skills: {}, gigs: [], jobs: [], xp: 0, xpTotal: 0, money: 0, peakMoney: 0 }, startingGrant(legacy.perks))
+    const now = Date.now()
+    const fresh = { ...start, equipment: {}, owned: {} }
+    const users = totalUsers(state.company.users)
+    const product = state.profile.product
+    const note: CareerNote = {
+      type: "exit",
+      ref: "",
+      data: {
+        run: state.legacy.runs,
+        prestigeEarned: gained,
+        prestigeTotal: legacy.prestigeTotal,
+        earned: Math.floor(earned),
+        product,
+        users: Math.floor(users),
+        won: state.company.won,
+        ...(win.won && win.ending ? { ending: win.ending } : {}),
+        ...(newEnding ? { endingBonus: bonus } : {}),
+        highestCapital: highestOwnedCapital(state.owned)?.id ?? 0,
+      },
+    }
+    set({
+      money: start.money,
+      peakMoney: start.peakMoney,
+      xp: start.xp,
+      xpTotal: start.xpTotal,
+      skills: start.skills,
+      equipment: {},
+      owned: {},
+      jobs: start.jobs,
+      gigs: start.gigs,
+      // The product starts over: users, regions, hires, the win and its multiplier, the track, the burn and the bridges.
+      company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
+      footprint: FRESH_FOOTPRINT,
+      founder: FRESH_FOUNDER,
+      forkModal: false,
+      buyAmount: clampBuyAmount(state.gold, state.buyAmount),
+      phase: phaseOf(fresh),
+      activeBoost: null,
+      nextBoostAt: null,
+      idleSince: now,
+      now,
+      foreverMult: 1,
+      tempMults: {},
+      event: null,
+      lastEvent: null,
+      nextEventAt: null,
+      review: null,
+      lastReview: null,
+      nextReviewAt: null,
+      previewEra: null,
+      previewUntil: 0,
+      pop: null,
+      stats: { ...state.stats, lifetimeEarned: 0 },
+      // Every career is a new product. The handle stays; the start card opens on the product beat.
+      profile: { handle: state.profile.handle, product: randomProduct(state.profile.handle, Math.random, product), chosen: false },
+      legacy,
+      exitCard: {
+        run: state.legacy.runs,
+        headline: exitHeadline({ handle: state.profile.handle, product, users, won: state.company.won, ending: state.company.ending }),
+        prestigeEarned: gained,
+        newEnding,
+        endingBonus: bonus,
+        mult: prestigeMult(legacy.prestigeTotal),
+      },
+      journal: noted(state.journal, [note], state),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+    })
+    persistNow()
+    return gained
+  },
+
+  dismissExitCard: () => set({ exitCard: null }),
+
+  buyLegacy: (perkId) => {
+    const state = get()
+    const perk = legacyPerkById(perkId)
+    if (!perk || !canBuyPerk(state.legacy, perk.id)) return false
+    // A perk is a head start: it lands in the career under way (a union, nothing taken away) and in every later one.
+    const merged = mergeGrant(state, startingGrant([perk.id]))
+    const perks = [...state.legacy.perks, perk.id]
+    set({
+      skills: merged.skills,
+      gigs: merged.gigs,
+      jobs: merged.jobs,
+      xp: merged.xp,
+      xpTotal: merged.xpTotal,
+      money: merged.money,
+      peakMoney: merged.peakMoney,
+      company: perk.id === "founder.users" ? { ...state.company, users: withStartUsers(state.company.users, perks) } : state.company,
+      legacy: { ...state.legacy, prestige: state.legacy.prestige - perk.cost, perks },
+      journal: noted(state.journal, [{ type: "legacy", ref: `legacy:${perk.id}`, data: { cost: perk.cost } }], state),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+    })
     persistNow()
     return true
   },
@@ -755,7 +893,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   tick: (now) => {
     const state = get()
-    const dt = Math.max(0, Math.min(now - state.now, offlineCapMs(state.gold, OFFLINE_CAP_MS)))
+    const dt = Math.max(0, Math.min(now - state.now, offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks)))
     const era = eraOf(state)
     const clock: BoostClock = {
       activeBoost: state.activeBoost,
@@ -765,7 +903,7 @@ export const useGame = create<GameState>((set, get) => ({
     const advanced = advanceBoostClock(clock, era, now, Math.random)
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder)), now - dt, now, Math.random)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder, state.legacy)), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
@@ -894,6 +1032,8 @@ export const useGame = create<GameState>((set, get) => ({
       celebrationNonce: 0,
       ...freshCareerSlice(now),
       profile: { ...randomIdentity(), chosen: false },
+      legacy: freshLegacy(),
+      exitCard: null,
     })
   },
 
@@ -916,8 +1056,9 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   rerollProfile: () => {
-    const { profile } = get()
-    if (profile.chosen) return false
+    const { profile, legacy } = get()
+    // A later career keeps the handle: only its product is drawn again.
+    if (profile.chosen || legacy.runs > 1) return false
     const handle = randomHandle(Math.random, profile.handle)
     set({ profile: { handle, product: randomProduct(handle), chosen: false } })
     persistNow()
@@ -958,7 +1099,7 @@ export const useGame = create<GameState>((set, get) => ({
   noteReturn: (awayMs) => {
     if (!(awayMs >= RETURN_BREAK_MS)) return
     const state = get()
-    const away = Math.min(awayMs, offlineCapMs(state.gold, OFFLINE_CAP_MS)) / 1000
+    const away = Math.min(awayMs, offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks)) / 1000
     const data = { awayMs: Math.round(awayMs), creditedMoney: Math.floor(idlePerSec(state) * away), creditedXp: Math.floor(xpPerSec(state) * away) }
     set({ returns: state.returns + 1, journal: noted(state.journal, [{ type: "return", ref: "", data }], state) })
   },
@@ -1012,7 +1153,7 @@ useGame.subscribe((state, prev) => {
   if (notes.length === 0 && rows.length === 0) return
   // While the "while you were out" note is up, what opens is part of the return: one reveal, the rest on the note.
   const returning = Boolean(live.toast?.note)
-  const plan = rows.length > 0 ? planUnlocks(rows, live, returning) : null
+  const plan = rows.length > 0 ? planUnlocks(rows, live, returning, getAdminMode()) : null
   const patch: Partial<GameState> = { journal: noted(live.journal, [...notes, ...(plan?.notes ?? [])], live) }
   if (plan) {
     patch.unlocked = plan.unlocked
@@ -1036,7 +1177,7 @@ useGame.subscribe((state, prev) => {
 
 /** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
 export function earnedPerSec(state: GameState, at = Date.now()): number {
-  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.founder)
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.founder, state.legacy.perks)
 }
 
 // The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).

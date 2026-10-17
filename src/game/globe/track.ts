@@ -1,6 +1,8 @@
 import { hireBonusOf, hirePayrollOf, parseHires } from "./hires.ts"
 import type { Hires } from "./hires.ts"
 import { WIN_MULT } from "./world.ts"
+import { prestigeMult } from "../mods.ts"
+import { perkEffects } from "../perks.ts"
 
 /** The ladder keeps the day job and builds the product on nights and weekends. A founder quits and builds it full-time. */
 export type Track = "ladder" | "founder"
@@ -50,9 +52,9 @@ export const BURN_BASE = 60
 /** Dollars a second the team grows by for each square root of a user. A company's costs grow slower than its crowd, so a big one turns a profit. */
 export const BURN_ROOT = 1.2
 
-/** The burn in $/s a founder carries at this many users. */
-export function burnOf(users: number): number {
-  return BURN_BASE + BURN_ROOT * Math.sqrt(Math.max(0, users))
+/** The burn in $/s a founder carries at this many users. `mult` is the Legacy perks' cut (Lean team); the hires' payroll is not part of it. */
+export function burnOf(users: number, mult = 1): number {
+  return (BURN_BASE + BURN_ROOT * Math.sqrt(Math.max(0, users))) * mult
 }
 
 export const growthMultOf = (track: Track): number => (track === "founder" ? FOUNDER_GROWTH : LADDER_GROWTH)
@@ -70,27 +72,43 @@ export interface TrackFacts {
   /** The part of `growthMult` the hires add. */
   readonly hireBonus: number
   readonly revenueMult: number
+  /** The Legacy perks' cut on the founder's burn. Left out means 1. */
+  readonly burnMult?: number
   /** True while the burn runs: a founder who has not run out. */
   readonly burning: boolean
   /** Dollars a second the hires cost now. Paid on the ladder always, and by a founder until the run-out choice stops the burn. */
   readonly payroll: number
 }
 
-export function trackFactsOf(f: FounderState): TrackFacts {
-  const hireBonus = hireBonusOf(f.hires)
+/** What the Legacy block gives the product: the perks held and the Prestige total behind the permanent bonus. */
+export interface LegacyFacts {
+  readonly perks: readonly string[]
+  readonly prestigeTotal: number
+}
+
+/**
+ * The fork's facts for the growth model. Growth is scaled once by the permanent Prestige bonus and by Viral loop, on both
+ * tracks; the hires' part is scaled with it, so the team's share of the growth does not change.
+ */
+export function trackFactsOf(f: FounderState, legacy?: LegacyFacts): TrackFacts {
+  const perks = perkEffects(legacy?.perks)
+  const scale = perks.growth * prestigeMult(legacy?.prestigeTotal ?? 0)
+  const hireBonus = hireBonusOf(f.hires) * scale
   const paying = f.track === "ladder" || !f.broke
   return {
     track: f.track,
-    growthMult: growthMultOf(f.track) + hireBonus,
+    growthMult: growthMultOf(f.track) * scale + hireBonus,
     hireBonus,
-    revenueMult: revenueMultOf(f),
+    revenueMult: revenueMultOf(f) * perks.revenue,
+    burnMult: perks.burn,
     burning: f.track === "founder" && !f.broke,
     payroll: paying ? hirePayrollOf(f.hires) : 0,
   }
 }
 
 /** Dollars a second the served users pay once the track's multiplier and the equity given up are in. */
-export const productRevenueOf = (baseRevenuePerSec: number, f: Pick<FounderState, "track" | "equityCut">): number => baseRevenuePerSec * revenueMultOf(f)
+export const productRevenueOf = (baseRevenuePerSec: number, f: Pick<FounderState, "track" | "equityCut">, perks?: readonly string[]): number =>
+  baseRevenuePerSec * revenueMultOf(f) * perkEffects(perks).revenue
 
 /** The fork is open once the product has its users and a job is held. */
 export const forkOpen = (users: number, jobs: readonly number[]): boolean => users >= FORK_USERS && jobs.length > 0
@@ -132,14 +150,14 @@ export interface ForkOffer {
  * The trade at this moment. `idle` is idle $/s with the salaries in, `salary` the part of it that is salary, `revenue` and
  * `lostPerSec` come from serving the users as they are.
  */
-export function forkOffer(facts: { idle: number; salary: number; revenue: number; lostPerSec: number; users: number; money: number; founder: FounderState }): ForkOffer {
-  const burn = burnOf(facts.users) + hirePayrollOf(facts.founder.hires)
+export function forkOffer(facts: { idle: number; salary: number; revenue: number; lostPerSec: number; users: number; money: number; founder: FounderState; perks?: readonly string[] }): ForkOffer {
+  const burn = burnOf(facts.users, perkEffects(facts.perks).burn) + hirePayrollOf(facts.founder.hires)
   const asFounder = { track: "founder" as const, equityCut: facts.founder.equityCut }
-  const revenueFounder = productRevenueOf(facts.revenue, asFounder)
+  const revenueFounder = productRevenueOf(facts.revenue, asFounder, facts.perks)
   const net = facts.idle - facts.salary + revenueFounder - facts.lostPerSec - burn
   return {
     salary: facts.salary,
-    revenueNow: productRevenueOf(facts.revenue, { track: "ladder", equityCut: facts.founder.equityCut }),
+    revenueNow: productRevenueOf(facts.revenue, { track: "ladder", equityCut: facts.founder.equityCut }, facts.perks),
     revenueFounder,
     burn,
     net,
@@ -147,11 +165,16 @@ export function forkOffer(facts: { idle: number; salary: number; revenue: number
   }
 }
 
-/** A bridge: cash worth `BRIDGE_MINUTES` of burn, a tenth of the revenue given up, and the choice closed. Null when it is refused. */
-export function raiseBridge(f: FounderState, users: number): { founder: FounderState; cash: number } | null {
+/**
+ * A bridge: cash worth `BRIDGE_MINUTES` of burn, a tenth of the revenue given up, and the choice closed. Null when it is
+ * refused. With Friendly investors the first bridge of the career gives up nothing.
+ */
+export function raiseBridge(f: FounderState, users: number, perks?: readonly string[]): { founder: FounderState; cash: number } | null {
   if (f.track !== "founder" || !f.broke || f.bridges >= MAX_BRIDGES) return null
   const bridges = f.bridges + 1
-  return { founder: { ...f, bridges, equityCut: BRIDGE_CUT * bridges, broke: false }, cash: burnOf(users) * BRIDGE_MINUTES * 60 }
+  const effects = perkEffects(perks)
+  const cut = effects.freeBridge && f.bridges === 0 ? 0 : BRIDGE_CUT
+  return { founder: { ...f, bridges, equityCut: f.equityCut + cut, broke: false }, cash: burnOf(users, effects.burn) * BRIDGE_MINUTES * 60 }
 }
 
 /**

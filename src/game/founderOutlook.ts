@@ -6,6 +6,7 @@ import { servingOf } from "./globe/load.ts"
 import { hirePayrollOf } from "./globe/hires.ts"
 import { burnOf, forkOffer, productRevenueOf, runwayOf } from "./globe/track.ts"
 import type { ForkOffer, FounderState } from "./globe/track.ts"
+import { perkEffects } from "./perks.ts"
 import { totalUsers } from "./globe/world.ts"
 import type { CompanyState } from "./globe/growth.ts"
 
@@ -15,6 +16,8 @@ export type OutlookSlice = Pick<Progress, "money" | "equipment" | "owned" | "job
   company: Pick<CompanyState, "users" | "incidents">
   foreverMult: number
   tempMults: TempMults
+  /** The Legacy block: the perks that cut the burn and lift revenue, and the Prestige total behind the permanent bonus. */
+  legacy: { readonly perks: readonly string[]; readonly prestigeTotal: number }
 }
 
 export interface Outlook {
@@ -38,11 +41,11 @@ export function founderOutlook(s: OutlookSlice, at: number): Outlook {
   const asLadder = { ...s, founder: undefined }
   const idleWithSalary = idlePerSec(asLadder) * fx.cps
   const salary = idleParts(asLadder).jobs * fx.cps
-  const offer = forkOffer({ idle: idleWithSalary, salary, revenue: serving.revenuePerSec, lostPerSec: serving.lostPerSec, users, money: s.money, founder: s.founder })
+  const offer = forkOffer({ idle: idleWithSalary, salary, revenue: serving.revenuePerSec, lostPerSec: serving.lostPerSec, users, money: s.money, founder: s.founder, perks: s.legacy.perks })
   const burning = s.founder.track === "founder" && !s.founder.broke
   const payroll = s.founder.track === "ladder" || !s.founder.broke ? hirePayrollOf(s.founder.hires) : 0
-  const burn = burning ? burnOf(users) + payroll : 0
-  const income = idlePerSec(s) * fx.cps + productRevenueOf(serving.revenuePerSec, s.founder) - serving.lostPerSec
+  const burn = burning ? burnOf(users, perkEffects(s.legacy.perks).burn) + payroll : 0
+  const income = idlePerSec(s) * fx.cps + productRevenueOf(serving.revenuePerSec, s.founder, s.legacy.perks) - serving.lostPerSec
   const net = income - (burning ? burn : payroll)
   return { burn, payroll, net, runwaySec: burning ? runwayOf(s.money, net) : null, offer }
 }

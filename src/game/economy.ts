@@ -6,6 +6,8 @@ import { CAPITAL } from "../data/capital.ts"
 import type { Capital } from "../data/capital.ts"
 import { modFactors, NO_MODS } from "./mods.ts"
 import type { Track } from "./globe/track.ts"
+import { perksOf } from "./perks.ts"
+import type { HasPerks } from "./perks.ts"
 
 import type { EventMods } from "./mods.ts"
 /**
@@ -40,6 +42,8 @@ export type Progress = {
   gigs: readonly number[]
   /** The fork. A founder draws no salary and learns nothing on the job; the jobs stay held. Left out, the ladder. */
   founder?: { readonly track: Track }
+  /** The Legacy perks held. Left out, none: no discounts, no multipliers. */
+  legacy?: HasPerks["legacy"]
 }
 
 /** Whether the jobs held pay and teach. Founders keep the jobs on the résumé, and this is the one place that stops what they pay. */
@@ -78,6 +82,15 @@ export function nextCost(baseCost: number, owned: number): number {
   if (count === 0) return baseCost
   return Math.floor(baseCost * COST_GROWTH ** count)
 }
+
+/** A row's base price after a perk's discount, whole dollars. The same number is charged, listed and compared everywhere. */
+export const discounted = (baseCost: number, factor: number): number => (factor === 1 ? baseCost : Math.round(baseCost * factor))
+
+/** The base price of a capital row for the perks held (Volume discount). */
+export const capitalBase = (tier: Pick<Capital, "baseCost">, p: HasPerks): number => discounted(tier.baseCost, perksOf(p).capitalCost)
+
+/** The base price of a gear row for the perks held (Bulk hardware). */
+export const gearBase = (row: Pick<Equip, "baseCost">, p: HasPerks): number => discounted(row.baseCost, perksOf(p).gearCost)
 
 export function canAfford(money: number, cost: number): boolean {
   if (!Number.isFinite(money) || !Number.isFinite(cost) || cost < 0) return false
@@ -152,13 +165,14 @@ export function clickShare(p: Pick<Progress, "jobs">): number {
  * Money per click before boosts: the flat part plus the jobs' share of idle $/s, so a click stays worth
  * something next to salaries and capital. Phase B+ only pays it out.
  */
-export function clickPower(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder">): number {
+export function clickPower(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder" | "legacy">): number {
   return clickFlat(p) + clickShare(p) * idlePerSec(p)
 }
 
 export type IdleParts = { retainers: number; jobs: number; equipment: number; capital: number }
 
-export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder">): IdleParts {
+export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder" | "legacy">): IdleParts {
+  const perks = perksOf(p)
   let retainers = 0
   for (const id of p.gigs) retainers += gigById(id)?.retainerCps ?? 0
   let jobs = 0
@@ -167,11 +181,11 @@ export function idleParts(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gi
   for (const row of EQUIPMENT) equipment += ownedCount(p.equipment, row.id) * row.cps
   let capital = 0
   for (const tier of CAPITAL) capital += ownedCount(p.owned, tier.id) * tier.cps
-  return { retainers, jobs, equipment, capital }
+  return { retainers: retainers * perks.salaries, jobs: jobs * perks.salaries, equipment, capital: capital * perks.capitalIncome }
 }
 
 /** Idle $/s: gig retainers + salaries + equipment + capital. Click boosts never apply. */
-export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder">): number {
+export function idlePerSec(p: Pick<Progress, "equipment" | "owned" | "jobs" | "gigs" | "founder" | "legacy">): number {
   const parts = idleParts(p)
   return parts.retainers + parts.jobs + parts.equipment + parts.capital
 }
@@ -218,17 +232,18 @@ export type OwnedSource = {
 const KIND_RANK: Record<OwnedKind, number> = { capital: 0, job: 1, equipment: 2, gig: 3, skill: 4 }
 
 /** Everything owned: capital, jobs, equipment, gig retainers, skills. Biggest $/s first, then biggest XP/s. */
-export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "founder">): OwnedSource[] {
+export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "founder" | "legacy">): OwnedSource[] {
   const rows: OwnedSource[] = []
+  const perks = perksOf(p)
   for (const tier of CAPITAL) {
     const count = ownedCount(p.owned, tier.id)
     if (count > 0)
-      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.artId, count, idle: count * tier.cps, xpIdle: 0, click: count * tier.clickBonus })
+      rows.push({ key: `capital:${tier.id}`, kind: "capital", id: tier.id, name: tier.name, artId: tier.artId, count, idle: count * tier.cps * perks.capitalIncome, xpIdle: 0, click: count * tier.clickBonus })
   }
   for (const id of p.jobs) {
     const job = jobById(id)
     if (job)
-      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: jobsPay(p) ? job.cps : 0, xpIdle: jobsPay(p) ? job.xpPerSec : 0, click: job.clickBonus })
+      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: jobsPay(p) ? job.cps * perks.salaries : 0, xpIdle: jobsPay(p) ? job.xpPerSec : 0, click: job.clickBonus })
   }
   for (const row of EQUIPMENT) {
     const count = ownedCount(p.equipment, row.id)
@@ -238,7 +253,7 @@ export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" 
   for (const id of p.gigs) {
     const gig = gigById(id)
     if (gig && gig.retainerCps > 0)
-      rows.push({ key: `gig:${id}`, kind: "gig", id, name: gig.name, artId: artFor(GIG_ART, id), count: 1, idle: gig.retainerCps, xpIdle: 0, click: 0 })
+      rows.push({ key: `gig:${id}`, kind: "gig", id, name: gig.name, artId: artFor(GIG_ART, id), count: 1, idle: gig.retainerCps * perks.salaries, xpIdle: 0, click: 0 })
   }
   for (const row of SKILL_TIERS) {
     const count = ownedCount(p.skills, row.id)
@@ -299,7 +314,7 @@ export function boostMultiplier(boost: ActiveBoost | null | undefined, now: numb
  * the permanent one scales every stream, a timed one scales its own (click, idle $, idle XP).
  */
 export function production(
-  p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "founder">,
+  p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "founder" | "legacy">,
   boost: ActiveBoost | null | undefined,
   now: number,
   mods: EventMods = NO_MODS,

@@ -141,8 +141,9 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   const total = totalUsers(users)
   const lost = lostPerSec * sec
   const earned = revenuePerSec * (facts.track?.revenueMult ?? 1) * sec
-  const burnPerSec = burnOf(total) + payroll
-  const burned = ((facts.track?.burning ? burnOf(before) : 0) + payroll) * sec
+  const burnMult = facts.track?.burnMult ?? 1
+  const burnPerSec = burnOf(total, burnMult) + payroll
+  const burned = ((facts.track?.burning ? burnOf(before, burnMult) : 0) + payroll) * sec
   // Users lost in the step are lost from both sides alike; what the team added is carried over and never passes the crowd.
   const hiredUsers = Math.min(total, (before > 0 ? state.hiredUsers * Math.min(1, total / before) : 0) + hiredAdded)
 
@@ -193,7 +194,7 @@ export function uptimePercent(uptime: string): number {
 let memo: { gigs: readonly number[]; equipment: Readonly<Record<string, number>>; footprint: Footprint; track: TrackFacts | undefined; facts: GrowthFacts } | null = null
 
 const sameTrack = (a: TrackFacts | undefined, b: TrackFacts | undefined): boolean =>
-  a === b || (a !== undefined && b !== undefined && a.track === b.track && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.burning === b.burning && a.payroll === b.payroll)
+  a === b || (a !== undefined && b !== undefined && a.track === b.track && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.burnMult === b.burnMult && a.burning === b.burning && a.payroll === b.payroll)
 
 /**
  * The growth facts the game has right now, for `stepCompany`. The game ticks ten times a second and reach walks every
@@ -215,7 +216,7 @@ export function advanceCompany(state: CompanyState, facts: GrowthFacts, from: nu
   let earned = 0
   let lost = 0
   let burned = 0
-  let burnPerSec = burnOf(totalUsers(state.users)) + (facts.track?.payroll ?? 0)
+  let burnPerSec = burnOf(totalUsers(state.users), facts.track?.burnMult ?? 1) + (facts.track?.payroll ?? 0)
   const notes: GrowthNote[] = []
   for (let at = from; at < to; at += STEP_MS) {
     const end = Math.min(to, at + STEP_MS)

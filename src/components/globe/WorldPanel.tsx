@@ -64,11 +64,12 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const raw = useGame((state) => state.company)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
+  const legacy = useGame((state) => state.legacy)
   const now = useGame((state) => state.now)
   const product = useGame((state) => state.profile.product)
   const hire = useGame((state) => state.hire)
   const amount = useGame((state) => state.buyAmount)
-  const outlook = founderOutlook({ money: cash, equipment, owned, jobs, gigs, founder, company: raw, foreverMult, tempMults }, now)
+  const outlook = founderOutlook({ money: cash, equipment, owned, jobs, gigs, founder, company: raw, foreverMult, tempMults, legacy }, now)
   const next = nextStep(company, founder.track === "founder" && !founder.broke ? { net: outlook.net, runwaySec: outlook.runwaySec } : undefined)
   return (
     <section className="world" data-testid="company-world" aria-label="The world">

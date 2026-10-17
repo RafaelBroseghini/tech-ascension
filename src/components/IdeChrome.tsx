@@ -1,5 +1,5 @@
-import { GitBranch, Globe } from "lucide-react"
-import { memo, useMemo, useSyncExternalStore } from "react"
+import { Crown, GitBranch, Globe } from "lucide-react"
+import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
@@ -8,6 +8,8 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock } from "./IdeStatusDock.tsx"
+import { PrestigePanel } from "./ExitPanel.tsx"
+import { useExitVisible } from "./useExit.ts"
 import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { openSurface } from "../game/surfaces.ts"
@@ -26,6 +28,9 @@ export const IdeChrome = memo(function IdeChrome() {
   const studioOpen = useFeatureOpen("studio")
   const incidents = useGame((state) => state.company.incidents.length)
   const product = useGame((state) => state.profile.product)
+  const prestigeVisible = useExitVisible()
+  const [prestigeOpen, setPrestigeOpen] = useState(false)
+  const closePrestige = useCallback(() => setPrestigeOpen(false), [])
   const sidebar = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView)
   const showLog = logOpen && sidebar === "log"
   const { band, previewing } = useMemo(
@@ -92,7 +97,21 @@ export const IdeChrome = memo(function IdeChrome() {
             <GitBranch className="ide-activity-icon ide-activity-icon-git" {...UI_ICON} aria-hidden />
           </FeatureGhost>
         )}
+        {prestigeVisible ? (
+          <button
+            type="button"
+            className={prestigeOpen ? "ide-activity-btn is-active" : "ide-activity-btn"}
+            data-testid="ide-view-prestige"
+            aria-label="Prestige"
+            title="Prestige"
+            aria-pressed={prestigeOpen}
+            onClick={() => setPrestigeOpen((open) => !open)}
+          >
+            <Crown className="ide-activity-icon" {...UI_ICON} aria-hidden />
+          </button>
+        ) : null}
       </nav>
+      {prestigeVisible && prestigeOpen ? <PrestigePanel onClose={closePrestige} /> : null}
       {showLog ? (
         <aside className="ide-tree" aria-label="Career log">
           <CareerLog />

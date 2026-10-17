@@ -5,7 +5,7 @@ import { eventById, previewOffer } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
-import { modFactors, modsOf, pruneTemp } from "./mods.ts"
+import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
 import type { NextUnlock } from "./nextUnlock.ts"
@@ -29,7 +29,9 @@ import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
 import { readCareerText } from "./ledger.ts"
-import { setMoneyDirect, setXpDirect } from "./admin.ts"
+import { setMoneyDirect, setPrestigeDirect, setXpDirect } from "./admin.ts"
+import { exitOpen, prestigeOnExit } from "./legacy.ts"
+import type { HallEnding } from "../data/legacy.ts"
 import { earnedPerSec, persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
 import { careerJson, journalFromSave } from "./careerLog.ts"
@@ -62,6 +64,26 @@ export type LastReviewSnapshot = {
   jobId: number
   choice: ReviewChoiceId | null
   lines: string[]
+}
+
+/** Prestige: the career count, Prestige, the multiplier it gives, and what the Exit would pay now. */
+export type LegacySnapshot = {
+  /** Careers started, counting the one under way. */
+  runs: number
+  /** Spendable Prestige. */
+  prestige: number
+  /** Every Prestige ever earned. */
+  prestigeTotal: number
+  /** `1 + 0.03 * prestigeTotal`, already folded into cps, clickPower, xpPerClick, xpPerSec, the offline credit and product growth. */
+  mult: number
+  /** The Exit is open: it would pay at least 1 Prestige (the first career), or this is a later career. */
+  exitOpen: boolean
+  /** Prestige an Exit taken now would pay, earnings and a new ending's bonus together. 0 means `exit()` refuses. */
+  prestigeOnExit: number
+  /** Legacy perk ids owned. */
+  perks: string[]
+  /** The Hall of Fame: endings a career has won the world with. */
+  endings: HallEnding[]
 }
 
 export type GameSnapshot = {
@@ -146,6 +168,8 @@ export type GameSnapshot = {
   ending: Ending | null
   /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
   world: WorldSnapshot
+  /** Prestige: Prestige, the permanent multiplier, the Exit and the Legacy perks. */
+  legacy: LegacySnapshot
 }
 
 export type FounderSnapshot = {
@@ -211,6 +235,18 @@ export type GameHarness = {
   buySkill: (skillId: number, amount?: BuyAmount) => boolean
   buyJob: (jobId: number) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
+  /**
+   * Sell the product (the Exit): pay the Prestige this career's earnings climbed to, plus a new ending's bonus, and start
+   * the next career. Money, XP, skills, gigs, jobs, gear, capital, boosts, event multipliers and the whole product (users,
+   * regions, hires, resistance, incidents, the win, the track, the burn, the bridges) start over, and a new product name
+   * is drawn. Prestige, Legacy perks, the Hall of Fame, 10x dev skills, the career timeline, journal and handle stay.
+   * Returns the Prestige paid, or false when the Exit is not open or would pay 0.
+   */
+  exit: () => number | false
+  /** Spend Prestige on a Legacy perk (`src/data/legacy.ts`: `network.*`, `founder.*`, `capital.*`), each after the one before it in its track. It lands in the career under way (nothing is taken away) and starts every later career. */
+  buyLegacy: (perkId: string) => boolean
+  /** Set spendable Prestige (lifetime Prestige rises to match). Tests only, like setXp. */
+  setPrestige: (n: number) => void
   /** Buy a gold skill with spendable XP through its normal gates (lifetime XP, earlier row of its family, price). */
   buyGold: (goldId: number) => boolean
   /** Buy a region with money (see src/data/regions.ts). False when unknown, owned or unaffordable. */
@@ -398,10 +434,12 @@ function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: numbe
     incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
     demand: serving.demand,
     capacity: serving.capacity,
-    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.founder),
+    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.founder, state.legacy.perks),
     won: company.won,
   }
 }
+
+const exitWin = (state: ReturnType<typeof useGame.getState>) => ({ won: state.company.won, ending: state.company.ending })
 
 function founderSnapshot(state: ReturnType<typeof useGame.getState>, now: number): FounderSnapshot {
   const outlook = founderOutlook(state, now)
@@ -442,7 +480,7 @@ export function installGameHarness(): GameHarness {
         buyAmounts: buyAmounts(state.gold),
         buyAmount: state.buyAmount,
         hoverRate: hoverRate(state.gold, ownsEverything(state)),
-        offlineCapHours: offlineCapMs(state.gold, OFFLINE_CAP_MS) / 3_600_000,
+        offlineCapHours: offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks) / 3_600_000,
         unlocks: {
           gigBoard: gigBoardUnlocked(state),
           jobBoard: jobBoardUnlocked(state),
@@ -470,6 +508,16 @@ export function installGameHarness(): GameHarness {
         hiredShare: creditOf(state.company).hiredShare,
         ending: state.company.ending ?? null,
         world: worldSnapshot(state, earnedPerSec(state, now)),
+        legacy: {
+          runs: state.legacy.runs,
+          prestige: state.legacy.prestige,
+          prestigeTotal: state.legacy.prestigeTotal,
+          mult: prestigeMult(state.legacy.prestigeTotal),
+          exitOpen: exitOpen(state.legacy, state.stats.lifetimeEarned, exitWin(state)),
+          prestigeOnExit: exitOpen(state.legacy, state.stats.lifetimeEarned, exitWin(state)) ? prestigeOnExit(state.legacy, state.stats.lifetimeEarned, exitWin(state)) : 0,
+          perks: [...state.legacy.perks],
+          endings: [...state.legacy.endings],
+        },
       }
     },
 
@@ -494,6 +542,12 @@ export function installGameHarness(): GameHarness {
       useGame.getState().buyEquipment(equipId, amount)
       return ownedCount(useGame.getState().equipment, equipId) > before
     },
+
+    exit: () => useGame.getState().exit(),
+
+    buyLegacy: (perkId) => useGame.getState().buyLegacy(perkId),
+
+    setPrestige: setPrestigeDirect,
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
@@ -530,7 +584,7 @@ export function installGameHarness(): GameHarness {
 
     tick: (ms) => {
       const state = useGame.getState()
-      const step = Math.max(0, Math.min(ms, offlineCapMs(state.gold, OFFLINE_CAP_MS)))
+      const step = Math.max(0, Math.min(ms, offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks)))
       state.tick(state.now + step)
     },
 

@@ -4,7 +4,7 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { canAfford, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
+import { canAfford, capitalBase, gearBase, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
@@ -20,7 +20,7 @@ export type NextUnlock = {
   either: boolean
 }
 
-type Progression = Gates & Pick<Progress, "equipment"> & Partial<Pick<Progress, "money" | "xp">>
+type Progression = Gates & Pick<Progress, "equipment" | "legacy"> & Partial<Pick<Progress, "money" | "xp">>
 
 /** The shop row a Next click should reveal. `row` matches `data-row` on the offer. */
 export type ShopFocus = {
@@ -214,7 +214,7 @@ function gearTarget(p: Progression, row: GearItem): NextUnlock {
     if (row.unlockJobId > 0 && !p.jobs.includes(row.unlockJobId)) needs.push(jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`)
   }
   if (needs.length === 0) {
-    const cost = nextCost(row.baseCost, 0)
+    const cost = nextCost(gearBase(row, p), 0)
     if (!canAfford(wallet(p), cost)) needs.push(cashShort())
     else needs.push("to buy it")
   }
@@ -223,7 +223,7 @@ function gearTarget(p: Progression, row: GearItem): NextUnlock {
 
 /** A capital row opens at its own price, so the only thing to say is how much cash is missing. */
 function capitalTarget(p: Progression, row: Capital): NextUnlock {
-  const cost = nextCost(row.baseCost, 0)
+  const cost = nextCost(capitalBase(row, p), 0)
   if (!canAfford(wallet(p), cost)) {
     return { key: `capital:${row.id}`, name: row.name, tab: "D", needs: [cashShort()], either: false }
   }

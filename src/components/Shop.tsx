@@ -12,7 +12,7 @@ import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
+import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
 import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, visibleGold } from "../game/gold.ts"
 import type { BuyAmount } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
@@ -244,6 +244,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const gigs = useGame((s) => s.gigs)
   const gold = useGame((s) => s.gold)
   const buyAmount = useGame((s) => s.buyAmount)
+  const legacyHeld = useGame((s) => s.legacy)
+  const perksHeld = { legacy: legacyHeld }
   const setBuyAmount = useGame((s) => s.setBuyAmount)
   const buyGold = useGame((s) => s.buyGold)
   const phase = useGame((s) => s.phase)
@@ -520,9 +522,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                 visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)))) ||
               (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
               (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(xp, job.xpCost))) ||
-              (id === "G" && equipRows.some((row) => canAfford(money, nextCost(row.baseCost, ownedCount(equipment, row.id))))) ||
+              (id === "G" && equipRows.some((row) => canAfford(money, nextCost(gearBase(row, perksHeld), ownedCount(equipment, row.id))))) ||
               (id === "D" &&
-                [...revealedByEra.values()].flat().some((tier) => canAfford(money, nextCost(tier.baseCost, ownedCount(owned, tier.id))))))
+                [...revealedByEra.values()].flat().some((tier) => canAfford(money, nextCost(capitalBase(tier, perksHeld), ownedCount(owned, tier.id))))))
           return (
             <button
               key={id}
@@ -833,7 +835,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   <h3 className="shop-section">{group.label}</h3>
                   {group.rows.map((row, index) => {
                       const have = ownedCount(equipment, row.id)
-                      const cost = nextCost(row.baseCost, have)
+                      const cost = nextCost(gearBase(row, perksHeld), have)
                       const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
                       const afford = revealed && canAfford(money, cost)
                       const key = `equip:${row.id}`
@@ -858,7 +860,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           actions={
                             <>
                               <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, buyAmount))}>
-                                {!revealed && have === 0 ? "Locked" : buyLabel("Buy", "money", row.baseCost, have, money, buyAmount)}
+                                {!revealed && have === 0 ? "Locked" : buyLabel("Buy", "money", gearBase(row, perksHeld), have, money, buyAmount)}
                               </button>
                             </>
                           }
@@ -887,7 +889,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             <>
               {capitalRows.map((tier, index) => {
                 const have = ownedCount(owned, tier.id)
-                const cost = nextCost(tier.baseCost, have)
+                const cost = nextCost(capitalBase(tier, perksHeld), have)
                 const revealed = isRevealed(tier, owned, peakMoney)
                 const afford = revealed && canAfford(money, cost)
                 const key = `capital:${tier.id}`
@@ -906,7 +908,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     actions={
                       <>
                         <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, buyAmount))}>
-                          {buyLabel("Buy", "money", tier.baseCost, have, money, buyAmount)}
+                          {buyLabel("Buy", "money", capitalBase(tier, perksHeld), have, money, buyAmount)}
                         </button>
                       </>
                     }
