@@ -220,7 +220,7 @@ describe("a founder's salary", () => {
 
 describe("the saved block", () => {
   it("round-trips, and drops what is malformed", () => {
-    const good = { track: "founder", offered: true, bridges: 2, equityCut: 0.2, requitAt: null, broke: true }
+    const good = { track: "founder", offered: true, bridges: 2, equityCut: 0.2, requitAt: null, broke: true, hires: { outsourced: 4, bootcamp: 2 } }
     expect(parseFounder(good)).toEqual(good)
     expect(parseFounder(null)).toBeUndefined()
     expect(parseFounder({ ...good, track: "ceo" })).toBeUndefined()

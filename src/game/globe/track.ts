@@ -1,3 +1,5 @@
+import { hireBonusOf, hirePayrollOf, parseHires } from "./hires.ts"
+import type { Hires } from "./hires.ts"
 import { WIN_MULT } from "./world.ts"
 
 /** The ladder keeps the day job and builds the product on nights and weekends. A founder quits and builds it full-time. */
@@ -16,9 +18,11 @@ export interface FounderState {
   readonly requitAt: number | null
   /** True while the out-of-runway choice is open. The burn is stopped until it is answered. */
   readonly broke: boolean
+  /** Heads hired of each kind (`HIRES`), by id. A founder keeps them but hires no more. */
+  readonly hires: Hires
 }
 
-export const FRESH_FOUNDER: FounderState = { track: "ladder", offered: false, bridges: 0, equityCut: 0, requitAt: null, broke: false }
+export const FRESH_FOUNDER: FounderState = { track: "ladder", offered: false, bridges: 0, equityCut: 0, requitAt: null, broke: false, hires: {} }
 
 /** Users the product needs, with a job held, before the fork opens. */
 export const FORK_USERS = 1000
@@ -60,14 +64,29 @@ export const winMultOf = (track: Track): number => (track === "founder" ? WIN_MU
 
 /** What the growth model reads from the fork. */
 export interface TrackFacts {
+  readonly track: Track
+  /** The whole growth multiplier: the track's, plus what the hires add. */
   readonly growthMult: number
+  /** The part of `growthMult` the hires add. */
+  readonly hireBonus: number
   readonly revenueMult: number
   /** True while the burn runs: a founder who has not run out. */
   readonly burning: boolean
+  /** Dollars a second the hires cost now. Paid on the ladder always, and by a founder until the run-out choice stops the burn. */
+  readonly payroll: number
 }
 
 export function trackFactsOf(f: FounderState): TrackFacts {
-  return { growthMult: growthMultOf(f.track), revenueMult: revenueMultOf(f), burning: f.track === "founder" && !f.broke }
+  const hireBonus = hireBonusOf(f.hires)
+  const paying = f.track === "ladder" || !f.broke
+  return {
+    track: f.track,
+    growthMult: growthMultOf(f.track) + hireBonus,
+    hireBonus,
+    revenueMult: revenueMultOf(f),
+    burning: f.track === "founder" && !f.broke,
+    payroll: paying ? hirePayrollOf(f.hires) : 0,
+  }
 }
 
 /** Dollars a second the served users pay once the track's multiplier and the equity given up are in. */
@@ -114,7 +133,7 @@ export interface ForkOffer {
  * `lostPerSec` come from serving the users as they are.
  */
 export function forkOffer(facts: { idle: number; salary: number; revenue: number; lostPerSec: number; users: number; money: number; founder: FounderState }): ForkOffer {
-  const burn = burnOf(facts.users)
+  const burn = burnOf(facts.users) + hirePayrollOf(facts.founder.hires)
   const asFounder = { track: "founder" as const, equityCut: facts.founder.equityCut }
   const revenueFounder = productRevenueOf(facts.revenue, asFounder)
   const net = facts.idle - facts.salary + revenueFounder - facts.lostPerSec - burn
@@ -170,5 +189,6 @@ export function parseFounder(input: unknown): FounderState | undefined {
     equityCut: Math.max(0, Math.min(BRIDGE_CUT * bridges, cut)),
     requitAt: raw.track === "ladder" ? requitAt : null,
     broke: raw.track === "founder" && raw.broke === true,
+    hires: parseHires(raw.hires),
   }
 }

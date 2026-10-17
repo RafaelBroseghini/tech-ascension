@@ -42,6 +42,7 @@ import { canGoFullTime, FRESH_FOUNDER, goFullTime as startFullTime, productReven
 import type { FounderState } from "./globe/track.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
+import { winNote } from "./globe/hires.ts"
 import { servingOf } from "./globe/load.ts"
 import type { Footprint } from "./globe/footprint.ts"
 import type { SaveData } from "./save.ts"
@@ -205,6 +206,8 @@ type GameState = {
   keepClimbing: () => void
   /** Raise a bridge after running out. False with bridges used up or when not out of runway. */
   raiseBridge: () => boolean
+  /** Hire a kind of person on the ladder (see `HIRES`), as many as the Buy control allows. False as a founder, in a closed row, or short of the price. */
+  hire: (id: string, amount?: BuyAmount) => boolean
   /** Take a job again. After running out it gives up the highest job; by choice it keeps them all. False off the founder track. */
   returnToLadder: () => boolean
   /** Switch a bought region on or off as a whole. The last region serving stays on. */
@@ -290,7 +293,7 @@ function toSave(state: GameState, now: number): SaveData {
   save.profile = state.profile
   save.company = state.company
   save.footprint = state.footprint
-  if (state.founder.offered) save.founder = state.founder
+  if (state.founder.offered || Object.keys(state.founder.hires).length > 0) save.founder = state.founder
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -570,6 +573,7 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
+  hire: (id, amount) => commitCompany(companyActions.hire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
   buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
   deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
   setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),
@@ -1035,17 +1039,14 @@ export function earnedPerSec(state: GameState, at = Date.now()): number {
   return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.founder)
 }
 
-const WIN_LABEL = "Seven billion users"
-const winToast = (mult: number) => `${WIN_LABEL}. The world is yours, and everything you earn is ×${mult} for good.`
-
 // The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).
 useGame.subscribe((state, prev) => {
   if (!state.company.won || prev.company.won) return
   const toastSeq = state.toastSeq + 1
   useGame.setState({
-    ...makePop(state, "unlock", 0, WIN_LABEL),
+    ...makePop(state, "unlock", 0, "Seven billion users"),
     celebrationNonce: state.celebrationNonce + 1,
-    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winToast(winMultOf(state.founder.track)) }, toastSeq }),
+    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, state.profile.product, winMultOf(state.founder.track)) }, toastSeq }),
   })
 })
 

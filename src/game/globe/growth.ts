@@ -4,6 +4,8 @@ import type { Footprint } from "./footprint.ts"
 import { clampForever } from "../mods.ts"
 import { HEALTH_CHAR, servingOf } from "./load.ts"
 import type { HealthChar } from "./load.ts"
+import { endingOf, hireShareOfGrowth, isEnding } from "./hires.ts"
+import type { Ending } from "./hires.ts"
 import { burnOf, settleBurn, winMultOf } from "./track.ts"
 import type { Track, TrackFacts } from "./track.ts"
 import {
@@ -56,13 +58,17 @@ export interface CompanyState {
   readonly incidentSeq: number
   /** Latched once the company reaches `WORLD_TARGET` users. */
   readonly won: boolean
+  /** Users who came from growth the hires added: each step's growth, in proportion to the hires' bonus within the whole multiplier. Never above the users. */
+  readonly hiredUsers: number
+  /** How the win read, picked once when it latched. Left out before the win. */
+  readonly ending?: Ending
   /** One character per status day, oldest first: o operational, d degraded, p partial outage, m major outage. */
   readonly uptime: string
   /** The status day the last character belongs to, or -1 before the first step. */
   readonly day: number
 }
 
-export const FRESH_COMPANY: CompanyState = { users: {}, resistance: 0, incidents: [], incidentSeq: 0, won: false, uptime: "", day: -1 }
+export const FRESH_COMPANY: CompanyState = { users: {}, resistance: 0, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "", day: -1 }
 
 export interface GrowthNote {
   readonly type: "incident" | "world"
@@ -88,9 +94,9 @@ export interface GrowthStep {
   readonly earned: number
   /** Dollars the drops cost over this step. */
   readonly lost: number
-  /** Dollars the founder's team and office cost over this step. */
+  /** Dollars the founder's team and office, and the hires' salaries, cost over this step. */
   readonly burned: number
-  /** The burn a second at the end of this step, whether or not it ran. Time away floors the balance on it. */
+  /** The burn a second at the end of this step, hires' salaries in, whether or not it ran. Time away floors the balance on it. */
   readonly burnPerSec: number
   readonly notes: readonly GrowthNote[]
 }
@@ -109,6 +115,9 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   const { dropShare, lostPerSec, revenuePerSec } = servingOf(state.users, incidents, facts.equipment)
   const served = 1 - dropShare
   const growthMult = facts.track?.growthMult ?? 1
+  const teamShare = hireShareOfGrowth(facts.track?.hireBonus ?? 0, growthMult)
+  const payroll = facts.track?.payroll ?? 0
+  let hiredAdded = 0
 
   const resistance = state.resistance + (resistanceTarget(before) - state.resistance) * (1 - Math.exp(-sec / RESISTANCE_LAG_S))
   const drag = 1 - (0.5 * resistance) / 100
@@ -127,12 +136,15 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
     const churn = Math.min(0.9, (DROP_CHURN_PER_SEC * dropShare + bleed) * sec)
     const next = Math.min(ceiling, Math.max(0, (here + growth * sec) * (1 - churn)))
     if (next > 0) users[region.id] = next
+    hiredAdded += Math.max(0, next - here * (1 - churn)) * teamShare
   }
   const total = totalUsers(users)
   const lost = lostPerSec * sec
   const earned = revenuePerSec * (facts.track?.revenueMult ?? 1) * sec
-  const burnPerSec = burnOf(total)
-  const burned = facts.track?.burning ? burnOf(before) * sec : 0
+  const burnPerSec = burnOf(total) + payroll
+  const burned = ((facts.track?.burning ? burnOf(before) : 0) + payroll) * sec
+  // Users lost in the step are lost from both sides alike; what the team added is carried over and never passes the crowd.
+  const hiredUsers = Math.min(total, (before > 0 ? state.hiredUsers * Math.min(1, total / before) : 0) + hiredAdded)
 
   if (incidents.length < MAX_INCIDENTS && total >= INCIDENT_MIN_USERS && rand() < incidentRate(resistance) * sec) {
     const incident = rollIncident(users, facts.live, resistance, seq + 1, at, rand)
@@ -144,16 +156,20 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   }
 
   let won = state.won
+  let ending = state.ending
   for (const row of MILESTONES) {
     if (before < row.users && total >= row.users) {
-      notes.push({ type: "world", ref: `world:${row.id}`, data: { users: Math.round(total) } })
-      if (row.id === "won") won = true
+      if (row.id === "won") {
+        won = true
+        ending = state.ending ?? endingOf(facts.track?.track ?? "ladder", total > 0 ? hiredUsers / total : 0)
+      }
+      notes.push({ type: "world", ref: `world:${row.id}`, data: { users: Math.round(total), ...(row.id === "won" && ending ? { ending } : {}) } })
     }
   }
 
   const { health } = servingOf(users, incidents, facts.equipment)
   const { uptime, day } = recordDay(state, health, at)
-  return { state: { users, resistance, incidents, incidentSeq: seq, won, uptime, day }, earned, lost, burned, burnPerSec, notes }
+  return { state: { users, resistance, incidents, incidentSeq: seq, won, hiredUsers, ...(ending ? { ending } : {}), uptime, day }, earned, lost, burned, burnPerSec, notes }
 }
 
 /** Writes this step's health into today's bar, opening a new bar for each day that has passed. */
@@ -177,7 +193,7 @@ export function uptimePercent(uptime: string): number {
 let memo: { gigs: readonly number[]; equipment: Readonly<Record<string, number>>; footprint: Footprint; track: TrackFacts | undefined; facts: GrowthFacts } | null = null
 
 const sameTrack = (a: TrackFacts | undefined, b: TrackFacts | undefined): boolean =>
-  a === b || (a !== undefined && b !== undefined && a.growthMult === b.growthMult && a.revenueMult === b.revenueMult && a.burning === b.burning)
+  a === b || (a !== undefined && b !== undefined && a.track === b.track && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.burning === b.burning && a.payroll === b.payroll)
 
 /**
  * The growth facts the game has right now, for `stepCompany`. The game ticks ten times a second and reach walks every
@@ -199,7 +215,7 @@ export function advanceCompany(state: CompanyState, facts: GrowthFacts, from: nu
   let earned = 0
   let lost = 0
   let burned = 0
-  let burnPerSec = burnOf(totalUsers(state.users))
+  let burnPerSec = burnOf(totalUsers(state.users)) + (facts.track?.payroll ?? 0)
   const notes: GrowthNote[] = []
   for (let at = from; at < to; at += STEP_MS) {
     const end = Math.min(to, at + STEP_MS)
@@ -230,7 +246,10 @@ export function parseCompany(input: unknown): CompanyState | undefined {
   const day = typeof raw.day === "number" && Number.isInteger(raw.day) && raw.day >= -1 ? raw.day : undefined
   if (resistance === undefined || incidentSeq === undefined || uptime === undefined || day === undefined) return undefined
   const incidents = Array.isArray(raw.incidents) ? raw.incidents.flatMap(parseIncident) : []
-  return { users, resistance, incidents, incidentSeq, won: raw.won === true, uptime, day }
+  const total = totalUsers(users)
+  const hired = typeof raw.hiredUsers === "number" && Number.isFinite(raw.hiredUsers) ? Math.max(0, Math.min(total, raw.hiredUsers)) : 0
+  const won = raw.won === true
+  return { users, resistance, incidents, incidentSeq, won, hiredUsers: hired, ...(won && isEnding(raw.ending) ? { ending: raw.ending } : {}), uptime, day }
 }
 
 function parseIncident(input: unknown): Incident[] {
@@ -252,7 +271,7 @@ export interface SettleTrack {
 }
 
 /**
- * What a stretch of growth does to the balance: served users pay, then dropped requests and a founder's burn cost money, and a win
+ * What a stretch of growth does to the balance: served users pay, then dropped requests, a founder's burn and the hires' salaries cost money, and a win
  * reached during it multiplies everything earned from then on. A founder whose balance runs out is `broke`; live it stops at 0,
  * away it stops at a minute of burn. The tick and a return from away both settle through here.
  */

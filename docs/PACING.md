@@ -136,3 +136,17 @@ A is the gamble: little cash, thin gear, and growth that outruns it. B and C sho
 What the ladder multiplier does to the road to the fork. With two serving cloud packs and gigs 1-8, a ladder career reaches 1,000 users in about 64 minutes, against 16 before the track (×1) and 8 as a founder (×2). That is the cost of nights and weekends, and it is the point: the fork is something you reach, not something the game starts with.
 
 Decisions behind the numbers: a founder cannot take a job (`buyJob` is refused), so gear gated on a higher job than he holds stays out of reach until he returns to the ladder; going back for the run-out choice gives up the highest job, and a lone first job stays; the equity given up applies to the product revenue on either track; ×0.25 on the ladder is the figure from the build brief, not the ×0.5 that `docs/COMPANY_ARC.md` mentions for the return.
+
+## Hires and the three careers
+
+A ladder career can hire (`src/game/globe/hires.ts`): eight tiers of person, from an outsourced body shop to a code god, each hired again and again. Copy `n` of a tier costs `floor(price × 1.003^n)`, pays a salary a second per head, and adds `growth × (1 − e^(−heads / 400))` to the growth multiplier, so each tier has diminishing returns and a cap. Base prices run $5k to $50B (×10 a tier), salaries $1 to $400/s per head (1, 5, 12, 25, 50, 100, 200, 400), caps 2.5, 3, 3.5, 4, 4.5, 5, 5.7, 6.4. A tier lists once the one before it has a hire.
+
+`src/game/globe/hires.pace.test.ts` runs the real `stepCompany` from 1,000 users to 7B, on the same footprint and serving gear, with no incidents, and a day job that pays $200/s (a Senior SWE; a founder gives it up). It pins three careers and the test fails if they drift:
+
+| Career | Time to 7B | Ending |
+| --- | --- | --- |
+| Founder, full-time | 1.47 h (0.061 days) | founder |
+| Ladder, no hires | 10.7 h (0.445 days), 7.3× the founder | night owl |
+| Ladder, spends all its cash on hires (best growth per dollar first, about 2,100 heads in the first three tiers) | 1.78 h (0.074 days), 1.22× the founder | sponsor (95% of users from hires) |
+
+The bounds are: hiring within 1.5× of the founder, no hires at least 5× slower, and the team above half the users. The greedy buyer can open every tier but never gets past copy-paster: the cheap tiers give more growth per dollar until the world is won. Gear, capital and incidents are left out of all three, so these are shapes, not forecasts.

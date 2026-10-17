@@ -11,7 +11,7 @@ describe("save: a block from the retired whiteboard", () => {
 })
 
 describe("save: the company's users", () => {
-  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, uptime: "oo", day: 3 }
+  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "oo", day: 3 }
 
   it("keeps the block, and drops one from before users and regions without wiping the career", () => {
     const kept = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company })))
@@ -27,9 +27,9 @@ describe("save: the company's users", () => {
     const first = hydrate(JSON.stringify(saved), 24 * 3_600_000)
     expect(first.save.company?.won).toBe(true)
     expect(first.save.foreverMult).toBeCloseTo(1.25)
-    expect(first.toast?.split("\n")[0]).toContain("seven billion people")
+    expect(first.toast?.split("\n")[0]).toContain("Seven billion users")
     const again = hydrate(JSON.stringify(first.save), 25 * 3_600_000)
     expect(again.save.foreverMult).toBeCloseTo(1.25)
-    expect(again.toast ?? "").not.toContain("seven billion people")
+    expect(again.toast ?? "").not.toContain("Seven billion users")
   })
 })

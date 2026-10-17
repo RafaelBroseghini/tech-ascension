@@ -3,6 +3,7 @@ import type { Progress } from "./economy.ts"
 import { modFactors, modsOf } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { servingOf } from "./globe/load.ts"
+import { hirePayrollOf } from "./globe/hires.ts"
 import { burnOf, forkOffer, productRevenueOf, runwayOf } from "./globe/track.ts"
 import type { ForkOffer, FounderState } from "./globe/track.ts"
 import { totalUsers } from "./globe/world.ts"
@@ -17,9 +18,11 @@ export type OutlookSlice = Pick<Progress, "money" | "equipment" | "owned" | "job
 }
 
 export interface Outlook {
-  /** The burn running now, $/s: the team and office of a founder who has not run out. 0 otherwise. */
+  /** The burn running now, $/s: the team and office of a founder who has not run out, with the hires' salaries in. 0 otherwise. */
   readonly burn: number
-  /** Income minus burn, $/s, on the track the career is on. */
+  /** The hires' salaries now, $/s: paid on the ladder, and by a founder until the burn stops. */
+  readonly payroll: number
+  /** Income minus burn and salaries, $/s, on the track the career is on. */
   readonly net: number
   /** Seconds until the balance is gone at today's numbers, or null when the money does not run down. */
   readonly runwaySec: number | null
@@ -37,10 +40,11 @@ export function founderOutlook(s: OutlookSlice, at: number): Outlook {
   const salary = idleParts(asLadder).jobs * fx.cps
   const offer = forkOffer({ idle: idleWithSalary, salary, revenue: serving.revenuePerSec, lostPerSec: serving.lostPerSec, users, money: s.money, founder: s.founder })
   const burning = s.founder.track === "founder" && !s.founder.broke
-  const burn = burning ? burnOf(users) : 0
+  const payroll = s.founder.track === "ladder" || !s.founder.broke ? hirePayrollOf(s.founder.hires) : 0
+  const burn = burning ? burnOf(users) + payroll : 0
   const income = idlePerSec(s) * fx.cps + productRevenueOf(serving.revenuePerSec, s.founder) - serving.lostPerSec
-  const net = income - burn
-  return { burn, net, runwaySec: burning ? runwayOf(s.money, net) : null, offer }
+  const net = income - (burning ? burn : payroll)
+  return { burn, payroll, net, runwaySec: burning ? runwayOf(s.money, net) : null, offer }
 }
 
 /** A runway as a short chip: "45s", "12m", "3h 10m". */

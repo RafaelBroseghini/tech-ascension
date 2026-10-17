@@ -20,6 +20,8 @@ import type { CompanyPatch } from "./globe/actions.ts"
 import { FRESH_COMPANY } from "./globe/growth.ts"
 import { servingOf } from "./globe/load.ts"
 import { founderOutlook } from "./founderOutlook.ts"
+import { creditOf, headcountOf } from "./globe/hires.ts"
+import type { Ending } from "./globe/hires.ts"
 import { productRevenueOf } from "./globe/track.ts"
 import type { Track } from "./globe/track.ts"
 import { FRESH_FOUNDER } from "./globe/track.ts"
@@ -134,6 +136,14 @@ export type GameSnapshot = {
   track: Track
   /** The fork: whether its modal has shown, the bridges raised and the equity given up, and the money picture a founder lives by. */
   founder: FounderSnapshot
+  /** Heads hired of each kind, by id (`HIRES` in `src/game/globe/hires.ts`). A kind with nobody is left out. A founder keeps them. */
+  hires: Record<string, number>
+  /** Everyone hired, all kinds together. */
+  headcount: number
+  /** The share of the users that came from growth the hires added, 0 to 1. */
+  hiredShare: number
+  /** How the win read, once it latched: `founder`, `sponsor` (over half the users from hires) or `nightOwl`. Null before. */
+  ending: Ending | null
   /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
   world: WorldSnapshot
 }
@@ -211,6 +221,8 @@ export type GameHarness = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Switch a bought region on or off as a whole. False for the last region serving. */
   setRegionActive: (regionId: string, on: boolean) => boolean
+  /** Hire a kind of person on the ladder, as many as the shop's Buy control allows (`amount` overrides it, clamped to what the gold skills unlock). False as a founder, in a closed row, or short of the price. */
+  hire: (id: string, amount?: 1 | 5 | 10 | "max") => boolean
   /** Quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for. */
   goFullTime: () => boolean
   /** Close the fork's modal. */
@@ -453,6 +465,10 @@ export function installGameHarness(): GameHarness {
         profile: { ...state.profile },
         track: state.founder.track,
         founder: founderSnapshot(state, now),
+        hires: { ...state.founder.hires },
+        headcount: headcountOf(state.founder.hires),
+        hiredShare: creditOf(state.company).hiredShare,
+        ending: state.company.ending ?? null,
         world: worldSnapshot(state, earnedPerSec(state, now)),
       }
     },
@@ -481,6 +497,7 @@ export function installGameHarness(): GameHarness {
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
+    hire: (id, amount) => useGame.getState().hire(id, amount),
     goFullTime: () => useGame.getState().goFullTime(),
     keepClimbing: () => useGame.getState().keepClimbing(),
     raiseBridge: () => useGame.getState().raiseBridge(),

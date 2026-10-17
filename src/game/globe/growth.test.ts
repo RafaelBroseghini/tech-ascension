@@ -203,7 +203,7 @@ describe("offline time", () => {
 })
 
 describe("saved company", () => {
-  const good = { users: { europe: 120 }, resistance: 12, incidents: [{ id: 2, kind: "block", region: "europe", until: 9, strength: 1.5 }], incidentSeq: 2, won: false, uptime: "oop", day: 4 }
+  const good = { users: { europe: 120 }, resistance: 12, incidents: [{ id: 2, kind: "block", region: "europe", until: 9, strength: 1.5 }], incidentSeq: 2, won: false, hiredUsers: 0, uptime: "oop", day: 4 }
 
   it("accepts a good block and drops a malformed one", () => {
     expect(parseCompany(good)).toEqual(good)

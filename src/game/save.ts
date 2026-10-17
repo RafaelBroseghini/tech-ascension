@@ -14,6 +14,8 @@ import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, settleGrowth 
 import { parseFounder, trackFactsOf, winMultOf, FRESH_FOUNDER } from "./globe/track.ts"
 import type { FounderState } from "./globe/track.ts"
 import type { CompanyState, GrowthNote } from "./globe/growth.ts"
+import { winNote } from "./globe/hires.ts"
+import type { Ending } from "./globe/hires.ts"
 import { parseFootprint } from "./globe/footprint.ts"
 import type { Footprint } from "./globe/footprint.ts"
 import type { SavedIdentity } from "./identity.ts"
@@ -281,7 +283,7 @@ export function parseSave(input: unknown): SaveData | null {
   return save
 }
 
-const wonAway = (mult: number) => `While you were out, the app reached seven billion people. Everything you earn is ×${mult} for good.`
+const wonAway = (ending: Ending | undefined, product: string, mult: number) => `While you were out: ${winNote(ending, product, mult)}`
 
 export function hydrate(rawText: string | null, now: number): Hydrated {
   if (rawText == null) {
@@ -341,7 +343,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
     toast = offlineToastText({ credit: income, xpCredit, jobs: save.jobs, elapsed })
     // A win reached while away has no live moment to celebrate it, so it leads the note instead.
-    if (settled.wonNow && toast) toast = `${wonAway(winMultOf(founder.track))}${toast.slice(toast.indexOf("\n"))}`
+    if (settled.wonNow && toast) toast = `${wonAway(grown.state.ending, save.profile?.product ?? "your app", winMultOf(founder.track))}${toast.slice(toast.indexOf("\n"))}`
   }
 
   return { save, toast, reset: false }

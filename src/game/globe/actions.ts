@@ -2,7 +2,10 @@ import { popCostOf, regionById, regionOfCity } from "../../data/regions.ts"
 import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, setPop, setRegion } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
 import type { CompanyState } from "./growth.ts"
-import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF } from "./world.ts"
+import type { BuyAmount } from "../gold.ts"
+import { hire as hireOne } from "./hires.ts"
+import type { FounderState } from "./track.ts"
+import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, totalUsers } from "./world.ts"
 import type { IncidentKind } from "./world.ts"
 
 /** The part of the game the company's actions read and write. */
@@ -10,6 +13,7 @@ export interface CompanySlice {
   readonly money: number
   readonly footprint: Footprint
   readonly company: CompanyState
+  readonly founder: FounderState
 }
 
 /** What an action changes, or null when it is refused and nothing changes. */
@@ -33,6 +37,11 @@ export function setPopActive(s: CompanySlice, cityId: string, on: boolean): Comp
 
 export function setRegionActive(s: CompanySlice, regionId: string, on: boolean): CompanyPatch {
   return canSetRegion(s.footprint, regionId, on) ? { footprint: setRegion(s.footprint, regionId, on) } : null
+}
+
+/** Hires up to `amount` of a kind on the ladder. Refused as a founder, in a closed row, or short of the price. */
+export function hire(s: CompanySlice, id: string, amount: BuyAmount = 1): CompanyPatch {
+  return hireOne(s, id, amount)
 }
 
 /** Pays to end an incident now, priced in minutes of `perSec`. Ending one also cools the world a little. */
@@ -60,5 +69,10 @@ export function forceIncident(s: CompanySlice, kind: IncidentKind, regionId: str
 /** Sets a region's users, to the region's ceiling at most. */
 export function setRegionUsers(s: CompanySlice, regionId: string, users: number): CompanyPatch {
   if (!Number.isFinite(users) || users < 0 || ceilingOf(regionId) <= 0) return null
-  return { company: { ...s.company, users: { ...s.company.users, [regionId]: Math.min(users, ceilingOf(regionId)) } } }
+  const set = { ...s.company.users, [regionId]: Math.min(users, ceilingOf(regionId)) }
+  // Users set by hand are nobody's work: the team keeps the share it had of the old crowd, and never more than the new one.
+  const before = totalUsers(s.company.users)
+  const after = totalUsers(set)
+  const hiredUsers = before > 0 ? Math.min(after, s.company.hiredUsers * Math.min(1, after / before)) : 0
+  return { company: { ...s.company, users: set, hiredUsers } }
 }
