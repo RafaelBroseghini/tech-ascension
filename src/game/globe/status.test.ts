@@ -1,3 +1,4 @@
+import { makeIncident } from "./world.ts"
 import { describe, expect, it } from "vitest"
 import { companyOf } from "./company.ts"
 import { BASE_RPS, capacityOf } from "./load.ts"
@@ -64,5 +65,19 @@ describe("the status board", () => {
   it("lists past incident runs of bars, newest first", () => {
     expect(pastIncidents("oooop")).toEqual([expect.objectContaining({ daysAgo: 0, health: "partial" })])
     expect(pastIncidents("ooo")).toEqual([])
+  })
+
+  it("turns Regions red while the world blocks one, and names each incident", () => {
+    const b = statusOf({
+      company: companyOf({ users: { europe: 1000 }, resistance: 0, incidents: [makeIncident("block", "europe", 0, 1, 0)], won: false, footprint: { regions: ["americas-east"], pops: ["ashburn"], off: [], dark: [] }, equipment: { "54": 5 } }),
+      retainers: { count: 0, perSec: 0 },
+      uptime: "o",
+      money: (n: number) => `$${n}`,
+      lostPerSec: 0,
+    })
+    const regions = b.components.find((c) => c.id === "regions")
+    expect(regions?.health).toBe("partial")
+    expect(regions?.detail).toBe("Censorship block in Europe.")
+    expect(b.banner).toBe("Partial Outage")
   })
 })

@@ -31,6 +31,10 @@ describe("feedItems", () => {
     expect(feedItems({ ...calm, users: { europe: 500, asia: 0.3 } }, { ...calm, users: { europe: 500, asia: 1.2 } }).map((i) => i.key)).toEqual(["first:asia"])
   })
 
+  it("says only the highest milestone a jump crosses", () => {
+    expect(feedItems(calm, { ...calm, users: { europe: 2e9 } }).map((i) => i.key)).toEqual(["milestone:1b"])
+  })
+
   it("tracks the win and serving dropping and recovering", () => {
     expect(feedItems(calm, { ...calm, won: true }).map((i) => i.key)).toEqual(["won"])
     expect(feedItems(calm, { ...calm, health: "m" }).map((i) => i.key)).toEqual(["drop"])

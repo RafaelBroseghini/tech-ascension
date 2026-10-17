@@ -49,11 +49,9 @@ export function feedItems(prev: FeedFacts, next: FeedFacts): FeedItem[] {
   }
   const was = totalUsers(prev.users)
   const now = totalUsers(next.users)
-  for (const row of MILESTONES) {
-    // The win has its own line, and its own pop.
-    if (row.users >= WORLD_TARGET) continue
-    if (was < row.users && now >= row.users) items.push({ key: `milestone:${row.id}`, tone: "info", text: row.label })
-  }
+  // A jump past several milestones says only the highest. The win has its own line, and its own pop.
+  const crossed = MILESTONES.filter((row) => row.users < WORLD_TARGET && was < row.users && now >= row.users).at(-1)
+  if (crossed) items.push({ key: `milestone:${crossed.id}`, tone: "info", text: crossed.label })
   if (next.won && !prev.won) items.push({ key: "won", tone: "good", text: "The world is yours" })
   if (!dropping(prev.health) && dropping(next.health)) items.push({ key: "drop", tone: "bad", text: "Dropping requests · more gear" })
   else if (dropping(prev.health) && !dropping(next.health)) items.push({ key: "recovered", tone: "good", text: "Serving everything again" })
