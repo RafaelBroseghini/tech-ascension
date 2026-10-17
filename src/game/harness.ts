@@ -26,7 +26,7 @@ import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
 import { INTERVIEWS } from "../data/studio/challenges.ts"
 import { questionById } from "../data/studio/questions.ts"
-import { interviewPassed, parseDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
+import { interviewById, interviewPassed, parseDesign, startDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
 import type { Band, Submission, VerdictKind } from "./studio/interviews.ts"
 import type { Design, TargetName } from "./studio/types.ts"
 
@@ -81,6 +81,10 @@ export type InterviewRecordSnapshot = {
   hints: string[]
   /** Set by the Submit that first passed, and never changed after. */
   offer: { band: Band; bonus: number } | null
+  /** The most stars any run earned: 1 works, 2 meets the targets, 3 under half the budget. */
+  stars: 0 | 1 | 2 | 3
+  /** The player looked at the reference after a pass. */
+  studied: boolean
 }
 
 /** One practice rerun: whether it clears the interview's targets, what it missed, its numbers, and the best on record after it. */
@@ -94,6 +98,11 @@ export type PracticeSnapshot = {
   /** True when this run beat the best, or set the first one. */
   newBest: boolean
   best: { costPerMonth: number; p95Ms: number } | null
+  /** Stars this run earned, and the most on record: 1 works, 2 meets the targets, 3 under half the budget. */
+  stars: 0 | 1 | 2 | 3
+  bestStars: 0 | 1 | 2 | 3
+  /** How many of the interview's features work in this design. */
+  features: { working: number; total: number }
 }
 
 export type InterviewsSnapshot = {
@@ -227,12 +236,12 @@ export type GameHarness = {
    */
   practiceWhiteboard: (interviewId: string, design: Design) => PracticeSnapshot | false
   /**
-   * Ask the interviewer a question (`traffic`, `mix`, `cache`, `fanout`, `speed`, `uptime`, `budget`, `lag`, `faults`;
+   * Ask the interviewer a question (`traffic`, `features`, `mix`, `fresh`, `durable`, `later`, `cache`, `fanout`, `speed`, `uptime`, `budget`, `lag`, `faults`;
    * `lag` only where the reference has a queue). Free and unlimited; the answer stays. False for an unknown interview
    * or question, or an interview not reached yet.
    */
   askInterviewer: (interviewId: string, questionId: string) => boolean
-  /** Take the free nudge about a target (`budget`, `success`, `p95`, `lag`, `availability`, `faults`). False when the interview has none for it. */
+  /** Take the free nudge about a target (`budget`, `success`, `p95`, `lag`, `availability`, `faults`, `features`). False when the interview has none for it. */
   takeNudge: (interviewId: string, target: string) => boolean
   /**
    * Take the next paid hint for `design` (default: the interview's last submission, else The Users alone), only while
@@ -240,6 +249,8 @@ export type GameHarness = {
    * before a pass puts the offer at the bottom of the band.
    */
   takeHint: (interviewId: string, design?: Design) => string | false
+  /** Open the engineers' board for a passed interview: marks it studied and returns the reference design. False until the interview is passed. */
+  studyReference: (interviewId: string) => Design | false
   /** Record a pass now, bypassing every gate. Keeps the questions, nudges and hints already taken and never invents an offer. False for an unknown or already passed id. */
   forceInterview: (interviewId: string) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
@@ -396,7 +407,7 @@ function interviewsSnapshot(state: ReturnType<typeof useGame.getState>): Intervi
     records: Object.fromEntries(
       Object.entries(state.interviews).map(([id, record]) => [
         id,
-        { verdict: record.verdict, attempts: record.attempts, asked: [...record.asked], nudges: [...record.nudges], hints: [...record.hints], offer: record.offer ?? null },
+        { verdict: record.verdict, attempts: record.attempts, asked: [...record.asked], nudges: [...record.nudges], hints: [...record.hints], offer: record.offer ?? null, stars: record.stars, studied: record.studied },
       ]),
     ),
   }
@@ -508,6 +519,9 @@ export function installGameHarness(): GameHarness {
         p95Ms: run.result.p95Ms,
         newBest: run.newBest,
         best: run.best ? { costPerMonth: run.best.costPerMonth, p95Ms: run.best.p95Ms } : null,
+        stars: run.stars,
+        bestStars: run.bestStars,
+        features: { working: run.result.features.filter((f) => f.served >= (interviewById(interviewId)?.targets.successRate ?? 1)).length, total: run.result.features.length },
       }
     },
 
@@ -522,9 +536,13 @@ export function installGameHarness(): GameHarness {
     },
 
     takeHint: (interviewId, design) => {
-      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? THE_USERS_ALONE)
-      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : THE_USERS_ALONE) ?? false
+      const start = interviewById(interviewId)
+      const alone = start ? startDesign(start) : THE_USERS_ALONE
+      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? alone)
+      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : alone) ?? false
     },
+
+    studyReference: (interviewId) => useGame.getState().studyReference(interviewId) ?? false,
 
     forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),
 

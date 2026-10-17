@@ -193,3 +193,90 @@ export const FAULT_LINES: Readonly<Record<Fault["kind"], string>> = {
   spike: "A celebrity tweeted your link.",
   botFlood: "The bots found you.",
 }
+
+/**
+ * The one wiring table: which piece may call which. The board, the router, the hints and the copy all read it.
+ * `sql` calling `replica` or `standby` is replication, not a request; the router never sends traffic along it.
+ */
+export const CAN_CALL: Readonly<Record<ComponentKind, readonly ComponentKind[]>> = {
+  users: ["cdn", "bouncer", "lb", "api", "socket"],
+  bouncer: ["cdn", "lb", "api", "socket"],
+  cdn: ["lb", "api", "blob"],
+  lb: ["api", "socket"],
+  api: ["cache", "sql", "replica", "kv", "blob", "queue", "worker"],
+  socket: ["cache", "kv", "queue"],
+  queue: ["worker"],
+  worker: ["sql", "kv", "blob", "cache"],
+  sql: ["replica", "standby"],
+  cache: [],
+  replica: [],
+  standby: [],
+  kv: [],
+  blob: [],
+  autoscaler: [],
+  breaker: [],
+  oncall: [],
+  region: [],
+}
+
+export const canCall = (from: ComponentKind, to: ComponentKind): boolean => CAN_CALL[from].includes(to)
+
+const OPS: ReadonlySet<ComponentKind> = new Set(["autoscaler", "breaker", "oncall", "region"])
+const STORES: ReadonlySet<ComponentKind> = new Set(["cache", "replica", "standby", "kv", "blob"])
+const DATA: ReadonlySet<ComponentKind> = new Set([...STORES, "sql"])
+
+/** Why a wire is refused, as one plain sentence naming both pieces; null for a legal wire. One sentence per family of rules. */
+export function refusal(from: ComponentKind, to: ComponentKind): string | null {
+  if (canCall(from, to)) return null
+  const a = COMPONENTS[from].name
+  const b = COMPONENTS[to].name
+  if (to === "users") return `Nothing calls ${b}. Every request starts there.`
+  if (OPS.has(from) || OPS.has(to)) return `${OPS.has(from) ? a : b} watches the whole design, so it takes no wires.`
+  if (from === "sql") return `${a} only replicates to a Replica or a Standby, so it can't call ${b}.`
+  if (STORES.has(from)) return `${a} only stores and answers. It never calls onward, so it can't reach ${b}.`
+  if (from === "queue") return `A queue only feeds workers. ${a} can't call ${b}.`
+  if (from === "lb") return `A load balancer only spreads traffic across servers. ${a} can't call ${b}.`
+  if (to === "standby") return `${b} only follows its database. Wire it from the SQL database.`
+  if (DATA.has(to)) return `Data sits behind a server. ${a} can't reach ${b} directly.`
+  if (to === "queue" || to === "worker") return `${b} takes its work from a server or a queue. ${a} can't reach it directly.`
+  return `${a} doesn't call ${b}. Requests flow from The Users toward the data.`
+}
+
+/** The board's columns, left to right. Wires run toward the data; only replication stays inside a column. */
+export type Lane = "users" | "edge" | "routing" | "compute" | "async" | "data"
+
+export const LANES: readonly { readonly id: Lane; readonly name: string }[] = [
+  { id: "users", name: "Users & ops" },
+  { id: "edge", name: "Edge" },
+  { id: "routing", name: "Routing" },
+  { id: "compute", name: "Compute" },
+  { id: "async", name: "Async" },
+  { id: "data", name: "Data" },
+]
+
+/** The lane a piece snaps into. Ops pieces take no wires, so they sit under The Users in the first column. */
+export const LANE_OF: Readonly<Record<ComponentKind, Lane>> = {
+  users: "users",
+  cdn: "edge",
+  bouncer: "edge",
+  lb: "routing",
+  api: "compute",
+  socket: "compute",
+  queue: "async",
+  worker: "async",
+  sql: "data",
+  replica: "data",
+  standby: "data",
+  cache: "data",
+  kv: "data",
+  blob: "data",
+  autoscaler: "users",
+  breaker: "users",
+  oncall: "users",
+  region: "users",
+}
+
+export const laneIndex = (kind: ComponentKind): number => LANES.findIndex((lane) => lane.id === LANE_OF[kind])
+
+/** How far behind its primary a read replica runs. It is the same for every design, so the board can say it. */
+export const REPLICA_LAG_SECONDS = 2

@@ -7,6 +7,7 @@ import { COMPONENTS } from "../../data/studio/components.ts"
 import { currentRun, MAX_REPLICAS, removeNode, setReplicas, useBoard } from "./boardStore.ts"
 import type { BoardNode } from "./boardStore.ts"
 import { KIND_ICON, specLine } from "./kinds.ts"
+import { useNodeNote } from "./nodeNotesContext.ts"
 
 const SPRING = { type: "spring", stiffness: 520, damping: 32 } as const
 
@@ -18,24 +19,20 @@ const useHeat = (id: string): number | null =>
     return run.result.hot.find((h) => h.id === id)?.utilization ?? null
   })
 
-const useSpof = (id: string): boolean =>
-  useBoard((s) => {
-    const run = currentRun(s)
-    return Boolean(run && !run.revealing && run.result.singlePointsOfFailure.includes(id))
-  })
-
 const heatLabel = (util: number): string => (Number.isFinite(util) ? `${Math.round(util * 100)}%` : "down")
 
 /** One placed component. Memoized on its `data`, which a drag leaves alone, so only the dragged node re-renders. */
 export const ComponentNode = memo(function ComponentNode({ id, data, selected }: NodeProps<BoardNode>) {
-  const { kind, replicas } = data
+  const { kind, replicas, locked } = data
   const spec = COMPONENTS[kind]
   const Icon = KIND_ICON[kind]
   const heat = useHeat(id)
-  const spof = useSpof(id)
+  const note = useNodeNote(id)
+  const studying = useBoard((s) => s.studying)
+  const spof = (note?.spof.length ?? 0) > 0
   const hot = heat !== null && heat >= 1
   const source = kind === "users"
-  const className = ["studio-node", selected ? "is-selected" : "", hot ? "is-hot" : "", spof ? "is-spof" : "", source ? "is-source" : ""]
+  const className = ["studio-node", selected ? "is-selected" : "", hot ? "is-hot" : "", source ? "is-source" : ""]
     .filter(Boolean)
     .join(" ")
 
@@ -51,42 +48,37 @@ export const ComponentNode = memo(function ComponentNode({ id, data, selected }:
       transition={SPRING}
     >
       {source ? null : <Handle type="target" position={Position.Left} className="studio-handle" />}
-      <div className="studio-node-head">
-        <Icon size={16} strokeWidth={2} aria-hidden />
-        <span className="studio-node-name">{spec.name}</span>
-        {source ? null : (
-          <button type="button" className="studio-node-x nodrag" aria-label={`Remove ${spec.name}`} title="Remove (Delete)" onClick={() => removeNode(id)}>
-            <X size={12} strokeWidth={2.5} aria-hidden />
+      {source || locked || studying ? null : (
+        <button type="button" className="studio-node-x nodrag" aria-label={`Remove ${spec.name}`} title="Remove (Delete)" onClick={() => removeNode(id)}>
+          <X size={12} strokeWidth={2.5} aria-hidden />
+        </button>
+      )}
+      {spof ? (
+        <span className="studio-spof" data-testid="studio-spof" title={note?.spofText ?? undefined}>
+          No backup
+        </span>
+      ) : null}
+      <Icon size={32} strokeWidth={1.75} aria-hidden />
+      <span className="studio-node-name">{spec.name}</span>
+      {source ? null : (
+        <div className="studio-stepper nodrag" role="group" aria-label={`${spec.name} replicas`}>
+          <button type="button" aria-label="One fewer replica" disabled={replicas <= 1 || studying} onClick={() => setReplicas(id, replicas - 1)}>
+            <Minus size={10} strokeWidth={2.5} aria-hidden />
           </button>
-        )}
-      </div>
-      {source ? (
-        <span className="studio-node-meta">Every request starts here</span>
-      ) : (
-        <div className="studio-node-row">
-          <div className="studio-stepper nodrag" role="group" aria-label={`${spec.name} replicas`}>
-            <button type="button" aria-label="One fewer replica" disabled={replicas <= 1} onClick={() => setReplicas(id, replicas - 1)}>
-              <Minus size={12} strokeWidth={2.5} aria-hidden />
-            </button>
-            <output data-testid="studio-replicas" aria-live="polite">
-              x{replicas}
-            </output>
-            <button type="button" aria-label="One more replica" disabled={replicas >= MAX_REPLICAS} onClick={() => setReplicas(id, replicas + 1)}>
-              <Plus size={12} strokeWidth={2.5} aria-hidden />
-            </button>
-          </div>
-          {heat === null ? null : (
-            <span className={hot ? "studio-heat is-hot" : "studio-heat"} data-testid="studio-heat">
-              {heatLabel(heat)}
-            </span>
-          )}
+          <output data-testid="studio-replicas" aria-live="polite">
+            x{replicas}
+          </output>
+          <button type="button" aria-label="One more replica" disabled={replicas >= MAX_REPLICAS || studying} onClick={() => setReplicas(id, replicas + 1)}>
+            <Plus size={10} strokeWidth={2.5} aria-hidden />
+          </button>
         </div>
       )}
       <div className="studio-node-card" role="tooltip">
         <strong>{spec.name}</strong>
-        <span>{spec.goal}</span>
+        {note ? <span className="studio-node-note" data-testid="studio-node-note">{note.line}</span> : null}
+        {note?.plan ? <span className="studio-node-plan" data-testid="studio-node-plan">{note.plan}</span> : null}
         <span className="studio-node-spec">{specLine(kind)}</span>
-        {spof ? <span className="studio-node-warn">Single point of failure</span> : null}
+        {spof ? <span className="studio-node-warn">{note?.spofText}</span> : null}
       </div>
       <Handle type="source" position={Position.Right} className="studio-handle" />
     </m.div>

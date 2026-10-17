@@ -82,18 +82,39 @@ export type Fault =
   /** `bots` is bot traffic as a multiple of real traffic. */
   | { readonly kind: "botFlood"; readonly bots: number }
 
-export type Mix = Readonly<Partial<Record<RequestType, number>>>
+export type Consistency = "strong" | "eventual"
+
+/** What users do, as a user story. Functional requirements are the unit of traffic: the router walks once per feature. */
+export interface Feature {
+  readonly id: string
+  /** A user story in plain words: "A shopper checks out". */
+  readonly story: string
+  readonly request: RequestType
+  /** Share of all requests, summing to 1 across the scenario's features. */
+  readonly share: number
+  /** A strong read must come from the primary: caches, CDNs and replicas refuse it. */
+  readonly consistency: Consistency
+  /** Must land in sql, kv or blob. A queue alone does not count until a worker stores it. */
+  readonly durable: boolean
+  /** May finish after the response, through a queue. A feature that isn't async can't be queued. */
+  readonly async: boolean
+}
 
 export interface Phase {
   readonly name: string
   readonly seconds: number
   readonly rps: number
-  readonly mix: Mix
   readonly fault?: Fault
 }
 
 export interface Scenario {
   readonly phases: readonly [Phase, ...Phase[]]
+  /** The same features in every phase: a fault changes what the design survives, never what users do. */
+  readonly features: readonly [Feature, ...Feature[]]
+  /**
+   * Share of the reads that reach a cache and find their answer there. This is the rate after writes invalidate
+   * entries, so the router adds no write discount of its own.
+   */
   readonly cacheHitRate: number
   readonly edgeHitRate: number
   /** Timeline writes one `fanout` request turns into. */
@@ -109,7 +130,14 @@ export interface Targets {
 }
 
 /** `faults` is `successRate` measured in the phases that carry a fault. */
-export type TargetName = "budget" | "success" | "p95" | "lag" | "availability" | "faults"
+export type TargetName = "budget" | "success" | "p95" | "lag" | "availability" | "faults" | "features"
+
+/** Share of one feature's requests answered correctly. */
+export interface FeatureServed {
+  readonly id: string
+  readonly story: string
+  readonly served: number
+}
 
 export interface NodeLoad {
   readonly id: string
@@ -129,6 +157,9 @@ export interface PhaseResult {
   readonly hot: readonly NodeLoad[]
   readonly down: readonly string[]
   readonly unrouted: readonly RequestType[]
+  /** The features whose requests reach a node with nowhere to send them. */
+  readonly unroutedFeatures: readonly string[]
+  readonly features: readonly FeatureServed[]
 }
 
 export interface RunResult {
@@ -147,8 +178,9 @@ export interface RunResult {
   /** Least reliable first. */
   readonly singlePointsOfFailure: readonly string[]
   readonly unrouted: readonly RequestType[]
-  /** Each loop in the edges, as node ids from the first repeated node back to it. */
-  readonly cycles: readonly (readonly string[])[]
+  readonly unroutedFeatures: readonly string[]
+  /** Each feature's share answered correctly in the worst phase without a fault. */
+  readonly features: readonly FeatureServed[]
 }
 
 export interface NaiveDesign {

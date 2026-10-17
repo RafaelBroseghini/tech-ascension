@@ -11,6 +11,7 @@ import { money, percent } from "./kinds.ts"
 import { MeterList } from "./MeterList.tsx"
 import { meters, readout, requestCounts } from "./meters.ts"
 import { Readout } from "./Readout.tsx"
+import { Stars } from "./Stars.tsx"
 
 const SPRING = { type: "spring", stiffness: 380, damping: 30 } as const
 const VERDICT: Readonly<Record<Run["verdict"]["kind"], string>> = { strongHire: "Strong hire", hire: "Hire", noHire: "No hire" }
@@ -82,6 +83,7 @@ function RunReport({ run, stale, interview, onHired }: { run: Run; stale: boolea
             transition={SPRING}
           >
             <p className="studio-verdict-kind">{stamp}</p>
+            {run.practice || pass ? <Stars value={run.stars} testid="studio-run-stars" /> : null}
             {run.newBest ? <p className="studio-new-best" data-testid="studio-new-best">New best</p> : null}
             {pass && !run.practice ? <p className="studio-brief-text" data-testid="studio-run-passbar">{interview.passBar}</p> : null}
             {run.offer ? (

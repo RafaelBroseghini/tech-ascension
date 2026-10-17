@@ -1,8 +1,20 @@
-import type { Challenge, ComponentKind, Design, DesignNode } from "../../game/studio/types.ts"
+import type { Challenge, ComponentKind, Design, DesignNode, Feature, RequestType } from "../../game/studio/types.ts"
 
 /** Fixed designs for the simulator's unit tests. The interviews themselves live in `challenges.ts`. */
 
 const node = (id: string, kind: ComponentKind, replicas = 1): DesignNode => ({ id, kind, replicas })
+
+/** A fixture feature: eventual, not durable, not async unless the call says so. */
+export const feature = (id: string, request: RequestType, share: number, rest: Partial<Feature> = {}): Feature => ({
+  id,
+  story: id,
+  request,
+  share,
+  consistency: "eventual",
+  durable: false,
+  async: false,
+  ...rest,
+})
 
 const design = (nodes: DesignNode[], edges: [string, string][]): Design => ({
   nodes,
@@ -35,10 +47,11 @@ export const THREE_TIER: Challenge = {
   name: "3-tier app",
   scenario: {
     phases: [
-      { name: "Monday morning", seconds: 60, rps: 300, mix: { read: 0.8, write: 0.2 } },
-      { name: "Reboot", seconds: 60, rps: 300, mix: { read: 0.8, write: 0.2 }, fault: { kind: "killReplica", target: "api" } },
-      { name: "Database down", seconds: 60, rps: 300, mix: { read: 0.8, write: 0.2 }, fault: { kind: "killDatabase" } },
+      { name: "Monday morning", seconds: 60, rps: 300 },
+      { name: "Reboot", seconds: 60, rps: 300, fault: { kind: "killReplica", target: "api" } },
+      { name: "Database down", seconds: 60, rps: 300, fault: { kind: "killDatabase" } },
     ],
+    features: [feature("read", "read", 0.8), feature("write", "write", 0.2, { durable: true })],
     cacheHitRate: 0.7,
     edgeHitRate: 0,
     fanout: 1,
@@ -57,7 +70,6 @@ export const SHORTENER_CACHE = design(
     ["users", "lb"],
     ["lb", "api"],
     ["api", "cache"],
-    ["cache", "db"],
     ["api", "db"],
   ],
 )
@@ -70,7 +82,6 @@ export const SHORTENER_CDN_READS_ONLY = design(
     ["cdn", "lb"],
     ["lb", "api"],
     ["api", "cache"],
-    ["cache", "db"],
     ["api", "db"],
   ],
 )
@@ -90,7 +101,7 @@ const fanoutDesign = (workers: number): Design =>
       ["users", "lb"],
       ["lb", "api"],
       ["api", "cache"],
-      ["cache", "kv"],
+      ["api", "kv"],
       ["api", "queue"],
       ["queue", "workers"],
       ["workers", "kv"],
@@ -106,7 +117,6 @@ export const FANOUT_SYNC = design(
     ["users", "lb"],
     ["lb", "api"],
     ["api", "cache"],
-    ["cache", "db"],
     ["api", "db"],
   ],
 )
@@ -115,7 +125,8 @@ export const FANOUT: Challenge = {
   id: "fixture-fanout",
   name: "Fan-out",
   scenario: {
-    phases: [{ name: "Celebrity posts", seconds: 60, rps: 4000, mix: { read: 0.9, fanout: 0.1 } }],
+    phases: [{ name: "Celebrity posts", seconds: 60, rps: 4000 }],
+    features: [feature("read", "read", 0.9), feature("post", "fanout", 0.1, { durable: true, async: true })],
     cacheHitRate: 0.85,
     edgeHitRate: 0,
     fanout: 50,

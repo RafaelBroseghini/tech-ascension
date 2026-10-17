@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { evaluate } from "../../game/studio/evaluate.ts"
+import { withLegalEdges } from "../../game/studio/route.ts"
 import { CONSTRAINT_OF, verdict, type Constraint } from "../../game/studio/score.ts"
 import type { ComponentKind, Design } from "../../game/studio/types.ts"
 import { INTERVIEWS, type Interview } from "./challenges.ts"
@@ -36,6 +37,34 @@ describe("interview catalog", () => {
     expect(new Set(INTERVIEWS.map((i) => i.id)).size).toBe(INTERVIEWS.length)
   })
 
+  it("every design wires only what the table allows", () => {
+    for (const interview of INTERVIEWS) {
+      for (const design of designsOf(interview)) expect([interview.name, withLegalEdges(design).edges]).toEqual([interview.name, design.edges])
+    }
+  })
+
+  it("every interview states a goal and splits its traffic into features that sum to one", () => {
+    for (const interview of INTERVIEWS) {
+      expect([interview.name, interview.goal.length > 20]).toEqual([interview.name, true])
+      const share = interview.scenario.features.reduce((sum, feature) => sum + feature.share, 0)
+      expect([interview.name, Number(share.toFixed(6))]).toEqual([interview.name, 1])
+      expect(new Set(interview.scenario.features.map((f) => f.id)).size).toBe(interview.scenario.features.length)
+    }
+  })
+
+  it("a decoy is in no design, and a locked piece is in every design", () => {
+    for (const interview of INTERVIEWS) {
+      const used = new Set(designsOf(interview).flatMap((design) => design.nodes.map((n) => n.kind)))
+      for (const decoy of interview.decoys) expect([interview.name, decoy, used.has(decoy)]).toEqual([interview.name, decoy, false])
+      for (const design of designsOf(interview)) {
+        for (const piece of interview.locked) {
+          expect([interview.name, design.nodes.some((n) => n.id === piece.id && n.kind === piece.kind)]).toEqual([interview.name, true])
+        }
+      }
+    }
+    expect(INTERVIEWS.filter((i) => i.locked.length > 0).map((i) => i.id)).toEqual(["read-heavy-feed", "global-service"])
+  })
+
   it("every reference design passes", () => {
     for (const interview of INTERVIEWS) {
       expect([interview.name, judge(interview, interview.reference).kind]).not.toEqual([interview.name, "noHire"])
@@ -62,9 +91,10 @@ describe("interview catalog", () => {
   })
 
   it("each of money, performance, availability and fault tolerance is the binding target of at least two naive designs", () => {
-    const count: Record<Constraint, number> = { money: 0, performance: 0, availability: 0, faultTolerance: 0 }
+    const count: Record<Constraint, number> = { money: 0, performance: 0, availability: 0, faultTolerance: 0, correctness: 0 }
     for (const naive of INTERVIEWS.flatMap((i) => i.naive)) count[CONSTRAINT_OF[naive.fails]]++
     for (const constraint of Object.keys(count) as Constraint[]) {
+      if (constraint === "correctness") continue
       expect([constraint, count[constraint] >= 2]).toEqual([constraint, true])
     }
   })
@@ -91,10 +121,10 @@ describe("interview catalog", () => {
     }
   })
 
-  it("raises the availability target from 99% to 99.99% and never lowers it", () => {
+  it("raises the availability target from 99% to 99.995% and never lowers it", () => {
     const targets = INTERVIEWS.map((i) => i.targets.availability)
     expect(targets[0]).toBe(0.99)
-    expect(targets[targets.length - 1]).toBe(0.9999)
+    expect(targets[targets.length - 1]).toBe(0.99995)
     targets.slice(1).forEach((target, i) => expect(target).toBeGreaterThanOrEqual(targets[i]))
   })
 
@@ -151,6 +181,20 @@ describe("interview questions", () => {
     }
   })
 
+  it("answers the functional questions from the features", () => {
+    const shop = INTERVIEWS.find((i) => i.id === "3-tier-app")!
+    const answer = (id: string) => questionById(id)!.answer(shop)
+    expect(answer("features")).toContain("A shopper checks out")
+    expect(answer("fresh")).toContain("A shopper sees their order right after paying")
+    expect(answer("fresh")).not.toContain("A shopper checks out")
+    expect(answer("durable")).toContain("A shopper checks out")
+    expect(answer("durable")).not.toContain("browses")
+    expect(answer("later")).toMatch(/^No/)
+    expect(answer("mix")).toContain("A shopper browses the catalog: a read, 70% of requests")
+    const upload = INTERVIEWS.find((i) => i.id === "image-upload")!
+    expect(questionById("later")!.answer(upload)).toContain("Someone uploads a photo")
+  })
+
   it("asks about the queue only where the reference has one", () => {
     for (const interview of INTERVIEWS) {
       const queued = interview.reference.nodes.some((n) => n.kind === "queue")
@@ -167,7 +211,7 @@ describe("interview questions", () => {
   it("puts every target behind exactly the question that reveals it", () => {
     for (const [target, id] of Object.entries(QUESTION_FOR)) expect(questionById(id)?.reveals).toContain(target)
     expect([...revealedTargets(["speed", "budget"])].sort()).toEqual(["budget", "p95", "success"])
-    expect(revealedTargets(["traffic", "mix"]).size).toBe(0)
+    expect(revealedTargets(["traffic", "mix", "fresh", "durable", "later"]).size).toBe(0)
   })
 })
 

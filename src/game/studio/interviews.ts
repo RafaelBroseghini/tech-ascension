@@ -5,8 +5,9 @@ import { questionById } from "../../data/studio/questions.ts"
 import type { QuestionId } from "../../data/studio/questions.ts"
 import { JOB_TIERS } from "../../data/phases.ts"
 import { evaluate } from "./evaluate.ts"
+import { withLegalEdges } from "./route.ts"
 import { verdict } from "./score.ts"
-import type { Verdict } from "./score.ts"
+import type { Stars, Verdict } from "./score.ts"
 import type { ComponentKind, Design, DesignEdge, DesignNode, RunResult, TargetName } from "./types.ts"
 
 export type VerdictKind = Verdict["kind"]
@@ -47,6 +48,10 @@ export type InterviewRecord = {
   readonly hints: readonly string[]
   /** Set once, by the Submit that first passed. */
   readonly offer?: Offer
+  /** The most stars any run earned, real or practice: works, meets the targets, under half the budget. */
+  readonly stars: Stars
+  /** The player has looked at the engineers' board after a pass. */
+  readonly studied: boolean
 }
 
 /**
@@ -72,6 +77,9 @@ export type PracticeRun = {
   readonly newBest: boolean
   /** The best on record after this run. */
   readonly best: Best | undefined
+  /** The stars this run earned, and the most on record after it. */
+  readonly stars: Stars
+  readonly bestStars: Stars
 }
 
 /** The lump a Strong hire with no hints signs for, in minutes of the gated job's salary. */
@@ -82,7 +90,7 @@ export const NO_HIRE_PENALTY_SHARE = 0.05
 
 const VERDICTS: readonly VerdictKind[] = ["noHire", "hire", "strongHire"]
 const BANDS: readonly Band[] = ["top", "mid", "bottom"]
-export const TARGET_NAMES: readonly TargetName[] = ["budget", "success", "p95", "lag", "availability", "faults"]
+export const TARGET_NAMES: readonly TargetName[] = ["budget", "success", "p95", "lag", "availability", "faults", "features"]
 
 export const BAND_LABEL: Readonly<Record<Band, string>> = {
   top: "Top of the band",
@@ -93,11 +101,14 @@ export const BAND_LABEL: Readonly<Record<Band, string>> = {
 /** The board every interview starts from. */
 export const THE_USERS_ALONE: Design = { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] }
 
+/** The board an interview starts from: The Users, and whatever the company will not let you remove. */
+export const startDesign = (interview: Interview): Design => ({ nodes: [...THE_USERS_ALONE.nodes, ...interview.locked], edges: [] })
+
 /** The line a résumé or profile carries under the job whose interview earned an offer. */
 export const offerLine = (band: Band): string => `Offer: ${BAND_LABEL[band].toLowerCase()}`
 
 /** A career that has not touched an interview yet. */
-export const NO_RECORD: InterviewRecord = { verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] }
+export const NO_RECORD: InterviewRecord = { verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [], stars: 0, studied: false }
 
 export function interviewById(id: string): Interview | undefined {
   return INTERVIEWS.find((row) => row.id === id)
@@ -192,7 +203,7 @@ export function parseDesign(raw: unknown): Design {
   for (const e of raw.edges) {
     if (isRecord(e) && typeof e.from === "string" && typeof e.to === "string") edges.push({ from: e.from, to: e.to })
   }
-  return { nodes, edges }
+  return withLegalEdges({ nodes, edges })
 }
 
 const isCount = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value)
@@ -212,6 +223,10 @@ function parseList<T>(raw: unknown, known: (value: unknown) => value is T): T[] 
 const isQuestion = (value: unknown): value is QuestionId => typeof value === "string" && questionById(value) !== undefined
 const isTarget = (value: unknown): value is TargetName => TARGET_NAMES.some((target) => target === value)
 const isLine = (value: unknown): value is string => typeof value === "string" && value.length > 0
+
+function parseStars(raw: unknown): Stars {
+  return raw === 1 || raw === 2 || raw === 3 ? raw : 0
+}
 
 function parseOffer(raw: unknown): Offer | undefined {
   if (!isRecord(raw) || !isCount(raw.bonus)) return undefined
@@ -237,6 +252,8 @@ export function parseInterviews(raw: unknown): InterviewLog {
       asked: parseList(value.asked, isQuestion),
       nudges: parseList(value.nudges, isTarget),
       hints: Array.isArray(value.hints) ? value.hints.filter(isLine) : [],
+      stars: parseStars(value.stars),
+      studied: value.studied === true,
       ...(best ? { best } : {}),
       ...(offer ? { offer } : {}),
     }

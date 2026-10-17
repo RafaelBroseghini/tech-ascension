@@ -8,11 +8,13 @@ import { faultTally, verdict } from "../../game/studio/score.ts"
 import type { TargetName } from "../../game/studio/types.ts"
 import { allTargets, revealedTargets } from "../../data/studio/questions.ts"
 import { Ask } from "./Ask.tsx"
-import { draftOf, useBoard } from "./boardStore.ts"
+import { BookOpen } from "lucide-react"
+import { draftOf, leaveStudy, studyReference, useBoard } from "./boardStore.ts"
 import { money, requestList } from "./kinds.ts"
 import { MeterList } from "./MeterList.tsx"
 import { meters, readout, requestCounts } from "./meters.ts"
 import { Readout } from "./Readout.tsx"
+import { Stars } from "./Stars.tsx"
 import { jobOf } from "./status.ts"
 import type { ReachableStatus } from "./status.ts"
 
@@ -38,6 +40,9 @@ export const Brief = memo(function Brief({
   // A Submit flips the status the moment it lands; the board keeps reading as the interview until the reveal ends.
   const submitting = useBoard((s) => Boolean(s.run?.revealing && !s.run.practice))
   const best = useGame((s) => s.interviews[interview.id]?.best)
+  const stars = useGame((s) => s.interviews[interview.id]?.stars ?? 0)
+  const studied = useGame((s) => s.interviews[interview.id]?.studied ?? false)
+  const studying = useBoard((s) => s.studying)
   const asked = useGame((s) => s.interviews[interview.id]?.asked)
   const practicing = status !== "open" && !submitting
   const result = useMemo(() => evaluate(draft, interview.scenario), [draft, interview])
@@ -65,6 +70,9 @@ export const Brief = memo(function Brief({
         {practicing ? `Practice · ${job}` : `Interview for ${job}`}
       </p>
       <h2 id="studio-brief-title">{interview.name}</h2>
+      <p className="studio-goal" data-testid="studio-goal">
+        {interview.goal}
+      </p>
       <p className="studio-brief-text" data-testid="studio-brief">
         {interview.opener}
       </p>
@@ -79,14 +87,31 @@ export const Brief = memo(function Brief({
       {practicing && best ? (
         <p className="studio-best" data-testid="studio-best">{`Best: ${money(best.costPerMonth)}/mo at p95 ${ms(best.p95Ms)}`}</p>
       ) : null}
+      {practicing ? (
+        <div className="studio-score" data-testid="studio-score">
+          <Stars value={stars} />
+          <span className="studio-stars-legend">Works · Meets the targets · Under half the budget</span>
+          {studying ? (
+            <button type="button" className="studio-study" data-testid="studio-study-back" onClick={leaveStudy}>
+              Back to my board
+            </button>
+          ) : (
+            <button type="button" className="studio-study" data-testid="studio-study" onClick={() => studyReference(interview)}>
+              <BookOpen size={14} strokeWidth={2} aria-hidden />
+              {studied ? "Show the reference again" : "Show the reference"}
+            </button>
+          )}
+          {studied ? <span className="studio-studied" data-testid="studio-studied">Studied</span> : null}
+        </div>
+      ) : null}
       {unrouted.length > 0 ? (
         <p className="studio-warn" role="status" data-testid="studio-unrouted" data-unrouted={unrouted.join(",")}>
           {knowsMix ? `Unrouted: nothing on this board answers ${requestList(unrouted)}. They will fail.` : "Unrouted: some requests have nowhere to go. They will fail."}
         </p>
       ) : null}
       <div className="studio-submit-row">
-        <button type="button" className="studio-submit" data-testid="studio-submit" disabled={revealing} onClick={onSubmit}>
-          {practicing ? "Run it again (practice)" : "Submit to interviewer"}
+        <button type="button" className="studio-submit" data-testid="studio-submit" disabled={revealing || studying} onClick={onSubmit}>
+          {studying ? "Studying the reference" : practicing ? "Run it again (practice)" : "Submit to interviewer"}
         </button>
         {practicing ? null : <span className="studio-penalty" data-testid="studio-penalty">{`No hire costs ${penalty.toLocaleString("en-US")} XP`}</span>}
       </div>

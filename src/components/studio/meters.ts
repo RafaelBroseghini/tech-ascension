@@ -1,4 +1,5 @@
 import { COMPONENTS } from "../../data/studio/components.ts"
+import { featureTally } from "../../game/studio/score.ts"
 import type { FaultTally } from "../../game/studio/score.ts"
 import type { Design, Phase, RunResult, Scenario, TargetName, Targets } from "../../game/studio/types.ts"
 import { money, percent } from "./kinds.ts"
@@ -16,11 +17,12 @@ export interface Meter {
 const ms = (x: number) => (Number.isFinite(x) ? `${Math.round(x)} ms` : "forever")
 
 /**
- * One meter per constraint (money, performance, availability, fault tolerance) for a result judged against `targets`.
+ * One meter per constraint (money, performance, availability, fault tolerance, correctness) for a result judged against `targets`.
  * A meter draws its target line and bar only for the targets in `known`, the ones the player asked about.
  */
 export function meters(result: RunResult, targets: Targets, faults: FaultTally, known: ReadonlySet<TargetName>): Meter[] {
   const has = (target: TargetName) => known.has(target)
+  const features = featureTally(result, targets)
   const perf = [
     has("success") && has("p95")
       ? `${percent(targets.successRate)} within ${targets.p95Ms} ms`
@@ -59,6 +61,13 @@ export function meters(result: RunResult, targets: Targets, faults: FaultTally, 
       target: has("faults") ? "survive every fault" : "",
       fill: has("faults") ? (faults.total === 0 ? 1 : faults.survived / faults.total) : null,
       targets: ["faults"],
+    },
+    {
+      name: "Correctness",
+      value: `${features.working} of ${features.total} features work`,
+      target: has("features") ? "every feature works" : "",
+      fill: has("features") ? features.working / features.total : null,
+      targets: ["features"],
     },
   ]
 }

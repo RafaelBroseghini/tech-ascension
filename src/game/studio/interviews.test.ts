@@ -177,6 +177,28 @@ describe("practice", () => {
     expect(useGame.getState().interviews[THREE_TIER.id]).toMatchObject({ verdict: "hire", best: expect.anything() })
   })
 
+  it("keeps the most stars any run earned, and a worse run never lowers them", () => {
+    useGame.getState().submitWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    expect(useGame.getState().interviews[THREE_TIER.id]?.stars).toBe(2)
+    const strong = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.strongHire)
+    expect(strong).toMatchObject({ stars: 3, bestStars: 3 })
+    expect(useGame.getState().interviews[THREE_TIER.id]?.stars).toBe(3)
+    const miss = useGame.getState().practiceWhiteboard(THREE_TIER.id, THREE_TIER.naive[0].design)
+    expect(miss).toMatchObject({ stars: 0, bestStars: 3 })
+    expect(useGame.getState().interviews[THREE_TIER.id]?.stars).toBe(3)
+  })
+
+  it("studying the reference marks the interview studied and changes nothing else", () => {
+    expect(useGame.getState().studyReference(THREE_TIER.id)).toBeNull()
+    useGame.getState().submitWhiteboard(THREE_TIER.id, THREE_TIER.reference)
+    const before = snapshot()
+    const shown = useGame.getState().studyReference(THREE_TIER.id)
+    expect(shown?.nodes.map((n) => n.id)).toEqual(THREE_TIER.reference.nodes.map((n) => n.id))
+    expect(useGame.getState().interviews[THREE_TIER.id]?.studied).toBe(true)
+    expect(snapshot()).toEqual(before)
+    expect(useGame.getState().interviews[THREE_TIER.id]).toMatchObject({ verdict: "hire", attempts: 1 })
+  })
+
   it("ranks by cost, then p95", () => {
     const a = { design: empty, costPerMonth: 100, p95Ms: 50 }
     expect(betterBest(undefined, a)).toBe(true)
@@ -195,7 +217,7 @@ describe("practice", () => {
     })
     expect(Object.keys(log).sort()).toEqual([THREE_TIER.id, "static-site"].sort())
     expect(log[THREE_TIER.id]).toMatchObject({ verdict: null, best: { costPerMonth: 700, p95Ms: 40 } })
-    expect(log["static-site"]).toEqual({ verdict: "hire", attempts: 2, design: empty, asked: [], nudges: [], hints: [] })
+    expect(log["static-site"]).toEqual({ verdict: "hire", attempts: 2, design: empty, asked: [], nudges: [], hints: [], stars: 0, studied: false })
   })
 })
 
@@ -295,9 +317,9 @@ describe("questions, nudges, hints and offers", () => {
     expect(hint).not.toBeNull()
     const [noDb, enterprise] = HELLO.naive
     expect(kindOf(noDb.design)).toBe("noHire")
-    expect(records()[HELLO.id]).toMatchObject({ attempts: 1, asked: ["traffic", "speed", "uptime"], nudges: ["budget"], hints: [hint] })
+    expect(records()[HELLO.id]).toMatchObject({ attempts: 1, asked: ["traffic", "speed", "uptime", "features"], nudges: ["budget"], hints: [hint] })
     expect(kindOf(enterprise.design)).toBe("noHire")
-    expect(records()[HELLO.id]).toMatchObject({ attempts: 2, asked: ["traffic", "speed", "uptime", "budget"], nudges: ["budget"], hints: [hint] })
+    expect(records()[HELLO.id]).toMatchObject({ attempts: 2, asked: ["traffic", "speed", "uptime", "features", "budget"], nudges: ["budget"], hints: [hint] })
     expect(kindOf(HELLO.strongHire)).toBe("strongHire")
     expect(records()[HELLO.id]?.offer).toEqual({ band: "bottom", bonus: 0 })
   })
@@ -347,7 +369,9 @@ describe("questions, nudges, hints and offers", () => {
       nudges: ["p95"],
       hints: ["Add an API server."],
       offer: { band: "top", bonus: 14_400 },
+      stars: 0,
+      studied: false,
     })
-    expect(log[THREE_TIER.id]).toEqual({ verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] })
+    expect(log[THREE_TIER.id]).toEqual({ verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [], stars: 0, studied: false })
   })
 })

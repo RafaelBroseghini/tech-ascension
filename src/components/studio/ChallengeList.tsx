@@ -1,6 +1,7 @@
 import { memo } from "react"
 import { INTERVIEWS } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
+import { Stars } from "./Stars.tsx"
 import { jobOf, reachable, statusLine, useStatuses } from "./status.ts"
 
 /** The interviews the career has reached, each with its job and the verdict so far. Locked ones are not listed. */
@@ -38,6 +39,7 @@ export const ChallengeList = memo(function ChallengeList({ activeId, onPick }: {
               <span className="studio-list-name">{interview.name}</span>
               <span className="studio-list-job">{jobOf(interview)?.name}</span>
               <span className={`studio-list-status is-${status}`}>{statusLine(status, interview, log)}</span>
+              {status !== "open" ? <Stars value={log[interview.id]?.stars ?? 0} testid="studio-list-stars" /> : null}
             </button>
           </li>
         ))}

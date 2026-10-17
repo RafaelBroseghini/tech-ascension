@@ -15,8 +15,10 @@ describe("save: interviews", () => {
         nudges: ["success" as const],
         hints: ["Add an API server (Hamster Wheel API)."],
         offer: { band: "bottom" as const, bonus: 0 },
+        stars: 2 as const,
+        studied: true,
       },
-      "3-tier-app": { verdict: "noHire" as const, attempts: 1, design: INTERVIEWS[1]!.naive[0].design, asked: [], nudges: [], hints: [] },
+      "3-tier-app": { verdict: "noHire" as const, attempts: 1, design: INTERVIEWS[1]!.naive[0].design, asked: [], nudges: [], hints: [], stars: 0 as const, studied: false },
     }
     const text = JSON.stringify({ ...freshSave(1_000), interviews })
     expect(parseSave(JSON.parse(text))?.interviews).toEqual(interviews)
@@ -42,7 +44,7 @@ describe("save: interviews", () => {
         "3-tier-app": { verdict: "hire", attempts: -4, design: { nodes: [{ id: "x", kind: "mainframe", replicas: 1 }], edges: "nope" } },
       },
     }
-    expect(parseSave(raw)?.interviews).toEqual({ "3-tier-app": { verdict: "hire", attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] } })
+    expect(parseSave(raw)?.interviews).toEqual({ "3-tier-app": { verdict: "hire", attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [], stars: 0, studied: false } })
   })
 
   it("leaves the block out when there is nothing in it", () => {

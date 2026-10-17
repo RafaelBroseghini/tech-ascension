@@ -2,16 +2,25 @@ import { applyEdgeChanges, applyNodeChanges } from "@xyflow/react"
 import type { Connection, Edge, EdgeChange, Node, NodeChange, XYPosition } from "@xyflow/react"
 import { create } from "zustand"
 import type { Interview } from "../../data/studio/challenges.ts"
+import { refusal } from "../../data/studio/components.ts"
 import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
-import { THE_USERS_ALONE } from "../../game/studio/interviews.ts"
+import { interviewById, startDesign } from "../../game/studio/interviews.ts"
 import type { Offer } from "../../game/studio/interviews.ts"
-import type { Verdict } from "../../game/studio/score.ts"
+import { starsOf } from "../../game/studio/score.ts"
+import type { Stars, Verdict } from "../../game/studio/score.ts"
 import type { ComponentKind, Design, RunResult } from "../../game/studio/types.ts"
-import { edgeId, leafPaths, placeDesign, snap } from "./diagram.ts"
+import { cellAt, cellOf, edgeId, freeCell, leafPaths, placeDesign, positionOf, sameCell } from "./diagram.ts"
+import type { Cell } from "./diagram.ts"
+import { trayLimit } from "./kinds.ts"
 import type { TrafficPath } from "./diagram.ts"
 
-export type NodeData = { readonly kind: ComponentKind; readonly replicas: number }
+export type NodeData = {
+  readonly kind: ComponentKind
+  readonly replicas: number
+  /** Placed by the interview: it cannot be removed. */
+  readonly locked?: boolean
+}
 export type BoardNode = Node<NodeData, "component">
 export type BoardEdge = Edge
 
@@ -28,6 +37,8 @@ export interface Run {
   readonly penalty: number
   /** The offer a real pass earned; null for a No hire and for practice. */
   readonly offer: Offer | null
+  /** Stars this run earned. */
+  readonly stars: Stars
   readonly result: RunResult
   /** The board that was sent, so the report can name its nodes after the board changes. */
   readonly design: Design
@@ -36,6 +47,16 @@ export interface Run {
   /** The interview's p95 target, which sets how fast the dots travel against `result.p95Ms`. */
   readonly targetP95Ms: number
   /** `edits` when it was sent. */
+  readonly edits: number
+  readonly startedAt: number
+  readonly revealing: boolean
+}
+
+/** Free traffic on the current draft: facts only, so it carries no verdict. */
+export interface Demo {
+  readonly paths: readonly TrafficPath[]
+  readonly p95Ms: number
+  readonly targetP95Ms: number
   readonly edits: number
   readonly startedAt: number
   readonly revealing: boolean
@@ -51,44 +72,57 @@ interface Sheet {
 
 interface BoardState extends Sheet {
   readonly interviewId: string | null
+  /** Why the last wire was refused, until the next edit or a few seconds pass. */
+  readonly notice: string | null
+  /** The last Run traffic on this board. */
+  readonly demo: Demo | null
+  /** The engineers' board is on screen, read-only; `stash` holds the player's own board until they go back. */
+  readonly studying: boolean
+  readonly stash: Pick<Sheet, "nodes" | "edges" | "edits" | "run"> | null
   /** Every interview's sheet, kept while another one is on the board and across closing the whiteboard. */
   readonly sheets: Readonly<Record<string, Sheet>>
 }
 
-export const useBoard = create<BoardState>(() => ({ interviewId: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
+export const useBoard = create<BoardState>(() => ({ interviewId: null, notice: null, demo: null, studying: false, stash: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} }))
 
 let version = 0
 const nextEdit = () => ++version
 
-const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYPosition): BoardNode => ({
+const nodeOf = (id: string, kind: ComponentKind, replicas: number, position: XYPosition, locked = false): BoardNode => ({
   id,
   type: "component",
-  position: { x: snap(position.x), y: snap(position.y) },
-  data: { kind, replicas },
-  deletable: kind !== "users",
+  position: positionOf(cellAt(position.x, position.y)),
+  data: locked ? { kind, replicas, locked } : { kind, replicas },
+  deletable: kind !== "users" && !locked,
 })
 
 const edgeOf = (source: string, target: string): BoardEdge => ({ id: edgeId(source, target), source, target, type: "smoothstep" })
 
 /** A board seeded from a saved submission, laid out the way the desk draws it. */
-export function layout(design: Design): Pick<Sheet, "nodes" | "edges"> {
+export function layout(design: Design, locked: ReadonlySet<string> = new Set()): Pick<Sheet, "nodes" | "edges"> {
   const placed = placeDesign(design)
   return {
-    nodes: placed.nodes.map((n) => nodeOf(n.id, n.kind, n.replicas, n)),
+    nodes: placed.nodes.map((n) => nodeOf(n.id, n.kind, n.replicas, n, locked.has(n.id))),
     edges: placed.edges.map((e) => edgeOf(e.from, e.to)),
   }
 }
 
-/** Shows `interviewId`'s sheet, starting it from `seed` (the last submission) or from The Users alone. */
+/** Shows `interviewId`'s sheet, starting it from `seed` (the last submission) or from The Users and the locked pieces. */
 export function showInterview(interviewId: string, seed: Design | null): void {
-  useBoard.setState((s) => {
-    if (s.interviewId === interviewId) return s
+  const interview = interviewById(interviewId)
+  const locked = new Set(interview?.locked.map((n) => n.id))
+  useBoard.setState((current) => {
+    if (current.interviewId === interviewId) return current
+    // Leaving for another interview puts the player's own board back first.
+    const s = current.studying && current.stash ? { ...current, ...current.stash } : current
     const sheets = s.interviewId ? { ...s.sheets, [s.interviewId]: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run } } : s.sheets
     const kept = sheets[interviewId]
     const edits = nextEdit()
-    if (!kept) return { interviewId, sheets, ...layout(seed && seed.nodes.length > 0 ? seed : THE_USERS_ALONE), edits, run: null }
+    const start = interview ? startDesign(interview) : { nodes: [], edges: [] }
+    const fresh = { interviewId, sheets, notice: null, demo: null, studying: false, stash: null, edits }
+    if (!kept) return { ...fresh, ...layout(seed && seed.nodes.length > 0 ? seed : start, locked), run: null }
     const run = kept.run && kept.run.edits === kept.edits ? { ...kept.run, edits } : kept.run
-    return { interviewId, sheets, nodes: kept.nodes, edges: kept.edges, edits, run }
+    return { ...fresh, nodes: kept.nodes, edges: kept.edges, run }
   })
 }
 
@@ -108,7 +142,16 @@ export function draftOf(s: BoardState): Design {
 /** Moves and selection keep the run on screen; anything that changes the design counts as an edit. */
 export function onNodesChange(changes: NodeChange<BoardNode>[]): void {
   const edit = changes.some((c) => c.type === "remove" || c.type === "add" || c.type === "replace")
-  useBoard.setState((s) => ({ nodes: applyNodeChanges(changes, s.nodes), edits: edit ? nextEdit() : s.edits }))
+  useBoard.setState((s) => {
+    // A piece jumps from cell to cell and never lands on another piece.
+    const kept = changes.flatMap((c) => {
+      if (c.type !== "position" || !c.position) return [c]
+      const cell = cellAt(c.position.x, c.position.y)
+      const blocked = s.nodes.some((n) => n.id !== c.id && sameCell(cellOf(n.position), cell))
+      return blocked ? [] : [{ ...c, position: positionOf(cell) }]
+    })
+    return { nodes: applyNodeChanges(kept, s.nodes), edits: edit ? nextEdit() : s.edits, notice: edit ? null : s.notice }
+  })
 }
 
 export function onEdgesChange(changes: EdgeChange<BoardEdge>[]): void {
@@ -116,26 +159,57 @@ export function onEdgesChange(changes: EdgeChange<BoardEdge>[]): void {
   useBoard.setState((s) => ({ edges: applyEdgeChanges(changes, s.edges), edits: edit ? nextEdit() : s.edits }))
 }
 
+/** Why a wire is refused, in one line; null when the table allows it and the board does not have it yet. */
+export function connectRefusal(c: Pick<Connection, "source" | "target">): string | null {
+  const { nodes } = useBoard.getState()
+  if (!c.source || !c.target || c.source === c.target) return null
+  const from = nodes.find((n) => n.id === c.source)?.data.kind
+  const to = nodes.find((n) => n.id === c.target)?.data.kind
+  if (!from || !to) return null
+  return refusal(from, to)
+}
+
 export function canConnect(c: Pick<Connection, "source" | "target">): boolean {
-  const { nodes, edges } = useBoard.getState()
+  const { edges } = useBoard.getState()
   if (!c.source || !c.target || c.source === c.target) return false
-  if (nodes.find((n) => n.id === c.target)?.data.kind === "users") return false
+  if (connectRefusal(c) !== null) return false
   return !edges.some((e) => e.source === c.source && e.target === c.target)
 }
 
-export function onConnect(c: Connection): void {
-  if (!canConnect(c)) return
-  useBoard.setState((s) => ({ edges: [...s.edges, edgeOf(c.source, c.target)], edits: nextEdit() }))
+/** Says why a dropped wire was refused. A wire that fell on empty canvas, or that the board already has, says nothing. */
+export function explainRefusal(c: Pick<Connection, "source" | "target">): void {
+  const notice = connectRefusal(c)
+  if (notice) useBoard.setState({ notice })
 }
 
-export function addNode(kind: ComponentKind, at: XYPosition): string {
-  const { nodes } = useBoard.getState()
+export const clearNotice = (): void => useBoard.setState({ notice: null })
+
+export function onConnect(c: Connection): void {
+  if (!canConnect(c)) return
+  useBoard.setState((s) => ({ edges: [...s.edges, edgeOf(c.source, c.target)], edits: nextEdit(), notice: null }))
+}
+
+/** How many more of `kind` this board takes: the tray's count for the interview, less what is placed. */
+export function piecesLeft(s: Pick<BoardState, "interviewId" | "nodes">, kind: ComponentKind): number {
+  const interview = s.interviewId ? interviewById(s.interviewId) : undefined
+  if (!interview) return Infinity
+  return trayLimit(interview, kind) - s.nodes.filter((n) => n.data.kind === kind).length
+}
+
+/** Drops a piece into the free cell nearest `at`, or the column of its role when `at` is taken. Null when the tray has none left or the grid is full. */
+export function addNode(kind: ComponentKind, at: XYPosition): string | null {
+  const state = useBoard.getState()
+  if (piecesLeft(state, kind) <= 0) return null
+  const { nodes } = state
+  const cell = freeCell(cellAt(at.x, at.y), nodes.map((n) => cellOf(n.position)) as Cell[])
+  if (!cell) return null
   let n = 1
   while (nodes.some((node) => node.id === `${kind}-${n}`)) n++
   const id = `${kind}-${n}`
   useBoard.setState((s) => ({
-    nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, at), selected: true }],
+    nodes: [...s.nodes.map((node) => (node.selected ? { ...node, selected: false } : node)), { ...nodeOf(id, kind, 1, positionOf(cell)), selected: true }],
     edits: nextEdit(),
+    notice: null,
   }))
   return id
 }
@@ -152,7 +226,8 @@ export function setReplicas(id: string, replicas: number): void {
 
 export function removeNode(id: string): void {
   useBoard.setState((s) => {
-    if (s.nodes.find((n) => n.id === id)?.data.kind === "users") return s
+    const gone = s.nodes.find((n) => n.id === id)
+    if (gone?.data.kind === "users" || gone?.data.locked) return s
     return {
       nodes: s.nodes.filter((n) => n.id !== id),
       edges: s.edges.filter((e) => e.source !== id && e.target !== id),
@@ -161,7 +236,7 @@ export function removeNode(id: string): void {
   })
 }
 
-type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty" | "offer">
+type Judged = Pick<Run, "verdict" | "result" | "practice" | "newBest" | "penalty" | "offer" | "stars">
 
 function startRun(interview: Interview, design: Design, judged: Judged): void {
   const run: Omit<Run, "edits" | "startedAt" | "revealing"> = {
@@ -179,7 +254,16 @@ export function submitBoard(interview: Interview): void {
   const verdict = useGame.getState().submitWhiteboard(interview.id, design)
   if (!verdict) return
   const last = useGame.getState().lastInterview
-  startRun(interview, design, { verdict, result: evaluate(design, interview.scenario), practice: false, newBest: false, penalty: last?.penalty ?? 0, offer: last?.offer ?? null })
+  const result = evaluate(design, interview.scenario)
+  startRun(interview, design, {
+    verdict,
+    result,
+    practice: false,
+    newBest: false,
+    penalty: last?.penalty ?? 0,
+    offer: last?.offer ?? null,
+    stars: starsOf(result, interview.targets, verdict),
+  })
 }
 
 /** Reruns a passed interview against its targets and plays the same reveal. Nothing in the career changes. */
@@ -187,11 +271,64 @@ export function practiceBoard(interview: Interview): void {
   const design = draftOf(useBoard.getState())
   const run = useGame.getState().practiceWhiteboard(interview.id, design)
   if (!run) return
-  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0, offer: null })
+  startRun(interview, design, { verdict: run.verdict, result: run.result, practice: true, newBest: run.newBest, penalty: 0, offer: null, stars: run.stars })
+}
+
+/** Swaps in the engineers' board, read-only, and marks the interview studied. The player's own board waits for `leaveStudy`. */
+export function studyReference(interview: Interview): void {
+  const reference = useGame.getState().studyReference(interview.id)
+  if (!reference) return
+  useBoard.setState((s) =>
+    s.studying
+      ? s
+      : {
+          studying: true,
+          stash: { nodes: s.nodes, edges: s.edges, edits: s.edits, run: s.run },
+          ...layout(reference, new Set(interview.locked.map((n) => n.id))),
+          edits: nextEdit(),
+          run: null,
+          demo: null,
+          notice: null,
+        },
+  )
+}
+
+export function leaveStudy(): void {
+  useBoard.setState((s) => (s.studying && s.stash ? { studying: false, stash: null, nodes: s.stash.nodes, edges: s.stash.edges, run: null, demo: null, edits: nextEdit() } : s))
+}
+
+/**
+ * Plays the current draft's traffic as dots, with a red dot wherever a request dies. It is free and unlimited, allowed
+ * while the interview is open, and shows no verdict, no target and no pass or fail colour.
+ */
+export function runTraffic(interview: Interview): void {
+  const design = draftOf(useBoard.getState())
+  const result = evaluate(design, interview.scenario)
+  const demo: Demo = {
+    paths: leafPaths(design, interview.scenario),
+    p95Ms: result.phases[0].p95Ms,
+    targetP95Ms: interview.targets.p95Ms,
+    edits: useBoard.getState().edits,
+    startedAt: performance.now(),
+    revealing: true,
+  }
+  useBoard.setState({ demo })
+  window.setTimeout(() => useBoard.setState((s) => (s.demo === demo ? { demo: { ...demo, revealing: false } } : s)), REVEAL_MS)
 }
 
 export function endReveal(): void {
-  useBoard.setState((s) => (s.run?.revealing ? { run: { ...s.run, revealing: false } } : s))
+  useBoard.setState((s) => ({
+    run: s.run?.revealing ? { ...s.run, revealing: false } : s.run,
+    demo: s.demo?.revealing ? { ...s.demo, revealing: false } : s.demo,
+  }))
+}
+
+/** What the traffic layer plays now: a Run traffic, else a Submit's reveal, while the board is still the one it ran on. */
+export function playing(s: BoardState): Pick<Demo, "paths" | "p95Ms" | "targetP95Ms" | "startedAt"> | null {
+  if (s.demo?.revealing && s.demo.edits === s.edits) return s.demo
+  const run = s.run
+  if (run?.revealing && run.edits === s.edits) return { paths: run.paths, p95Ms: run.result.p95Ms, targetP95Ms: run.targetP95Ms, startedAt: run.startedAt }
+  return null
 }
 
 /** The run, while the board on screen is still the one it judged. */

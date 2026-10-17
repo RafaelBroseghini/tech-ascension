@@ -293,6 +293,46 @@ test("questions and nudges are free, a hint down-levels the offer, and a Strong 
   expect(game.getState().interviews.records[hello.id]).toMatchObject({ verdict: "hire", asked: ["budget"], offer: null })
 })
 
+test("the whiteboard wires like real infrastructure: forbidden wires are dropped, features are judged, stars and the reference follow a pass", () => {
+  game.reset()
+  const hello = INTERVIEWS.find((row) => row.id === "hello-server")
+  if (!hello) throw new Error("missing interview")
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
+
+  // The functional questions are free like the rest.
+  const before = { xp: game.getState().xp, money: game.getState().money }
+  for (const id of ["features", "mix", "fresh", "durable", "later"]) expect(game.askInterviewer(hello.id, id)).toBe(true)
+  expect({ xp: game.getState().xp, money: game.getState().money }).toEqual(before)
+  expect(game.getState().interviews.records[hello.id]?.asked).toEqual(["features", "mix", "fresh", "durable", "later"])
+
+  // The Users cannot call a database directly: that wire is dropped, so nothing answers and the features break.
+  const direct = { nodes: [{ id: "users", kind: "users" as const, replicas: 1 }, { id: "db", kind: "sql" as const, replicas: 1 }], edges: [{ from: "users", to: "db" }] }
+  const failed = game.submitWhiteboard(hello.id, direct)
+  expect(failed).toMatchObject({ verdict: "noHire" })
+  expect(failed && failed.missed).toContain("features")
+
+  // A forbidden extra wire changes nothing about a design that passes.
+  const sneaky = { nodes: hello.strongHire.nodes, edges: [...hello.strongHire.edges, { from: "users", to: "db" }] }
+  expect(game.submitWhiteboard(hello.id, sneaky)).toMatchObject({ verdict: "strongHire" })
+  expect(game.getState().interviews.records[hello.id]).toMatchObject({ stars: 3, studied: false })
+
+  // A board that works but is dear earns one star, and nothing is lost from the most on record.
+  const dear = hello.naive.find((row) => row.fails === "budget")
+  if (!dear) throw new Error("missing budget design")
+  expect(game.practiceWhiteboard(hello.id, dear.design)).toMatchObject({ passes: false, stars: 1, bestStars: 3, features: { working: 2, total: 2 } })
+  expect(game.practiceWhiteboard(hello.id, direct)).toMatchObject({ stars: 0, bestStars: 3 })
+
+  // The engineers' board opens only after a pass, and marks the interview studied.
+  game.reset()
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
+  expect(game.studyReference(hello.id)).toBe(false)
+  game.forceInterview(hello.id)
+  expect(game.studyReference(hello.id)).toMatchObject({ nodes: hello.reference.nodes })
+  expect(game.getState().interviews.records[hello.id]).toMatchObject({ studied: true })
+})
+
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
   game.reset()
   const first = SKILL_TIERS[0]

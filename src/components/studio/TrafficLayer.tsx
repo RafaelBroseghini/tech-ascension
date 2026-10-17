@@ -1,11 +1,11 @@
 import { useReactFlow } from "@xyflow/react"
 import { useReducedMotion } from "motion/react"
 import { useEffect, useRef } from "react"
-import { REVEAL_MS, useBoard } from "./boardStore.ts"
+import { playing, REVEAL_MS, useBoard } from "./boardStore.ts"
 import type { BoardEdge, BoardNode } from "./boardStore.ts"
 import { edgeId } from "./diagram.ts"
 import type { TrafficPath } from "./diagram.ts"
-import { animate, dotsAt, laneOf, paintDots, stillDots, travelMs } from "./traffic.ts"
+import { animate, dotsAt, fractionAt, laneOf, paintDots, stillDots, travelMs } from "./traffic.ts"
 import type { Lane, Pt } from "./traffic.ts"
 
 /** Corner points of one drawn edge, in board coordinates, read from the edge's `d`. Null while the edge is not on screen. */
@@ -23,13 +23,19 @@ function lanesOf(root: HTMLElement, paths: readonly TrafficPath[]): Lane[] {
   const lanes: Lane[] = []
   for (const path of paths) {
     const points: Pt[] = []
+    const reach = [0]
     let drawn = path.nodes.length > 1
     for (let i = 1; i < path.nodes.length && drawn; i++) {
       const edge = edgePoints(root, edgeId(path.nodes[i - 1], path.nodes[i]))
-      if (edge) points.push(...(points.length > 0 ? edge.slice(1) : edge))
-      else drawn = false
+      if (edge) {
+        points.push(...(points.length > 0 ? edge.slice(1) : edge))
+        reach.push(points.length - 1)
+      } else drawn = false
     }
-    if (drawn) lanes.push(laneOf(points, Math.max(1, Math.min(8, Math.round(path.share * 8)))))
+    if (!drawn) continue
+    const lane = laneOf(points, Math.max(1, Math.min(8, Math.round(path.share * 8))))
+    const dead = path.dies ? { at: fractionAt(lane, reach[Math.min(path.dies.at, reach.length - 1)]), share: path.dies.share } : null
+    lanes.push({ ...lane, dead })
   }
   return lanes
 }
@@ -40,7 +46,7 @@ function lanesOf(root: HTMLElement, paths: readonly TrafficPath[]): Lane[] {
  */
 export function TrafficLayer() {
   const canvas = useRef<HTMLCanvasElement>(null)
-  const revealing = useBoard((s) => Boolean(s.run?.revealing && s.run.edits === s.edits))
+  const revealing = useBoard((s) => playing(s) !== null)
   const reduced = useReducedMotion()
   const rf = useReactFlow<BoardNode, BoardEdge>()
 
@@ -50,13 +56,18 @@ export function TrafficLayer() {
     if (!revealing || !el || !ctx) return
     const root = el.closest<HTMLElement>(".react-flow")
     if (!root) return
-    const color = getComputedStyle(el).color
-    let cache: { nodes: unknown; edges: unknown; lanes: Lane[] } | null = null
+    const style = getComputedStyle(el)
+    const color = style.color
+    const deadColor = style.getPropertyValue("--traffic-dead").trim() || "#f38ba8"
+    let cache: { nodes: unknown; edges: unknown; paths: unknown; lanes: Lane[] } | null = null
 
     const stop = animate((now) => {
       const s = useBoard.getState()
-      if (!s.run?.revealing) return false
-      if (!cache || cache.nodes !== s.nodes || cache.edges !== s.edges) cache = { nodes: s.nodes, edges: s.edges, lanes: lanesOf(root, s.run.paths) }
+      const play = playing(s)
+      if (!play) return false
+      if (!cache || cache.nodes !== s.nodes || cache.edges !== s.edges || cache.paths !== play.paths) {
+        cache = { nodes: s.nodes, edges: s.edges, paths: play.paths, lanes: lanesOf(root, play.paths) }
+      }
       const dpr = window.devicePixelRatio || 1
       const w = el.clientWidth
       const h = el.clientHeight
@@ -67,15 +78,15 @@ export function TrafficLayer() {
       const v = rf.getViewport()
       ctx.setTransform(dpr * v.zoom, 0, 0, dpr * v.zoom, dpr * v.x, dpr * v.y)
       ctx.fillStyle = color
-      const elapsed = now - s.run.startedAt
+      const elapsed = now - play.startedAt
       if (reduced) {
         ctx.globalAlpha = 0.35 + 0.35 * Math.sin((elapsed / REVEAL_MS) * Math.PI * 4)
-        for (const lane of cache.lanes) paintDots(ctx, stillDots(lane), 3.5)
+        for (const lane of cache.lanes) paintDots(ctx, stillDots(lane), 3.5, deadColor)
       } else {
         ctx.globalAlpha = 1
-        const { p95Ms } = s.run.result
-        const travel = travelMs(p95Ms, s.run.targetP95Ms)
-        for (const lane of cache.lanes) paintDots(ctx, dotsAt(lane, elapsed, travel, !Number.isFinite(p95Ms)), 3.5)
+        const { p95Ms } = play
+        const travel = travelMs(p95Ms, play.targetP95Ms)
+        for (const lane of cache.lanes) paintDots(ctx, dotsAt(lane, elapsed, travel, !Number.isFinite(p95Ms)), 3.5, deadColor)
       }
       return true
     })

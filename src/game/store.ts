@@ -63,7 +63,8 @@ import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
 import { betterBest, bestOf, copyDesign, interviewById, interviewPassed, isPass, NO_RECORD, noHirePenalty, offerFor, practice, withRecord } from "./studio/interviews.ts"
 import type { InterviewLog, PracticeRun, Submission } from "./studio/interviews.ts"
-import type { Verdict } from "./studio/score.ts"
+import { starsOf } from "./studio/score.ts"
+import type { Stars, Verdict } from "./studio/score.ts"
 import type { Design, TargetName } from "./studio/types.ts"
 import { nextHint } from "./studio/hints.ts"
 import { QUESTION_FOR, questionsFor } from "../data/studio/questions.ts"
@@ -206,6 +207,11 @@ type GameState = {
    * the board covers the reference or the interview is not open.
    */
   takeHint: (interviewId: string, design: Design) => string | null
+  /**
+   * Look at the engineers' board for a passed interview. Marks the interview studied and returns the reference design;
+   * null while the interview is unknown or not passed. It changes nothing else in the career.
+   */
+  studyReference: (interviewId: string) => Design | null
   /** Record a pass now, bypassing every gate (tests and the harness). False for an unknown or already passed id. */
   forceInterview: (interviewId: string) => boolean
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
@@ -594,9 +600,11 @@ export const useGame = create<GameState>((set, get) => ({
     const offer = prior.offer ?? (isPass(verdict.kind) ? offerFor(verdict.kind, prior.hints.length, job.cps) : undefined)
     // A retry should not be a guess: the requirement a No hire missed is told for free.
     const missedAsks = verdict.kind === "noHire" ? verdict.missed.map((m) => QUESTION_FOR[m.target]) : []
+    const stars = Math.max(prior.stars, starsOf(result, interview.targets, verdict)) as Stars
     const interviews = withRecord(state.interviews, interview.id, {
       verdict: verdict.kind,
       attempts,
+      stars,
       design: copyDesign(design),
       asked: [...new Set([...prior.asked, ...missedAsks])],
       ...(best ? { best } : {}),
@@ -631,11 +639,24 @@ export const useGame = create<GameState>((set, get) => ({
     const candidate = bestOf(design, result)
     const newBest = isPass(verdict.kind) && betterBest(prior?.best, candidate)
     const best = newBest ? candidate : prior?.best
-    if (newBest) {
-      set({ interviews: withRecord(state.interviews, interview.id, { best: candidate }) })
+    const stars = starsOf(result, interview.targets, verdict)
+    const bestStars = Math.max(prior?.stars ?? 0, stars) as Stars
+    if (newBest || bestStars !== (prior?.stars ?? 0)) {
+      set({ interviews: withRecord(state.interviews, interview.id, { stars: bestStars, ...(newBest ? { best: candidate } : {}) }) })
       persistNow()
     }
-    return { verdict, result, newBest, best }
+    return { verdict, result, newBest, best, stars, bestStars }
+  },
+
+  studyReference: (interviewId) => {
+    const interview = interviewById(interviewId)
+    const state = get()
+    if (!interview || !interviewPassed(state, interview)) return null
+    if (!state.interviews[interview.id]?.studied) {
+      set({ interviews: withRecord(state.interviews, interview.id, { studied: true }) })
+      persistNow()
+    }
+    return copyDesign(interview.reference)
   },
 
   askInterviewer: (interviewId, questionId) => {

@@ -77,7 +77,7 @@ afterEach(async () => {
   root = null
   closeStudio()
   document.body.replaceChildren()
-  useBoard.setState({ interviewId: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} })
+  useBoard.setState({ interviewId: null, notice: null, nodes: [], edges: [], edits: 0, run: null, sheets: {} })
   useGame.getState().wipe()
   vi.restoreAllMocks()
 })
@@ -130,7 +130,7 @@ describe("whiteboard", () => {
     await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
     const read = () => $$("[data-testid='studio-live-meter']").map((meter) => meter.textContent)
     const before = read()
-    expect($$("[data-testid='studio-live-meter']").map((meter) => meter.dataset.meter)).toEqual(["Money", "Performance", "Availability", "Fault tolerance"])
+    expect($$("[data-testid='studio-live-meter']").map((meter) => meter.dataset.meter)).toEqual(["Money", "Performance", "Availability", "Fault tolerance", "Correctness"])
     await click($("[data-testid='studio-tile'][data-kind='cache']"))
     const after = read()
     expect(after[0]).not.toBe(before[0])
@@ -247,10 +247,159 @@ describe("whiteboard", () => {
     careerAt(60_000, [1])
     await open(THREE_TIER.id)
     const tiles = $$("[data-testid='studio-tile']").map((tile) => tile.dataset.kind)
-    // Skill 1 opens the API and SQL, gigs 1 and 3 the balancer and cache, the internship the replica.
-    expect(tiles).toEqual(["lb", "api", "cache", "sql", "replica"])
+    // Skill 1 opens the API and SQL, gigs 1 and 3 the balancer and cache. The replica is unlocked but no design here uses it.
+    expect(tiles).toEqual(["lb", "api", "cache", "sql"])
+    expect(tiles).not.toContain("replica")
     expect(tiles).not.toContain("users")
     expect(tiles).not.toContain("standby")
+  })
+
+  it("every interview opens with a goal line above the vague opener", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    const goal = $("[data-testid='studio-goal']")
+    expect(goal?.textContent).toBe(THREE_TIER.goal)
+    expect(goal?.nextElementSibling?.getAttribute("data-testid")).toBe("studio-brief")
+  })
+
+  it("after a pass the score shows stars, and Show the reference swaps in a read-only board marked studied", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().forceInterview(THREE_TIER.id)
+    await open(THREE_TIER.id, THREE_TIER.naive[0].design)
+    expect($("[data-testid='studio-stars']")?.dataset.stars).toBe("0")
+    await submitAndSkip()
+    expect(useGame.getState().interviews[THREE_TIER.id]?.stars).toBe(0)
+    expect($("[data-testid='studio-studied']")).toBeNull()
+    await click($("[data-testid='studio-study']"))
+    expect(useGame.getState().interviews[THREE_TIER.id]?.studied).toBe(true)
+    expect($("[data-testid='studio-studying']")).not.toBeNull()
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node).sort()).toEqual(THREE_TIER.reference.nodes.map((n) => n.id).sort())
+    expect($("[data-testid='studio-submit']")?.hasAttribute("disabled")).toBe(true)
+    expect($("[data-node='api'] .studio-node-x")).toBeNull()
+    expect($("[data-node='api'] [aria-label='One more replica']")?.hasAttribute("disabled")).toBe(true)
+    expect($("[data-testid='studio-tile'][data-kind='api']")?.hasAttribute("disabled")).toBe(true)
+    await click($("[data-testid='studio-study-back']"))
+    expect($("[data-testid='studio-studying']")).toBeNull()
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node).sort()).toEqual(THREE_TIER.naive[0].design.nodes.map((n) => n.id).sort())
+    expect($("[data-testid='studio-studied']")?.textContent).toBe("Studied")
+  })
+
+  it("a practice run earns stars and the list shows them", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().forceInterview(THREE_TIER.id)
+    await open(THREE_TIER.id, THREE_TIER.strongHire)
+    await click($("[data-testid='studio-submit']"))
+    await act(async () => {
+      $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+    })
+    expect($("[data-testid='studio-run-stars']")?.dataset.stars).toBe("3")
+    expect($("[data-testid='studio-stars']")?.dataset.stars).toBe("3")
+    expect($("[data-testid='studio-interview'][data-interview='3-tier-app'] [data-testid='studio-list-stars']")?.dataset.stars).toBe("3")
+  })
+
+  it("the tray counts what the board still takes and stops at zero", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    const count = (kind: string) => $(`[data-testid='studio-tile'][data-kind='${kind}'] [data-testid='studio-tile-count']`)?.textContent
+    expect(count("api")).toBe("1 of 1")
+    await click($("[data-testid='studio-tile'][data-kind='api']"))
+    expect(count("api")).toBe("0 of 1")
+    expect($("[data-testid='studio-tile'][data-kind='api']")?.hasAttribute("disabled")).toBe(true)
+    expect($$("[data-testid='studio-node'][data-kind='api']")).toHaveLength(1)
+  })
+
+  it("pieces sit one to a cell of a square grid, jump from cell to cell, and never land on each other", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    expect($$("[data-testid='studio-cell']")).toHaveLength(36)
+    await click($("[data-testid='studio-tile'][data-kind='sql']"))
+    await click($("[data-testid='studio-tile'][data-kind='api']"))
+    const { cellOf } = await import("./diagram.ts")
+    const { onNodesChange } = await import("./boardStore.ts")
+    const cells = () => useBoard.getState().nodes.map((n) => JSON.stringify(cellOf(n.position)))
+    expect(new Set(cells()).size).toBe(3)
+    const api = useBoard.getState().nodes.find((n) => n.data.kind === "api")!
+    await act(async () => {
+      onNodesChange([{ id: api.id, type: "position", position: { x: 3 * 120 + 30, y: 2 * 120 + 31 } }])
+    })
+    expect(cellOf(useBoard.getState().nodes.find((n) => n.id === api.id)!.position)).toEqual({ col: 3, row: 2 })
+    const users = useBoard.getState().nodes.find((n) => n.data.kind === "users")!
+    await act(async () => {
+      onNodesChange([{ id: api.id, type: "position", position: users.position }])
+    })
+    expect(cellOf(useBoard.getState().nodes.find((n) => n.id === api.id)!.position)).toEqual({ col: 3, row: 2 })
+  })
+
+  it("a wire the table forbids is refused with one line saying why", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id)
+    await click($("[data-testid='studio-tile'][data-kind='sql']"))
+    const { canConnect, connectRefusal, explainRefusal } = await import("./boardStore.ts")
+    const db = useBoard.getState().nodes.find((n) => n.data.kind === "sql")!.id
+    expect(canConnect({ source: "users", target: db })).toBe(false)
+    expect(connectRefusal({ source: "users", target: db })).toBe("Data sits behind a server. The Users can't reach PostgreSloth directly.")
+    await act(async () => {
+      explainRefusal({ source: "users", target: db })
+    })
+    expect($("[data-testid='studio-notice']")?.textContent).toContain("Data sits behind a server")
+    expect(useBoard.getState().edges).toEqual([])
+  })
+
+  it("a locked piece starts on the board and cannot be removed", async () => {
+    const feed = interview("read-heavy-feed")
+    careerAt(160_000, [1, 2, 6, 7, 10, 12])
+    await open(feed.id)
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node)).toEqual(["users", "db"])
+    const { removeNode } = await import("./boardStore.ts")
+    await act(async () => {
+      removeNode("db")
+    })
+    expect($$("[data-testid='studio-node']").map((n) => n.dataset.node)).toEqual(["users", "db"])
+    expect($("[data-node='db'] .studio-node-x")).toBeNull()
+  })
+
+  it("Run traffic is free, plays dots on the draft, and shows no verdict or career change", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "One API does it all"))
+    const before = { xp: useGame.getState().xp, interviews: useGame.getState().interviews }
+    await click($("[data-testid='studio-run-traffic']"))
+    expect(useBoard.getState().demo?.revealing).toBe(true)
+    expect(useBoard.getState().demo?.paths.length).toBeGreaterThan(0)
+    expect($("[data-testid='studio-run-traffic']")?.hasAttribute("disabled")).toBe(true)
+    expect($("[data-testid='studio-verdict']")).toBeNull()
+    expect($("[data-testid='studio-run']")).toBeNull()
+    expect(document.body.querySelector(".is-fail, .is-over, .is-hot")).toBeNull()
+    expect(useGame.getState().xp).toBe(before.xp)
+    expect(useGame.getState().interviews).toBe(before.interviews)
+    // A click on the whiteboard skips it, and the button is back.
+    await act(async () => {
+      $("[data-testid='studio']")?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))
+    })
+    expect(useBoard.getState().demo?.revealing).toBe(false)
+    expect($("[data-testid='studio-run-traffic']")?.hasAttribute("disabled")).toBe(false)
+  })
+
+  it("an edit while traffic runs stops it", async () => {
+    careerAt(60_000, [1])
+    await open(THREE_TIER.id, THREE_TIER.reference)
+    await click($("[data-testid='studio-run-traffic']"))
+    const { playing } = await import("./boardStore.ts")
+    expect(playing(useBoard.getState())).not.toBeNull()
+    await click($("[data-testid='studio-node'][data-kind='api'] [aria-label='One more replica']"))
+    expect(playing(useBoard.getState())).toBeNull()
+  })
+
+  it("every piece prints a labelled readout, and a single point of failure wears a badge live", async () => {
+    careerAt(60_000, [1])
+    useGame.getState().askInterviewer(THREE_TIER.id, "traffic")
+    await open(THREE_TIER.id, THREE_TIER.reference)
+    const note = (id: string) => $(`[data-node='${id}'] [data-testid='studio-node-note']`)?.textContent
+    expect(note("api")).toBe("API: 600 of 1,500 rps")
+    expect(note("db")).toMatch(/^SQL: 120 writes\/s of 300/)
+    expect($$("[data-testid='studio-spof']").map((badge) => badge.closest<HTMLElement>("[data-node]")?.dataset.node).sort()).toEqual(["db", "lb"])
+    expect($("[data-node='api'] [data-testid='studio-node-plan']")?.textContent).toContain("reads try Redish and PostgreSloth")
+    // Nothing about the budget or the verdict leaks onto a node.
+    expect($$("[data-testid='studio-node']").map((n) => n.textContent).join(" ")).not.toMatch(/\$800|budget|pass|fail/i)
   })
 
   it("Run shows the hot node", async () => {
@@ -437,7 +586,7 @@ describe("questions, nudges, hints and the offer letter", () => {
     expect($("[data-testid='studio-offer']")).toBeNull()
     expect($("[data-testid='studio-run-passbar']")).toBeNull()
     const asked = $$("[data-testid='studio-note'][data-asked='true']").map((note) => note.dataset.question)
-    expect(asked).toEqual(["traffic", "speed", "uptime"])
+    expect(asked).toEqual(["traffic", "features", "speed", "uptime"])
     // The budget was never asked and never missed: no target line for it, in the live panel or the report.
     expect(document.body.textContent).not.toContain("budget $500")
   })

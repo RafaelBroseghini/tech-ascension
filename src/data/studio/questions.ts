@@ -1,8 +1,21 @@
-import type { Fault, Mix, RequestType, TargetName } from "../../game/studio/types.ts"
+import type { Fault, Feature, RequestType, TargetName } from "../../game/studio/types.ts"
 import type { Interview } from "./challenges.ts"
 import { COMPONENTS } from "./components.ts"
 
-export type QuestionId = "traffic" | "mix" | "cache" | "fanout" | "speed" | "uptime" | "budget" | "lag" | "faults"
+export type QuestionId =
+  | "traffic"
+  | "features"
+  | "mix"
+  | "fresh"
+  | "durable"
+  | "later"
+  | "cache"
+  | "fanout"
+  | "speed"
+  | "uptime"
+  | "budget"
+  | "lag"
+  | "faults"
 
 export interface Question {
   readonly id: QuestionId
@@ -20,17 +33,22 @@ const percent = (x: number) => `${Number((x * 100).toFixed(2))}%`
 const count = (n: number) => n.toLocaleString("en-US")
 
 const REQUEST_NAMES: Readonly<Record<RequestType, string>> = {
-  read: "reads",
-  write: "writes",
-  static: "file requests",
-  fanout: "posts sent to followers",
-  message: "chat messages",
-  upload: "uploads",
+  read: "a read",
+  write: "a write",
+  static: "a file request",
+  fanout: "a post sent to every follower",
+  message: "a chat message",
+  upload: "an upload",
 }
 
-function mixLine(mix: Mix): string {
-  const parts = (Object.keys(mix) as RequestType[]).map((type) => `${percent(mix[type] ?? 0)} ${REQUEST_NAMES[type]}`)
-  return `${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0]}.`
+const bullets = (lines: readonly string[]) => lines.map((line) => `• ${line}`).join("\n")
+
+const storiesOf = (features: readonly Feature[], pick: (feature: Feature) => boolean) => features.filter(pick).map((feature) => feature.story)
+
+/** A list answer, or the line to give when no feature qualifies. */
+const listed = (features: readonly Feature[], pick: (feature: Feature) => boolean, some: string, none: string) => {
+  const stories = storiesOf(features, pick)
+  return stories.length > 0 ? `${some}\n${bullets(stories)}` : none
 }
 
 function faultLine(fault: Fault): string {
@@ -63,10 +81,57 @@ const ROWS: readonly Question[] = [
     reveals: [],
   },
   {
+    id: "features",
+    topic: "What users do",
+    ask: "What can users do?",
+    answer: ({ scenario }) => `Users can:\n${bullets(scenario.features.map((feature) => feature.story))}`,
+    reveals: ["features"],
+  },
+  {
     id: "mix",
-    topic: "Request mix",
-    ask: "What kind of requests?",
-    answer: ({ scenario }) => mixLine(scenario.phases[0].mix),
+    topic: "Reads and writes",
+    ask: "Who reads, and who writes?",
+    answer: ({ scenario }) =>
+      bullets(scenario.features.map((feature) => `${feature.story}: ${REQUEST_NAMES[feature.request]}, ${percent(feature.share)} of requests`)),
+    reveals: [],
+  },
+  {
+    id: "fresh",
+    topic: "Fresh data",
+    ask: "Do users need to see their own changes right away?",
+    answer: ({ scenario }) =>
+      listed(
+        scenario.features,
+        (feature) => feature.consistency === "strong",
+        "Yes, for these. A copy that is a few seconds behind is not good enough:",
+        "No. A few seconds of staleness goes unnoticed.",
+      ),
+    reveals: [],
+  },
+  {
+    id: "durable",
+    topic: "Lost data",
+    ask: "Can we ever lose this data?",
+    answer: ({ scenario }) =>
+      listed(
+        scenario.features,
+        (feature) => feature.durable,
+        "Never, for these. If it only lived in a cache, a restart would take it:",
+        "Yes. Nothing here is worth a restore from backup.",
+      ),
+    reveals: [],
+  },
+  {
+    id: "later",
+    topic: "After the response",
+    ask: "Does anything happen after the response?",
+    answer: ({ scenario }) =>
+      listed(
+        scenario.features,
+        (feature) => feature.async,
+        "Yes. The user can be told it worked before these finish:",
+        "No. Everything has to finish before the answer.",
+      ),
     reveals: [],
   },
   {
@@ -79,7 +144,9 @@ const ROWS: readonly Question[] = [
         ...(scenario.edgeHitRate > 0 ? [`A CDN would answer ${percent(scenario.edgeHitRate)} of the requests that reach it.`] : []),
       ]
       if (parts.length > 0) return parts.join(" ")
-      return "static" in scenario.phases[0].mix ? "Every file is static, so a CDN can serve them." : "Not much. Nearly every request needs a fresh answer."
+      return scenario.features.some((feature) => feature.request === "static")
+        ? "Every file is static, so a CDN can serve them."
+        : "Not much. Nearly every request needs a fresh answer."
     },
     reveals: [],
   },
@@ -147,6 +214,7 @@ export const QUESTION_FOR: Readonly<Record<TargetName, QuestionId>> = {
   lag: "lag",
   availability: "uptime",
   faults: "faults",
+  features: "features",
 }
 
 /** The targets the player knows from the questions asked. */
