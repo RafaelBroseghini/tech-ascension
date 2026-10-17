@@ -14,6 +14,7 @@ import { ChallengeList } from "./ChallengeList.tsx"
 import { reachable, useStatuses } from "./status.ts"
 import type { InterviewStatus, ReachableStatus } from "./status.ts"
 import { closeStudio, openStudio } from "./launcher.ts"
+import { Notes } from "./Notes.tsx"
 import { Palette } from "./Palette.tsx"
 import { RunMeters } from "./RunMeters.tsx"
 
@@ -52,7 +53,10 @@ function Room({ interview, status }: { interview: Interview; status: ReachableSt
     <>
       <ChallengeList activeId={interview.id} onPick={openStudio} />
       <main className="studio-main">
-        {shown ? <Board key={interview.id} /> : <div className="studio-board" />}
+        <div className="studio-stage">
+          <Notes interview={interview} />
+          {shown ? <Board key={interview.id} /> : <div className="studio-board" />}
+        </div>
         <Palette career={career} />
       </main>
       <aside className="studio-side">

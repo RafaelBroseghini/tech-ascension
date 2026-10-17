@@ -3,8 +3,12 @@ import type { Challenge, ComponentKind, Design, NaiveDesign, Phase, Scenario, Ta
 /** A whiteboard interview: one challenge that gates one job. */
 export interface Interview extends Challenge {
   readonly jobId: number
-  /** The interviewer's prompt, ending with every target in numbers. */
-  readonly brief: string
+  /** The interviewer's vague first line. It carries no numbers; the questions bring them out. */
+  readonly opener: string
+  /** Every target in numbers, shown once the interview is answered in full. */
+  readonly passBar: string
+  /** A question per distinct target a naive design misses. It names the problem and never the component. */
+  readonly nudges: Readonly<Partial<Record<TargetName, string>>>
   /** Passes at half the budget or less, so the top verdict is reachable. */
   readonly strongHire: Design
 }
@@ -40,15 +44,14 @@ function passBar(targets: Targets, queued: boolean): string {
   return `To pass: ${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}.`
 }
 
-interface Draft extends Omit<Interview, "brief" | "strongHire"> {
-  readonly prompt: string
+interface Draft extends Omit<Interview, "passBar" | "strongHire"> {
   /** Left out when the reference already earns a Strong hire. */
   readonly strongHire?: Design
 }
 
-function interview({ prompt, strongHire, ...rest }: Draft): Interview {
+function interview({ strongHire, ...rest }: Draft): Interview {
   const queued = rest.reference.nodes.some((n) => n.kind === "queue")
-  return { ...rest, strongHire: strongHire ?? rest.reference, brief: `${prompt} ${passBar(rest.targets, queued)}` }
+  return { ...rest, strongHire: strongHire ?? rest.reference, passBar: passBar(rest.targets, queued) }
 }
 
 const calm = (name: string, rps: number, mix: Phase["mix"]): Phase => ({ name, seconds: 60, rps, mix })
@@ -64,8 +67,11 @@ const HELLO_SERVER = interview({
   id: "hello-server",
   name: "Hello server",
   jobId: 1,
-  prompt:
-    "Your first app gets 200 requests a second, 80% reads and 20% writes. Put an API in front of a database and keep the lights on.",
+  opener: "Any questions before you start?",
+  nudges: {
+    success: "What happens to a request when there is nowhere to keep the data?",
+    budget: "Would finance sign off on a rack of servers for a demo?",
+  },
   scenario: scenario([calm("Demo day", 200, { read: 0.8, write: 0.2 })]),
   targets: { successRate: 0.99, p95Ms: 100, maxLagSeconds: 10, availability: 0.99, budgetPerMonth: 500 },
   reference: board({ users: "users", api: "api", db: "sql" }, "users>api>db"),
@@ -85,8 +91,11 @@ const THREE_TIER = interview({
   id: "3-tier-app",
   name: "3-tier app",
   jobId: 2,
-  prompt:
-    "A shop gets 600 requests a second, 80% reads. A cache would answer 70% of reads. Halfway through, the intern reboots one API server, and nobody should notice.",
+  opener: "A shop is growing, and the intern has prod access. Ask what you need before you draw.",
+  nudges: {
+    p95: "How long does a customer wait if one machine does everything?",
+    faults: "What happens when the intern reboots one of your servers?",
+  },
   scenario: scenario(
     [
       { name: "Monday morning", seconds: 60, ...THREE_TIER_PHASE },
@@ -112,8 +121,11 @@ const STATIC_SITE = interview({
   id: "static-site",
   name: "Static site",
   jobId: 6,
-  prompt:
-    "A marketing site serves 6,000 page and image requests a second, all of them files that never change. Then it hits the front page and traffic doubles.",
+  opener: "Marketing wants a launch site. Ask what you need.",
+  nudges: {
+    success: "Can one storage bucket keep up when the whole internet shows up at once?",
+    budget: "Do files that never change need a whole fleet of machines?",
+  },
   scenario: scenario([
     calm("Launch", 6000, { static: 1 }),
     { name: "Front page", seconds: 30, rps: 6000, mix: { static: 1 }, fault: { kind: "spike", multiplier: 2 } },
@@ -136,8 +148,11 @@ const URL_SHORTENER = interview({
   id: "url-shortener",
   name: "URL shortener",
   jobId: 7,
-  prompt:
-    "Short links get 2,000 requests a second. 96% follow a link and 4% create one. A cache would answer 90% of lookups, and a CDN 80% of them. A celebrity tweets a link and traffic triples for half a minute.",
+  opener: "People want short links. Ask what you need before you draw.",
+  nudges: {
+    success: "How many lookups can a database take if every click goes straight to it?",
+    faults: "What happens when a link goes viral and nobody warned you?",
+  },
   scenario: scenario(
     [
       { name: "Launch day", seconds: 60, ...SHORTENER_PHASE },
@@ -182,8 +197,12 @@ const PASTEBIN = interview({
   id: "pastebin",
   name: "Pastebin",
   jobId: 10,
-  prompt:
-    "People paste and read text, 2,000 requests a second, 90% reads. Pastes are files, so keep them somewhere cheap. A cache would answer 80% of reads, until someone empties it.",
+  opener: "A site for people who paste a lot. What do you want to know?",
+  nudges: {
+    p95: "How fast can you read a paste if every read goes to storage?",
+    faults: "What happens the moment whatever answers most reads forgets everything?",
+    availability: "What takes you down when a single machine at the front falls over?",
+  },
   scenario: scenario(
     [
       { name: "Paste day", seconds: 60, ...PASTE_PHASE },
@@ -223,8 +242,13 @@ const IMAGE_UPLOAD = interview({
   id: "image-upload",
   name: "Image upload",
   jobId: 12,
-  prompt:
-    "A photo app takes 2,000 requests a second, 80% views and 20% uploads that need resizing. Resizing is slow work the uploader should not wait for. A cache would answer 80% of views. On Sunday night everyone uploads at once and traffic doubles for half a minute.",
+  opener: "A photo app has outgrown its server. Ask away.",
+  nudges: {
+    faults: "Who is waiting while a photo gets resized?",
+    success: "What happens to uploads that need resizing and have nowhere to go?",
+    lag: "What if resizing falls behind?",
+    budget: "Could the same traffic be served with far less hardware?",
+  },
   scenario: scenario(
     [
       { name: "Weekend photos", seconds: 60, ...UPLOAD_PHASE },
@@ -280,8 +304,12 @@ const READ_HEAVY_FEED = interview({
   id: "read-heavy-feed",
   name: "Read-heavy feed",
   jobId: 14,
-  prompt:
-    "A news feed serves 5,000 requests a second and 96% of them are reads. A cache would answer 60% of reads, and a CDN half of them. One read replica reboots during the interview.",
+  opener: "Design a news feed. What do you need to know first?",
+  nudges: {
+    success: "What happens to one database when every reader asks it directly?",
+    faults: "What happens when one read copy reboots and nothing notices?",
+    budget: "Do you really need that much hardware just to feel safe?",
+  },
   scenario: scenario(
     [
       { name: "Morning scroll", seconds: 60, ...FEED_PHASE },
@@ -349,8 +377,12 @@ const NOTIFICATION_FANOUT = interview({
   id: "notification-fanout",
   name: "Notification fan-out",
   jobId: 16,
-  prompt:
-    "A notification service gets 3,000 requests a second. 88% read notifications and 12% send one to 20 followers each. Sending can happen in the background. A cache would answer 80% of reads. A celebrity posts and traffic doubles for half a minute.",
+  opener: "A notification service with a lot of followers. What would you ask?",
+  nudges: {
+    success: "What happens when every notification is written to the database before anyone gets an answer?",
+    lag: "What if sending falls behind during the celebrity post?",
+    faults: "What if the store has no headroom when traffic jumps?",
+  },
   scenario: scenario(
     [
       { name: "Breaking news", seconds: 60, ...NOTIFY_PHASE },
@@ -392,8 +424,13 @@ const WHATSAPP = interview({
   id: "whatsapp",
   name: "WhatsApp",
   jobId: 19,
-  prompt:
-    "A chat app delivers 3,000 messages a second over open connections. Many phones are offline, so messages wait in line until they reconnect. When everyone's phone reconnects, traffic jumps sixfold for 10 seconds.",
+  opener: "A chat app for the whole planet. Ask me anything.",
+  nudges: {
+    success: "Can plain request and response keep up with phones that never hang up?",
+    faults: "What happens to a message when everyone reconnects at once and nothing absorbs the rush?",
+    budget: "What does it cost to size the store for the one worst ten seconds?",
+    availability: "What if the single connection point falls over?",
+  },
   scenario: scenario([
     { name: "Group chat o'clock", seconds: 60, ...CHAT_PHASE },
     { name: "Phones reconnect", seconds: 10, ...CHAT_PHASE, fault: { kind: "spike", multiplier: 6 } },
@@ -438,8 +475,12 @@ const TWITTER_FANOUT = interview({
   id: "twitter-fanout",
   name: "Twitter fan-out",
   jobId: 20,
-  prompt:
-    "A timeline service gets 8,000 requests a second. 95% read a timeline and 5% post to 40 followers each. Write each post into every follower's timeline ahead of time. A cache would answer 80% of reads. Halfway through, bots show up at twice your real traffic.",
+  opener: "A timeline service. What do you need to know before you start?",
+  nudges: {
+    success: "What happens to the database when every post is copied to every follower while the poster waits?",
+    faults: "What happens when bots show up at twice your real traffic?",
+    lag: "What if the background work cannot keep up with the posts?",
+  },
   scenario: scenario(
     [
       { name: "Timeline rush", seconds: 60, ...TIMELINE_PHASE },
@@ -492,8 +533,12 @@ const VIDEO_STREAMING = interview({
   id: "video-streaming",
   name: "Video streaming",
   jobId: 22,
-  prompt:
-    "A video site gets 20,000 requests a second. 87% are video chunks that never change, 7% are video pages, which a CDN can answer half the time, and 6% are uploads that need encoding in the background. Then scrapers arrive at twice your real traffic.",
+  opener: "A video site. Ask what you need.",
+  nudges: {
+    success: "Can one bucket serve every chunk to every viewer?",
+    faults: "What happens when scrapers hit you at twice your real traffic?",
+    p95: "How long does an uploader wait while a video encodes?",
+  },
   scenario: scenario(
     [
       { name: "Season finale", seconds: 60, ...VIDEO_PHASE },
@@ -541,8 +586,12 @@ const GLOBAL_SERVICE = interview({
   id: "global-service",
   name: "Global service",
   jobId: 24,
-  prompt:
-    "A service gets 6,000 requests a second from every continent, 96% reads. A cache would answer 90% of reads. One API server dies, then a whole region goes dark, and the service stays up through both.",
+  opener: "A service for every continent. Ask what you need.",
+  nudges: {
+    faults: "What happens when a whole region goes dark?",
+    availability: "Is extra hardware in one place the same as being up everywhere?",
+    budget: "Do you need a second copy of absolutely everything?",
+  },
   scenario: scenario(
     [
       { name: "Follow the sun", seconds: 60, ...GLOBAL_PHASE },

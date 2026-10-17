@@ -4,6 +4,7 @@ import { SKILL_TIERS } from "../data/phases.ts"
 import { ownedCount } from "../game/economy.ts"
 import { linkedOutProfile } from "../game/linkedout.ts"
 import { useGame } from "../game/store.ts"
+import { bandsByJob } from "../game/studio/interviews.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { createPortal } from "react-dom"
 import type { ResumeDoc, ResumeEntry, ResumeGroup } from "../game/resumeDoc.ts"
@@ -19,6 +20,7 @@ function Entry({ entry, heading }: { entry: ResumeEntry; heading: "h3" | "h4" })
       <p className="resume-meta">{entry.when}</p>
       <p className="resume-meta">{entry.place}</p>
       <p className="resume-summary">{entry.summary}</p>
+      {entry.offer ? <p className="resume-meta" data-testid="resume-offer">{entry.offer}</p> : null}
     </article>
   )
 }
@@ -45,11 +47,12 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
   const gigs = useGame((state) => state.gigs)
   const skills = useGame((state) => state.skills)
   const handle = useGame((state) => state.profile.handle)
+  const interviews = useGame((state) => state.interviews)
   const dialogRef = useRef<HTMLDivElement>(null)
   const linkedOut = useMemo(() => {
     const names = SKILL_TIERS.filter((row) => ownedCount(skills, row.id) > 0).map((row) => row.name)
-    return linkedOutProfile({ jobs, gigs, skills: names })
-  }, [jobs, gigs, skills])
+    return linkedOutProfile({ jobs, gigs, skills: names, bands: bandsByJob(interviews) })
+  }, [jobs, gigs, skills, interviews])
   const where = doc
     ? [doc.location, doc.openToWork && !doc.openToWorkBanner ? "Open to work" : ""]
         .filter((part) => part.length > 0)

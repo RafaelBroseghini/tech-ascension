@@ -42,4 +42,15 @@ describe("resume document", () => {
     expect(text).toContain("Open to work")
     expect(text).toContain("Joined the team as an intern")
   })
+
+  it("carries the offer band under the job whose interview earned one, and nowhere else", () => {
+    const doc = resumeDocument({ ...none, jobs: [1, 2], bands: { 1: "top" } })
+    const [junior, intern] = doc!.experience[0]!.entries
+    expect(intern?.offer).toBe("Offer: top of the band")
+    expect(junior?.offer).toBeNull()
+    expect(resumeMarkdown(doc!)).toContain("*Offer: top of the band*")
+    const down = resumeDocument({ ...none, jobs: [1], bands: { 1: "bottom" } })
+    expect(down!.experience[0]!.entries[0]!.offer).toBe("Offer: bottom of the band, down-leveled")
+    expect(resumeMarkdown(resumeDocument({ ...none, jobs: [1, 2] })!)).not.toContain("Offer:")
+  })
 })

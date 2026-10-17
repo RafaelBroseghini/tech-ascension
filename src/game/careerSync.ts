@@ -74,14 +74,14 @@ type PurchaseState = Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | 
   interviews: InterviewLog
 }
 
-/** Interviews whose record turned into a pass. A No hire is logged where it is judged, with its missed targets. */
+/** Interviews whose record turned into a pass, with the band of the offer it earned. A No hire is logged where it is judged, with its missed targets. */
 function newPasses(before: InterviewLog, after: InterviewLog): CareerNote[] {
   if (before === after) return []
   const notes: CareerNote[] = []
   for (const [id, record] of Object.entries(after)) {
     const was = before[id]
     if (!isPass(record.verdict) || (was && isPass(was.verdict))) continue
-    notes.push({ type: "interview", ref: `interview:${id}`, data: { verdict: record.verdict, attempts: record.attempts } })
+    notes.push({ type: "interview", ref: `interview:${id}`, data: { verdict: record.verdict, attempts: record.attempts, ...(record.offer ? { band: record.offer.band } : {}) } })
   }
   return notes
 }

@@ -142,6 +142,7 @@ describe("whiteboard", () => {
 
   it("the live readout counts requests and names the busiest node, and the run report holds the node lines until the reveal ends", async () => {
     careerAt(60_000, [1])
+    useGame.getState().askInterviewer(THREE_TIER.id, "traffic")
     await open(THREE_TIER.id, NAIVE(THREE_TIER.id, "Two APIs, no spare"))
     const line = (testid: string, key: string) => $(`[data-testid='${testid}'] [data-line='${key}']`)?.textContent
     expect(line("studio-live-readout", "requests")).toBe("72,000 requests over 120 s, peak 600 rps")
@@ -270,7 +271,12 @@ describe("whiteboard", () => {
     await open(SHORTENER.id, SHORTENER_CDN_READS_ONLY)
     const warning = $("[data-testid='studio-unrouted']")
     expect(warning?.dataset.unrouted).toBe("write")
-    expect(warning?.textContent).toContain("writes")
+    // The request mix is an answer the player has to ask for, so the warning names the writes only once it was.
+    expect(warning?.textContent).not.toContain("writes")
+    await act(async () => {
+      useGame.getState().askInterviewer(SHORTENER.id, "mix")
+    })
+    expect($("[data-testid='studio-unrouted']")?.textContent).toContain("writes")
     expect(submit).not.toHaveBeenCalled()
     expect($("[data-testid='studio-run']")).toBeNull()
   })
@@ -338,5 +344,114 @@ describe("whiteboard", () => {
     })
     expect(desk.hasAttribute("inert")).toBe(false)
     expect(document.activeElement).toBe(opener)
+  })
+})
+
+describe("questions, nudges, hints and the offer letter", () => {
+  const HELLO = interview("hello-server")
+  const atHello = () => careerAt(40_000, [])
+  const text = (selector: string) => $(selector)?.textContent ?? ""
+  const targetLines = () => $$("[data-testid='studio-live-meter'] .studio-meter-target").map((el) => el.textContent)
+  const bars = () => $$("[data-testid='studio-live-meter'] .studio-meter-bar").length
+
+  it("a new interview shows only the opener, blank notes, no target line and no budget", async () => {
+    atHello()
+    await open(HELLO.id)
+    expect(text("[data-testid='studio-brief']")).toBe("Any questions before you start?")
+    const notes = $$("[data-testid='studio-note']")
+    expect(notes.map((note) => note.dataset.asked)).toEqual(Array(notes.length).fill("false"))
+    expect(notes.every((note) => note.classList.contains("is-blank"))).toBe(true)
+    expect(targetLines()).toEqual([])
+    expect(bars()).toBe(0)
+    expect($("[data-testid='studio-live-readout'] [data-line='requests']")).toBeNull()
+    // Every number a question would give is absent from the page.
+    const page = document.body.textContent ?? ""
+    for (const secret of ["$500", "100 ms", "200 requests", "80% reads"]) expect(page).not.toContain(secret)
+    expect(text("[data-testid='studio-live-meter'][data-meter='Money']")).toMatch(/^Money\$\d+\/mo$/)
+  })
+
+  it("asking fills the note and draws the matching target line, and only that one", async () => {
+    atHello()
+    await open(HELLO.id)
+    await click($("[data-testid='studio-question'][data-question='speed']"))
+    const note = $("[data-testid='studio-note'][data-question='speed']")
+    expect(note?.dataset.asked).toBe("true")
+    expect(note?.textContent).toContain("within 100 ms")
+    expect(targetLines()).toEqual(["99% within 100 ms"])
+    expect($("[data-testid='studio-question'][data-question='speed']")?.hasAttribute("disabled")).toBe(true)
+    await click($("[data-testid='studio-question'][data-question='budget']"))
+    expect(targetLines()).toEqual(["budget $500", "99% within 100 ms"])
+    expect(useGame.getState().interviews[HELLO.id]?.asked).toEqual(["speed", "budget"])
+  })
+
+  it("a nudge lands as a note and costs nothing", async () => {
+    atHello()
+    await open(HELLO.id)
+    const xp = useGame.getState().xp
+    await click($("[data-testid='studio-nudge'][data-target='budget']"))
+    expect($("[data-testid='studio-nudge-note']")?.textContent).toContain(HELLO.nudges.budget)
+    expect(useGame.getState().xp).toBe(xp)
+    expect(useGame.getState().interviews[HELLO.id]?.offer).toBeUndefined()
+  })
+
+  it("the hint button reads its cost first, and a hint lands as a note and drops the pass to the bottom of the band", async () => {
+    atHello()
+    await open(HELLO.id)
+    const button = $("[data-testid='studio-hint']")
+    expect(button?.textContent).toBe("Drops the offer to the bottom of the bandTake a hint")
+    await click(button)
+    expect($("[data-testid='studio-hint-note']")?.textContent).toContain("Add an API server")
+    expect($("[data-testid='studio-hint-cost']")?.textContent).toBe("Already down-leveled, no further drop")
+    // The same board gets the same hint, which is already taken.
+    expect($("[data-testid='studio-hint']")?.hasAttribute("disabled")).toBe(true)
+  })
+
+  it("a Strong hire with no hints shows the offer letter with its bonus, and the money lands", async () => {
+    atHello()
+    const money = useGame.getState().money
+    await open(HELLO.id, HELLO.strongHire)
+    await submitAndSkip()
+    expect($("[data-testid='studio-offer']")?.dataset.band).toBe("top")
+    expect(text("[data-testid='studio-offer-band']")).toBe("Top of the band")
+    expect(text("[data-testid='studio-offer-bonus']")).toBe("Signing bonus $14,400")
+    expect(useGame.getState().money).toBe(money + 14_400)
+    expect(text("[data-testid='studio-run-passbar']")).toBe(HELLO.passBar)
+  })
+
+  it("a pass after a hint reads bottom, down-leveled, with no bonus", async () => {
+    atHello()
+    useGame.getState().takeHint(HELLO.id, { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] })
+    await open(HELLO.id, HELLO.strongHire)
+    await submitAndSkip()
+    expect($("[data-testid='studio-offer']")?.dataset.band).toBe("bottom")
+    expect(text("[data-testid='studio-offer-band']")).toContain("down-leveled")
+    expect($("[data-testid='studio-offer-bonus']")).toBeNull()
+  })
+
+  it("a No hire reveals the missed requirement, keeps earlier answers and names no target it was not told", async () => {
+    atHello()
+    useGame.getState().askInterviewer(HELLO.id, "traffic")
+    await open(HELLO.id, NAIVE(HELLO.id, "Just the API, no database"))
+    await submitAndSkip()
+    expect($("[data-testid='studio-verdict']")?.dataset.verdict).toBe("noHire")
+    expect($("[data-testid='studio-offer']")).toBeNull()
+    expect($("[data-testid='studio-run-passbar']")).toBeNull()
+    const asked = $$("[data-testid='studio-note'][data-asked='true']").map((note) => note.dataset.question)
+    expect(asked).toEqual(["traffic", "speed", "uptime"])
+    // The budget was never asked and never missed: no target line for it, in the live panel or the report.
+    expect(document.body.textContent).not.toContain("budget $500")
+  })
+
+  it("practice after the pass shows every target and leaves the offer alone", async () => {
+    atHello()
+    await open(HELLO.id, HELLO.strongHire)
+    await submitAndSkip()
+    const offer = useGame.getState().interviews[HELLO.id]?.offer
+    expect(text("[data-testid='studio-passbar']")).toBe(HELLO.passBar)
+    expect(targetLines().every((line) => line.length > 0)).toBe(true)
+    await click($("[data-testid='studio-submit']"))
+    expect(useGame.getState().interviews[HELLO.id]?.offer).toBe(offer)
+    expect($("[data-testid='studio-offer']")).toBeNull()
+    expect($("[data-testid='studio-hint']")).toBeNull()
   })
 })

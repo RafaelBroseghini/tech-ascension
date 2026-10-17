@@ -228,6 +228,71 @@ test("an interview gates the Junior SWE job, a No hire costs XP and a pass opens
   expect(game.getState().nextUnlock).toMatchObject({ key: "job:2", name: junior.name, tab: "C", needs: ["pass the whiteboard"] })
 })
 
+test("questions and nudges are free, a hint down-levels the offer, and a Strong hire with no hints signs a bonus", () => {
+  game.reset()
+  const hello = INTERVIEWS.find((row) => row.id === "hello-server")
+  const threeTier = INTERVIEWS.find((row) => row.id === "3-tier-app")
+  const intern = JOB_TIERS.find((job) => job.id === 1)
+  const junior = JOB_TIERS.find((job) => job.id === 2)
+  if (!hello || !threeTier || !intern || !junior) throw new Error("missing interview or job")
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
+
+  // Asking and nudging cost nothing and are idempotent; a question the interview does not ask is refused.
+  const before = { xp: game.getState().xp, money: game.getState().money, log: game.careerLog().length }
+  expect(game.askInterviewer(hello.id, "speed")).toBe(true)
+  expect(game.askInterviewer(hello.id, "speed")).toBe(true)
+  expect(game.askInterviewer(hello.id, "lag")).toBe(false)
+  expect(game.askInterviewer(hello.id, "nonsense")).toBe(false)
+  expect(game.takeNudge(hello.id, "budget")).toBe(true)
+  expect(game.takeNudge(hello.id, "lag")).toBe(false)
+  expect(game.askInterviewer(threeTier.id, "speed")).toBe(false)
+  expect(game.getState().interviews.records[hello.id]).toMatchObject({ verdict: null, attempts: 0, asked: ["speed"], nudges: ["budget"], hints: [], offer: null })
+  expect({ xp: game.getState().xp, money: game.getState().money, log: game.careerLog().length }).toEqual(before)
+
+  // A Strong hire with no hints tops the band and signs 30 minutes of the job's salary, paid as money.
+  const money = game.getState().money
+  const strong = game.submitWhiteboard(hello.id, hello.strongHire)
+  const bonus = 30 * 60 * intern.cps
+  expect(strong).toMatchObject({ verdict: "strongHire", offer: { band: "top", bonus } })
+  expect(game.getState().money).toBe(money + bonus)
+  expect(game.getState().careerLog.last).toMatchObject({ type: "interview", verdict: "strongHire", band: "top" })
+
+  // A pass that took a hint is down-leveled. A No hire in between tells the missed requirement and keeps what was bought.
+  game.setXp(junior.xpReq)
+  const hint = game.takeHint(threeTier.id)
+  expect(hint).toBe("Add a load balancer (Round Robin Hood).")
+  expect(game.takeHint(threeTier.id)).toBe(hint)
+  const naive = threeTier.naive[0]
+  const failed = game.submitWhiteboard(threeTier.id, naive.design)
+  expect(failed).toMatchObject({ verdict: "noHire", offer: null })
+  const record = game.getState().interviews.records[threeTier.id]
+  expect(record).toMatchObject({ attempts: 1, nudges: [], hints: [hint] })
+  expect(record?.asked).toContain("speed")
+  game.askInterviewer(threeTier.id, "traffic")
+  const moneyBeforePass = game.getState().money
+  const down = game.submitWhiteboard(threeTier.id, threeTier.strongHire)
+  expect(down).toMatchObject({ verdict: "strongHire", offer: { band: "bottom", bonus: 0 } })
+  expect(game.getState().money).toBe(moneyBeforePass)
+  expect(game.getState().interviews.records[threeTier.id]).toMatchObject({ attempts: 2, hints: [hint], offer: { band: "bottom", bonus: 0 } })
+
+  // Practice and forceInterview never change a locked-in offer.
+  const offers = () => JSON.stringify([hello.id, threeTier.id].map((id) => game.getState().interviews.records[id]?.offer))
+  const locked = offers()
+  expect(game.practiceWhiteboard(hello.id, hello.reference)).toMatchObject({ passes: true })
+  expect(game.practiceWhiteboard(threeTier.id, threeTier.reference)).toMatchObject({ passes: true })
+  expect(game.forceInterview(hello.id)).toBe(false)
+  expect(offers()).toBe(locked)
+
+  // A forced pass keeps what was asked and never invents an offer.
+  game.reset()
+  game.setXp(JOB_BOARD_UNLOCK.minXp)
+  for (let id = 1; id <= JOB_BOARD_UNLOCK.minGigsCompleted; id++) game.forceGig(id)
+  game.askInterviewer(hello.id, "budget")
+  expect(game.forceInterview(hello.id)).toBe(true)
+  expect(game.getState().interviews.records[hello.id]).toMatchObject({ verdict: "hire", asked: ["budget"], offer: null })
+})
+
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
   game.reset()
   const first = SKILL_TIERS[0]

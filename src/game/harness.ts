@@ -25,8 +25,9 @@ import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
 import { INTERVIEWS } from "../data/studio/challenges.ts"
-import { interviewPassed, parseDesign } from "./studio/interviews.ts"
-import type { Submission, VerdictKind } from "./studio/interviews.ts"
+import { questionById } from "../data/studio/questions.ts"
+import { interviewPassed, parseDesign, TARGET_NAMES, THE_USERS_ALONE } from "./studio/interviews.ts"
+import type { Band, Submission, VerdictKind } from "./studio/interviews.ts"
 import type { Design, TargetName } from "./studio/types.ts"
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
@@ -63,6 +64,23 @@ export type SubmissionSnapshot = {
   missed: TargetName[]
   lines: string[]
   penalty: number
+  /** The offer a pass earned, or null for a No hire. */
+  offer: { band: Band; bonus: number } | null
+}
+
+/** What a career keeps for one interview. */
+export type InterviewRecordSnapshot = {
+  /** Null until the first real Submit. */
+  verdict: VerdictKind | null
+  attempts: number
+  /** Question ids asked, in order. */
+  asked: string[]
+  /** Targets the player took a nudge about, in order. */
+  nudges: TargetName[]
+  /** The paid hints taken, in order. Any of them lowers a pass to the bottom of the band. */
+  hints: string[]
+  /** Set by the Submit that first passed, and never changed after. */
+  offer: { band: Band; bonus: number } | null
 }
 
 /** One practice rerun: whether it clears the interview's targets, what it missed, its numbers, and the best on record after it. */
@@ -85,6 +103,8 @@ export type InterviewsSnapshot = {
   passed: string[]
   /** The latest submission this session, or null. */
   lastVerdict: SubmissionSnapshot | null
+  /** Every interview the player has engaged with (asked, nudged, hinted, submitted, practiced or forced), keyed by interview id. */
+  records: Record<string, InterviewRecordSnapshot>
 }
 
 export type GameSnapshot = {
@@ -206,7 +226,21 @@ export type GameHarness = {
    * shortcut around a real Submit.
    */
   practiceWhiteboard: (interviewId: string, design: Design) => PracticeSnapshot | false
-  /** Record a pass now, bypassing every gate. False for an unknown or already passed id. */
+  /**
+   * Ask the interviewer a question (`traffic`, `mix`, `cache`, `fanout`, `speed`, `uptime`, `budget`, `lag`, `faults`;
+   * `lag` only where the reference has a queue). Free and unlimited; the answer stays. False for an unknown interview
+   * or question, or an interview not reached yet.
+   */
+  askInterviewer: (interviewId: string, questionId: string) => boolean
+  /** Take the free nudge about a target (`budget`, `success`, `p95`, `lag`, `availability`, `faults`). False when the interview has none for it. */
+  takeNudge: (interviewId: string, target: string) => boolean
+  /**
+   * Take the next paid hint for `design` (default: the interview's last submission, else The Users alone), only while
+   * the interview is open. Returns the hint line, or false when the board already covers the reference. Any hint taken
+   * before a pass puts the offer at the bottom of the band.
+   */
+  takeHint: (interviewId: string, design?: Design) => string | false
+  /** Record a pass now, bypassing every gate. Keeps the questions, nudges and hints already taken and never invents an offer. False for an unknown or already passed id. */
   forceInterview: (interviewId: string) => boolean
   buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
   /** Buy a gold skill with spendable XP through its normal gates (lifetime XP, earlier row of its family, price). */
@@ -347,6 +381,7 @@ function submissionSnapshot(submission: Submission): SubmissionSnapshot {
     missed: missed.map((m) => m.target),
     lines: missed.map((m) => m.line),
     penalty: submission.penalty,
+    offer: submission.offer,
   }
 }
 
@@ -358,6 +393,12 @@ function interviewsSnapshot(state: ReturnType<typeof useGame.getState>): Intervi
     }).map((row) => row.id),
     passed: INTERVIEWS.filter((row) => interviewPassed(state, row)).map((row) => row.id),
     lastVerdict: state.lastInterview ? submissionSnapshot(state.lastInterview) : null,
+    records: Object.fromEntries(
+      Object.entries(state.interviews).map(([id, record]) => [
+        id,
+        { verdict: record.verdict, attempts: record.attempts, asked: [...record.asked], nudges: [...record.nudges], hints: [...record.hints], offer: record.offer ?? null },
+      ]),
+    ),
   }
 }
 
@@ -468,6 +509,21 @@ export function installGameHarness(): GameHarness {
         newBest: run.newBest,
         best: run.best ? { costPerMonth: run.best.costPerMonth, p95Ms: run.best.p95Ms } : null,
       }
+    },
+
+    askInterviewer: (interviewId, questionId) => {
+      const question = questionById(questionId)
+      return question ? useGame.getState().askInterviewer(interviewId, question.id) : false
+    },
+
+    takeNudge: (interviewId, target) => {
+      const name = TARGET_NAMES.find((t) => t === target)
+      return name ? useGame.getState().takeNudge(interviewId, name) : false
+    },
+
+    takeHint: (interviewId, design) => {
+      const board = design ? parseDesign(design) : (useGame.getState().interviews[interviewId]?.design ?? THE_USERS_ALONE)
+      return useGame.getState().takeHint(interviewId, board.nodes.length > 0 ? board : THE_USERS_ALONE) ?? false
     },
 
     forceInterview: (interviewId) => useGame.getState().forceInterview(interviewId),

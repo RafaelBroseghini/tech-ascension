@@ -90,4 +90,10 @@ describe("LinkedOut profile", () => {
       expect(Object.values(COMPANIES).some((company) => company.name === org)).toBe(true)
     }
   })
+
+  it("marks the role whose interview carried an offer with its band", () => {
+    const profile = linkedOutProfile({ jobs: [1, 2], gigs: [], bands: { 2: "mid" } })
+    const roles = profile!.experience.flatMap((stint) => stint.roles)
+    expect(roles.map((role) => [role.title, role.offer])).toEqual([["Junior SWE", "mid"], ["Internship offer", undefined]])
+  })
 })

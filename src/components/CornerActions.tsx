@@ -3,6 +3,7 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { useEffect, useMemo, useState } from "react"
 import { resumeDocument } from "../game/resumeDoc.ts"
 import { useGame } from "../game/store.ts"
+import { bandsByJob } from "../game/studio/interviews.ts"
 import { CatRosterButton } from "./CatRosterButton.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
 import { MetricsButton } from "./MetricsButton.tsx"
@@ -25,7 +26,11 @@ export function ResumeButton() {
   const gigs = useGame((state) => state.gigs)
   const [open, setOpen] = useState(false)
   const handle = useGame((state) => state.profile.handle)
-  const doc = useMemo(() => resumeDocument({ skills, equipment, jobs, gigs, handle }), [skills, equipment, jobs, gigs, handle])
+  const interviews = useGame((state) => state.interviews)
+  const doc = useMemo(
+    () => resumeDocument({ skills, equipment, jobs, gigs, handle, bands: bandsByJob(interviews) }),
+    [skills, equipment, jobs, gigs, handle, interviews],
+  )
   // The profile is a career unlock: it arrives with Portfolio site live.
   const unlocked = useFeatureOpen("linkedout")
   const seeFeature = useGame((state) => state.seeFeature)

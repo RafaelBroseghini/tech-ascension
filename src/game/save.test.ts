@@ -7,8 +7,16 @@ const hello = INTERVIEWS[0]!
 describe("save: interviews", () => {
   it("interviews round-trip", () => {
     const interviews = {
-      [hello.id]: { verdict: "hire" as const, attempts: 2, design: hello.reference },
-      "3-tier-app": { verdict: "noHire" as const, attempts: 1, design: INTERVIEWS[1]!.naive[0].design },
+      [hello.id]: {
+        verdict: "hire" as const,
+        attempts: 2,
+        design: hello.reference,
+        asked: ["traffic" as const, "budget" as const],
+        nudges: ["success" as const],
+        hints: ["Add an API server (Hamster Wheel API)."],
+        offer: { band: "bottom" as const, bonus: 0 },
+      },
+      "3-tier-app": { verdict: "noHire" as const, attempts: 1, design: INTERVIEWS[1]!.naive[0].design, asked: [], nudges: [], hints: [] },
     }
     const text = JSON.stringify({ ...freshSave(1_000), interviews })
     expect(parseSave(JSON.parse(text))?.interviews).toEqual(interviews)
@@ -34,7 +42,7 @@ describe("save: interviews", () => {
         "3-tier-app": { verdict: "hire", attempts: -4, design: { nodes: [{ id: "x", kind: "mainframe", replicas: 1 }], edges: "nope" } },
       },
     }
-    expect(parseSave(raw)?.interviews).toEqual({ "3-tier-app": { verdict: "hire", attempts: 0, design: { nodes: [], edges: [] } } })
+    expect(parseSave(raw)?.interviews).toEqual({ "3-tier-app": { verdict: "hire", attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] } })
   })
 
   it("leaves the block out when there is nothing in it", () => {

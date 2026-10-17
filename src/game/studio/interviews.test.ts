@@ -4,7 +4,7 @@ import { JOB_TIERS } from "../../data/phases.ts"
 import { careerJson } from "../careerLog.ts"
 import { jobState } from "../phase.ts"
 import { useGame } from "../store.ts"
-import { betterBest, interviewById, interviewForJob, isPass, noHirePenalty, parseInterviews } from "./interviews.ts"
+import { bandsByJob, betterBest, interviewById, interviewForJob, isPass, noHirePenalty, offerFor, parseInterviews, SIGNING_BONUS_MINUTES } from "./interviews.ts"
 
 const HELLO = interviewById("hello-server")!
 const THREE_TIER = interviewById("3-tier-app")!
@@ -195,6 +195,159 @@ describe("practice", () => {
     })
     expect(Object.keys(log).sort()).toEqual([THREE_TIER.id, "static-site"].sort())
     expect(log[THREE_TIER.id]).toMatchObject({ verdict: null, best: { costPerMonth: 700, p95Ms: 40 } })
-    expect(log["static-site"]).toEqual({ verdict: "hire", attempts: 2, design: empty })
+    expect(log["static-site"]).toEqual({ verdict: "hire", attempts: 2, design: empty, asked: [], nudges: [], hints: [] })
+  })
+})
+
+describe("questions, nudges, hints and offers", () => {
+  const intern = JOB_TIERS.find((job) => job.id === 1)!
+  const state = () => useGame.getState()
+  const records = () => state().interviews
+  /** A career at the Job Board with the internship's interview open. */
+  const atHelloServer = () => {
+    state().wipe()
+    useGame.setState({ xp: 10_000, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [] })
+  }
+  const kindOf = (design: typeof HELLO.reference) => state().submitWhiteboard(HELLO.id, design)?.kind
+
+  beforeEach(atHelloServer)
+
+  it("offerFor: a Strong hire with no hints tops the band and signs 30 minutes of salary, a Hire lands mid, any hint drops to the bottom", () => {
+    expect(offerFor("strongHire", 0, 8)).toEqual({ band: "top", bonus: SIGNING_BONUS_MINUTES * 60 * 8 })
+    expect(offerFor("hire", 0, 8)).toEqual({ band: "mid", bonus: 0 })
+    expect(offerFor("strongHire", 1, 8)).toEqual({ band: "bottom", bonus: 0 })
+    expect(offerFor("hire", 3, 8)).toEqual({ band: "bottom", bonus: 0 })
+  })
+
+  it("a Strong hire with no hints pays the signing bonus once, as money, and logs the band", () => {
+    const money = state().money
+    const kind = kindOf(HELLO.strongHire)
+    expect(kind).toBe("strongHire")
+    expect(records()[HELLO.id]?.offer).toEqual({ band: "top", bonus: 1800 * intern.cps })
+    expect(state().money).toBe(money + 1800 * intern.cps)
+    expect(state().stats.lifetimeEarned).toBeGreaterThanOrEqual(1800 * intern.cps)
+    expect(lastLog()).toMatchObject({ type: "interview", ref: "interview:hello-server", verdict: "strongHire", band: "top" })
+    expect(bandsByJob(records())).toEqual({ 1: "top" })
+  })
+
+  it("a Hire with no hints lands mid and pays no bonus", () => {
+    atJuniorInterview(10_000)
+    const money = state().money
+    expect(state().submitWhiteboard(THREE_TIER.id, THREE_TIER.reference)?.kind).toBe("hire")
+    expect(records()[THREE_TIER.id]?.offer).toEqual({ band: "mid", bonus: 0 })
+    expect(state().money).toBe(money)
+  })
+
+  it("a pass after a paid hint is down-leveled with no bonus, even a Strong hire", () => {
+    expect(state().takeHint(HELLO.id, { nodes: [{ id: "users", kind: "users", replicas: 1 }], edges: [] })).toBe("Add an API server (Hamster Wheel API).")
+    const money = state().money
+    expect(kindOf(HELLO.strongHire)).toBe("strongHire")
+    expect(records()[HELLO.id]?.offer).toEqual({ band: "bottom", bonus: 0 })
+    expect(state().money).toBe(money)
+    expect(lastLog()).toMatchObject({ band: "bottom" })
+  })
+
+  it("questions and nudges are free, idempotent, and never touch the offer, the journal or the XP", () => {
+    const before = [state().xp, state().money, state().journal]
+    expect(state().askInterviewer(HELLO.id, "budget")).toBe(true)
+    expect(state().askInterviewer(HELLO.id, "budget")).toBe(true)
+    expect(state().askInterviewer(HELLO.id, "traffic")).toBe(true)
+    expect(state().takeNudge(HELLO.id, "success")).toBe(true)
+    expect(state().takeNudge(HELLO.id, "success")).toBe(true)
+    expect(records()[HELLO.id]).toMatchObject({ verdict: null, attempts: 0, asked: ["budget", "traffic"], nudges: ["success"], hints: [] })
+    expect([state().xp, state().money, state().journal]).toEqual(before)
+    kindOf(HELLO.strongHire)
+    expect(records()[HELLO.id]?.offer?.band).toBe("top")
+  })
+
+  it("refuses a question the interview does not ask, a nudge it has none for, and an interview not reached", () => {
+    expect(state().askInterviewer(HELLO.id, "lag")).toBe(false)
+    expect(state().takeNudge(HELLO.id, "lag")).toBe(false)
+    expect(state().askInterviewer("no-such-interview", "budget")).toBe(false)
+    expect(state().askInterviewer(THREE_TIER.id, "budget")).toBe(false)
+    expect(state().takeNudge(THREE_TIER.id, "faults")).toBe(false)
+    expect(state().takeHint(THREE_TIER.id, THREE_TIER.reference)).toBeNull()
+    expect(records()).toEqual({})
+  })
+
+  it("a passed interview can still be asked and nudged, but hints are only for an open one", () => {
+    kindOf(HELLO.reference)
+    useGame.setState({ jobs: [1] })
+    expect(state().askInterviewer(HELLO.id, "speed")).toBe(true)
+    expect(state().takeNudge(HELLO.id, "budget")).toBe(true)
+    expect(state().takeHint(HELLO.id, { nodes: [], edges: [] })).toBeNull()
+    expect(records()[HELLO.id]).toMatchObject({ asked: ["speed"], nudges: ["budget"], hints: [] })
+  })
+
+  it("a hint is stored once, as the line shown, and is null when the board covers the reference", () => {
+    const alone = { nodes: [{ id: "users", kind: "users" as const, replicas: 1 }], edges: [] }
+    const line = state().takeHint(HELLO.id, alone)
+    expect(state().takeHint(HELLO.id, alone)).toBe(line)
+    expect(records()[HELLO.id]?.hints).toEqual([line])
+    expect(state().takeHint(HELLO.id, HELLO.reference)).toBeNull()
+    expect(records()[HELLO.id]?.hints).toEqual([line])
+  })
+
+  it("a No hire tells the missed requirement for free and a retry keeps every answer, nudge and hint", () => {
+    state().askInterviewer(HELLO.id, "traffic")
+    state().takeNudge(HELLO.id, "budget")
+    const hint = state().takeHint(HELLO.id, HELLO.naive[0].design)
+    expect(hint).not.toBeNull()
+    const [noDb, enterprise] = HELLO.naive
+    expect(kindOf(noDb.design)).toBe("noHire")
+    expect(records()[HELLO.id]).toMatchObject({ attempts: 1, asked: ["traffic", "speed", "uptime"], nudges: ["budget"], hints: [hint] })
+    expect(kindOf(enterprise.design)).toBe("noHire")
+    expect(records()[HELLO.id]).toMatchObject({ attempts: 2, asked: ["traffic", "speed", "uptime", "budget"], nudges: ["budget"], hints: [hint] })
+    expect(kindOf(HELLO.strongHire)).toBe("strongHire")
+    expect(records()[HELLO.id]?.offer).toEqual({ band: "bottom", bonus: 0 })
+  })
+
+  it("practice after the pass never changes the offer, and neither does forceInterview", () => {
+    kindOf(HELLO.strongHire)
+    useGame.setState({ jobs: [1] })
+    const offer = records()[HELLO.id]?.offer
+    const money = state().money
+    state().practiceWhiteboard(HELLO.id, HELLO.reference)
+    state().practiceWhiteboard(HELLO.id, HELLO.naive[0].design)
+    state().askInterviewer(HELLO.id, "budget")
+    expect(records()[HELLO.id]?.offer).toBe(offer)
+    expect(state().money).toBe(money)
+    expect(state().forceInterview(HELLO.id)).toBe(false)
+  })
+
+  it("forceInterview keeps what was asked, nudged and hinted, and never invents an offer", () => {
+    state().askInterviewer(HELLO.id, "uptime")
+    state().takeNudge(HELLO.id, "success")
+    const hint = state().takeHint(HELLO.id, { nodes: [], edges: [] })
+    expect(state().forceInterview(HELLO.id)).toBe(true)
+    expect(records()[HELLO.id]).toMatchObject({ verdict: "hire", asked: ["uptime"], nudges: ["success"], hints: [hint] })
+    expect(records()[HELLO.id]?.offer).toBeUndefined()
+    expect(lastLog()).toMatchObject({ type: "interview", verdict: "hire" })
+    expect(lastLog()).not.toHaveProperty("band")
+  })
+
+  it("loads asked, nudges, hints and offer, drops unknown ones and a broken offer", () => {
+    const log = parseInterviews({
+      [HELLO.id]: {
+        verdict: "hire",
+        attempts: 1,
+        design: { nodes: [], edges: [] },
+        asked: ["budget", "nope", "budget", 7, "traffic"],
+        nudges: ["p95", "bogus"],
+        hints: ["Add an API server.", "", 4],
+        offer: { band: "top", bonus: 14_400 },
+      },
+      [THREE_TIER.id]: { verdict: null, attempts: 0, design: { nodes: [], edges: [] }, offer: { band: "huge", bonus: 5 } },
+    })
+    expect(log[HELLO.id]).toEqual({
+      verdict: "hire",
+      attempts: 1,
+      design: { nodes: [], edges: [] },
+      asked: ["budget", "traffic"],
+      nudges: ["p95"],
+      hints: ["Add an API server."],
+      offer: { band: "top", bonus: 14_400 },
+    })
+    expect(log[THREE_TIER.id]).toEqual({ verdict: null, attempts: 0, design: { nodes: [], edges: [] }, asked: [], nudges: [], hints: [] })
   })
 })

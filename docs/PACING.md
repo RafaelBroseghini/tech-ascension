@@ -59,6 +59,10 @@ Against the numbers before interviews, at the same tables:
 - **The job ladder takes one more visit.** At `npm run pace -- 3 5 8`, every job is held on day 0.67 instead of 0.33, and the reinvestor's last gear row moves from day 1.67 to 2.00. Senior SWE and capital stay on day 0.33. Lifetime XP passes 160,000 on the first visit, so that interview is already waiting when the second visit starts.
 - **`K` stays 9 and 4.** The best fit moved from 9.19 to 9.19 for the collector and from 4.07 to 4.12 for the reinvestor, which round to the same constants.
 
+### Offers
+
+A pass works out an offer (`offerFor` in `src/game/studio/interviews.ts`). A Strong hire with no paid hints signs a one-time bonus of 30 minutes of the gated job's salary, paid as money; no other pass pays one. The model does not credit it, so `npm run pace` prints the same tables as before offers. As an upper bound, a run of the model that credited the bonus at all twelve interviews, though a Hire pays none, printed the same tables to the digits shown. The first lump is $14,400 (the internship's $8 a second for 30 minutes) and the largest is $7.2 million (Fellow, $4,000 a second).
+
 ## Reading it
 
 - **Leaving is free up to 8 hours.** While your visits are no more than 8 hours apart, `idleShare` is 1 and nothing is wasted. Past that, every extra hour away earns nothing. A night's sleep is fine; a long work day on top of it loses the hours past 8.

@@ -2,9 +2,12 @@ import { memo, useMemo } from "react"
 import type { Interview } from "../../data/studio/challenges.ts"
 import { useGame } from "../../game/store.ts"
 import { evaluate } from "../../game/studio/evaluate.ts"
+import { nextHint } from "../../game/studio/hints.ts"
 import { noHirePenalty } from "../../game/studio/interviews.ts"
 import { faultTally, verdict } from "../../game/studio/score.ts"
 import type { TargetName } from "../../game/studio/types.ts"
+import { allTargets, revealedTargets } from "../../data/studio/questions.ts"
+import { Ask } from "./Ask.tsx"
 import { draftOf, useBoard } from "./boardStore.ts"
 import { money, requestList } from "./kinds.ts"
 import { MeterList } from "./MeterList.tsx"
@@ -16,9 +19,10 @@ import type { ReachableStatus } from "./status.ts"
 const ms = (x: number) => (Number.isFinite(x) ? `${Math.round(x)} ms` : "forever")
 
 /**
- * The interviewer's prompt, the live meters, what the board leaves unrouted, and the Submit button. While the interview
- * is open nothing here says whether the board would pass. Once it is passed the same board is a practice run, and the
- * meters show pass or fail and the best so far.
+ * The interviewer's opener, what the player can ask, the live meters, what the board leaves unrouted, and the Submit
+ * button. While the interview is open nothing here says whether the board would pass, and a meter shows its target
+ * line only for what was asked. Once it is passed the same board is a practice run: every target shows, the meters
+ * show pass or fail, and so does the best so far.
  */
 export const Brief = memo(function Brief({
   interview,
@@ -34,10 +38,18 @@ export const Brief = memo(function Brief({
   // A Submit flips the status the moment it lands; the board keeps reading as the interview until the reveal ends.
   const submitting = useBoard((s) => Boolean(s.run?.revealing && !s.run.practice))
   const best = useGame((s) => s.interviews[interview.id]?.best)
+  const asked = useGame((s) => s.interviews[interview.id]?.asked)
   const practicing = status !== "open" && !submitting
   const result = useMemo(() => evaluate(draft, interview.scenario), [draft, interview])
-  const live = useMemo(() => meters(result, interview.targets, faultTally(result, interview.targets)), [result, interview])
-  const lines = useMemo(() => readout(draft, result, requestCounts(interview.scenario, result).total), [draft, result, interview])
+  const known = useMemo(() => (practicing ? allTargets(interview) : revealedTargets(asked ?? [])), [practicing, asked, interview])
+  const live = useMemo(() => meters(result, interview.targets, faultTally(result, interview.targets), known), [result, interview, known])
+  const hint = useMemo(() => (status === "open" ? nextHint(interview, draft) : null), [status, interview, draft])
+  const knowsTraffic = practicing || (asked?.includes("traffic") ?? false)
+  const knowsMix = practicing || (asked?.includes("mix") ?? false)
+  const lines = useMemo(
+    () => readout(draft, result, knowsTraffic ? requestCounts(interview.scenario, result).total : null),
+    [draft, result, interview, knowsTraffic],
+  )
   const missed = useMemo<ReadonlySet<TargetName> | undefined>(() => {
     if (!practicing) return undefined
     const judged = verdict(result, interview.targets, draft)
@@ -54,8 +66,14 @@ export const Brief = memo(function Brief({
       </p>
       <h2 id="studio-brief-title">{interview.name}</h2>
       <p className="studio-brief-text" data-testid="studio-brief">
-        {interview.brief}
+        {interview.opener}
       </p>
+      {practicing ? (
+        <p className="studio-brief-text" data-testid="studio-passbar">
+          {interview.passBar}
+        </p>
+      ) : null}
+      <Ask interview={interview} status={status} hint={hint} />
       <MeterList meters={live} failed={missed} testid="studio-live-meter" />
       <Readout lines={lines} testid="studio-live-readout" />
       {practicing && best ? (
@@ -63,7 +81,7 @@ export const Brief = memo(function Brief({
       ) : null}
       {unrouted.length > 0 ? (
         <p className="studio-warn" role="status" data-testid="studio-unrouted" data-unrouted={unrouted.join(",")}>
-          {`Unrouted: nothing on this board answers ${requestList(unrouted)}. They will fail.`}
+          {knowsMix ? `Unrouted: nothing on this board answers ${requestList(unrouted)}. They will fail.` : "Unrouted: some requests have nowhere to go. They will fail."}
         </p>
       ) : null}
       <div className="studio-submit-row">
