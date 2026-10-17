@@ -4,7 +4,7 @@ import type { CityRow } from "./tip.ts"
 
 /** What the app is doing right now, in the numbers a status dashboard leads with. */
 export interface AppMetrics {
-  /** Requests a second the clients send. */
+  /** Requests a second the users send. */
   readonly demand: number
   /** Requests a second the gear can serve. */
   readonly capacity: number
@@ -14,7 +14,7 @@ export interface AppMetrics {
   readonly servedShare: number
   /** Demand as a share of capacity; above 1 the app is dropping requests. */
   readonly load: number
-  /** Round trip a request pays, averaged over every client by traffic share. */
+  /** Round trip a request pays, averaged over every city by traffic share. */
   readonly avgMs: number
   /** The trip nine in ten requests beat. */
   readonly p95Ms: number
@@ -62,7 +62,7 @@ export function appMetrics(company: Company, rows: readonly CityRow[]): AppMetri
   }
 }
 
-/** One point of presence and the clients routed to it. */
+/** One point of presence and the cities routed to it. */
 export interface PopRow {
   readonly id: string
   readonly name: string

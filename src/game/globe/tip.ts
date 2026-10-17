@@ -82,7 +82,7 @@ export function describe(target: { readonly kind: "city" | "edge" | "home" | "po
       title: target.kind === "home" ? `${name}, the home region` : `${name}, point of presence`,
       country: CITIES[target.city]?.country,
       lines: [
-        served.length === 0 ? "No clients are routed here yet." : `Serves ${served.length} ${served.length === 1 ? "city" : "cities"}, ${percent(served.reduce((n, r) => n + r.share, 0))} of traffic.`,
+        served.length === 0 ? "No users are routed here yet." : `Serves ${served.length} ${served.length === 1 ? "city" : "cities"}, ${percent(served.reduce((n, r) => n + r.share, 0))} of traffic.`,
         `About ${count(served.reduce((n, r) => n + r.rps, 0))} requests a second, ${Math.round(reach)} ms on average.`,
         lastRun(total),
       ],

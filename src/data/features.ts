@@ -83,7 +83,7 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "studio",
     name: "Your company",
-    blurb: "Your company, on the globe. Every client you sign sends its traffic home.",
+    blurb: "Your company, on the globe. Every gig you clear brings users, and the world is the goal.",
     size: "big",
     trigger: { kind: "skill", id: 1 },
     action: "Try it",

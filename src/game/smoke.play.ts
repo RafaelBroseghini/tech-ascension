@@ -8,7 +8,7 @@ import { advanceCompany, growthFacts } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { useGame } from "./store.ts"
 
-/** The drops the company costs over a span, with viral spikes off. Money tests subtract it so they count the income alone. */
+/** The drops the company costs over a span, with incident rolls off. Money tests subtract it so they count the income alone. */
 const dropsOver = (state: { company: CompanyState; gigs: readonly number[]; equipment: Record<string, number> }, from: number, to: number) =>
   advanceCompany(state.company, growthFacts(state.gigs, state.equipment), from, to, () => 0.999).lost
 

@@ -32,7 +32,7 @@ suite("globe tooltip", () => {
     expect(tip?.title).toBe("Frankfurt, point of presence")
     expect(tip?.country).toBe("DE")
     expect(tip?.lines[0]).toBe("Serves 2 cities, 100% of traffic.")
-    expect(describe({ kind: "home", city: "ashburn" }, eu, null, "Virginia")?.lines[0]).toBe("No clients are routed here yet.")
+    expect(describe({ kind: "home", city: "ashburn" }, eu, null, "Virginia")?.lines[0]).toBe("No users are routed here yet.")
     expect(describe({ kind: "edge", city: "berlin" }, eu, null, "Virginia")?.title).toBe("Berlin to Frankfurt")
     expect(describe({ kind: "city", city: "frankfurt" }, eu, null, "Virginia")?.lines[1]).toBe("10 ms: the server is in this city.")
   })

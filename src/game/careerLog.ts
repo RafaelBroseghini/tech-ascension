@@ -1,4 +1,3 @@
-import { CITIES } from "../data/geo.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
@@ -30,9 +29,6 @@ export const CAREER_TYPES = [
   "return",
   "event",
   "review",
-  "interview", // retired with the whiteboard; kept so older journals still parse
-  "lead", // retired with popularity; kept so older journals still parse
-  "buzz", // retired with popularity; kept so older journals still parse
   "incident",
   "world",
   "milestone",
@@ -190,12 +186,6 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
       return eventById(idOf(entry.ref))?.name ?? entry.ref
     case "review":
       return reviewById(idOf(entry.ref))?.question ?? entry.ref
-    case "interview":
-      return entry.ref.slice("interview:".length)
-    case "lead":
-      return CITIES[entry.ref.slice("lead:".length)]?.name ?? entry.ref
-    case "buzz":
-      return "Front-page mention"
     case "incident":
       return INCIDENTS[entry.ref.slice("incident:".length) as IncidentKind]?.name ?? entry.ref
     case "world":
@@ -285,12 +275,6 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: name, detail: data.accepted === true ? "event · took it" : "event · passed", tone: "event" }
     case "review":
       return { title: "1:1", detail: typeof data.choice === "string" ? `answered: ${data.choice}` : "left without a reply", tone: "event" }
-    case "interview":
-      return { title: name, detail: "whiteboard, retired", tone: "event" }
-    case "lead":
-      return { title: `New client: ${name}`, detail: "inbound lead", tone: "career" }
-    case "buzz":
-      return { title: "Your app is trending", detail: "popularity up", tone: "career" }
     case "incident": {
       const region = typeof data.region === "string" ? regionName(data.region) : ""
       return { title: name, detail: region ? `incident · ${region}` : "incident", tone: "event" }

@@ -56,7 +56,7 @@ export function setRegion(fp: Footprint, id: string, on: boolean): Footprint {
   return { ...fp, dark: on ? fp.dark.filter((r) => r !== id) : [...fp.dark, id] }
 }
 
-/** The point of presence a city's clients are served from: the nearest deployed one. */
+/** The point of presence a city's users are served from: the nearest deployed one. */
 export function nearestPop(city: string, pops: readonly string[]): string {
   const from = CITIES[city]
   if (!from || pops.length === 0) return HOME_CITY

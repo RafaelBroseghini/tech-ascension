@@ -39,7 +39,7 @@ const DROP_CHURN_PER_SEC = 0.01
 /** Users a block or a law bleeds a second, per unit of its strength. A server in the region halves it. */
 const BLEED_PER_SEC = 0.002
 
-/** Clients an offline stretch is walked in, so a long away still steps the model. */
+/** The longest step a stretch is walked in, so a long time away still plays out. */
 export const STEP_MS = 60_000
 
 const SEVERITY = "odpm"

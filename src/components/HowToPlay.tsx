@@ -10,7 +10,7 @@ const STEPS: readonly { title: string; text: string }[] = [
   { title: "Click the emoji", text: "Every click is XP. Spend it on skills: study, level up, repeat." },
   { title: "Skills open gigs", text: "Learn enough and the Gig Board opens. Gigs pay your first real dollars." },
   { title: "Gigs open jobs", text: "Jobs cost XP and pay a salary every second, even while you are away." },
-  { title: "Your company", text: "Every cleared gig signs a client. Open the globe from the bar on the left to see where your clients are and the traffic they send home." },
+  { title: "Your company", text: "Every cleared gig brings users from its client's region, and they spread as your gear, regions and points of presence allow. Open the globe from the bar on the left to chase seven billion." },
   { title: "Gear and capital", text: "Spend dollars on desk upgrades, then on companies, rockets and Mars. Bigger clicks, bigger income." },
   { title: "Leave and come back", text: "The game keeps earning while you are gone, up to 8 hours. Check in, shop, leave again." },
   { title: "Collect trophies", text: "The 10x dev tab holds one-off perks: buy in bulk, hover to click, stay away longer." },
