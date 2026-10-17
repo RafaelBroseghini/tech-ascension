@@ -11,7 +11,6 @@ const board = (users: number, equipment: Record<string, number> = {}, uptime = "
     retainers: { count: 0, perSec: 0 },
     uptime,
     money,
-    lostPerSec: 0,
   })
 const serving = (b: ReturnType<typeof board>) => b.components.find((c) => c.id === "serving")!
 
@@ -56,7 +55,6 @@ describe("the status board", () => {
       retainers: { count: 2, perSec: 14 },
       uptime: "",
       money,
-      lostPerSec: 0,
     })
     expect(b.components.find((c) => c.id === "retainers")?.detail).toBe("2 on retainer, $14 a second")
     expect(b.components.find((c) => c.id === "regions")?.detail).toBe("1 point of presence in 1 region")
@@ -73,7 +71,6 @@ describe("the status board", () => {
       retainers: { count: 0, perSec: 0 },
       uptime: "o",
       money: (n: number) => `$${n}`,
-      lostPerSec: 0,
     })
     const regions = b.components.find((c) => c.id === "regions")
     expect(regions?.health).toBe("partial")

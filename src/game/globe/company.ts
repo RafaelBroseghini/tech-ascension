@@ -1,16 +1,15 @@
 import { CLIENT_CITIES } from "../../data/geo.ts"
 import type { AudienceShare } from "../../data/geo.ts"
 import { REGIONS } from "../../data/regions.ts"
-import { demandAt, servingHealth } from "./growth.ts"
-import type { HealthChar } from "./growth.ts"
-import { capacityOf, dropShareOf } from "./load.ts"
+import { servingOf } from "./load.ts"
+import type { Serving } from "./load.ts"
 import { activePops, idlePops } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
 import { totalUsers, WORLD_TARGET } from "./world.ts"
 import type { Incident } from "./world.ts"
 
 /** What the globe and the status page draw of the company. */
-export interface Company {
+export interface Company extends Serving {
   readonly audience: AudienceShare[]
   /** Users in all, and in each region. */
   readonly users: number
@@ -20,13 +19,6 @@ export interface Company {
   readonly resistance: number
   readonly incidents: readonly Incident[]
   readonly won: boolean
-  /** Requests a second the users send, with every DDoS surge counted. */
-  readonly demand: number
-  /** Requests a second the owned gear can serve. */
-  readonly capacity: number
-  /** The share of demand over capacity, which the company cannot serve. 0 when it keeps up. */
-  readonly dropShare: number
-  readonly health: HealthChar
   /** Cities with a point of presence serving traffic. */
   readonly pops: readonly string[]
   /** Cities with a point of presence deployed but switched off. */
@@ -68,9 +60,6 @@ export function audienceOf(users: Readonly<Record<string, number>>): AudienceSha
 
 export function companyOf(facts: CompanyFacts): Company {
   const users = totalUsers(facts.users)
-  const demand = demandAt(facts.users, facts.incidents)
-  const capacity = capacityOf(facts.equipment)
-  const dropShare = dropShareOf(demand, capacity)
   return {
     audience: audienceOf(facts.users),
     users,
@@ -79,10 +68,7 @@ export function companyOf(facts: CompanyFacts): Company {
     resistance: facts.resistance,
     incidents: facts.incidents,
     won: facts.won,
-    demand,
-    capacity,
-    dropShare,
-    health: users > 0 ? servingHealth(dropShare, demand, capacity) : "o",
+    ...servingOf(facts.users, facts.incidents, facts.equipment),
     pops: activePops(facts.footprint),
     idlePops: idlePops(facts.footprint),
     regions: facts.footprint.regions,

@@ -1,14 +1,9 @@
 import { INCIDENTS, MILESTONES, regionName, totalUsers, WORLD_TARGET } from "../../game/globe/world.ts"
-import type { HealthChar } from "../../game/globe/growth.ts"
-import type { Incident } from "../../game/globe/world.ts"
+import type { Company } from "../../game/globe/company.ts"
+import type { HealthChar } from "../../game/globe/load.ts"
 
-/** What the desk's globe says about the company at one moment. Just enough to tell what changed between two of them. */
-export interface FeedFacts {
-  readonly users: Readonly<Record<string, number>>
-  readonly incidents: readonly Incident[]
-  readonly health: HealthChar
-  readonly won: boolean
-}
+/** What the feed reads of the company at one moment: just enough to tell what changed between two of them. */
+export type FeedFacts = Pick<Company, "regionUsers" | "incidents" | "health" | "won">
 
 /** bad: something to act on. good: it is over, or you won. info: the world moved. */
 export type FeedTone = "bad" | "good" | "info"
@@ -44,11 +39,11 @@ export function feedItems(prev: FeedFacts, next: FeedFacts): FeedItem[] {
     if (after.has(incident.id)) continue
     items.push({ key: `over:${incident.id}`, tone: "good", text: `${INCIDENTS[incident.kind].name} over · ${regionName(incident.region)}` })
   }
-  for (const [region, users] of Object.entries(next.users)) {
-    if (users >= 1 && !((prev.users[region] ?? 0) >= 1)) items.push({ key: `first:${region}`, tone: "info", text: `First users in ${regionName(region)}` })
+  for (const [region, users] of Object.entries(next.regionUsers)) {
+    if (users >= 1 && !((prev.regionUsers[region] ?? 0) >= 1)) items.push({ key: `first:${region}`, tone: "info", text: `First users in ${regionName(region)}` })
   }
-  const was = totalUsers(prev.users)
-  const now = totalUsers(next.users)
+  const was = totalUsers(prev.regionUsers)
+  const now = totalUsers(next.regionUsers)
   // A jump past several milestones says only the highest. The win has its own line, and its own pop.
   const crossed = MILESTONES.filter((row) => row.users < WORLD_TARGET && was < row.users && now >= row.users).at(-1)
   if (crossed) items.push({ key: `milestone:${crossed.id}`, tone: "info", text: crossed.label })

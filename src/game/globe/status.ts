@@ -1,6 +1,7 @@
 import type { Company } from "./company.ts"
-import { HEALTH_CHAR, STATUS_DAY_MS, uptimePercent } from "./growth.ts"
-import type { HealthChar } from "./growth.ts"
+import { STATUS_DAY_MS, uptimePercent } from "./growth.ts"
+import { HEALTH_CHAR } from "./load.ts"
+import type { HealthChar } from "./load.ts"
 import { INCIDENTS, regionName } from "./world.ts"
 
 /** The four states a real status page uses. */
@@ -64,8 +65,6 @@ export interface StatusFacts {
   readonly uptime: string
   /** How a dollar amount reads on the board. */
   readonly money: (n: number) => string
-  /** Dollars a second the drops are costing right now. */
-  readonly lostPerSec: number
 }
 
 const ROUND = (n: number) => Math.round(n).toLocaleString("en-US")
@@ -75,7 +74,7 @@ export function statusOf(facts: StatusFacts): Board {
   const users = company.users
   const serving = HEALTH_OF[company.health]
   const flat = HEALTH_CHAR.operational.repeat(uptime.length)
-  const lost = facts.lostPerSec > 0 ? ` Dropped requests cost ${money(facts.lostPerSec)} a second.` : ""
+  const lost = company.lostPerSec > 0 ? ` Dropped requests cost ${money(company.lostPerSec)} a second.` : ""
 
   const components: Component[] = [
     {

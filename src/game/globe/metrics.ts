@@ -1,6 +1,5 @@
 import { CITIES } from "../../data/geo.ts"
 import type { Company } from "./company.ts"
-import { REVENUE_PER_DROPPED_RPS } from "./growth.ts"
 import type { CityRow } from "./tip.ts"
 
 /** What the app is doing right now, in the numbers a status dashboard leads with. */
@@ -59,7 +58,7 @@ export function appMetrics(company: Company, rows: readonly CityRow[]): AppMetri
     resistance: company.resistance,
     pops: company.pops.length,
     regions: company.regions.length,
-    lostPerSec: dropped * REVENUE_PER_DROPPED_RPS,
+    lostPerSec: company.lostPerSec,
   }
 }
 

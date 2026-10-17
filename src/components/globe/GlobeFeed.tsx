@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Company } from "../../game/globe/company.ts"
 import { useGame } from "../../game/store.ts"
 import { openSurface } from "../../game/surfaces.ts"
@@ -10,20 +10,16 @@ import type { FeedFacts, FeedItem } from "./feed.ts"
  * user in a region, a milestone, requests dropping. One at a time, a few seconds each. Quiet while the "while you were away" note is up.
  */
 export function GlobeFeed({ company }: { company: Company }) {
-  const facts = useMemo<FeedFacts>(
-    () => ({ users: company.regionUsers, incidents: company.incidents, health: company.health, won: company.won }),
-    [company.regionUsers, company.incidents, company.health, company.won],
-  )
-  const prev = useRef(facts)
+  const prev = useRef<FeedFacts>(company)
   const seen = useRef(new Map<string, number>())
   const [queue, setQueue] = useState<readonly FeedItem[]>([])
 
   useEffect(() => {
-    const items = feedItems(prev.current, facts)
-    prev.current = facts
+    const items = feedItems(prev.current, company)
+    prev.current = company
     if (items.length === 0 || useGame.getState().toast?.note) return
     setQueue((q) => enqueue(q, items, seen.current, Date.now()))
-  }, [facts])
+  }, [company])
 
   const current = queue[0]
   useEffect(() => {

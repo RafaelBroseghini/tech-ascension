@@ -1,7 +1,8 @@
 import { REGIONS, regionById } from "../../data/regions.ts"
 import { FRESH_FOOTPRINT } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
-import { capacityOf, demandOf, dropShareOf } from "./load.ts"
+import { HEALTH_CHAR, servingOf } from "./load.ts"
+import type { HealthChar } from "./load.ts"
 import {
   biting,
   ceilingOf,
@@ -31,9 +32,6 @@ export const STATUS_DAY_MS = 60_000
 /** How many days the status page keeps. */
 export const STATUS_DAYS = 90
 
-/** Dollars a second lost for each request a second the company drops. */
-export const REVENUE_PER_DROPPED_RPS = 0.02
-
 /** Lost to drops, per second and per unit of drop share. */
 const DROP_CHURN_PER_SEC = 0.01
 /** Users a block or a law bleeds a second, per unit of its strength. A server in the region halves it. */
@@ -42,8 +40,6 @@ const BLEED_PER_SEC = 0.002
 /** Clients an offline stretch is walked in, so a long away still steps the model. */
 export const STEP_MS = 60_000
 
-export const HEALTH_CHAR = { operational: "o", degraded: "d", partial: "p", major: "m" } as const
-export type HealthChar = (typeof HEALTH_CHAR)[keyof typeof HEALTH_CHAR]
 const SEVERITY = "odpm"
 
 /** The company's reach: users in each region, the world's resistance, what it has thrown, and one status character per day. */
@@ -88,19 +84,6 @@ export interface GrowthStep {
   readonly notes: readonly GrowthNote[]
 }
 
-/** Serving is judged on how much of the demand it drops; above 80% of capacity it is only slow. */
-export function servingHealth(dropShare: number, demand: number, capacity: number): HealthChar {
-  if (dropShare > 0.5) return HEALTH_CHAR.major
-  if (dropShare > 0) return HEALTH_CHAR.partial
-  if (capacity > 0 && demand / capacity > 0.8) return HEALTH_CHAR.degraded
-  return HEALTH_CHAR.operational
-}
-
-/** The requests a second the users of a company send, with every DDoS surge counted. */
-export function demandAt(users: Readonly<Record<string, number>>, incidents: readonly Incident[]): number {
-  return REGIONS.reduce((sum, region) => sum + demandOf(users[region.id] ?? 0) * multiplierOf(incidents, region.id, "surge"), 0)
-}
-
 /**
  * Advances the company over `ms` (a short step, at most `STEP_MS`). `at` is when the step ends. `rand` is in [0, 1)
  * and drives what the world throws, so a test can pin it.
@@ -112,9 +95,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   let incidents = state.incidents.filter((i) => i.until > at)
   let seq = state.incidentSeq
 
-  const capacity = capacityOf(facts.equipment)
-  const demand = demandAt(state.users, incidents)
-  const dropShare = dropShareOf(demand, capacity)
+  const { dropShare, lostPerSec } = servingOf(state.users, incidents, facts.equipment)
   const served = 1 - dropShare
 
   const resistance = state.resistance + (resistanceTarget(before) - state.resistance) * (1 - Math.exp(-sec / RESISTANCE_LAG_S))
@@ -136,7 +117,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
     if (next > 0) users[region.id] = next
   }
   const total = totalUsers(users)
-  const lost = demand * dropShare * REVENUE_PER_DROPPED_RPS * sec
+  const lost = lostPerSec * sec
 
   if (incidents.length < MAX_INCIDENTS && total >= INCIDENT_MIN_USERS && rand() < incidentRate(resistance) * sec) {
     const incident = rollIncident(users, facts.live, resistance, seq + 1, at, rand)
@@ -155,9 +136,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
     }
   }
 
-  const nowDemand = demandAt(users, incidents)
-  const nowDrop = dropShareOf(nowDemand, capacity)
-  const health = total > 0 ? servingHealth(nowDrop, nowDemand, capacity) : HEALTH_CHAR.operational
+  const { health } = servingOf(users, incidents, facts.equipment)
   const { uptime, day } = recordDay(state, health, at)
   return { state: { users, resistance, incidents, incidentSeq: seq, won, uptime, day }, lost, notes }
 }

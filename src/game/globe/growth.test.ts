@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { advanceCompany, demandAt, FRESH_COMPANY, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
 import type { CompanyState } from "./growth.ts"
-import { BASE_RPS, RPS_PER_USER } from "./load.ts"
+import { BASE_RPS, RPS_PER_USER, servingOf } from "./load.ts"
 import { ceilingOf, INCIDENT_MIN_USERS, MAX_INCIDENTS, totalUsers, WORLD_CEILING, WORLD_TARGET } from "./world.ts"
 import type { Incident } from "./world.ts"
 import { REGIONS } from "../../data/regions.ts"
@@ -106,7 +106,7 @@ describe("the world pushing back", () => {
 
   it("a DDoS surge multiplies the traffic in its region, so it can drop requests the gear would have served", () => {
     const users = { "americas-east": 20_000 }
-    expect(demandAt(users, [ddos()])).toBeCloseTo(20_000 * RPS_PER_USER * 3)
+    expect(servingOf(users, [ddos()], {}).demand).toBeCloseTo(20_000 * RPS_PER_USER * 3)
     const calm = stepCompany(state({ users }), facts(3, { "54": 1 }), 60_000, 60_000, never)
     const hit = stepCompany(state({ users, incidents: [ddos({ strength: 8 })] }), facts(3, { "54": 1 }), 60_000, 60_000, never)
     expect(calm.lost).toBe(0)

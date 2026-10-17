@@ -6,7 +6,7 @@ import { GEAR } from "../../data/gear.ts"
 import { GIGS } from "../../data/phases.ts"
 import { formatNumber } from "../../game/format.ts"
 import { RPS_PER_CPS, SERVING_KINDS } from "../../game/globe/load.ts"
-import { REVENUE_PER_DROPPED_RPS, STATUS_DAYS } from "../../game/globe/growth.ts"
+import { STATUS_DAYS } from "../../game/globe/growth.ts"
 import { HEALTH_LABEL, statusOf } from "../../game/globe/status.ts"
 import { useGame } from "../../game/store.ts"
 import { GlobePane } from "./GlobePane.tsx"
@@ -34,13 +34,11 @@ export function CompanyHost({ open, onClose }: { open: boolean; onClose: () => v
   )
   const board = useMemo(() => {
     const retained = GIGS.filter((gig) => gig.retainerCps > 0 && gigs.includes(gig.id))
-    const dropped = company.demand * company.dropShare
     return statusOf({
       company,
       retainers: { count: retained.length, perSec: retained.reduce((sum, gig) => sum + gig.retainerCps, 0) },
       uptime,
       money,
-      lostPerSec: dropped * REVENUE_PER_DROPPED_RPS,
     })
   }, [company, gigs, uptime])
 

@@ -15,8 +15,8 @@ import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import type { BuyAmount } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
-import { demandAt, FRESH_COMPANY } from "./globe/growth.ts"
-import { capacityOf } from "./globe/load.ts"
+import { FRESH_COMPANY } from "./globe/growth.ts"
+import { servingOf } from "./globe/load.ts"
 import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
@@ -336,14 +336,15 @@ function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesS
 
 function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: number): WorldSnapshot {
   const { company } = state
+  const serving = servingOf(company.users, company.incidents, state.equipment)
   return {
     users: totalUsers(company.users),
     target: WORLD_TARGET,
     regionUsers: { ...company.users },
     resistance: company.resistance,
     incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
-    demand: demandAt(company.users, company.incidents),
-    capacity: capacityOf(state.equipment),
+    demand: serving.demand,
+    capacity: serving.capacity,
     won: company.won,
   }
 }

@@ -1,5 +1,8 @@
 import { GEAR } from "../../data/gear.ts"
 import type { GearKind } from "../../data/gear.ts"
+import { REGIONS } from "../../data/regions.ts"
+import { multiplierOf } from "./world.ts"
+import type { Incident } from "./world.ts"
 
 /** Requests a second one laptop serves before any gear is bought. */
 export const BASE_RPS = 30
@@ -26,4 +29,38 @@ export function demandOf(users: number): number {
 export function dropShareOf(demand: number, capacity: number): number {
   if (demand <= 0 || demand <= capacity) return 0
   return 1 - capacity / demand
+}
+
+/** Dollars a second lost for each request a second the company drops. */
+export const REVENUE_PER_DROPPED_RPS = 0.02
+
+/** How serving went, one character per status day: operational, degraded, partial outage, major outage. */
+export const HEALTH_CHAR = { operational: "o", degraded: "d", partial: "p", major: "m" } as const
+export type HealthChar = (typeof HEALTH_CHAR)[keyof typeof HEALTH_CHAR]
+
+/** How the company's serving stands: what the users ask, what the gear serves, what it drops and what that costs. */
+export interface Serving {
+  /** Requests a second the users send, with every DDoS surge counted. */
+  readonly demand: number
+  /** Requests a second the owned gear can serve. */
+  readonly capacity: number
+  /** The share of demand over capacity, which the company cannot serve. 0 when it keeps up. */
+  readonly dropShare: number
+  /** Dollars a second the dropped requests cost. */
+  readonly lostPerSec: number
+  /** Judged on the share dropped; above 80% of capacity it is only slow. Operational with nobody to serve. */
+  readonly health: HealthChar
+}
+
+export function servingOf(users: Readonly<Record<string, number>>, incidents: readonly Incident[], equipment: Readonly<Record<string, number>>): Serving {
+  const demand = REGIONS.reduce((sum, region) => sum + demandOf(users[region.id] ?? 0) * multiplierOf(incidents, region.id, "surge"), 0)
+  const capacity = capacityOf(equipment)
+  const dropShare = dropShareOf(demand, capacity)
+  const health =
+    demand <= 0 ? HEALTH_CHAR.operational
+    : dropShare > 0.5 ? HEALTH_CHAR.major
+    : dropShare > 0 ? HEALTH_CHAR.partial
+    : capacity > 0 && demand / capacity > 0.8 ? HEALTH_CHAR.degraded
+    : HEALTH_CHAR.operational
+  return { demand, capacity, dropShare, lostPerSec: demand * dropShare * REVENUE_PER_DROPPED_RPS, health }
 }

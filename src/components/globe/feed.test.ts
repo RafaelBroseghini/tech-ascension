@@ -3,11 +3,11 @@ import { alertOf, enqueue, FEED_COOLDOWN_MS, FEED_MAX, feedItems } from "./feed.
 import type { FeedFacts } from "./feed.ts"
 import { makeIncident } from "../../game/globe/world.ts"
 
-const calm: FeedFacts = { users: { europe: 500 }, incidents: [], health: "o", won: false }
+const calm: FeedFacts = { regionUsers: { europe: 500 }, incidents: [], health: "o", won: false }
 
 describe("feedItems", () => {
   it("says nothing while the user count just moves", () => {
-    expect(feedItems(calm, { ...calm, users: { europe: 900 } })).toEqual([])
+    expect(feedItems(calm, { ...calm, regionUsers: { europe: 900 } })).toEqual([])
   })
 
   it("announces an incident once, and its end", () => {
@@ -22,17 +22,17 @@ describe("feedItems", () => {
   })
 
   it("marks a region's first users and each milestone crossed", () => {
-    const items = feedItems(calm, { ...calm, users: { europe: 600_000, asia: 600_000 } })
+    const items = feedItems(calm, { ...calm, regionUsers: { europe: 600_000, asia: 600_000 } })
     expect(items.map((i) => i.key)).toEqual(["first:asia", "milestone:1m"])
   })
 
   it("waits for a whole user before a region counts as reached", () => {
-    expect(feedItems(calm, { ...calm, users: { europe: 500, asia: 0.3 } })).toEqual([])
-    expect(feedItems({ ...calm, users: { europe: 500, asia: 0.3 } }, { ...calm, users: { europe: 500, asia: 1.2 } }).map((i) => i.key)).toEqual(["first:asia"])
+    expect(feedItems(calm, { ...calm, regionUsers: { europe: 500, asia: 0.3 } })).toEqual([])
+    expect(feedItems({ ...calm, regionUsers: { europe: 500, asia: 0.3 } }, { ...calm, regionUsers: { europe: 500, asia: 1.2 } }).map((i) => i.key)).toEqual(["first:asia"])
   })
 
   it("says only the highest milestone a jump crosses", () => {
-    expect(feedItems(calm, { ...calm, users: { europe: 2e9 } }).map((i) => i.key)).toEqual(["milestone:1b"])
+    expect(feedItems(calm, { ...calm, regionUsers: { europe: 2e9 } }).map((i) => i.key)).toEqual(["milestone:1b"])
   })
 
   it("tracks the win and serving dropping and recovering", () => {
