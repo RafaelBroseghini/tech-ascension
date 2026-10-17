@@ -1,6 +1,7 @@
 import { REGIONS, regionById } from "../../data/regions.ts"
 import { FRESH_FOOTPRINT } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
+import { clampForever } from "../mods.ts"
 import { HEALTH_CHAR, servingOf } from "./load.ts"
 import type { HealthChar } from "./load.ts"
 import {
@@ -22,6 +23,7 @@ import {
   seedsOf,
   SPILL,
   totalUsers,
+  WIN_MULT,
   WORLD_POPULATION,
 } from "./world.ts"
 import type { Incident } from "./world.ts"
@@ -216,4 +218,13 @@ function parseIncident(input: unknown): Incident[] {
   if (!kind || typeof raw.region !== "string" || !regionById(raw.region)) return []
   if (typeof raw.id !== "number" || !Number.isInteger(raw.id) || typeof raw.until !== "number" || !Number.isFinite(raw.until) || typeof raw.strength !== "number" || !Number.isFinite(raw.strength)) return []
   return [{ id: raw.id, kind, region: raw.region, until: raw.until, strength: Math.max(0, Math.min(10, raw.strength)) }]
+}
+
+/**
+ * What a stretch of growth does to the balance: dropped requests cost money, never below zero, and a win reached during it
+ * multiplies everything earned from then on. The tick and a return from away both settle through here.
+ */
+export function settleGrowth(money: number, foreverMult: number, wasWon: boolean, grown: GrowthStep): { money: number; foreverMult: number; wonNow: boolean } {
+  const wonNow = !wasWon && grown.state.won
+  return { money: Math.max(0, money - grown.lost), foreverMult: wonNow ? clampForever(foreverMult * WIN_MULT) : foreverMult, wonNow }
 }

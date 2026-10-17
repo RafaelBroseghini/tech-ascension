@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
+import { advanceCompany, FRESH_COMPANY, settleGrowth, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
 import type { CompanyState } from "./growth.ts"
 import { BASE_RPS, RPS_PER_USER, servingOf } from "./load.ts"
 import { ceilingOf, INCIDENT_MIN_USERS, MAX_INCIDENTS, totalUsers, WORLD_CEILING, WORLD_TARGET } from "./world.ts"
@@ -217,5 +217,19 @@ describe("saved company", () => {
     const cleaned = parseCompany({ ...good, users: { europe: 120, mars: 5, asia: -1, africa: 1e30 }, incidents: [good.incidents[0], { id: 3, kind: "meteor", region: "europe", until: 1, strength: 1 }] })!
     expect(cleaned.users).toEqual({ europe: 120, africa: ceilingOf("africa") })
     expect(cleaned.incidents).toHaveLength(1)
+  })
+})
+
+describe("settleGrowth", () => {
+  const grown = (won: boolean, lost: number) => ({ state: { ...FRESH_COMPANY, won }, lost, notes: [] })
+
+  it("charges the drops, never below zero", () => {
+    expect(settleGrowth(100, 1, false, grown(false, 30)).money).toBe(70)
+    expect(settleGrowth(100, 1, false, grown(false, 500)).money).toBe(0)
+  })
+
+  it("multiplies everything earned once, on the step that wins", () => {
+    expect(settleGrowth(0, 2, false, grown(true, 0))).toMatchObject({ foreverMult: 2.5, wonNow: true })
+    expect(settleGrowth(0, 2.5, true, grown(true, 0))).toMatchObject({ foreverMult: 2.5, wonNow: false })
   })
 })

@@ -27,14 +27,14 @@ import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
-import { clampForever, modFactors, modsOf, pruneTemp } from "./mods.ts"
+import { modFactors, modsOf, pruneTemp } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
 import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
-import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./globe/growth.ts"
 import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, WIN_MULT } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import type { CompanyState } from "./globe/growth.ts"
@@ -776,9 +776,9 @@ export const useGame = create<GameState>((set, get) => ({
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
     if (gain > 0) stats = creditMoney(stats, gain, "idle")
-    const won = !state.company.won && grown.state.won
-    const foreverMult = won ? clampForever(state.foreverMult * WIN_MULT) : state.foreverMult
-    const balance = { money: Math.max(0, state.money + gain - grown.lost), xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
+    const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown)
+    const foreverMult = settled.foreverMult
+    const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.
     const eventAdvance = advanceEventClock(
       state.nextEventAt,

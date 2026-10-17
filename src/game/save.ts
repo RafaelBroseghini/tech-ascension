@@ -10,7 +10,7 @@ import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
-import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany } from "./globe/growth.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, settleGrowth } from "./globe/growth.ts"
 import { WIN_MULT } from "./globe/world.ts"
 import type { CompanyState, GrowthNote } from "./globe/growth.ts"
 import { parseFootprint } from "./globe/footprint.ts"
@@ -170,10 +170,15 @@ export function freshCareer(now: number): SavedCareer {
   return { seq: 2, log: [[1, now, "start", "", 0, 0]], unlocked: [], fresh: [], returns: 0 }
 }
 
+/** The next free journal seq: past the counter, and past every entry the log already holds. */
+function nextSeq(career: SavedCareer): number {
+  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
+  return Math.max(career.seq, top + 1)
+}
+
 /** Notes a return in the journal: how long the player was away and what that paid. */
 function noteReturn(career: SavedCareer, now: number, awayMs: number, money: number, xp: number, balance: number, xpTotal: number): SavedCareer {
-  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
-  const seq = Math.max(career.seq, top + 1)
+  const seq = nextSeq(career)
   const entry: SavedCareerEntry = [
     seq,
     now,
@@ -189,8 +194,7 @@ function noteReturn(career: SavedCareer, now: number, awayMs: number, money: num
 /** Journals what the company went through while the player was away: incidents, milestones, the win. */
 function noteWorld(career: SavedCareer, notes: readonly GrowthNote[], now: number, balance: number, xpTotal: number): SavedCareer {
   if (notes.length === 0) return career
-  const top = career.log.reduce((max, row) => (Array.isArray(row) && typeof row[0] === "number" ? Math.max(max, row[0]) : max), 0)
-  let seq = Math.max(career.seq, top + 1)
+  let seq = nextSeq(career)
   const added = notes.map((note): SavedCareerEntry => {
     const row: SavedCareerEntry = [seq++, now, note.type, note.ref, Math.floor(balance), Math.floor(xpTotal)]
     return note.data ? [...row, note.data] as SavedCareerEntry : row
@@ -272,6 +276,8 @@ export function parseSave(input: unknown): SaveData | null {
   return save
 }
 
+const WON_AWAY = `While you were out, the app reached seven billion people. Everything you earn is ×${WIN_MULT} for good.`
+
 export function hydrate(rawText: string | null, now: number): Hydrated {
   if (rawText == null) {
     return { save: freshSave(now), toast: null, reset: false }
@@ -293,11 +299,11 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
-  const wonAway = !(loaded.company?.won ?? false) && grown.state.won
+  const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown)
   const save: SaveData = {
     ...loaded,
-    ...(wonAway ? { foreverMult: clampForever((loaded.foreverMult ?? 1) * WIN_MULT) } : {}),
-    money: Math.max(0, loaded.money + credit - grown.lost),
+    ...(settled.wonNow ? { foreverMult: settled.foreverMult } : {}),
+    money: settled.money,
     company: grown.state,
     xp: loaded.xp + xpCredit,
     xpTotal: loaded.xpTotal + xpCredit,
@@ -324,6 +330,8 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   let toast: string | null = null
   if (elapsed >= OFFLINE_TOAST_MIN_MS) {
     toast = offlineToastText({ credit, xpCredit, jobs: save.jobs, elapsed })
+    // A win reached while away has no live moment to celebrate it, so it leads the note instead.
+    if (settled.wonNow && toast) toast = `${WON_AWAY}${toast.slice(toast.indexOf("\n"))}`
   }
 
   return { save, toast, reset: false }
