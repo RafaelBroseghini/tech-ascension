@@ -26,10 +26,11 @@
 | Next banner target, per shop tab | `src/game/nextUnlock.ts` |
 | Number formatting (raw digits cutoff) | `src/game/format.ts` |
 | Save and offline credit | `src/game/save.ts` |
-| Prestige: Prestige formula and constants, the Network perk table | `src/data/legacy.ts` (`PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `LEGACY_PERKS`) |
-| Prestige rules: Prestige on Exit, the Exit gate, perk order and price, the starting grant, save checks, headline text | `src/game/legacy.ts` (the `exit` and `buyLegacy` actions are in `src/game/store.ts`; the multiplier is a factor in `src/game/mods.ts`) |
-| Exit button, confirmation and headline cards, Legacy panel (admin mode) | `src/components/ExitPanel.tsx`, `src/components/useExit.ts`, wired in `src/components/Shop.tsx` and `src/App.tsx` |
-| Time-to-finish model and its formula (`npm run pace`) | `src/game/pace.ts` (`simulatePace`, and `simulateExits` over several careers), `scripts/pace.mjs`, [PACING.md](PACING.md) |
+| Prestige: the formula's constants, the perk table, the Hall of Fame list | `src/data/legacy.ts` (`PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`, `PERK`, `LEGACY_PERKS`, `HALL_OF_FAME`) |
+| Prestige rules: Prestige on Exit, the ending bonus, the Exit gate, perk order and price, the starting grant, save checks, headline text | `src/game/legacy.ts` (the `exit` and `buyLegacy` actions are in `src/game/store.ts`; the multiplier is a factor in `src/game/mods.ts`) |
+| What each perk does, as numbers: `perkEffects` (cap, prices, salaries, burn, bridge, growth, revenue, start users) | `src/game/perks.ts`, read by `src/game/economy.ts` (prices, `idleParts`), `src/game/gold.ts` (`offlineCapMs`), `src/game/globe/track.ts` (burn, bridge, growth and revenue facts) |
+| Sell button, confirmation and headline cards, the Prestige panel (admin mode) | `src/components/ExitPanel.tsx`, `src/components/useExit.ts`; the button is on `src/components/globe/CompanyTab.tsx`, the crown on `src/components/IdeChrome.tsx`, the headline card in `src/App.tsx`, the product beat in `src/components/IdentityPicker.tsx` |
+| Time-to-finish model and its formula (`npm run pace`) | `src/game/pace.ts` (`simulatePace`, and `simulateExits` over several careers, with the product), `scripts/pace.mjs`, [PACING.md](PACING.md) |
 | Loop, purchases, money pops | `src/game/store.ts` |
 | Shop panel, rows and banner | `src/components/Shop.tsx` |
 | Centered score pop and hero squash | `src/components/ScorePop.tsx`, `src/components/HeroMoney.tsx` |

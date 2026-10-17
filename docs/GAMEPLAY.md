@@ -74,9 +74,25 @@ Reveals play one at a time, wait for events, 1:1s and money pops, and leave a sh
 
 ## Prestige: the Exit
 
-Earning enough for a first Prestige ($5e11 over the career) opens the Exit on the first career, a button under the Capital era tabs (admin mode only for now). Leaving a career pays **Prestige** (Prestige) for what it earned: `floor(cbrt(earnings across all careers / 5e11))` Prestige in total, so an Exit pays the rungs this career climbed. Every Prestige adds 3% to every income and XP stream for good (`1 + 0.03 × Prestige`), whether spent or not. The button reads `Exit: +N Prestige (×A → ×B)`, or `Exit: no new Prestige yet` when it would pay nothing; a confirmation card lists what starts over (money, XP, skills, gigs, jobs, gear, capital, click boost, event bonuses) and what stays (Prestige and Legacy perks, 10x dev skills, handle, career log and unlocks, passed interviews). The first Exit asks twice. A headline card ("<handle> acqui-hired", "rings the bell", "merges with a hyperscaler", "leaves for Mars") closes it. Later careers have the Exit open from the start.
+Every career builds one product. Selling it is the **Exit**: it pays **Prestige**, starts a new career with a new product, and the Prestige gives a permanent bonus and buys Legacy perks. The Exit and everything below are in admin mode only for now.
 
-Spent Prestige buys **Legacy** perks (the Legacy tab beside the Capital eras). The Network track is a head start, each perk after the one before: skills 1 to 10 learned (2 Prestige), Portfolio site live and React learned with 14,000 lifetime XP so the Gig Board is open (4), gigs 1 to 6 cleared without their lump sums (8), the internship held (15), $1,000,000 in hand so capital is open (30). A perk lands in the career under way (nothing is taken away) and starts every later one. Passed whiteboard interviews stay passed, so a later career opens those jobs on lifetime XP alone. The pace model (`npm run pace`, `docs/PACING.md`) puts a Regular player's first Exit around day 1.7 for about 5 Prestige, and a career that owns everything in the sixth, about 13 days in.
+**What it pays.** `floor(cbrt(earnings across all careers / 5e11))` Prestige in total, so an Exit pays the rungs this career climbed (dollars credited count, spending does not). The first time a career wins the world with an ending it has not won with before, **5 more** Prestige are paid on top. Every Prestige adds 3% to every income and XP stream and to product growth, for good, whether spent or not (`1 + 0.03 × Prestige`).
+
+**When it opens.** On the first career once it would pay at least 1 Prestige (about $5e11 earned, or a win), and from the start on every later career. It needs a total of at least 1 to take.
+
+**The button.** `Sell <Product>: +N Prestige (×A → ×B)`, or `Sell <Product>: no new Prestige yet` when it would pay nothing. It is in the Company tab and in the **Prestige** panel, opened by the crown on the activity bar (shown once the Exit is open or you have Prestige). A confirmation card lists what starts over and what stays, and the first Exit asks a second time, naming the losses in words. A headline card closes it, by how far the product got: under 1M users "acqui-hired; sunset 'to focus on the core'", 1M to under 1B "acquired; stays on as 'advisor'", 1B to under 7B "sold in a blockbuster deal", and a win reads by its ending (founder, night owl, executive sponsor), with "New in the Hall of Fame" when it is a new one. Then the start card opens on the product beat: a new product name (Reroll as usual), the same handle.
+
+**What starts over:** money, XP, skills, gigs, jobs, gear, capital, the click boost and event bonuses, and the product (users by region, regions bought, hires, resistance, incidents, the win and its multiplier, the track back to the ladder, the burn, the bridges and the equity they cost). **What stays:** Prestige and the bonus, Legacy perks, the Hall of Fame, 10x dev skills, the handle, the career log, the desk and the timeline's unlocks.
+
+**Legacy perks.** Three tracks, each after the one before it, bought once, and each applies now and at the start of every career (106 Prestige for all):
+
+| Track | Perks (price) |
+| --- | --- |
+| Network | Study group: skills 1 to 10 learned (1) · Open portfolio: Portfolio site live and React learned, Gig Board open (2) · Repeat clients: gigs 1 to 6 cleared, lumps not paid (4) · Return offer: the internship held (7) · Seed money: $1,000,000 held (12) |
+| Founder | Early adopters: 1,000 users at the home region (2) · Lean team: the founder's burn −25% (4) · Friendly investors: the first bridge of a career costs no equity (7) · Viral loop: product growth ×1.5 on both tracks (11) · Platform: product revenue ×1.5 (16) |
+| Capital | Long weekend: offline cap +4 hours, on top of Time away (2) · Volume discount: capital rows −10% (4) · Bulk hardware: gear rows −10% (7) · Raise season: salaries and retainers ×2 (11) · Compounding: capital rows earn ×1.5 (16) |
+
+**Hall of Fame.** The three endings (Founder, Night owl, Executive sponsor), each recorded the first time a career wins the world with it and shown in the Prestige panel (`???` until then). Owning all three is the long goal. The pace model (`npm run pace`, `docs/PACING.md`) puts a Regular player's first Exit around day 1.7 to 2 for 5 or 6 Prestige and a career that owns everything and wins the world in the sixth, 13 to 16 days in; it can only reach the night owl ending.
 
 ## Stage
 

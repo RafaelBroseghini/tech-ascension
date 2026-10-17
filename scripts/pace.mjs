@@ -8,7 +8,7 @@
 //
 // Needs Node 22.18 or newer, which runs the TypeScript the game is written in without a build step.
 import { CAPITAL } from "../src/data/capital.ts"
-import { PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
+import { ENDING_BONUS, PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
 import { GEAR } from "../src/data/gear.ts"
 import { JOB_TIERS } from "../src/data/phases.ts"
 import {
@@ -65,20 +65,22 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
 const REGULAR = { visitsPerDay: 3, minutesPerVisit: 15, clicksPerSec: 2 }
 
 // The multi-run model: when each Exit happens, what it pays, the bonus, and the career that finally owns everything.
+const users = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : `${Math.round(n)}`)
+
 function printExits(profile, exitRule) {
   const rule = exitRule === "falling" ? "Prestige per hour starts to fall" : "an Exit raises the bonus by 15% or more"
-  console.log(`Exits: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s; leaves when ${rule}; Prestige ladder scale ${PRESTIGE_EARN_SCALE.toExponential(0)}, ${PRESTIGE_MULT_PER} per Prestige`)
+  console.log(`Exits: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s; leaves when ${rule}; Prestige ladder scale ${PRESTIGE_EARN_SCALE.toExponential(0)}, ${PRESTIGE_MULT_PER} per Prestige, ending bonus ${ENDING_BONUS}`)
   for (const player of PLAYERS) {
     const run = simulateExits(profile, { maxDays: MAX_DAYS, paybackSeconds: player.paybackSeconds, exitRule })
     console.log("")
-    console.log(`${player.name}: ${run.complete ? `owns everything in career ${run.finishRun}, day ${days(run.days)}` : `not finished by day ${MAX_DAYS}`}`)
-    console.log("| Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Perks held | Earned | Prestige paid | Prestige total | Bonus |")
-    console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    console.log(`${player.name}: ${run.complete ? `owns everything and wins the world in career ${run.finishRun}, day ${days(run.days)}` : `not finished by day ${MAX_DAYS}`}; Hall of Fame: ${run.endings.length > 0 ? run.endings.join(", ") : "none"}`)
+    console.log("| Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Matched the last career's earnings after (days) | World won after (days) | Users | Perks held | Earned | Prestige paid (ending bonus) | Prestige total | Bonus |")
+    console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for (const r of run.runs) {
-      const row6 = r.row6Days === null ? "-" : r.row6Days.toFixed(2)
-      const open = r.exitOpenDays === null ? "-" : r.exitOpenDays.toFixed(2)
+      const at = (n) => (n === null ? "-" : n.toFixed(2))
       const out = r.finished ? `${r.endDay.toFixed(2)} (done)` : r.endDay.toFixed(2)
-      console.log(`| ${r.run} | ${r.startDay.toFixed(2)} | ${out} | ${open} | ${row6} | ${r.perks} | ${r.earned.toExponential(1)} | ${r.finished ? "-" : r.prestigeEarned} | ${r.prestigeTotal} | x${r.mult.toFixed(2)} |`)
+      const paid = r.finished ? "-" : r.endingBonus > 0 ? `${r.prestigeEarned} (${r.endingBonus})` : `${r.prestigeEarned}`
+      console.log(`| ${r.run} | ${r.startDay.toFixed(2)} | ${out} | ${at(r.exitOpenDays)} | ${at(r.row6Days)} | ${at(r.catchUpDays)} | ${at(r.winDays)} | ${users(r.users)} | ${r.perks} | ${r.earned.toExponential(1)} | ${paid} | ${r.prestigeTotal} | x${r.mult.toFixed(2)} |`)
     }
   }
 }

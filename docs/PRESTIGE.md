@@ -1,6 +1,6 @@
 # Prestige: the Exit (design, v2)
 
-Status: proposal, reworked for the company arc (`docs/COMPANY_ARC.md`). A first version was built on the branch `worktree-bridge-cse_0189znxqaYqCP9B8nbar1tsp` (commits `23b73b7`, `9beeebb`, and the unfinished `beb3cc4`) before the globe reached `main`. Its pure rules, save block, harness, pace mode and UI are reused here; its interview parts and Paths are dropped.
+Status: built (see "Built" at the end), behind admin mode. Reworked for the company arc (`docs/COMPANY_ARC.md`). A first version was built on the branch `worktree-bridge-cse_0189znxqaYqCP9B8nbar1tsp` (commits `23b73b7`, `9beeebb`, and the unfinished `beb3cc4`) before the globe reached `main`. Its pure rules, save block, harness, pace mode and UI are reused here; its interview parts and Paths are dropped.
 
 ## Why
 
@@ -131,3 +131,21 @@ Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk 
 - **The globe replaced the whiteboard interviews** (#59), so nothing about interviews carries over, and v1's Craft track (interview and click perks) is replaced by the Founder track.
 - **Paths are dropped**: the ladder/founder fork and the three endings already make careers differ.
 - **Rollout:** behind admin mode (`getAdminMode()`) until the pace model meets the targets; the harness works regardless.
+
+## Built
+
+All of the above is built, behind admin mode (`getAdminMode()`); the harness works regardless. Where each piece lives is in `docs/CODEMAP.md`; the numbers are in `docs/GAMEPLAY.md` (player view), `AGENTS.md` (API) and `docs/SAVE.md`.
+
+- **Rules.** `src/data/legacy.ts` (constants, perk table, Hall of Fame), `src/game/legacy.ts` (the formula, the ending bonus, the gate, perk order, the starting grant, `withStartUsers`, headlines, save checks), `src/game/perks.ts` (`perkEffects`: each perk as a number). `exit()` and `buyLegacy()` are store actions; `exit()` builds the next career from the same fresh constants `reset()` uses (`FRESH_COMPANY`, `FRESH_FOOTPRINT`, `FRESH_FOUNDER`), so every company field comes back to fresh, then seeds the perks.
+- **Where each perk applies.** Network: `startingGrant`/`mergeGrant`. `founder.users`: `withStartUsers`, a top-up to 1,000 at the home region (`americas-east`), when bought and at each career start. `founder.burn`: `burnOf(users, mult)` in `track.ts`, through `TrackFacts.burnMult` into `stepCompany`, `founderOutlook`, the fork's numbers and the bridge cash. `founder.bridge`: `raiseBridge` (the first bridge of a career adds no equity cut; the bridge count and the cash still count). `founder.growth` and the permanent bonus: `trackFactsOf(founder, legacy)` scales the growth multiplier once, the hires' part with it, so the hires' share of the growth is unchanged. `founder.revenue`: `TrackFacts.revenueMult` for what is credited, `productRevenueOf(…, perks)` for what is shown. `capital.offline`: `offlineCapMs(gold, base, perks)`, used by the tick, a return, the hydrate and the harness. `capital.capitalCost` and `capital.gearCost`: `capitalBase`/`gearBase` in `economy.ts`, used by the buy actions, the shop's price and affordability, and the next-unlock banner. `capital.salaries` and `capital.capitalIncome`: `idleParts` in `economy.ts`, so `cps`, `clickPower` (which carries the jobs' share of idle) and the owned strip agree.
+- **UI.** The Sell button (`SellButton`) is in the Company tab and in the Prestige panel (`PrestigePanel`), which the crown on the activity bar opens (Escape closes it; Escape on the confirmation card closes only the card). The Legacy sub-tab of Capital is gone. The headline card (`ExitHeadline`) waits for the start card: the start card does not mount until it is dismissed, and nothing else clears `exitCard` (a store test and a component test pin that). After an Exit the start card opens on the product beat and `rerollProfile()` is refused (the handle stays); `rerollProduct()` works.
+- **Pace model.** See `docs/PACING.md`: `simulateExits` now models the product with the real `advanceCompany`, buys the cheapest affordable perk across tracks, and finishes when a career owns everything and has won the world.
+- **Constants.** `PRESTIGE_EARN_SCALE = 5e11`, `PRESTIGE_MULT_PER = 0.03`, `ENDING_BONUS = 5`: v1's values, unchanged after the sweep in `docs/PACING.md`.
+
+Choices the spec left open, and where the build differs:
+
+- **The bonus is not a rung.** The spec's `prestigeTotalFor(earned) − prestigeTotal + endingBonus` would count an ending bonus in `prestigeTotal`, so the bonus would eat the next earnings Prestige. The build subtracts the bonuses already paid (`ENDING_BONUS × endings.length`) from `prestigeTotal` before it takes the difference, so the bonus is paid on top, as written in the brief.
+- **Product revenue is not multiplied by the permanent bonus.** The bonus folds into `modFactors` (clicks, idle $/s, XP/s, the offline credit) and into growth. Revenue from users stays as the arc defines it (track, equity, Platform), as it already ignores the win's `foreverMult`. Multiplying growth already raises revenue through the user count.
+- **A win opens the first Exit** (its bonus is at least 1 Prestige), through both the gate and the `exit` timeline row.
+- **Only the night owl ending is modeled** by the pace model, so "all three endings in about a month" is not checked, and career 2 reaching career 1's earnings in under half the time is not met (it is met for capital row 6). Both are explained in `docs/PACING.md`.
+- **Regions bought reset with the Exit** (`footprint` back to the free home region with Ashburn), because the spec lists "regions" among what starts over.

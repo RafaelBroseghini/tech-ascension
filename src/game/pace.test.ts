@@ -99,14 +99,18 @@ describe("pace model", () => {
 describe("pace over several careers (the Exit)", () => {
   const regular = profile(3, 15, 2)
 
-  it("changes nothing for a single run: no Prestige means a multiplier of 1", () => {
-    // A run that never leaves has the single-run result.
-    const single = simulatePace(regular, { maxDays: 400 })
-    const never = simulateExits(regular, { maxDays: 400, minGrowth: Number.POSITIVE_INFINITY })
-    expect(never.complete).toBe(true)
-    expect(never.runs).toHaveLength(1)
-    expect(never.days).toBeCloseTo(single.days, 6)
-  })
+  for (const [name, payback] of [
+    ["stacker", STACKER_PAYBACK_SECONDS],
+    ["oneOfEach", ONE_OF_EACH_PAYBACK_SECONDS],
+  ] as const) {
+    it(`a career that never leaves owns everything on the single-run day: the product adds users, not time (${name})`, () => {
+      const single = simulatePace(regular, { maxDays: 400, paybackSeconds: payback })
+      const never = simulateExits(regular, { maxDays: 30, paybackSeconds: payback, minGrowth: Number.POSITIVE_INFINITY })
+      expect(never.runs).toHaveLength(1)
+      expect(never.runs[0]!.ownedDays).toBeCloseTo(single.days, 6)
+      expect(never.runs[0]!.users).toBeGreaterThan(1e6)
+    })
+  }
 
   for (const [name, payback] of [
     ["stacker", STACKER_PAYBACK_SECONDS],
@@ -121,10 +125,16 @@ describe("pace over several careers (the Exit)", () => {
       expect(first!.endDay).toBeLessThanOrEqual(2.1)
       expect(first!.prestigeEarned).toBeGreaterThanOrEqual(3)
       expect(first!.prestigeEarned).toBeLessThanOrEqual(8)
+      expect(first!.endingBonus).toBe(0)
       // The second career reaches capital row 6 in under half a day.
       expect(second!.row6Days).not.toBeNull()
       expect(second!.row6Days!).toBeLessThan(0.5)
-      // A full career is finished by the sixth, in about two weeks (the one-of-each player is slower).
+      // It gets back to what the first one earned sooner, but not twice as fast: income grows exponentially, so a
+      // head start of a day saves a fraction of a day (docs/PACING.md, "Over several careers").
+      expect(second!.catchUpDays).not.toBeNull()
+      expect(second!.catchUpDays! / first!.endDay).toBeLessThan(1.01)
+      // Owning everything and winning the world is done by the sixth career, in about two weeks (the one-of-each player is slower).
+      expect(result.finishRun).toBeGreaterThanOrEqual(4)
       expect(result.finishRun).toBeLessThanOrEqual(6)
       expect(result.days).toBeGreaterThan(8)
       expect(result.days).toBeLessThan(22)
@@ -139,6 +149,16 @@ describe("pace over several careers (the Exit)", () => {
       }
     })
   }
+
+  it("spends Prestige on the cheapest perks across tracks, Network first on ties, and models the night owl ending only", () => {
+    const result = simulateExits(regular, { maxDays: 400, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS })
+    const [first, second] = result.runs
+    // 5 or 6 Prestige: Study group (1), then the 2-Prestige firsts of three tracks, Network before Founder before Capital.
+    expect(first!.prestigeEarned).toBeGreaterThanOrEqual(5)
+    expect(second!.perks).toBe(3)
+    expect(result.endings.every((ending) => ending === "nightOwl")).toBe(true)
+    expect(result.runs.every((run) => run.endingBonus === 0 || run.winDays !== null)).toBe(true)
+  })
 
   it("the optimal rule (Prestige per hour starts to fall) waits until a career is nearly done", () => {
     const result = simulateExits(regular, { maxDays: 400, exitRule: "falling" })
