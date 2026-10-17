@@ -125,7 +125,7 @@ export type GameSnapshot = {
   /** Journal entries kept (the newest 2,000) and the latest one. */
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
-  profile: { handle: string; chosen: boolean }
+  profile: { handle: string; product: string; chosen: boolean }
   /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
   world: WorldSnapshot
 }
@@ -231,8 +231,10 @@ export type GameHarness = {
   seeFeature: (id: string) => boolean
   /** Drop the reveals waiting to play. */
   clearReveals: () => void
-  /** Draw another handle, as the start card's Reroll does. False once it is kept. */
+  /** Draw another handle (and a product to match), as the start card's first Reroll does. False once it is kept. */
   rerollProfile: () => boolean
+  /** Draw another product suffix, as the second step's Reroll does. False once it is kept. */
+  rerollProduct: () => boolean
   /** Keep the current handle, as the start card's Start does. */
   keepProfile: () => void
   reset: () => void
@@ -534,6 +536,7 @@ export function installGameHarness(): GameHarness {
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
     rerollProfile: () => useGame.getState().rerollProfile(),
+    rerollProduct: () => useGame.getState().rerollProduct(),
     keepProfile: () => useGame.getState().keepProfile(),
 
     seeFeature: (id) => {

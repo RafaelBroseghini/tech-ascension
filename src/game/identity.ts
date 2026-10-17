@@ -6,8 +6,8 @@
 
 export type Identity = { handle: string }
 
-/** The career's handle, and whether the player has kept it. Until then the start card offers rerolls. */
-export type SavedIdentity = Identity & { chosen: boolean }
+/** The career's handle and product, and whether the player has kept them. Until then the start card offers rerolls. */
+export type SavedIdentity = Identity & { product: string; chosen: boolean }
 
 // Both lists are checked by hand for slang and slurs, alone, together and run together without the hyphen;
 // identity.test.ts scans every pair again.
@@ -24,6 +24,9 @@ const ANIMALS = [
   "otter", "pangolin", "panda", "puffin", "quokka", "moose", "salmon", "tapir", "toucan", "walrus",
   "wombat", "yak",
 ] as const
+
+// The product is the handle's animal plus one of these: `quiet-otter` -> Otterly, Otterbase, Otterhub.
+const SUFFIXES = ["ly", "base", "hub", "stack", "lab", "flow", "ify", "io"] as const
 
 type Draw = () => number
 
@@ -51,9 +54,37 @@ export function randomHandle(random: Draw = Math.random, not?: string): string {
   return drawNew(() => `${pick(ADJECTIVES, random)}-${pick(ANIMALS, random)}`, not, allHandles)
 }
 
+function animalOf(handle: string): string {
+  return handle.split("-")[1] ?? ""
+}
+
+function stemOf(handle: string): string {
+  const animal = animalOf(handle)
+  return animal.charAt(0).toUpperCase() + animal.slice(1)
+}
+
+/** The stem and the suffix run together, without doubling the letter they share: Axolotly, not Axolotlly. */
+const join = (stem: string, suffix: string): string => (stem.endsWith(suffix.charAt(0)) ? stem + suffix.slice(1) : stem + suffix)
+
+/** Every product the handle's animal can draw. */
+export function productsOf(handle: string): string[] {
+  return SUFFIXES.map((suffix) => join(stemOf(handle), suffix))
+}
+
+/** Every product the lists can draw, for any handle. */
+export function allProducts(): string[] {
+  return ANIMALS.flatMap((animal) => productsOf(`x-${animal}`))
+}
+
+/** A product name for the handle's animal, different from `not`. A reroll changes only the suffix. */
+export function randomProduct(handle: string, random: Draw = Math.random, not?: string): string {
+  return drawNew(() => join(stemOf(handle), pick(SUFFIXES, random)), not, () => productsOf(handle))
+}
+
 /** A fresh identity. */
-export function randomIdentity(random: Draw = Math.random): Identity {
-  return { handle: randomHandle(random) }
+export function randomIdentity(random: Draw = Math.random): Identity & { product: string } {
+  const handle = randomHandle(random)
+  return { handle, product: randomProduct(handle, random) }
 }
 
 function isHandle(value: unknown): value is string {
@@ -70,7 +101,9 @@ export function normalizeIdentity(raw: unknown): SavedIdentity | undefined {
   if (typeof raw !== "object" || raw === null) return undefined
   const row = raw as Record<string, unknown>
   if (!isHandle(row.handle)) return undefined
-  return { handle: row.handle, chosen: row.chosen === true }
+  // A product the handle's animal cannot draw (a hand edit, or a save from before products) is drawn fresh.
+  const product = typeof row.product === "string" && productsOf(row.handle).includes(row.product) ? row.product : randomProduct(row.handle)
+  return { handle: row.handle, product, chosen: row.chosen === true }
 }
 
 /** The letter on the avatar. */

@@ -66,7 +66,7 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
-import { randomHandle, randomIdentity } from "./identity.ts"
+import { randomHandle, randomIdentity, randomProduct } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
@@ -223,8 +223,10 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
-  /** Draw another handle from the word lists. Only before the player keeps it; false after. */
+  /** Draw another handle from the word lists, and a product from its animal. Only before the player keeps it; false after. */
   rerollProfile: () => boolean
+  /** Draw another suffix for the product. Only before the player keeps it; false after. */
+  rerollProduct: () => boolean
   /** Keep the current handle for the rest of the career. */
   keepProfile: () => void
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
@@ -847,7 +849,16 @@ export const useGame = create<GameState>((set, get) => ({
   rerollProfile: () => {
     const { profile } = get()
     if (profile.chosen) return false
-    set({ profile: { handle: randomHandle(Math.random, profile.handle), chosen: false } })
+    const handle = randomHandle(Math.random, profile.handle)
+    set({ profile: { handle, product: randomProduct(handle), chosen: false } })
+    persistNow()
+    return true
+  },
+
+  rerollProduct: () => {
+    const { profile } = get()
+    if (profile.chosen) return false
+    set({ profile: { ...profile, product: randomProduct(profile.handle, Math.random, profile.product) } })
     persistNow()
     return true
   },
