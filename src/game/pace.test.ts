@@ -96,7 +96,8 @@ describe("pace model", () => {
   })
 })
 
-describe("pace over several careers (the Exit)", () => {
+// Each case simulates hundreds of days over several careers: about 2 s here, past the 5 s default on a CI runner.
+describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
   const regular = profile(3, 15, 2)
 
   for (const [name, payback] of [
