@@ -14,10 +14,18 @@ export const RPS_PER_USER = 0.1
 export const SERVING_KINDS: readonly GearKind[] = ["cloud", "gpu", "rack", "orbit", "mars"]
 export const RPS_PER_CPS = 12
 
+/** Whether a gear row serves requests: the Cloud, GPU, Rack, Orbit and Mars sections. Desk, home lab and storage do not. */
+export const isServingKind = (kind: GearKind): boolean => SERVING_KINDS.includes(kind)
+
+/** Requests a second one copy of a gear row serves. 0 for gear that does not serve. */
+export const servedRpsOf = (item: { readonly kind: GearKind; readonly cps: number }): number => (isServingKind(item.kind) ? item.cps * RPS_PER_CPS : 0)
+
+/** Users one copy of a gear row keeps served: its requests a second over what each user sends. */
+export const servedUsersOf = (item: { readonly kind: GearKind; readonly cps: number }): number => servedRpsOf(item) / RPS_PER_USER
+
 /** Requests a second the company can serve with what it owns. */
 export function capacityOf(equipment: Readonly<Record<string, number>>): number {
-  const serving = GEAR.filter((item) => SERVING_KINDS.includes(item.kind))
-  return serving.reduce((rps, item) => rps + (equipment[String(item.id)] ?? 0) * item.cps * RPS_PER_CPS, BASE_RPS)
+  return GEAR.reduce((rps, item) => rps + (equipment[String(item.id)] ?? 0) * servedRpsOf(item), BASE_RPS)
 }
 
 /** Requests a second the users send. A DDoS surge multiplies a region's share, so callers pass the surged total. */

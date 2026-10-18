@@ -35,13 +35,13 @@ export function nextStep(company: Company, fork?: ForkView): NextStep {
     return { tone: "bad", text: `${where} wants a local server. ${how}, or respond to the ${INCIDENTS[law.kind].name.toLowerCase()}.` }
   }
   if (company.dropShare > 0) {
-    return { tone: "bad", text: `Dropping ${Math.max(1, Math.round(company.dropShare * 100))}% of requests. Serving gear in the Gear tab adds capacity.` }
+    return { tone: "bad", text: `Dropping ${Math.max(1, Math.round(company.dropShare * 100))}% of requests. Buy gear marked Serves users (Gear tab, Cloud and below) for more capacity.` }
   }
   if (company.incidents.length > 0) {
     const n = company.incidents.length
     return { tone: "warn", text: `${n} incident${n === 1 ? "" : "s"} slowing you down. Respond to end one now, or wait it out.` }
   }
-  if (company.health === "d") return { tone: "warn", text: "Serving is near its limit. More serving gear keeps growth going." }
+  if (company.health === "d") return { tone: "warn", text: "Serving is near its limit. Gear marked Serves users (Gear tab, Cloud and below) keeps growth going." }
   if (company.won) return { tone: "won", text: "The world is yours. Keep the seven billion served." }
   const unbought = REGIONS.filter((region) => !company.regions.includes(region.id)).sort((a, b) => a.price - b.price)[0]
   if (unbought) return { tone: "calm", text: `Growing. Buying ${unbought.name} lets the app reach far more people there.` }

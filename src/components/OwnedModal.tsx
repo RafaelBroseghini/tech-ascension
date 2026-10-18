@@ -1,11 +1,11 @@
-import { Backpack, X } from "lucide-react"
+import { Briefcase, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { UI_ICON } from "./icons/ui.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 
-/** On a narrow screen the owned list and skill icons do not fit under the art, so a backpack opens them in a modal. */
+/** On a narrow screen the owned list and skill icons do not fit under the art, so a briefcase opens them in a modal. */
 export function OwnedButton() {
   const [open, setOpen] = useState(false)
   return (
@@ -20,7 +20,7 @@ export function OwnedButton() {
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <Backpack {...UI_ICON} aria-hidden />
+        <Briefcase {...UI_ICON} aria-hidden />
       </button>
       {open ? <OwnedModal onClose={() => setOpen(false)} /> : null}
     </>

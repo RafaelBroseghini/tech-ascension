@@ -95,10 +95,11 @@
   .stage-panel h2 { font-size: var(--fs-md); }
   /* The stage name is also in the status bar, and the art and the balance need the room. */
   .plate, .career-dock { display: none; }
+  /* Top right of the stage, clear of the thumb that taps the art. The boost chip moves down under it. */
   .owned-open {
     position: absolute;
+    top: var(--sp-2);
     right: var(--sp-2);
-    bottom: calc(var(--ide-status) + var(--sp-2));
     z-index: 3;
     display: inline-grid;
     place-items: center;
@@ -110,6 +111,10 @@
     color: var(--text);
     cursor: pointer;
   }
+
+  /* Under the briefcase, only the multiplier and its bar, so it stays clear of the balance. */
+  .boost-chip-slot { top: calc(var(--sp-2) * 2 + 44px); right: var(--sp-2); }
+  .boost-chip > span:not(.boost-chip-mult) { display: none; }
 
   /* The unlock card sits at the foot of the screen, not beside what it unlocks, so it never covers the click target. */
   .ul-card {
