@@ -54,6 +54,8 @@ function paint(theme: IdeTheme): void {
   for (const [key, value] of Object.entries(ideThemeStyle(theme))) root.style.setProperty(key, value)
   root.dataset.ideScheme = theme.kind
   root.dataset.ideTheme = theme.id
+  // The browser bar follows the desk's top chrome. index.html carries Mocha's mantle for the first paint.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme.colors.mantle)
 }
 
 type FadingDocument = Document & { startViewTransition?: (update: () => void) => unknown }
