@@ -47,11 +47,11 @@ const TOGGLES: readonly {
   { key: "clicks", label: "Click sound", Icon: MousePointer2, feature: "clickKits" },
   {
     key: "hoverClick",
-    label: "Hover click",
+    label: "Hover or hold click",
     Icon: MousePointerClick,
     feature: "hoverClick",
     complete: true,
-    title: "Hover the emoji to click automatically",
+    title: "Hover or hold the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI, feature: "cat" },
 ]
@@ -234,7 +234,7 @@ export function EditorSettings() {
                       className="desk-toggle"
                       data-testid={`desk-${toggle.key}`}
                       aria-pressed={desk[toggle.key]}
-                      title={toggle.key === "hoverClick" ? `Hover the emoji to click at ${hoverPerSec}/s` : toggle.title}
+                      title={toggle.key === "hoverClick" ? `Hover or hold the emoji to click at ${hoverPerSec}/s` : toggle.title}
                       onClick={() => {
                         setDeskPref(toggle.key, !desk[toggle.key])
                         seeFeature(toggle.feature)
