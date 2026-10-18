@@ -96,7 +96,7 @@ describe("editor theme", () => {
       vi.resetModules()
       const ledger = await import("./ledger.ts")
       const fresh = await import("./ideTheme.ts")
-      expect(fresh.getIdeTheme().id).toBe("github-light")
+      expect(fresh.getIdeTheme().id).toBe("latte")
       expect(ledger.readPref("theme")).toBeNull()
     })
 
