@@ -36,7 +36,7 @@ getState(): {
  hoverRate: number                  // hover clicks per second: 0 until a hover gold skill (or every catalog row) is owned
  offlineCapHours: number            // 8, or more with the Time away gold skills, plus 4 with the Long weekend Legacy perk
  unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }   // gear opens at 10,000 lifetime XP (or once any gear is owned), independent of the boards
- nextUnlock: { key: string; name: string; tab: "A" | "B" | "C" | "G" | "D"; needs: string[]; either: boolean } | null   // the next thing to chase across the whole game; each shop tab banner is the same idea scoped to its own panel
+ nextUnlock: { key: string; name: string; tab: "A" | "B" | "C" | "G" | "D"; needs: string[]; either: boolean } | null   // the next thing to chase across the whole game; the shop has no banner; a locked board's lock panel names what it needs
  era: "early" | "mid" | "upper" | "q3" | "end"
  spriteTierId: number
  activeBoost: { mult: number; endsAt: number } | null
@@ -54,6 +54,7 @@ getState(): {
  } | null
  lastReview: { promptId: number; jobId: number; choice: "exceeds" | "meets" | "pip" | null; lines: string[] } | null
  lastPop: { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string } | null
+ gigCard: number | null   // the gig id on the gig card, until Continue (dismissGigCard())
  features: {
   open: string[]      // career timeline rows unlocked so far, in order ("studio", "careerLog", "theme:dracula", ...)
   fresh: string[]     // rows still marked NEW (unlocked, not used yet)
@@ -112,6 +113,7 @@ advanceOffline(ms: number): { credited: number; creditedXp: number; toast: strin
 forceEvent(eventId: number): boolean
 acceptEvent(): boolean
 dismissEvent(): void
+dismissGigCard(): void     // close the gig card (its Continue button does the same)
 forceReview(promptId?: number): boolean // 1:1 for the highest job. False with no job or for a prompt outside that band
 answerReview(choice: "exceeds" | "meets" | "pip"): boolean // meets changes nothing; pip is refused when the cost cannot be paid
 dismissReview(): void
@@ -155,7 +157,7 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - Money mode starts at the first cleared gig (or whenever money already exists, as with a forced balance).
 - Skills cost XP and spending never lowers `xpTotal`. Skills and jobs cost XP; equipment and capital cost money. Repeatable items cost `floor(base × 1.15 ^ owned)`.
 - `nextUnlock` is the one thing to chase across the whole game. It names the first skill that has not been bought yet, not a closed tab. Once every skill is owned, closed gates come first: Gear (10K XP), Gig Board, Job Board, then Capital. With every gate open it walks Gigs, Jobs, Gear, then Capital and stops at the first row that has not been bought yet. An earlier unlocked row that was never bought wins over a later row. The first copy is enough for repeatable gear, skills and capital. `needs` is never empty.
-- The banner under the shop tabs is per panel: each tab shows `nextUnlock(progress, tab)` from `src/game/nextUnlock.ts`, which is that tab's closed board (what it still needs) or else its first row not bought yet. A finished panel reads "Every skill learned" and so on. `getState().nextUnlock` is the whole-game version, not the open tab's.
+- The shop has no per-tab banner. A closed board shows its lock panel (what it still needs); the rest is the row's own lock. `getState().nextUnlock` is still the whole-game suggestion (`nextUnlock(progress)` in `src/game/nextUnlock.ts`).
 - `spriteTierId` is the art id of the stage sprite: the highest owned capital tier, else the art of the furthest job, gig or skill. It is `1` before the first purchase. `era` is `early` until a capital tier is owned.
 - The shop lists owned rows plus the next unowned row, even while that row is still locked. Skills cannot be bought until `xpTotal` reaches `unlockAtXp`. Gear and capital first copies wait until their reveal gate (held money, and a job for some gear). `buy(tierId)` still enforces the capital gate.
 - `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock. Skills keep studying (XP/s) in every phase, and held jobs that teach add to it.
@@ -164,6 +166,9 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - `forceEvent(id)` opens a random event now (ids 1–110, `src/data/events.ts`) without applying it. Returns false for an unknown id. An open event is replaced, never stacked. `acceptEvent()` takes the deal and returns false when a trade's cost cannot be paid. `dismissEvent()` declines and changes nothing. `event` is the modal on screen, `lastEvent` is kept after either choice. Stakes are minutes of what you currently earn (idle, or half a click per second when that is higher), and at least 1% of the balance you hold. A gift only adds money or XP. A trade swaps one for the other. Nothing only deducts. Random events roll roughly every 240s from rows whose `eras` include `any` or the current era. Optional `requires` (job, gig, gear) is AND across fields and OR inside a list; a row with no `requires` stays era-only. Cash events (money gifts and every trade) wait until money exists. A loss never pushes money or spendable XP below 0, and lifetime XP never falls.
 - `forceReview(promptId?)` opens a 1:1 for the highest job you hold (`src/data/reviews.ts`). It returns false with no job or when `promptId` is outside that job's band. Omit `promptId` to roll one. It replaces an open event or review without applying it. `answerReview("exceeds")` is a money gift (12 minutes). `answerReview("meets")` closes the meeting and changes nothing. `answerReview("pip")` trades money for XP (10 minutes) and returns false when that cost cannot be paid, leaving the meeting up. `dismissReview()` leaves without a reply. `review.replies[].lines` are the same `+$` / `-XP` strings as events; meets has none and shows no change. A 1:1 rolls about every 12 minutes, only once a job is held, and waits out an event or a meeting already on screen. If both clocks are due, the event wins and the 1:1 slips 5 seconds.
 - `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
+- Completing a gig (`completeGig`, or the gig's normal gates) opens the gig card (`src/components/GigCard.tsx`): the gig's art, its lump and retainer, and the next gig on the board. Only Continue closes it, and it arms after 900 ms. Events and 1:1s wait while it is open. `gigCard` (the gig id, transient, never saved) is in `getState()`, and `dismissGigCard()` closes it. `forceGig` does not open it.
+- The top bar's XP slot shows only the click rate and the idle XP/s; the XP total is in the metrics modal.
+- Below 860 px the desk's status bar is not shown. Its controls (Sound, Click, Rosters, Theme) are in the settings menu (`EditorSettings.tsx`), and the settings gear carries a green mark while a new setting is unpicked. Picking a setting clears its mark.
 - The desk behind the stage is an activity bar (the Your company globe, the career log), the career log sidebar and a status bar. The status bar names the band the career is in (High school to Mars, by stage art id, `src/data/idePacks.ts`). `previewEra(era)` shows that era's first band there with a PREVIEW chip, the way the shop's Capital era tab does; `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era. The snapshot has no field for it; read `data-preview` on `[data-testid='ide']`.
 - A save from any other `version` is wiped on load. There is no migration.
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.

@@ -9,6 +9,7 @@ import { getSavedIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { openRosters, ROSTER_KINDS, ROSTER_LABEL, rosterEntries, type RosterKind } from "../game/rosters.ts"
+import { getOpenRoster, setOpenRoster, subscribeOpenRoster } from "../game/rosterModal.ts"
 import { useGame } from "../game/store.ts"
 import {
   ClickKitList,
@@ -23,13 +24,12 @@ import { CatRosterModal } from "./CatRosterModal.tsx"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
+import { useNarrow } from "./useNarrow.ts"
 import type { FeatureId } from "../data/features.ts"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
 type ChipId = "sound" | "clicks" | "cat" | "rosters" | "theme"
-
-type OpenRoster = "cats" | RosterKind | null
 
 function StatusChip({
   id,
@@ -149,7 +149,7 @@ function StatusChip({
 }
 
 /** One button per shop panel that is open, each with how many rows it holds. */
-function RosterButtons({ onPick }: { onPick: (kind: RosterKind) => void }) {
+export function RosterButtons({ onPick }: { onPick: (kind: RosterKind) => void }) {
   // The gates read lifetime XP and the peak balance, which move every tick. Joined into a string
   // the selector only changes when a roster actually opens.
   const kinds = useGame((state) => openRosters(state).join(" "))
@@ -194,6 +194,15 @@ function ChipIcon({ Icon, src }: { Icon?: LucideIcon; src?: string }) {
   return null
 }
 
+/** The roster modals. They live outside the dock, so they open from the settings menu on narrow screens too. */
+export function RosterModals() {
+  const roster = useSyncExternalStore(subscribeOpenRoster, getOpenRoster, getOpenRoster)
+  const close = () => setOpenRoster(null)
+  if (roster === "cats") return <CatRosterModal onClose={close} />
+  if (roster) return <CatalogRosterModal key={roster} kind={roster} onClose={close} />
+  return null
+}
+
 export const IdeStatusDock = memo(function IdeStatusDock() {
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const savedTheme = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
@@ -201,7 +210,8 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
   const catsFound = useGame((state) => state.stats.catsFound.length)
   const seeFeature = useGame((state) => state.seeFeature)
   const [openChip, setOpenChip] = useState<ChipId | null>(null)
-  const [roster, setRoster] = useState<OpenRoster>(null)
+  const roster = useSyncExternalStore(subscribeOpenRoster, getOpenRoster, getOpenRoster)
+  const narrow = useNarrow()
   const music = useFeatureOpen("music")
   const kits = useFeatureOpen("clickKits")
   const cat = useFeatureOpen("cat")
@@ -221,12 +231,18 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
     if (id === "theme") seeFeature("themes")
     if (id === "rosters") seeFeature("rosters")
   }
+  // On narrow screens the dock is folded into the settings menu, which owns these surfaces there.
   useSurface("rosters", () => {
+    if (narrow) return
     seeFeature("rosters")
-    setRoster("skills")
+    setOpenRoster("skills")
   })
-  useSurface("clickKits", () => openChipFor("clicks"))
-  useSurface("themes", () => openChipFor("theme"))
+  useSurface("clickKits", () => {
+    if (!narrow) openChipFor("clicks")
+  })
+  useSurface("themes", () => {
+    if (!narrow) openChipFor("theme")
+  })
 
   const closeChip = (id: ChipId) => {
     setOpenChip((current) => {
@@ -235,6 +251,9 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
       return null
     })
   }
+
+  // Narrow screens fold the dock into the settings menu (EditorSettings), so nothing sits in the status bar.
+  if (narrow) return null
 
   return (
     <div className="ide-status-dock" onClick={(event) => event.stopPropagation()}>
@@ -320,7 +339,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
                   data-testid="status-cat-roster"
                   onClick={() => {
                     setOpenChip(null)
-                    setRoster("cats")
+                    setOpenRoster("cats")
                   }}
                 >
                   <span className="desk-toggle-label">Cat roster</span>
@@ -331,8 +350,6 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
           }
         />
       ) : null}
-      {roster === "cats" ? <CatRosterModal onClose={() => setRoster(null)} /> : null}
-      {roster && roster !== "cats" ? <CatalogRosterModal key={roster} kind={roster} onClose={() => setRoster(null)} /> : null}
 
       {rosters ? (
         <StatusChip
@@ -349,7 +366,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
               <RosterButtons
                 onPick={(kind) => {
                   setOpenChip(null)
-                  setRoster(kind)
+                  setOpenRoster(kind)
                 }}
               />
             </SettingsSection>

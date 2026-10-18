@@ -16,8 +16,6 @@ import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRe
 import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
 import type { BuyAmount } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
-import { nextUnlock, shopFocus } from "../game/nextUnlock.ts"
-import type { NextUnlock } from "../game/nextUnlock.ts"
 import {
   capitalRequirements,
   capitalUnlocked,
@@ -45,11 +43,6 @@ import { CompanyTab } from "./globe/CompanyTab.tsx"
 import { useForkPending } from "./globe/useForkPending.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
-function nextLine(next: NextUnlock): string {
-  const body = next.needs.join(next.either ? " or " : " · ")
-  return next.needs.every((line) => line.startsWith("to ")) ? body : `need ${body}`
-}
-
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string; done: string }> = {
   A: { label: "Skills", title: "Study the next skill", hint: "Pay in XP", glow: "var(--ide-green)", done: "Every skill learned" },
   B: { label: "Gigs", title: "Take on a gig", hint: "First dollars", glow: "var(--ide-blue)", done: "Every gig cleared" },
@@ -120,17 +113,6 @@ type OfferProps = {
   gold?: boolean
   /** What buying this row unlocks on the desk, while that is still closed. */
   unlocks?: readonly { id: string; name: string }[]
-}
-
-function scrollRowIntoList(list: HTMLElement, row: HTMLElement) {
-  const header = row.previousElementSibling
-  const anchor = header instanceof HTMLElement && header.classList.contains("shop-section") ? header : row
-  const listRect = list.getBoundingClientRect()
-  const anchorRect = anchor.getBoundingClientRect()
-  const rowRect = row.getBoundingClientRect()
-  const align = anchor === row ? Math.max(0, (list.clientHeight - rowRect.height) / 2) : 0
-  const top = list.scrollTop + (anchorRect.top - listRect.top) - align
-  list.scrollTop = Math.max(0, top)
 }
 
 function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, unlock, title, children, actions, art, gold, unlocks }: OfferProps) {
@@ -274,13 +256,8 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const holdPreview = useGame((s) => s.holdPreview)
   const [flashKey, setFlashKey] = useState<string | null>(null)
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
-  const [pinnedRow, setPinnedRow] = useState<string | null>(null)
-  const [jumpSeq, setJumpSeq] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const seenRows = useRef(new Map<string, number>())
-  const jumpRow = useRef<string | null>(null)
-  const jumped = useRef(0)
-  const pin = (kind: string, id: number) => pinnedRow === `${kind}:${id}`
 
   // A newly opened phase takes over the tab so the unlock is not missed.
   if (phase !== lastPhase) {
@@ -325,17 +302,13 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const skillRows = visibleShopRows(
     SKILL_TIERS,
     (row) => ownedCount(skills, row.id) > 0,
-    (row) => pin("skill", row.id),
   )
-  const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id), (gig) => pin("gig", gig.id))
-  const jobRows = visibleShopRows(JOB_TIERS, (job) => jobs.includes(job.id), (job) => pin("job", job.id))
+  const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id))
+  const jobRows = visibleShopRows(JOB_TIERS, (job) => jobs.includes(job.id))
   const equipRows = visibleShopRows(
     EQUIPMENT,
     (row) => ownedCount(equipment, row.id) > 0,
-    (row) => pin("gear", row.id),
   )
-  // The banner speaks for the open panel only: its closed board, or its first row not bought yet.
-  const next = tab === "W" ? null : nextUnlock({ ...gates, equipment, money, xp }, tab)
   const goldOpen = goldSectionOpen({ xpTotal, gold })
   // The Skills tab splits in two once the first 10x dev skill is in reach: the 104 skills, or the perks.
   const tenx = tab === "A" && goldOpen && skillView === "tenx"
@@ -346,7 +319,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     const visible = visibleShopRows(
       CAPITAL,
       (tier) => ownedCount(owned, tier.id) > 0,
-      (tier) => pinnedRow === `capital:${tier.id}`,
     )
     const map = new Map<Era, typeof visible>()
     for (const tier of visible) {
@@ -356,7 +328,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     }
     for (const rows of map.values()) rows.sort((a, b) => a.baseCost - b.baseCost)
     return map
-  }, [owned, pinnedRow])
+  }, [owned])
   const eraTabs = eraSections().filter((section) => revealedByEra.has(section.id))
   const topEra = [...eraTabs].reverse().find((section) => (revealedByEra.get(section.id) ?? []).some((tier) => ownedCount(owned, tier.id) > 0))
   const era = pickedEra && revealedByEra.has(pickedEra) ? pickedEra : (topEra?.id ?? eraTabs[0]?.id ?? "mid")
@@ -383,7 +355,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     if (!list) return
     const previous = seenRows.current.get(rowScope)
     seenRows.current.set(rowScope, rowCount)
-    if (jumpRow.current && jumped.current !== jumpSeq) return
     if (previous === undefined || rowCount <= previous) return
     const row =
       [...list.querySelectorAll<HTMLElement>(".offer.fresh")].at(-1) ??
@@ -395,10 +366,9 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     const above = listBox.top - rowBox.top
     if (below > 0) list.scrollTop += below
     else if (above > 0) list.scrollTop -= above
-  }, [rowScope, rowCount, jumpSeq])
+  }, [rowScope, rowCount])
 
   // One list serves every tab, so it keeps its scroll offset across a switch. The newest rows sit at the bottom: land there.
-  // This runs before the "Next" jump below, which still wins when it targets a specific row.
   const shownScope = useRef(rowScope)
   useLayoutEffect(() => {
     if (shownScope.current === rowScope) return
@@ -406,34 +376,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     const list = listRef.current
     if (list) list.scrollTop = rowScope === "W" ? 0 : list.scrollHeight
   }, [rowScope])
-
-  useLayoutEffect(() => {
-    const rowKey = jumpRow.current
-    if (!rowKey || jumpSeq === 0 || jumped.current === jumpSeq) return
-    const list = listRef.current
-    const row = list?.querySelector<HTMLElement>(`[data-row="${rowKey}"]`)
-    if (!list || !row) return
-    scrollRowIntoList(list, row)
-    jumped.current = jumpSeq
-  }, [jumpSeq, tab, era, rowScope, rowCount])
-
-  function openNext(target: NextUnlock) {
-    if (target.tab === "A") setSkillView("skills")
-    const focus = shopFocus({ ...gates, equipment, money, xp }, target)
-    if (!focus) {
-      jumpRow.current = null
-      setPicked(target.tab)
-      return
-    }
-    jumpRow.current = focus.row
-    setPinnedRow(focus.row)
-    setPicked(focus.tab)
-    if (focus.era && focus.era !== era) setPickedEra(focus.era)
-    setJumpSeq((n) => n + 1)
-    const flash = focus.row.startsWith("gear:") ? `equip:${focus.row.slice("gear:".length)}` : focus.row
-    setFlashKey(flash)
-    window.setTimeout(() => setFlashKey((current) => (current === flash ? null : current)), 440)
-  }
 
   const revealedKeys = [
     ...skillRows.map((row) => `skill:${row.id}`),
@@ -473,8 +415,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   }
 
   const tabGlow = PHASE_TAB[tab].glow
-  const nextTease = next ? teaseFor(next.key) : []
-
   useEffect(() => {
     if (tab !== "D") setPickedEra(null)
   }, [tab, setPickedEra])
@@ -552,31 +492,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         })}
       </div>
 
-      {tab === "W" ? null : (
-      <button
-        type="button"
-        className="next-unlock"
-        data-testid="next-unlock"
-        data-next={next?.key ?? "none"}
-        disabled={!next}
-        onClick={() => next && openNext(next)}
-      >
-        <span className="next-kicker">Next</span>
-        {next ? (
-          <>
-            <strong className="next-name">
-              {next.name}
-              {nextTease.map((feature) => (
-                <UnlockBadge key={feature.id} id={feature.id} named />
-              ))}
-            </strong>
-            <span className="next-needs">{nextLine(next)}</span>
-          </>
-        ) : (
-          <span className="next-needs">{PHASE_TAB[tab].done}</span>
-        )}
-      </button>
-      )}
 
       {tab === "A" && goldOpen ? (
         <div className="era-tabs era-sub" role="tablist" aria-label="Skill kinds">

@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { createElement } from "react"
+import { createElement, Fragment } from "react"
 import { createRoot } from "react-dom/client"
 import { act } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -7,7 +7,7 @@ import { AdminSettings } from "./AdminSettings.tsx"
 import { CatRosterButton } from "./CatRosterButton.tsx"
 import { CatRosterModal } from "./CatRosterModal.tsx"
 import { DeskCat } from "./DeskCat.tsx"
-import { IdeStatusDock } from "./IdeStatusDock.tsx"
+import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { MetricsModal } from "./MetricsModal.tsx"
 import { setAdminMode } from "../game/adminMode.ts"
 import { CAT_ROSTER } from "../game/catRoster.ts"
@@ -133,7 +133,7 @@ describe("cat roster", () => {
 
 describe("taskbar cat chip", () => {
   it("offers the roster only after the first cat, and a pick is not a desk click", () => {
-    mount(createElement(IdeStatusDock))
+    mount(createElement(Fragment, null, createElement(IdeStatusDock), createElement(RosterModals)))
     const open = () => act(() => $("[data-status-chip='cat']")!.dispatchEvent(new PointerEvent("pointerover", { bubbles: true })))
     open()
     expect(useGame.getState().stats.catsFound, "catsFound").toEqual([])
@@ -163,7 +163,7 @@ describe("catalog rosters", () => {
   const buttons = () => [...document.body.querySelectorAll<HTMLElement>("[data-testid^='status-roster-']")].map((el) => el.dataset.testid)
 
   it("offers one roster per open shop panel and hides capital until it opens", () => {
-    mount(createElement(IdeStatusDock))
+    mount(createElement(Fragment, null, createElement(IdeStatusDock), createElement(RosterModals)))
     hover("rosters")
     expect(buttons()).toEqual(["status-roster-skills"])
 
@@ -182,7 +182,7 @@ describe("catalog rosters", () => {
     expect(SKILL_ICONS[react.id]).toContain("React")
     expect(SKILL_ICONS[lurker.id]).toBeUndefined()
     useGame.setState({ skills: { [react.id]: 1, [lurker.id]: 3 }, xpTotal: 1e6 })
-    mount(createElement(IdeStatusDock))
+    mount(createElement(Fragment, null, createElement(IdeStatusDock), createElement(RosterModals)))
     hover("rosters")
     expect($("[data-testid='status-roster-skills'] i")?.textContent).toBe("2")
     act(() => $("[data-testid='status-roster-skills']")!.click())
@@ -226,7 +226,7 @@ describe("catalog rosters", () => {
   })
 
   it("says so when a roster is empty", () => {
-    mount(createElement(IdeStatusDock))
+    mount(createElement(Fragment, null, createElement(IdeStatusDock), createElement(RosterModals)))
     hover("rosters")
     act(() => $("[data-testid='status-roster-skills']")!.click())
     expect($("[data-testid='roster-empty']")?.textContent).toBe("No skills learned yet.")

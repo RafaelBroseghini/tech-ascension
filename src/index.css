@@ -577,6 +577,28 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .ide-settings-section + .ide-settings-section { margin-top: 10px; }
 
+/* The green NEW mark: on the settings gear while something is unpicked, and beside each row or heading that holds one. */
+.settings-new {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--ide-green);
+  box-shadow: 0 0 0 2px var(--surface-1);
+  vertical-align: middle;
+}
+
+.settings-new-corner {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  margin: 0;
+}
+
+.ide-settings { position: relative; }
+
 .ide-settings-section-panel {
   margin-top: 4px;
   padding: 4px;
@@ -3712,55 +3734,19 @@ img { -webkit-user-drag: none; user-select: none; }
   .event-backdrop, .event-modal { animation: none; }
 }
 
-/* ---------- next unlock teaser (always under the tabs) ---------- */
+/* ---------- gig card: a cleared gig stops the desk until Continue ---------- */
 
-.next-unlock {
-  flex: none;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-  gap: 2px var(--sp-3);
-  width: 100%;
-  margin: 0;
-  padding: var(--sp-2) var(--sp-4);
-  border: 0;
-  border-bottom: var(--stroke) solid var(--surface-2);
-  border-left: 4px solid var(--accent);
-  background: var(--surface-1);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out);
+.gig-card-art {
+  align-self: center;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  image-rendering: auto;
 }
 
-.next-unlock:hover:not(:disabled) { background: var(--surface-2); }
-.next-unlock:disabled { cursor: default; border-left-color: var(--line-strong); }
-
-.next-kicker {
-  grid-row: span 2;
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-}
-
-.next-name {
-  min-width: 0;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-
-.next-needs {
-  min-width: 0;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  line-height: 1.3;
-  overflow-wrap: anywhere;
+.gig-card .event-choice:disabled {
+  opacity: 0.5;
+  cursor: progress;
 }
 
 /* ---------- admin settings (admin mode only) ---------- */

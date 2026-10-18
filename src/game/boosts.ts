@@ -20,7 +20,7 @@ export function boostConfigFor(era: Era): BoostEraConfig {
   return BOOST_BY_ERA[era] ?? BOOST_BY_ERA.early
 }
 
-/** Exponential wait around `meanMs`, clamped to [0.4×, 2.5×] mean. */
+/** Exponential wait around `meanMs`, clamped to [0.5×, 2.5×] mean. */
 export function sampleWaitMs(meanMs: number, rand: number): number {
   const u = Math.min(Math.max(rand, 0), 1 - 1e-12)
   const raw = meanMs * -Math.log(1 - u)

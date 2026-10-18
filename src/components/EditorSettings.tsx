@@ -16,7 +16,11 @@ import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
-import { useFeatureOpen, useUnlockedSet } from "./useFeature.ts"
+import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
+import { useNarrow } from "./useNarrow.ts"
+import { RosterButtons } from "./IdeStatusDock.tsx"
+import { setOpenRoster } from "../game/rosterModal.ts"
+import type { FeatureId } from "../data/features.ts"
 
 const GROUPS = [
   { kind: "dark", label: "Dark" },
@@ -32,22 +36,39 @@ const TOGGLES: readonly {
   label: string
   Icon?: LucideIcon
   emoji?: string
+  /** The career row this switch belongs to: its NEW mark shows here, and picking the switch uses that row. */
+  feature: FeatureId
   /** Hidden until hover clicking is unlocked (a gold hover skill, or every catalog row owned). */
   complete?: boolean
   title?: string
 }[] = [
-  { key: "music", label: "Music", Icon: Music },
-  { key: "sounds", label: "Desk sounds", Icon: Volume2 },
-  { key: "clicks", label: "Click sound", Icon: MousePointer2 },
+  { key: "music", label: "Music", Icon: Music, feature: "music" },
+  { key: "sounds", label: "Desk sounds", Icon: Volume2, feature: "music" },
+  { key: "clicks", label: "Click sound", Icon: MousePointer2, feature: "clickKits" },
   {
     key: "hoverClick",
     label: "Hover click",
     Icon: MousePointerClick,
+    feature: "hoverClick",
     complete: true,
     title: "Hover the emoji to click automatically",
   },
-  { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
+  { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI, feature: "cat" },
 ]
+
+/** Rows in the settings menu that can carry a NEW mark: the career rows above, and the recurring picks under them. */
+const SETTINGS_FEATURES: readonly FeatureId[] = ["music", "clickKits", "hoverClick", "themes", "cat", "rosters"]
+const SETTINGS_PICK_PREFIXES = ["music:", "kit:", "theme:"] as const
+/** Anchors for the reveal cards on narrow screens, where the status bar is folded into this menu. */
+const SETTINGS_ANCHORS = [...SETTINGS_FEATURES, ...SETTINGS_PICK_PREFIXES.map((prefix) => prefix.slice(0, -1))].join(" ")
+
+const isSettingsMark = (key: string) =>
+  (SETTINGS_FEATURES as readonly string[]).includes(key) || SETTINGS_PICK_PREFIXES.some((prefix) => key.startsWith(prefix))
+
+/** The green mark: a dot on a settings row or section heading that holds something new to pick. */
+function SettingsMark({ id }: { id: FeatureId | `${string}:` }) {
+  return useFresh(id) ? <i className="settings-new" data-testid="settings-new" data-new={id} aria-hidden /> : null
+}
 
 /** The one destructive action in settings. The button opens a modal; only its red button wipes. */
 function WipeSave({ onWiped }: { onWiped: () => void }) {
@@ -125,6 +146,10 @@ export function EditorSettings() {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
+  const narrow = useNarrow()
+  const seeFeature = useGame((state) => state.seeFeature)
+  const anyNew = useGame((state) => state.fresh.some(isSettingsMark))
+  const rosters = useFeatureOpen("rosters")
   // Settings only offer what the career has unlocked: music after the headset, the cat after it moves in, and the
   // styles, kits and themes earned so far (plus whichever one is in use).
   const music = useFeatureOpen("music")
@@ -145,6 +170,17 @@ export function EditorSettings() {
     clearIdeThemePreview()
     setOpen(false)
   }
+
+  // On narrow screens the status bar's rosters and picks live in this menu, so its reveals open the menu.
+  useSurface("rosters", () => {
+    if (narrow) setOpen(true)
+  })
+  useSurface("clickKits", () => {
+    if (narrow) setOpen(true)
+  })
+  useSurface("themes", () => {
+    if (narrow) setOpen(true)
+  })
 
   useEffect(() => {
     if (!open) return
@@ -175,9 +211,11 @@ export function EditorSettings() {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={menuId}
+        data-feature-anchor={narrow ? SETTINGS_ANCHORS : undefined}
         onClick={() => (open ? close() : setOpen(true))}
       >
         <Settings {...UI_ICON} aria-hidden />
+        {anyNew ? <i className="settings-new settings-new-corner" data-testid="settings-new-gear" aria-hidden /> : null}
       </button>
       {open ? (
         <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => clearIdeThemePreview()}>
@@ -197,7 +235,10 @@ export function EditorSettings() {
                       data-testid={`desk-${toggle.key}`}
                       aria-pressed={desk[toggle.key]}
                       title={toggle.key === "hoverClick" ? `Hover the emoji to click at ${hoverPerSec}/s` : toggle.title}
-                      onClick={() => setDeskPref(toggle.key, !desk[toggle.key])}
+                      onClick={() => {
+                        setDeskPref(toggle.key, !desk[toggle.key])
+                        seeFeature(toggle.feature)
+                      }}
                     >
                       <span className="desk-toggle-label">
                         {toggle.emoji ? (
@@ -206,6 +247,7 @@ export function EditorSettings() {
                           <toggle.Icon {...UI_ICON_SM} aria-hidden />
                         ) : null}
                         {toggle.label}
+                        <SettingsMark id={toggle.feature} />
                       </span>
                       <i>{desk[toggle.key] ? "On" : "Off"}</i>
                     </button>
@@ -218,6 +260,7 @@ export function EditorSettings() {
           <section className="ide-settings-section" aria-labelledby={`${menuId}-music-style`}>
             <p className="ide-theme-heading" id={`${menuId}-music-style`}>
               Music style
+              <SettingsMark id="music:" />
             </p>
             <div className="ide-settings-section-panel">
               <ul role="listbox" aria-label="Music styles">
@@ -229,7 +272,10 @@ export function EditorSettings() {
                       aria-selected={desk.musicStyle === id}
                       className={desk.musicStyle === id ? "ide-theme-option is-active" : "ide-theme-option"}
                       data-testid={`desk-music-${id}`}
-                      onClick={() => setDeskPref("musicStyle", id)}
+                      onClick={() => {
+                        setDeskPref("musicStyle", id)
+                        seeFeature("music")
+                      }}
                     >
                       <span className="ide-theme-name">{MUSIC_STYLES[id].label}</span>
                     </button>
@@ -243,6 +289,7 @@ export function EditorSettings() {
             <section className="ide-settings-section" aria-labelledby={`${menuId}-click-kit`}>
               <p className="ide-theme-heading" id={`${menuId}-click-kit`}>
                 Click kit
+                <SettingsMark id="kit:" />
               </p>
               <div className="ide-settings-section-panel">
                 <ul role="listbox" aria-label="Click sounds">
@@ -254,7 +301,10 @@ export function EditorSettings() {
                         aria-selected={desk.clickKit === id}
                         className={desk.clickKit === id ? "ide-theme-option is-active" : "ide-theme-option"}
                         data-testid={`desk-kit-${id}`}
-                        onClick={() => setDeskPref("clickKit", id)}
+                        onClick={() => {
+                          setDeskPref("clickKit", id)
+                          seeFeature("clickKits")
+                        }}
                       >
                         <span className="ide-theme-name">{CLICK_KITS[id].label}</span>
                       </button>
@@ -267,6 +317,7 @@ export function EditorSettings() {
           <section className="ide-settings-section" aria-labelledby={`${menuId}-editor-theme`}>
             <p className="ide-theme-heading" id={`${menuId}-editor-theme`}>
               Editor theme
+              <SettingsMark id="theme:" />
             </p>
             <div className="ide-settings-section-panel">
               {GROUPS.map((group) => (
@@ -287,7 +338,10 @@ export function EditorSettings() {
                           style={ideThemeStyle(entry) as CSSProperties}
                           onPointerEnter={() => previewIdeTheme(entry.id)}
                           onFocus={() => previewIdeTheme(entry.id)}
-                          onClick={() => setIdeTheme(entry.id)}
+                          onClick={() => {
+                            setIdeTheme(entry.id)
+                            seeFeature("themes")
+                          }}
                         >
                           <span className="ide-theme-dots" aria-hidden="true">
                             <i style={{ background: "var(--ide-base)" }} />
@@ -304,6 +358,23 @@ export function EditorSettings() {
               ))}
             </div>
           </section>
+          {narrow && rosters ? (
+            <section className="ide-settings-section" aria-labelledby={`${menuId}-rosters`}>
+              <p className="ide-theme-heading" id={`${menuId}-rosters`}>
+                Rosters
+                <SettingsMark id="rosters" />
+              </p>
+              <div className="ide-settings-section-panel">
+                <RosterButtons
+                  onPick={(kind) => {
+                    seeFeature("rosters")
+                    setOpenRoster(kind)
+                    close()
+                  }}
+                />
+              </div>
+            </section>
+          ) : null}
           <WipeSave onWiped={close} />
         </div>
       ) : null}

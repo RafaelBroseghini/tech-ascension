@@ -148,6 +148,8 @@ export type GameSnapshot = {
   savedAt: number
   /** The most recent money pop (medium on a paying click, large on gig clear and phase unlock), or null. */
   lastPop: PopSnapshot | null
+  /** The gig card on screen: the gig id, or null. Close it with dismissGigCard(). */
+  gigCard: number | null
   /** The career timeline: what is unlocked, marked NEW, waiting to reveal, and next. */
   features: FeaturesSnapshot
   /** Journal entries kept (the newest 2,000) and the latest one. */
@@ -279,7 +281,7 @@ export type GameHarness = {
   setBuyAmount: (amount: BuyAmount) => BuyAmount
   /** Clear a gig through the normal gates (board open, XP, prior gigs). */
   completeGig: (gigId: number) => boolean
-  /** Clear a gig now, bypassing every requirement. False for an unknown or already cleared id. */
+  /** Clear a gig now, bypassing every requirement. No gig card. False for an unknown or already cleared id. */
   forceGig: (gigId: number) => boolean
   setXp: (n: number) => void
   tick: (ms: number) => void
@@ -292,6 +294,8 @@ export type GameHarness = {
   acceptEvent: () => boolean
   /** Decline the open event. Balances stay put. */
   dismissEvent: () => void
+  /** Close the gig card, as its Continue button does. */
+  dismissGigCard: () => void
   /**
    * Open a 1:1 for the highest job held. Optional prompt id must sit in that job's band.
    * False with no job or for an unknown prompt. Replaces an open event or review.
@@ -492,6 +496,7 @@ export function installGameHarness(): GameHarness {
         spriteTierId: stage?.artId ?? 1,
         activeBoost: liveBoost(state.activeBoost, now),
         savedAt: readSavedAt(),
+        gigCard: state.gigCard,
         lastPop: state.pop
           ? { kind: state.pop.kind, size: state.pop.size, amount: state.pop.amount, label: state.pop.label }
           : null,
@@ -640,6 +645,7 @@ export function installGameHarness(): GameHarness {
     acceptEvent: () => useGame.getState().acceptEvent(),
 
     dismissEvent: () => useGame.getState().dismissEvent(),
+    dismissGigCard: () => useGame.getState().dismissGigCard(),
 
     forceReview: (promptId) => useGame.getState().fireReview(promptId),
 

@@ -167,6 +167,8 @@ type GameState = {
   toastSeq: number
   pop: MoneyPop | null
   popSeq: number
+  /** The gig just cleared, shown as a card the player has to Continue past. Transient: never saved. */
+  gigCard: number | null
   seenMilestones: string[]
   buyStamp: number
   celebrationNonce: number
@@ -249,6 +251,8 @@ type GameState = {
   answerReview: (choice: ReviewChoiceId) => boolean
   /** Leave the 1:1. Balances stay put. */
   dismissReview: () => void
+  /** Close the gig card. Only its Continue button calls this. */
+  dismissGigCard: () => void
   setPreviewEra: (era: Era | null) => void
   /** Keep a browsed era alive while the shop or the desk is being used. */
   holdPreview: () => void
@@ -456,6 +460,7 @@ export const useGame = create<GameState>((set, get) => ({
   toast: booted.toast,
   toastSeq: booted.toastSeq,
   pop: null,
+  gigCard: null,
   popSeq: 0,
   seenMilestones: booted.save.seenMilestones ?? [],
   buyStamp: 0,
@@ -708,6 +713,7 @@ export const useGame = create<GameState>((set, get) => ({
       previewEra: null,
       previewUntil: 0,
       pop: null,
+      gigCard: null,
       stats: { ...state.stats, lifetimeEarned: 0 },
       // Every career is a new product. The handle stays; the start card opens on the product beat.
       profile: { handle: state.profile.handle, product: randomProduct(state.profile.handle, Math.random, product), chosen: false },
@@ -786,10 +792,14 @@ export const useGame = create<GameState>((set, get) => ({
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
       ...makePop(state, "gigClear", gig.lump, gig.name),
+      // A forced clear is harness setup: it pays and unlocks, but does not stop the desk with a card.
+      gigCard: force ? state.gigCard : gig.id,
     })
     persistNow()
     return true
   },
+
+  dismissGigCard: () => set({ gigCard: null }),
 
   dismissToast: () => set({ toast: null }),
 
@@ -921,7 +931,7 @@ export const useGame = create<GameState>((set, get) => ({
       {
         era,
         paying: moneyMode(state),
-        blocked: state.event !== null || state.review !== null,
+        blocked: state.event !== null || state.review !== null || state.gigCard !== null,
         owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
       },
       now,
@@ -936,7 +946,7 @@ export const useGame = create<GameState>((set, get) => ({
       state.nextReviewAt,
       {
         jobId: reviewJob,
-        blocked: state.event !== null || state.review !== null || fired !== null,
+        blocked: state.event !== null || state.review !== null || state.gigCard !== null || fired !== null,
       },
       now,
       Math.random,
@@ -1026,6 +1036,7 @@ export const useGame = create<GameState>((set, get) => ({
       previewUntil: 0,
       toast: null,
       pop: null,
+      gigCard: null,
       popSeq: 0,
       seenMilestones: [],
       buyStamp: 0,

@@ -7,7 +7,7 @@ import { useFeatureOpen, useSurface } from "./useFeature.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
-import { IdeStatusDock } from "./IdeStatusDock.tsx"
+import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
 import { useExitVisible } from "./useExit.ts"
 import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
@@ -126,6 +126,7 @@ export const IdeChrome = memo(function IdeChrome() {
         <span className="ide-status-gap" />
         <IdeStatusDock />
       </footer>
+      <RosterModals />
     </div>
   )
 })
