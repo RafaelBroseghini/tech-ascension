@@ -6,7 +6,7 @@ import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
 import { ERA_ACCENT } from "../data/eraAccent.ts"
 import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
-import { hoverStepMs } from "../game/autoClick.ts"
+import { hoverStepMs, usableHoverRate } from "../game/autoClick.ts"
 import { hoverRate } from "../game/gold.ts"
 import { getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
@@ -161,7 +161,7 @@ export function Stage() {
   const hoverRef = useRef(false)
   const pointRef = useRef<{ x: number; y: number } | null>(null)
   const hoverClickOn = useSyncExternalStore(subscribeDeskPrefs, hoverClickPref, hoverClickPref)
-  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
+  const hoverPerSec = useGame((state) => usableHoverRate(hoverRate(state.gold, ownsEverything(state))))
   const autoClick = hoverClickOn && hoverPerSec > 0
 
   const stage = stageOf({ skills, owned, jobs, gigs })
@@ -334,7 +334,7 @@ export function Stage() {
     const id = window.setInterval(() => {
       if (!hoverRef.current || document.hidden) return
       const state = useGame.getState()
-      if (state.event || state.review || !getDeskPrefs().hoverClick || hoverRate(state.gold, ownsEverything(state)) <= 0) return
+      if (state.event || state.review || !getDeskPrefs().hoverClick || usableHoverRate(hoverRate(state.gold, ownsEverything(state))) <= 0) return
       const point = pointRef.current
       fireRef.current(point?.x ?? null, point?.y ?? null)
     }, hoverStepMs(hoverPerSec))
