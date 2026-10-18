@@ -20,9 +20,11 @@ import { watchUnlockChime } from "./game/unlockChime.ts"
 export default function App() {
   useGameLoop()
   const shopPref = useSyncExternalStore(subscribeShopPanelOpen, readShopPanelOpen, () => true)
-  // A phone has no room to hide the shop, and no side column to put it in, so the desktop preference does not apply.
+  // A phone has no side column to hide the shop from: it stays mounted and the same preference docks it to a bar at
+  // the foot of the screen instead (portrait only; mobile.css ignores the dock when the phone is on its side).
   const narrow = useSyncExternalStore(subscribeMobileViewport, isMobileViewport, () => false)
   const shopOpen = shopPref || narrow
+  const shopDocked = narrow && !shopPref
   const owned = useGame((state) => state.owned)
   const era = highestOwnedCapital(owned)?.era ?? "early"
   const lastEra = useRef(era)
@@ -44,7 +46,7 @@ export default function App() {
         <MetricsBar />
         <main className={shopOpen ? "layout" : "layout is-shop-collapsed"}>
           <Stage />
-          {shopOpen ? <Shop onCollapse={() => writeShopPanelOpen(false)} /> : null}
+          {shopOpen ? <Shop onCollapse={() => writeShopPanelOpen(false)} docked={shopDocked} onDock={(docked) => writeShopPanelOpen(!docked)} /> : null}
           {!shopOpen ? (
             <button
               type="button"

@@ -94,6 +94,8 @@ const MEASURE = `(async () => {
     scrollH: document.documentElement.scrollHeight,
     stage: rect(document.querySelector(".stage-panel")),
     shop: rect(document.querySelector(".shop")),
+    docked: !!document.querySelector(".shop.is-docked"),
+    grip: rect(document.querySelector("[data-testid=shop-grip]")),
     topbar, hit: rect(hit), hitOk, hitCover,
     offscreen,
     smallTabs: small(tabs), smallBuys: small(buys), smallBar: small(bar),
@@ -150,7 +152,12 @@ function check(vp, state, m) {
   if (m.stage && m.shop) {
     if (portraitPhone) {
       if (m.shop.top < m.stage.top + m.stage.height * 0.5) fail(`shop is not below the stage (shop top ${Math.round(m.shop.top)}, stage ${Math.round(m.stage.top)}-${Math.round(m.stage.bottom)})`)
-      if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
+      if (state === "docked") {
+        if (!m.docked) fail("dragging the grip down did not dock the shop")
+        if (m.shop.height > 64) fail(`the docked shop is ${Math.round(m.shop.height)}px tall`)
+        if (!m.grip || m.grip.height < 44) fail(`the docked bar is under 44px (${m.grip ? Math.round(m.grip.height) : "-"}px)`)
+      } else if (m.docked) fail("the shop is docked")
+      else if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
       if (m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
       if (m.topbar && m.topbar.height > vp.h * 0.18) fail(`top bar takes ${Math.round((m.topbar.height / vp.h) * 100)}% of the screen`)
     }
@@ -198,6 +205,23 @@ function measure() {
   return JSON.parse(out.slice(out.indexOf("{")))
 }
 
+function gripCenter() {
+  const out = ab("eval", `(() => { const r = document.querySelector("[data-testid=shop-grip]").getBoundingClientRect(); return JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]) })()`)
+  const [x, y] = JSON.parse(JSON.parse(out.slice(out.indexOf('"'))))
+  return [x, y]
+}
+
+// A slow drag on the grip, with the mouse, so it goes through the same pointer handlers as a finger.
+function dragGrip(dy) {
+  const [x, y] = gripCenter()
+  ab("mouse", "move", String(x), String(y))
+  ab("mouse", "down")
+  ab("mouse", "move", String(x), String(y + dy), "--steps", "12", "--duration", "600")
+  ab("mouse", "up")
+}
+
+const UNDOCK = `(() => { document.querySelector(".shop.is-docked [data-testid=shop-grip]")?.click(); return 1 })()`
+
 function shot(vp, state) {
   ab("screenshot", `${outDir}/${vp.name}-${state}.png`)
 }
@@ -208,6 +232,8 @@ try {
     ab("open", APP)
     ab("wait", "--fn", "!!window.__GAME__")
     dismissGate()
+    // reset() wipes the career, not the prefs: a dock left over from another run would shrink every shop below.
+    ab("eval", UNDOCK)
 
     // The start card, as a new player sees it.
     game("g.reset(); return 1")
@@ -222,6 +248,23 @@ try {
       await settle()
       check(vp, state, measure())
       shot(vp, state)
+    }
+
+    // A portrait phone docks the shop: drag the grip down to a bar, then tap the bar to open it again.
+    if (vp.w <= 860 && vp.h > vp.w) {
+      game(STATES["mid-d"])
+      await settle()
+      dragGrip(Math.round(vp.h * 0.3))
+      await settle()
+      check(vp, "docked", measure())
+      shot(vp, "docked")
+      const [x, y] = gripCenter()
+      ab("mouse", "move", String(x), String(y))
+      ab("mouse", "down")
+      ab("mouse", "up")
+      await settle()
+      check(vp, "undocked", measure())
+      ab("eval", UNDOCK)
     }
 
     // The Company tab, with an incident live.

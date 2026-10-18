@@ -139,7 +139,7 @@ describe("the shop teases what is next", () => {
   it("hides closed boards except the next one, and names what a row unlocks", () => {
     writeSavedShopTab("A")
     useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 9).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
-    render(Shop, { onCollapse: () => {} })
+    render(Shop, { onCollapse: () => {}, docked: false, onDock: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
     // Skill 1 opened the studio, so the Company tab is there too.
     expect(tabs).toEqual(["A", "G", "W"])
