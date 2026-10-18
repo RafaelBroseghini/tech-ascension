@@ -601,7 +601,11 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
     for (let i = 0; i < 30; i++) expect(game.buyEquipment(id), `gear ${id} copy ${i}`).toBe(true)
   }
   const mult = game.getState().foreverMult
+  // No incidents on the way: a block or a law rolled in these hours can hold the crowd under eight billion, and the win is what is under test.
+  for (const incident of game.getState().world.incidents) game.respondIncident(incident.id)
+  const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
   for (let i = 0; i < 60 && !game.getState().world.won; i++) game.tick(Date.now() + (i + 2) * 3_600_000)
+  calmRolls.mockRestore()
   expect(game.getState().world.won).toBe(true)
   expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
   expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
@@ -631,7 +635,10 @@ test("the world while away: the win is journaled and paid when it happens offlin
   for (const id of [109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
   for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
   const mult = game.getState().foreverMult
+  // No incidents while away, for the same reason as above: the win is what is under test.
+  const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
   game.advanceOffline(8 * 3_600_000)
+  calmRolls.mockRestore()
   expect(game.getState().world.won).toBe(true)
   expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
   expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
