@@ -306,6 +306,17 @@ describe("click boosts", () => {
     expect(pity.spawned?.mult).toBe(3)
     expect(pity.clock.activeBoost).toEqual(pity.spawned)
   })
+
+  it("holds a due or pity roll while a prompt is open, then spawns once it lifts", () => {
+    const rng = () => 0
+    const mean = BOOST_BY_ERA.early.meanWaitMs
+    const now = BOOST_PITY_FACTOR * mean
+    const clock = { activeBoost: null, nextBoostAt: 1, idleSince: 0 }
+    const held = advanceBoostClock(clock, "early", now, rng, true)
+    expect(held.spawned).toBeNull()
+    expect(held.clock.activeBoost).toBeNull()
+    expect(advanceBoostClock(held.clock, "early", now, rng, false).spawned).not.toBeNull()
+  })
 })
 
 describe("catalog tables", () => {

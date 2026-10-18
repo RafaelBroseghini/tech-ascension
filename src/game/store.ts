@@ -903,7 +903,10 @@ export const useGame = create<GameState>((set, get) => ({
       nextBoostAt: state.nextBoostAt,
       idleSince: state.idleSince,
     }
-    const advanced = advanceBoostClock(clock, era, now, Math.random)
+    // A boost never starts over an event, a 1:1 or a choice, and none of those open while a boost runs.
+    const prompted = state.event !== null || state.review !== null || state.forkModal || state.founder.broke
+    const advanced = advanceBoostClock(clock, era, now, Math.random, prompted)
+    const boosting = advanced.clock.activeBoost !== null
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
     const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder, state.legacy)), now - dt, now, Math.random)
@@ -924,7 +927,7 @@ export const useGame = create<GameState>((set, get) => ({
       {
         era,
         paying: moneyMode(state),
-        blocked: state.event !== null || state.review !== null,
+        blocked: state.event !== null || state.review !== null || boosting,
         owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
       },
       now,
@@ -939,7 +942,7 @@ export const useGame = create<GameState>((set, get) => ({
       state.nextReviewAt,
       {
         jobId: reviewJob,
-        blocked: state.event !== null || state.review !== null || fired !== null,
+        blocked: state.event !== null || state.review !== null || fired !== null || boosting,
       },
       now,
       Math.random,
