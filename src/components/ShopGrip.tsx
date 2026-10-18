@@ -15,7 +15,7 @@ interface Press {
 
 /**
  * The handle on top of the phone shop (portrait only; mobile.css hides it elsewhere). Drag it down to dock the shop to a
- * bar, tap it or drag it up to open it again. While the finger is down the sheet follows it through an inline
+ * bar, tap it or drag it up to open it again. From the keyboard it toggles both ways. While the finger is down the sheet follows it through an inline
  * max-height, so the stage grows and shrinks live; on release the class takes over and the CSS transition settles it.
  */
 export function ShopGrip({ docked, label, fresh, onDock }: { docked: boolean; label: string; fresh: boolean; onDock: (docked: boolean) => void }) {
@@ -97,8 +97,14 @@ export function ShopGrip({ docked, label, fresh, onDock }: { docked: boolean; la
           swallowClick.current = false
           return
         }
-        if (!docked) openHeight.current = sheetOf(event.currentTarget)?.getBoundingClientRect().height ?? 0
-        onDock(!docked)
+        if (docked) {
+          onDock(false)
+          return
+        }
+        // A tap on the open grip is too easily a tab tap that landed high; docking is a drag, or the keyboard.
+        if (event.detail !== 0) return
+        openHeight.current = sheetOf(event.currentTarget)?.getBoundingClientRect().height ?? 0
+        onDock(true)
       }}
     >
       <i className="shop-grip-pill" aria-hidden />

@@ -7,11 +7,11 @@ const past = Math.ceil(travel * DOCK_SETTLE_SHARE) + 1
 const short = Math.floor(travel * DOCK_SETTLE_SHARE) - 1
 
 describe("shop dock", () => {
-  it("treats a press under the slop as a tap that flips the sheet", () => {
+  it("leaves the sheet where it was when a drag comes back to where it began", () => {
     expect(isDockTap(DOCK_TAP_SLOP - 1)).toBe(true)
     expect(isDockTap(DOCK_TAP_SLOP)).toBe(false)
-    expect(settleDock({ docked: true, dy: 0, ms: 80, travel })).toBe(false)
-    expect(settleDock({ docked: false, dy: 2, ms: 80, travel })).toBe(true)
+    expect(settleDock({ docked: true, dy: 0, ms: 600, travel })).toBe(true)
+    expect(settleDock({ docked: false, dy: 2, ms: 600, travel })).toBe(false)
   })
 
   it("docks a slow drag down past the settle share, and springs back from a short one", () => {
