@@ -1,11 +1,11 @@
-import { LayoutGrid, X } from "lucide-react"
+import { Backpack, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { UI_ICON } from "./icons/ui.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 
-/** On a narrow screen the owned list and skill icons do not fit under the art, so they open in a modal. */
+/** On a narrow screen the owned list and skill icons do not fit under the art, so a backpack opens them in a modal. */
 export function OwnedButton() {
   const [open, setOpen] = useState(false)
   return (
@@ -15,12 +15,12 @@ export function OwnedButton() {
         className="owned-open"
         data-testid="owned-open"
         aria-label="Owned"
+        title="Owned"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <LayoutGrid {...UI_ICON} aria-hidden />
-        <span>Owned</span>
+        <Backpack {...UI_ICON} aria-hidden />
       </button>
       {open ? <OwnedModal onClose={() => setOpen(false)} /> : null}
     </>
