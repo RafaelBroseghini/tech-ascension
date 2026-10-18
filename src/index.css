@@ -481,12 +481,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .desk-toggle[aria-pressed="true"] i { color: var(--accent); }
 
-.metrics .m-click-boost.is-gold {
-  background: var(--boost-gold);
-  border-left-color: var(--boost-gold-lo);
-}
-.metrics .m-click-boost.is-gold dt,
-.metrics .m-click-boost.is-gold dd { color: var(--boost-gold-ink); }
 
 .top-actions {
   display: flex;
@@ -812,15 +806,39 @@ img { -webkit-user-drag: none; user-select: none; }
   background-color: var(--mocha-base);
 }
 
-.boost-chip-slot {
+/* A click boost turns the balance card the theme accent (gold at 10×) and shows the multiplier at its foot. Nothing else shows it. */
+.hero-money { transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+.hero-money.is-boosted { background: var(--accent); color: var(--accent-ink); }
+.hero-money.is-boosted .hero-money-value,
+.hero-money.is-boosted .hero-money-full,
+.hero-money.is-boosted .hero-money-sub { color: var(--accent-ink); }
+.hero-money.is-gold { background: var(--boost-gold); color: var(--boost-gold-ink); }
+.hero-money.is-gold .hero-money-value,
+.hero-money.is-gold .hero-money-full,
+.hero-money.is-gold .hero-money-sub { color: var(--boost-gold-ink); }
+
+.hero-boost {
+  position: relative;
+  align-self: stretch;
+  padding: 4px 0 6px;
+  border-top: var(--stroke) solid color-mix(in srgb, currentColor 35%, transparent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.hero-boost b { font-size: var(--fs-md); letter-spacing: 0; }
+.hero-boost-bar {
   position: absolute;
-  top: var(--sp-3);
-  right: var(--sp-3);
-  z-index: 3;
-  display: flex;
-  justify-content: flex-end;
-  pointer-events: none;
-  min-height: 34px;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: var(--left);
+  background: currentColor;
+  opacity: 0.55;
+  transition: width 120ms linear;
 }
 
 /* Hero balance: sits above the art, mono, big. */
@@ -865,37 +883,6 @@ img { -webkit-user-drag: none; user-select: none; }
   text-shadow: 0 4px 0 var(--ink);
 }
 
-.boost-chip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px 8px;
-  overflow: hidden;
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: var(--stroke) solid var(--ink);
-  box-shadow: var(--lift-2);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  animation: chip-in var(--dur-base) var(--ease-out);
-}
-
-.boost-chip-mult { font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; }
-
-.boost-chip-bar {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 3px;
-  width: var(--left);
-  background: var(--ink);
-  opacity: 0.6;
-  transition: width 120ms linear;
-}
-
 .hitbox {
   /* Whole multiples of the 64px art so every pixel scales to the same square size. */
   --size: 192px;
@@ -920,10 +907,6 @@ img { -webkit-user-drag: none; user-select: none; }
   box-shadow:
     0 0 0 3px var(--boost-gold),
     0 0 18px 4px color-mix(in srgb, var(--boost-gold) 60%, transparent);
-}
-.is-boost-gold .boost-chip {
-  background: var(--boost-gold);
-  color: var(--boost-gold-ink);
 }
 .is-boost-gold .rim::before {
   background:

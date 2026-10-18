@@ -1,8 +1,9 @@
 import { MousePointerClick } from "lucide-react"
 import { useEffect, useRef, useState, type RefObject } from "react"
+import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
-import { formatFullNumber, formatNumber, RAW_DIGITS_BELOW } from "../game/format.ts"
+import { formatFullNumber, formatMultiplier, formatNumber, RAW_DIGITS_BELOW } from "../game/format.ts"
 import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
@@ -54,8 +55,26 @@ type HeroMoneyProps = {
   stagePanelRef: RefObject<HTMLElement | null>
 }
 
+/** How long a click boost lasts, for the bar under the multiplier. */
+const BOOST_MS = 12000
+
+/** The click boost, at the foot of the balance card: the multiplier and a bar for the time left. The only place a boost shows. */
+function BoostFoot({ mult }: { mult: number }) {
+  const left = useGame((state) => (state.activeBoost ? Math.max(0, state.activeBoost.endsAt - state.now) : 0))
+  return (
+    <span className="hero-boost" data-testid="hero-boost" aria-live="polite">
+      <b>×{formatMultiplier(mult)}</b> click boost
+      <i className="hero-boost-bar" style={{ ["--left" as string]: `${Math.min(100, (left / BOOST_MS) * 100)}%` }} aria-hidden />
+    </span>
+  )
+}
+
 export function HeroMoney({ stagePanelRef }: HeroMoneyProps) {
   const drag = useDeskMoneyHeroDrag(stagePanelRef)
+  // Derived so an idle tick does not re-render the card: only the boost starting or ending does.
+  const boosted = useGame((state) => Boolean(state.activeBoost && state.activeBoost.endsAt > state.now))
+  const mult = useGame((state) => state.activeBoost?.mult ?? 1)
+  const gold = boosted && mult >= GOLD_MULT_THRESHOLD
   const dragStyle = drag.dragging
     ? undefined
     : { ["--hero-x" as string]: `${drag.offsetX}px`, ["--hero-y" as string]: `${drag.offsetY}px` }
@@ -63,7 +82,7 @@ export function HeroMoney({ stagePanelRef }: HeroMoneyProps) {
   return (
     <div
       ref={drag.boxRef}
-      className={["hero-money", drag.dragging ? "is-dragging" : ""].filter(Boolean).join(" ")}
+      className={["hero-money", drag.dragging ? "is-dragging" : "", boosted ? "is-boosted" : "", gold ? "is-gold" : ""].filter(Boolean).join(" ")}
       style={dragStyle}
       aria-live="off"
       aria-label="Money and XP. Drag to reposition."
@@ -74,6 +93,7 @@ export function HeroMoney({ stagePanelRef }: HeroMoneyProps) {
       onPointerCancel={drag.onPointerCancel}
     >
       <HeroMoneyBody />
+      {boosted ? <BoostFoot mult={mult} /> : null}
     </div>
   )
 }

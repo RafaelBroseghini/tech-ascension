@@ -1,10 +1,9 @@
 import { memo } from "react"
 import { MousePointerClick, Timer } from "lucide-react"
-import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CornerActions } from "./CornerActions.tsx"
 import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { TEMP_TARGETS } from "../game/mods.ts"
-import { formatMultiplier, formatNumber } from "../game/format.ts"
+import { formatNumber } from "../game/format.ts"
 import { totalUsers, WORLD_TARGET } from "../game/globe/world.ts"
 import { PHASE_NAME } from "../game/phase.ts"
 import { openSurface } from "../game/surfaces.ts"
@@ -19,7 +18,6 @@ const CornerActionsMemo = memo(CornerActions)
 
 export function MetricsBar() {
   const phase = useGame((state) => state.phase)
-  const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
@@ -29,8 +27,6 @@ export function MetricsBar() {
   const users = totalUsers(company.users)
   const incidents = company.incidents.length
   const product = useGame((state) => state.profile.product)
-  const seconds =
-    activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
 
   // Currency slots: money and XP, each with its click rate (pointer) and its idle rate (timer). The XP total is in the metrics modal,
   // and on a phone the slots move there too.
@@ -75,14 +71,6 @@ export function MetricsBar() {
             </dd>
           ) : null}
         </div>
-        {seconds > 0 ? (
-          <div className={rates.mult >= GOLD_MULT_THRESHOLD ? "m-boost m-click-boost is-gold" : "m-boost m-click-boost"}>
-            <dt>Click boost</dt>
-            <dd data-testid="boost">
-              ×{formatMultiplier(rates.mult)} · {seconds}s
-            </dd>
-          </div>
-        ) : null}
         {foreverMult !== 1 ? (
           <div className="m-boost">
             <dt>Event bonus</dt>

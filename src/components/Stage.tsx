@@ -120,8 +120,6 @@ const HeroMoneyMemo = memo(HeroMoney)
 const OwnedStripMemo = memo(OwnedStrip)
 const SkillsMemo = memo(Skills)
 
-const BOOST_CHIP_MS = 12000
-
 /** The very first career, before the first click: an arrow at the art, so the first move is not a guess. Gone on the first click. */
 function FirstClickHint() {
   const show = useGame((state) => state.xpTotal === 0 && state.legacy.runs <= 1 && state.profile.chosen)
@@ -132,18 +130,6 @@ function FirstClickHint() {
       <span className="first-click-mouse">Click me</span>
       <span className="first-click-touch">Tap me</span>
     </span>
-  )
-}
-
-/** The click boost countdown. The only part of the stage that follows the clock. */
-function BoostChip({ mult }: { mult: number }) {
-  const left = useGame((state) => (state.activeBoost ? Math.max(0, state.activeBoost.endsAt - state.now) : 0))
-  return (
-    <div className="boost-chip">
-      <span className="boost-chip-mult">×{mult}</span>
-      <span>click boost</span>
-      <i className="boost-chip-bar" style={{ ["--left" as string]: `${Math.min(100, (left / BOOST_CHIP_MS) * 100)}%` }} />
-    </div>
   )
 }
 
@@ -392,9 +378,6 @@ export function Stage() {
       <DeskCatMemo />
       <MiniGlobe />
       <span className="era-sweep" aria-hidden="true" />
-      <div className="boost-chip-slot" aria-live="polite">
-        {boosted ? <BoostChip mult={mult} /> : null}
-      </div>
       <HeroMoneyMemo stagePanelRef={stagePanelRef} />
       <button
         ref={hitboxRef}
