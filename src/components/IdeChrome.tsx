@@ -9,6 +9,7 @@ import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
+import { OwnedButton } from "./OwnedModal.tsx"
 import { useExitVisible } from "./useExit.ts"
 import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
@@ -97,6 +98,7 @@ export const IdeChrome = memo(function IdeChrome() {
             <GitBranch className="ide-activity-icon ide-activity-icon-git" {...UI_ICON} aria-hidden />
           </FeatureGhost>
         )}
+        <OwnedButton />
         {prestigeVisible ? (
           <button
             type="button"

@@ -23,7 +23,6 @@ import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { MiniGlobe } from "./globe/MiniGlobe.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
-import { OwnedButton } from "./OwnedModal.tsx"
 import { Skills } from "./Skills.tsx"
 import { useFeatureOpen } from "./useFeature.ts"
 import { getSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
@@ -120,7 +119,6 @@ const DeskCatMemo = memo(DeskCat)
 const HeroMoneyMemo = memo(HeroMoney)
 const OwnedStripMemo = memo(OwnedStrip)
 const SkillsMemo = memo(Skills)
-const OwnedButtonMemo = memo(OwnedButton)
 
 const BOOST_CHIP_MS = 12000
 
@@ -519,7 +517,6 @@ export function Stage() {
         <OwnedStripMemo />
         <SkillsMemo />
       </div>
-      <OwnedButtonMemo />
     </section>
   )
 }
