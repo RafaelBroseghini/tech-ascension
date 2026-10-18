@@ -17,6 +17,7 @@ node scripts/mobile-check.mjs /tmp/mobile-shots       # choose where the screens
 
 Per viewport and per state (start card, phases A to C, mid D, the Company tab, a reveal card, an event, a 1:1, and on narrow screens the Owned modal):
 
+- Shop tabs (and their sub tabs) show whole rows at the top, middle and end of the scroll, on narrow screens.
 - No sideways scroll, no vertical page scroll, and no control off the screen (controls inside a horizontally scrolling row are fine).
 - Portrait phones: the shop is below the stage, each takes at least a third of the screen, and the top bar takes at most 18%.
 - Desktop keeps its side-by-side stage and shop.

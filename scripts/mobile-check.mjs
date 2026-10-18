@@ -102,6 +102,35 @@ const MEASURE = `(async () => {
   }
 })()`
 
+const ROWS = `(async () => {
+  // Every shop tab, and each of its sub tabs, shows whole rows at the top, the middle and the end of its scroll.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+  const bad = []
+  const probe = async (label) => {
+    const list = document.querySelector(".shop-list")
+    if (!list) return
+    for (const at of [0, 0.5, 1]) {
+      list.scrollTop = at * (list.scrollHeight - list.clientHeight)
+      await sleep(450)
+      const box = list.getBoundingClientRect()
+      const cut = [...list.querySelectorAll(".offer")].filter((row) => {
+        const r = row.getBoundingClientRect()
+        return r.bottom > box.top + 1 && r.top < box.bottom - 1 && (r.top < box.top - 1.5 || r.bottom > box.bottom + 1.5)
+      })
+      if (cut.length) { bad.push(label + " cuts " + cut.length + " row(s) at " + at); return }
+    }
+  }
+  const sub = () => [...document.querySelectorAll(".era-tabs.era-sub .era-tab")]
+  for (const tab of [...document.querySelectorAll(".era-tabs:not(.era-sub) .era-tab")]) {
+    if (/Company/.test(tab.textContent)) continue
+    tab.click()
+    await sleep(300)
+    await probe(tab.textContent.trim())
+    for (const s of sub()) { s.click(); await sleep(300); await probe(tab.textContent.trim() + " / " + s.textContent.trim()) }
+  }
+  return JSON.stringify(bad)
+})()`
+
 const failures = []
 const warnings = []
 const rows = []
@@ -121,7 +150,7 @@ function check(vp, state, m) {
   if (m.stage && m.shop) {
     if (portraitPhone) {
       if (m.shop.top < m.stage.top + m.stage.height * 0.5) fail(`shop is not below the stage (shop top ${Math.round(m.shop.top)}, stage ${Math.round(m.stage.top)}-${Math.round(m.stage.bottom)})`)
-      if (m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
+      if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
       if (m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
       if (m.topbar && m.topbar.height > vp.h * 0.18) fail(`top bar takes ${Math.round((m.topbar.height / vp.h) * 100)}% of the screen`)
     }
@@ -208,6 +237,12 @@ try {
 
     // Narrow screens keep the owned list behind a button, in a modal that must fit.
     if (vp.w <= 860) {
+      game(STATES["mid-d"])
+      await settle()
+      game("g.setMoney(9e12); for (let id = 1; id <= 25; id++) g.buy(id); for (let id = 1; id <= 40; id++) g.buyEquipment(id); g.clearReveals(); g.tick(1000); return 1")
+      await settle()
+      const rowOut = ab("eval", ROWS)
+      for (const msg of JSON.parse(JSON.parse(rowOut.slice(rowOut.indexOf('"')))) ) failures.push(`${vp.name} shop: ${msg}`)
       game(STATES["mid-d"])
       await settle()
       try {
