@@ -53,7 +53,7 @@ export function MetricsBar() {
             {clickPays ? (
               <dd className="m-line metric-in">
                 <MousePointerClick {...UI_ICON_SM} aria-label="Per click" />
-                <span data-testid="per-click">${formatNumber(perClick)}</span>
+                <span data-testid="per-click">+${formatNumber(perClick)}/click</span>
               </dd>
             ) : null}
           </div>
@@ -62,7 +62,7 @@ export function MetricsBar() {
           <dt>XP</dt>
           <dd className="m-line">
             <MousePointerClick {...UI_ICON_SM} aria-label="Per click" />
-            <span data-testid="xp-per-click">{formatNumber(xpPerClick)}</span>
+            <span data-testid="xp-per-click">+{formatNumber(xpPerClick)}/click</span>
           </dd>
           {rates.xpIdle > 0 ? (
             <dd className="m-line metric-in">
