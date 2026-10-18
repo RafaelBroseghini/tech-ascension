@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { ideThemeById } from "../data/ideThemes.ts"
 import { clearIdeThemePreview, previewIdeTheme, PREVIEW_REST_MS, setIdeTheme } from "./ideTheme.ts"
 
 const onScreen = () => document.documentElement.dataset.ideTheme
@@ -53,5 +54,23 @@ describe("theme switching is smooth", () => {
     expect(onScreen()).toBe("dracula")
     vi.runAllTimers()
     expect(fades).toBe(1)
+  })
+
+  it("tints the browser bar with the painted theme's mantle", () => {
+    const meta = document.createElement("meta")
+    meta.name = "theme-color"
+    meta.content = "#000000"
+    document.head.append(meta)
+    try {
+      setIdeTheme("latte")
+      expect(meta.content).toBe(ideThemeById("latte").colors.mantle)
+      previewIdeTheme("dracula")
+      vi.advanceTimersByTime(PREVIEW_REST_MS)
+      expect(meta.content).toBe(ideThemeById("dracula").colors.mantle)
+      clearIdeThemePreview()
+      expect(meta.content).toBe(ideThemeById("latte").colors.mantle)
+    } finally {
+      meta.remove()
+    }
   })
 })
