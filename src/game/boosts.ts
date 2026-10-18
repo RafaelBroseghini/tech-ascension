@@ -79,9 +79,16 @@ export type BoostAdvance = {
 /**
  * Advance the single click-boost slot.
  * A running boost is left alone until it ends. The next roll replaces it.
+ * A due roll waits while `blocked` (an event, 1:1 or choice is up) and lands once it lifts.
  * `rng` is called only when a wait or a boost is rolled.
  */
-export function advanceBoostClock(clock: BoostClock, era: Era, now: number, rng: () => number): BoostAdvance {
+export function advanceBoostClock(
+  clock: BoostClock,
+  era: Era,
+  now: number,
+  rng: () => number,
+  blocked = false,
+): BoostAdvance {
   const config = boostConfigFor(era)
   let active = clock.activeBoost
   let nextAt = clock.nextBoostAt
@@ -98,7 +105,7 @@ export function advanceBoostClock(clock: BoostClock, era: Era, now: number, rng:
       nextAt = scheduleNextBoostAt(idleSince, config.meanWaitMs, rng(), false)
     }
     const force = shouldForceBoost(now, idleSince, config.meanWaitMs)
-    if (force || now >= nextAt) {
+    if (!blocked && (force || now >= nextAt)) {
       const spawned = rollClickBoost(era, rng(), rng(), now)
       return {
         clock: { activeBoost: spawned, nextBoostAt: null, idleSince },
