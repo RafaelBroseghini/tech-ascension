@@ -16,4 +16,4 @@ npm run smoke:play   # plays the game through window.__GAME__
 npm run build
 ```
 
-![The start card on a fresh save](docs/screenshots/start.png)
+![The game at its start, on a fresh save](docs/screenshots/start.png)
