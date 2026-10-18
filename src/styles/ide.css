@@ -75,6 +75,36 @@
   color: var(--ide-overlay);
 }
 
+/* The Buy multiplier and its hint sit at the foot of the activity bar, under the other buttons. */
+.ide-activity-foot {
+  margin-top: auto;
+  padding-bottom: var(--sp-4);
+}
+.ide-buy-amount,
+.ide-buy-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ide-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.ide-buy-amount:hover {
+  background: var(--ide-surface);
+  color: var(--ide-text);
+}
+.ide-buy-hint {
+  cursor: help;
+}
+
 .ide-tree {
   grid-area: tree;
   display: flex;

@@ -14,7 +14,7 @@ import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
 import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
-import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
+import { canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
 import type { BuyAmount } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
 import {
@@ -179,28 +179,6 @@ function GoldArt({ row }: { row: GoldSkill }) {
   )
 }
 
-/** The Buy amount control. It only appears once a gold skill adds an amount beyond one copy. */
-function AmountPicker({ amounts, value, onPick }: { amounts: readonly BuyAmount[]; value: BuyAmount; onPick: (amount: BuyAmount) => void }) {
-  if (amounts.length < 2) return null
-  return (
-    <div className="buy-amount" role="group" aria-label="Buy amount" data-testid="buy-amount">
-      <span className="buy-amount-label">Buy</span>
-      {amounts.map((amount) => (
-        <button
-          key={amount}
-          type="button"
-          className="buy-amount-step"
-          aria-pressed={amount === value}
-          data-amount={amount}
-          onClick={() => onPick(amount)}
-        >
-          {amount === "max" ? "Max" : `×${amount}`}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 function LockPanel({ title, lines, either }: { title: string; lines: Requirement[]; either?: boolean }) {
   return (
     <div className="lock-panel" data-testid="lock-panel">
@@ -232,7 +210,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const buyAmount = useGame((s) => s.buyAmount)
   const legacyHeld = useGame((s) => s.legacy)
   const perksHeld = { legacy: legacyHeld }
-  const setBuyAmount = useGame((s) => s.setBuyAmount)
   const buyGold = useGame((s) => s.buyGold)
   const phase = useGame((s) => s.phase)
   const buySkill = useGame((s) => s.buySkill)
@@ -314,7 +291,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   // The Skills tab splits in two once the first 10x dev skill is in reach: the 104 skills, or the perks.
   const tenx = tab === "A" && goldOpen && skillView === "tenx"
   const goldRows = visibleGold(gold)
-  const amounts = buyAmounts(gold)
 
   const revealedByEra = useMemo(() => {
     const visible = visibleShopRows(
@@ -527,8 +503,6 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           </button>
         </div>
       ) : null}
-
-      {tab !== "B" && tab !== "C" && !tenx && unlocked[tab] ? <AmountPicker amounts={amounts} value={buyAmount} onPick={setBuyAmount} /> : null}
 
       {tab === "D" && unlocked.D && eraTabs.length > 1 ? (
         <div className="era-tabs era-sub" role="tablist" aria-label="Capital eras">
