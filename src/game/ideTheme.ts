@@ -7,6 +7,12 @@ import { readPref, writePref } from "./ledger.ts"
 const listeners = new Set<() => void>()
 let saved: IdeTheme | null = null
 let preview: IdeTheme | null = null
+/** The palette actually painted, so a repeat paint (a click on the row already previewed) does nothing. */
+let painted: IdeThemeId | null = null
+let pending: ReturnType<typeof setTimeout> | 0 = 0
+
+/** A hover preview waits for the pointer to rest on a row, so sweeping down the list does not strobe through every palette. */
+export const PREVIEW_REST_MS = 120
 
 export function parseIdeThemeId(value: string | null): IdeThemeId {
   return value && isIdeThemeId(value) ? value : "mocha"
@@ -44,36 +50,71 @@ function paint(theme: IdeTheme): void {
   root.dataset.ideTheme = theme.id
 }
 
+type FadingDocument = Document & { startViewTransition?: (update: () => void) => unknown }
+
+/** Whether a palette change can cross-fade: the View Transitions API is there and the player has not asked for less motion. */
+function canFade(): boolean {
+  if (typeof document === "undefined" || typeof window === "undefined") return false
+  if (typeof (document as FadingDocument).startViewTransition !== "function") return false
+  return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+}
+
+/** Puts `theme` on screen: cross-faded when `smooth` and the browser can, else at once. Nothing happens when it is already there. */
+function show(theme: IdeTheme, smooth: boolean): void {
+  if (painted === theme.id) return
+  painted = theme.id
+  if (smooth && canFade()) (document as FadingDocument).startViewTransition!(() => paint(theme))
+  else paint(theme)
+}
+
+/** Shows what `getIdeTheme` says, after `delay` (a hover at rest) or now. A newer call replaces a waiting one. */
+function settle(delay: number): void {
+  if (pending) clearTimeout(pending)
+  pending = 0
+  if (delay <= 0) {
+    show(getIdeTheme(), true)
+    return
+  }
+  pending = setTimeout(() => {
+    pending = 0
+    show(getIdeTheme(), true)
+  }, delay)
+}
+
 function emit(): void {
-  paint(getIdeTheme())
+  settle(0)
   for (const listener of listeners) listener()
 }
 
 /** Paints the saved theme before the first frame. */
 export function applyIdeThemeScheme(): void {
-  paint(getIdeTheme())
+  show(getIdeTheme(), false)
 }
 
-/** Shows a palette immediately. Nothing is written until `setIdeTheme`. */
+/** Previews a palette once the pointer rests on its row (`PREVIEW_REST_MS`), cross-faded. Nothing is written until `setIdeTheme`. */
 export function previewIdeTheme(id: string): void {
   if (!isIdeThemeId(id)) return
   const next = ideThemeById(id)
   if (next.id === savedTheme().id) {
     if (!preview) return
     preview = null
-    paint(getIdeTheme())
+    settle(PREVIEW_REST_MS)
     return
   }
   if (preview?.id === next.id) return
   preview = next
-  paint(getIdeTheme())
+  settle(PREVIEW_REST_MS)
 }
 
-/** Drops a hover preview and restores the saved palette. */
+/** Drops a hover preview and fades back to the saved palette. */
 export function clearIdeThemePreview(): void {
-  if (!preview) return
+  if (!preview) {
+    // A preview may still be waiting to paint the saved palette back.
+    if (pending) settle(0)
+    return
+  }
   preview = null
-  paint(getIdeTheme())
+  settle(0)
 }
 
 export function setIdeTheme(id: string): void {
@@ -83,7 +124,10 @@ export function setIdeTheme(id: string): void {
   saved = next
   preview = null
   writeStoredId(next.id)
-  if (same) return
+  if (same) {
+    if (pending) settle(0)
+    return
+  }
   emit()
 }
 

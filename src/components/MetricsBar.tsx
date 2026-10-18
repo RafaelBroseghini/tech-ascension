@@ -2,51 +2,38 @@ import { memo } from "react"
 import { MousePointerClick, Timer } from "lucide-react"
 import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CornerActions } from "./CornerActions.tsx"
-import { production } from "../game/economy.ts"
 import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { TEMP_TARGETS } from "../game/mods.ts"
-import { modsOf } from "../game/mods.ts"
 import { formatMultiplier, formatNumber } from "../game/format.ts"
-import { servingOf } from "../game/globe/load.ts"
-import { productRevenueOf } from "../game/globe/track.ts"
 import { totalUsers, WORLD_TARGET } from "../game/globe/world.ts"
-import { clickPaysMoney, PHASE_NAME } from "../game/phase.ts"
+import { PHASE_NAME } from "../game/phase.ts"
 import { openSurface } from "../game/surfaces.ts"
 import { useGame } from "../game/store.ts"
 import { FullTimeCell } from "./FullTime.tsx"
 import { useFeatureOpen } from "./useFeature.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
+import { useLiveRates } from "./useLiveRates.ts"
 
 // The bar follows XP and the clock every tick; the buttons on its right do not.
 const CornerActionsMemo = memo(CornerActions)
 
 export function MetricsBar() {
   const phase = useGame((state) => state.phase)
-  const skills = useGame((state) => state.skills)
-  const equipment = useGame((state) => state.equipment)
-  const owned = useGame((state) => state.owned)
-  const jobs = useGame((state) => state.jobs)
-  const gigs = useGame((state) => state.gigs)
-  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
-  const legacy = useGame((state) => state.legacy)
-  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
-  // clickPower is $1 before any gear, but a click does not pay that dollar until the first job.
-  const paidClick = clickPaysMoney({ jobs }) ? rates.click : 0
+  const { rates, perSec, clickPays, perClick, xpPerClick, money } = useLiveRates()
   const worldOpen = useFeatureOpen("studio")
   const company = useGame((state) => state.company)
   const users = totalUsers(company.users)
   const incidents = company.incidents.length
-  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, founder, legacy.perks)
   const product = useGame((state) => state.profile.product)
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
 
-  // Currency slots: money and XP, each with its click rate (pointer) and its idle rate (timer). The XP total is in the metrics modal.
-  const money = perSec > 0 || clickPaysMoney({ jobs })
+  // Currency slots: money and XP, each with its click rate (pointer) and its idle rate (timer). The XP total is in the metrics modal,
+  // and on a phone the slots move there too.
   return (
     <header className="topbar">
       <div className="brand">
@@ -67,10 +54,10 @@ export function MetricsBar() {
                 <span data-testid="per-sec">${formatNumber(perSec)}/s</span>
               </dd>
             ) : null}
-            {clickPaysMoney({ jobs }) ? (
+            {clickPays ? (
               <dd className="m-line metric-in">
                 <MousePointerClick {...UI_ICON_SM} aria-label="Per click" />
-                <span data-testid="per-click">${formatNumber(paidClick)}</span>
+                <span data-testid="per-click">${formatNumber(perClick)}</span>
               </dd>
             ) : null}
           </div>
@@ -79,7 +66,7 @@ export function MetricsBar() {
           <dt>XP</dt>
           <dd className="m-line">
             <MousePointerClick {...UI_ICON_SM} aria-label="Per click" />
-            <span data-testid="xp-per-click">{formatNumber(rates.xpClick * rates.mult)}</span>
+            <span data-testid="xp-per-click">{formatNumber(xpPerClick)}</span>
           </dd>
           {rates.xpIdle > 0 ? (
             <dd className="m-line metric-in">

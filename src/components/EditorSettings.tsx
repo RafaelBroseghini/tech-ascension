@@ -376,6 +376,9 @@ export function EditorSettings() {
             </section>
           ) : null}
           <WipeSave onWiped={close} />
+          <a className="ide-settings-powered" href="https://emoji.gg/" target="_blank" rel="noopener noreferrer">
+            powered by emoji.gg
+          </a>
         </div>
       ) : null}
     </div>
