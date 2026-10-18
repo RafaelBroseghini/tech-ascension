@@ -25,13 +25,13 @@ describe("header click rate", () => {
   it("does not claim a dollar a click does not pay", () => {
     const host = renderBar()
     expect(host.querySelector("[data-testid='per-click']")).toBeNull()
-    expect(host.querySelector("[data-testid='xp-per-click']")?.textContent).toBe("1")
+    expect(host.querySelector("[data-testid='xp-per-click']")?.textContent).toBe("+1/click")
   })
 
   it("shows the dollar once a job pays it", () => {
     useGame.setState({ jobs: [1] })
     const host = renderBar()
     // $1 base, the intern's +$2, and 1% of the intern's $8/s.
-    expect(host.querySelector("[data-testid='per-click']")?.textContent).toBe("$3.08")
+    expect(host.querySelector("[data-testid='per-click']")?.textContent).toBe("+$3.08/click")
   })
 })
