@@ -72,6 +72,28 @@ Reveals play one at a time, wait for events, 1:1s and money pops, and leave a sh
 
 **JSON journal.** `__GAME__.careerLog()` prints the same journal as JSON lines, one flat object per step (`seq`, `time`, `type`, `ref`, `name`, extras like `awayMs` or `accepted`, then `money` and `xpTotal`). Through `__GAME__`: `getState().features`, `getState().careerLog`, `careerLog()`, `seeFeature(id)`, `clearReveals()`.
 
+## Prestige: the Exit
+
+Every career builds one product. Selling it is the **Exit**: it pays **Prestige**, starts a new career with a new product, and the Prestige gives a permanent bonus and buys Legacy perks. The Exit and everything below are in admin mode only for now.
+
+**What it pays.** `floor(cbrt(earnings across all careers / 5e11))` Prestige in total, so an Exit pays the rungs this career climbed (dollars credited count, spending does not). The first time a career wins the world with an ending it has not won with before, **5 more** Prestige are paid on top. Every Prestige adds 3% to every income and XP stream and to product growth, for good, whether spent or not (`1 + 0.03 × Prestige`).
+
+**When it opens.** On the first career once it would pay at least 1 Prestige (about $5e11 earned, or a win), and from the start on every later career. It needs a total of at least 1 to take.
+
+**The button.** `Sell <Product>: +N Prestige (×A → ×B)`, or `Sell <Product>: no new Prestige yet` when it would pay nothing. It is in the Company tab and in the **Prestige** panel, opened by the crown on the activity bar (shown once the Exit is open or you have Prestige). A confirmation card lists what starts over and what stays, and the first Exit asks a second time, naming the losses in words. A headline card closes it, by how far the product got: under 1M users "acqui-hired; sunset 'to focus on the core'", 1M to under 1B "acquired; stays on as 'advisor'", 1B to under 7B "sold in a blockbuster deal", and a win reads by its ending (founder, night owl, executive sponsor), with "New in the Hall of Fame" when it is a new one. Then the start card opens on the product beat: a new product name (Reroll as usual), the same handle.
+
+**What starts over:** money, XP, skills, gigs, jobs, gear, capital, the click boost and event bonuses, and the product (users by region, regions bought, hires, resistance, incidents, the win and its multiplier, the track back to the ladder, the burn, the bridges and the equity they cost). **What stays:** Prestige and the bonus, Legacy perks, the Hall of Fame, 10x dev skills, the handle, the career log, the desk and the timeline's unlocks.
+
+**Legacy perks.** Three tracks, each after the one before it, bought once, and each applies now and at the start of every career (106 Prestige for all):
+
+| Track | Perks (price) |
+| --- | --- |
+| Network | Study group: skills 1 to 10 learned (1) · Open portfolio: Portfolio site live and React learned, Gig Board open (2) · Repeat clients: gigs 1 to 6 cleared, lumps not paid (4) · Return offer: the internship held (7) · Seed money: $1,000,000 held (12) |
+| Founder | Early adopters: 1,000 users at the home region (2) · Lean team: the founder's burn −25% (4) · Friendly investors: the first bridge of a career costs no equity (7) · Viral loop: product growth ×1.5 on both tracks (11) · Platform: product revenue ×1.5 (16) |
+| Capital | Long weekend: offline cap +4 hours, on top of Time away (2) · Volume discount: capital rows −10% (4) · Bulk hardware: gear rows −10% (7) · Raise season: salaries and retainers ×2 (11) · Compounding: capital rows earn ×1.5 (16) |
+
+**Hall of Fame.** The three endings (Founder, Night owl, Executive sponsor), each recorded the first time a career wins the world with it and shown in the Prestige panel (`???` until then). Owning all three is the long goal. The pace model (`npm run pace`, `docs/PACING.md`) puts a Regular player's first Exit around day 1.7 to 2 for 5 or 6 Prestige and a career that owns everything and wins the world in the sixth, 13 to 16 days in; it can only reach the night owl ending.
+
 ## Stage
 
 The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of the desk: an activity bar, the career log sidebar, a status bar that names the career's band (see [ART.md](ART.md)). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.

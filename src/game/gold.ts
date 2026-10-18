@@ -1,4 +1,5 @@
 import { GOLD_SKILLS } from "../data/gold.ts"
+import { perkEffects } from "./perks.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import { MAX_CLICKS_PER_SEC } from "./autoClick.ts"
 import { canAfford } from "./economy.ts"
@@ -48,11 +49,11 @@ export function hoverRate(gold: readonly number[], catalogComplete: boolean): nu
   return Math.min(rate, MAX_CLICKS_PER_SEC)
 }
 
-/** How much time away is paid. `baseMs` is the default cap with no gold. */
-export function offlineCapMs(gold: readonly number[], baseMs: number): number {
+/** How much time away is paid. `baseMs` is the default cap with no gold. `perks` are the Legacy perks held: Long weekend adds its hours on top. */
+export function offlineCapMs(gold: readonly number[], baseMs: number, perks?: readonly string[]): number {
   let cap = baseMs
   for (const row of ownedGold(gold)) if (row.effect.kind === "offlineCap") cap = Math.max(cap, row.effect.hours * 3_600_000)
-  return cap
+  return cap + perkEffects(perks).offlineHours * 3_600_000
 }
 
 export type GoldGates = { xpTotal: number; gold: readonly number[] }

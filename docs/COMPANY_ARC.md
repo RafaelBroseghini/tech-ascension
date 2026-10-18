@@ -91,6 +91,8 @@ Each step ships and verifies on its own.
 5. **Capital as company moves.** Reword the 25 rows for founders, and make each one feed capacity or reach.
 6. **Story events** for both tracks.
 
+7. **The Exit.** Selling the product for Prestige, and a new product for the next career. Built in `docs/PRESTIGE.md`.
+
 ## Decided
 
 - Quitting stops salary completely.

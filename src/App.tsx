@@ -8,6 +8,7 @@ import { Shop } from "./components/Shop.tsx"
 import { Stage } from "./components/Stage.tsx"
 import { Toast } from "./components/Toast.tsx"
 import { UnlockReveals } from "./components/UnlockReveals.tsx"
+import { ExitHeadline } from "./components/ExitPanel.tsx"
 import { IdentityPicker } from "./components/IdentityPicker.tsx"
 import { UI_ICON } from "./components/icons/ui.tsx"
 import { highestOwnedCapital } from "./game/economy.ts"
@@ -55,6 +56,7 @@ export default function App() {
         <ReviewModal />
         <UnlockReveals />
         <IdentityPicker />
+        <ExitHeadline />
       </div>
     </MobilePlayGate>
   )

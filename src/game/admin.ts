@@ -2,6 +2,7 @@ import { CAPITAL } from "../data/capital.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import type { OwnedMap } from "./economy.ts"
+import { creditMoney } from "./stats.ts"
 import { persistNow, useGame } from "./store.ts"
 
 const SUFFIX: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9, t: 1e12, q: 1e15 }
@@ -15,9 +16,22 @@ export function parseAmount(text: string): number | null {
   return Number.isFinite(value) ? value : null
 }
 
+/** A balance raised this way counts as earned (it moves `stats.lifetimeEarned`), so tests and admins can reach the Exit; lowering it earns nothing. */
 export function setMoneyDirect(n: number): void {
   if (!Number.isFinite(n)) return
-  useGame.setState({ money: Math.max(0, n) })
+  const money = Math.max(0, n)
+  useGame.setState((state) => ({
+    money,
+    stats: money > state.money ? creditMoney(state.stats, money - state.money, "other") : state.stats,
+  }))
+  persistNow()
+}
+
+/** Spendable Prestige. Lifetime Prestige rises to match, never falls, so the bonus follows what is set. Tests only. */
+export function setPrestigeDirect(n: number): void {
+  if (!Number.isFinite(n)) return
+  const prestige = Math.max(0, Math.floor(n))
+  useGame.setState((state) => ({ legacy: { ...state.legacy, prestige, prestigeTotal: Math.max(state.legacy.prestigeTotal, prestige) } }))
   persistNow()
 }
 

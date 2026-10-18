@@ -3,6 +3,7 @@ import { ownedCount } from "../game/economy.ts"
 import { linkedOutProfile } from "../game/linkedout.ts"
 import type { CompanyStint, LinkedRole, SideProject } from "../game/linkedout.ts"
 import { productRole } from "../game/globe/hires.ts"
+import { pastProductsOf } from "../game/legacy.ts"
 import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { useMemo, useState } from "react"
@@ -85,7 +86,7 @@ function Project({ project }: { project: SideProject }) {
 }
 
 /** The product on the résumé: what the win made of the player, or the founder's job while the company is theirs. */
-function ProductRole({ role, product, ended }: { role: string; product: string; ended: boolean }) {
+function ProductRole({ role, product, meta }: { role: string; product: string; meta: string }) {
   return (
     <li className="lo-stint" data-kind="product">
       <span className="lo-logo" style={{ background: "#c0392b" }} aria-hidden="true">
@@ -93,7 +94,7 @@ function ProductRole({ role, product, ended }: { role: string; product: string; 
       </span>
       <div className="lo-stint-body">
         <strong className="lo-title">{role}</strong>
-        <span className="lo-meta">{ended ? "Seven billion users" : "Present"}</span>
+        <span className="lo-meta">{meta}</span>
       </div>
     </li>
   )
@@ -116,6 +117,8 @@ export function LinkedOut() {
   const product = useGame((state) => state.profile.product)
   const ending = useGame((state) => state.company.ending ?? null)
   const isFounder = useGame((state) => state.founder.track === "founder")
+  const entries = useGame((state) => state.journal.entries)
+  const past = useMemo(() => pastProductsOf(entries), [entries])
   const [experienceOpen, setExperienceOpen] = useState(false)
   const [projectsOpen, setProjectsOpen] = useState(false)
   const profile = useMemo(() => {
@@ -151,11 +154,14 @@ export function LinkedOut() {
           </p>
         </div>
       </header>
-      {profile.experience.length > 0 ? (
+      {profile.experience.length > 0 || past.length > 0 ? (
         <section className="lo-block" aria-label="Experience">
           <h4>Experience</h4>
           <ol className="lo-timeline">
-            {ending || isFounder ? <ProductRole role={productRole(ending, product)} product={product} ended={ending !== null} /> : null}
+            {ending || isFounder ? <ProductRole role={productRole(ending, product)} product={product} meta={ending !== null ? "Seven billion users" : "Present"} /> : null}
+            {past.map((entry, index) => (
+              <ProductRole key={`${entry.product}-${index}`} role={entry.role} product={entry.product} meta={entry.meta} />
+            ))}
             {experience.map((stint) => (
               <Stint key={`${stint.orgId}-${stint.roles[0]?.id ?? stint.org}`} stint={stint} />
             ))}

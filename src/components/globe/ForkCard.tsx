@@ -3,6 +3,7 @@ import { jobById, highestJobId } from "../../game/economy.ts"
 import { formatNumber } from "../../game/format.ts"
 import { founderOutlook, runwayWords } from "../../game/founderOutlook.ts"
 import { BRIDGE_CUT, BRIDGE_MINUTES, burnOf, MAX_BRIDGES } from "../../game/globe/track.ts"
+import { perkEffects } from "../../game/perks.ts"
 import { totalUsers } from "../../game/globe/world.ts"
 import { useGame } from "../../game/store.ts"
 
@@ -30,6 +31,7 @@ function useOutlook() {
   const company = useGame((state) => state.company)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
+  const legacy = useGame((state) => state.legacy)
   const now = useGame((state) => state.now)
   return useMemo(
     () =>
@@ -44,10 +46,11 @@ function useOutlook() {
           company,
           foreverMult,
           tempMults,
+          legacy,
         },
         now,
       ),
-    [money, equipment, owned, jobs, gigs, founder, company, foreverMult, tempMults, now],
+    [money, equipment, owned, jobs, gigs, founder, company, foreverMult, tempMults, legacy, now],
   )
 }
 
@@ -96,7 +99,11 @@ function OutOfRunway() {
   const raise = useGame((state) => state.raiseBridge)
   const back = useGame((state) => state.returnToLadder)
   const left = MAX_BRIDGES - bridges
-  const cash = burnOf(users) * BRIDGE_MINUTES * 60
+  const legacy = useGame((state) => state.legacy)
+  const effects = perkEffects(legacy.perks)
+  const cash = burnOf(users, effects.burn) * BRIDGE_MINUTES * 60
+  // Friendly investors: the first bridge of the career gives up nothing.
+  const cut = effects.freeBridge && bridges === 0 ? 0 : BRIDGE_CUT
   const gives = top !== null && jobCount > 1 ? jobById(top)?.name : null
   return (
     <section className="fork-card is-broke" role="region" aria-labelledby="runway-title" data-testid="runway-card">
@@ -110,13 +117,13 @@ function OutOfRunway() {
           {left > 0 ? `Bridge: +${dollars(cash)}, ${BRIDGE_MINUTES} minutes of burn` : "No bridges left"}
         </li>
         <li className="event-line is-bad">
-          {left > 0 ? `Revenue: −${Math.round(BRIDGE_CUT * 100)}% for good` : "Investors have stopped taking calls"}
+          {left > 0 ? (cut === 0 ? "Revenue: nothing given up" : `Revenue: −${Math.round(cut * 100)}% for good`) : "Investors have stopped taking calls"}
         </li>
         <li className="event-line is-neutral">{gives ? `A job again: give up ${gives}, one rung down` : "A job again: salary comes back"}</li>
       </ul>
       <div className="event-actions fork-actions">
         <button type="button" className="event-choice event-yes" data-testid="runway-bridge" disabled={left <= 0} onClick={() => void raise()}>
-          {`Raise a bridge (${left} left, −${Math.round(BRIDGE_CUT * 100)}% revenue for good)`}
+          {`Raise a bridge (${left} left, ${cut === 0 ? "no equity given up" : `−${Math.round(cut * 100)}% revenue for good`})`}
         </button>
         <button type="button" className="event-choice event-no" data-testid="runway-job" onClick={() => void back()}>
           Go back to a job

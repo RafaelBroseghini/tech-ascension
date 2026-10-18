@@ -58,9 +58,10 @@ function FounderChip() {
   const company = useGame((state) => state.company)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
+  const legacy = useGame((state) => state.legacy)
   const now = useGame((state) => state.now)
   const product = useGame((state) => state.profile.product)
-  const outlook = founderOutlook({ money, equipment, owned, jobs, gigs, founder, company, foreverMult, tempMults }, now)
+  const outlook = founderOutlook({ money, equipment, owned, jobs, gigs, founder, company, foreverMult, tempMults, legacy }, now)
   const text = founder.broke ? "Out of cash" : outlook.runwaySec === null ? "Profitable" : `Runway ${runwayShort(outlook.runwaySec)}`
   const hot = founder.broke || (outlook.runwaySec !== null && outlook.runwaySec < 600)
   return (

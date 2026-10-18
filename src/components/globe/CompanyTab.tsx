@@ -11,6 +11,7 @@ import { GlobePane } from "./GlobePane.tsx"
 import { ForkCard } from "./ForkCard.tsx"
 import { FootprintPanel } from "./FootprintPanel.tsx"
 import { useCompany } from "./useCompany.ts"
+import { SellButton } from "../ExitPanel.tsx"
 
 const money = (n: number) => `$${formatNumber(n)}`
 
@@ -44,6 +45,7 @@ export function CompanyTab() {
 
   return (
     <div className="company-tab" data-testid="company-tab" aria-label={product}>
+      <SellButton />
       <ForkCard />
       <section className="status-page" data-testid="company-status" aria-label="Status">
         <div className={`status-banner is-${board.health}`} data-testid="status-banner">

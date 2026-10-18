@@ -4,6 +4,7 @@ import { createPortal } from "react-dom"
 import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
+import { useAdmin } from "./useExit.ts"
 
 const STEPS = 3
 
@@ -14,8 +15,11 @@ const STEPS = 3
  */
 export function IdentityPicker() {
   const chosen = useGame((state) => state.profile.chosen)
+  // After an Exit the headline comes first; the product beat opens when it is dismissed.
+  const admin = useAdmin()
+  const headline = useGame((state) => state.exitCard !== null) && admin
   // Mounted only while the profile is open, so a wipe starts the card again at its first step.
-  return chosen ? null : <IdentityCard />
+  return chosen || headline ? null : <IdentityCard />
 }
 
 function IdentityCard() {
@@ -23,7 +27,9 @@ function IdentityCard() {
   const reroll = useGame((state) => state.rerollProfile)
   const rerollProduct = useGame((state) => state.rerollProduct)
   const keep = useGame((state) => state.keepProfile)
-  const [step, setStep] = useState(0)
+  // A later career keeps the handle: its card opens on the product beat, with no handle to draw.
+  const first = useGame((state) => (state.legacy.runs > 1 ? 1 : 0))
+  const [step, setStep] = useState(first)
   const mainRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -91,13 +97,13 @@ function IdentityCard() {
             </p>
           </>
         ) : null}
-        <div className="identity-dots" aria-label={`Step ${step + 1} of ${STEPS}`} role="img">
-          {Array.from({ length: STEPS }, (_, i) => (
-            <i key={i} className={i === step ? "is-on" : undefined} />
+        <div className="identity-dots" aria-label={`Step ${step - first + 1} of ${STEPS - first}`} role="img">
+          {Array.from({ length: STEPS - first }, (_, i) => (
+            <i key={i} className={i + first === step ? "is-on" : undefined} />
           ))}
         </div>
         <div className="event-actions">
-          {step > 0 ? (
+          {step > first ? (
             <button type="button" className="event-choice event-no" data-testid="identity-back" onClick={() => setStep(step - 1)}>
               Back
             </button>

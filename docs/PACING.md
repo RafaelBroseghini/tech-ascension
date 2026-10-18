@@ -49,7 +49,53 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. "Ha
 
 To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
 
-> The figures below predate the removal of the whiteboard interviews. Rerun `npm run pace` for the current numbers.
+## Over several careers (the Exit)
+
+`simulateExits` in `src/game/pace.ts` plays the same player through the Exit (`docs/PRESTIGE.md`): the first career leaves once the Exit would raise the Prestige bonus enough, every career after that can leave at any visit. After each Exit it spends the Prestige on the cheapest perk it can pay for across the Network, Founder and Capital tracks (Network first on ties), applies the Prestige multiplier to every income and XP rate, and stops when a career owns everything **and** has won the world. `npm run pace` prints it for the Regular player after the table; `npm run pace -- exit [visits minutes clicks] [falling]` prints it for any profile.
+
+**The single-run model is untouched** (the table above is byte for byte what it was, and `simulatePace` does not model the product). Only `simulateExits` models it:
+
+- **Modeled.** Users by region, grown with the game's own `advanceCompany` on the ladder track: gigs seed regions, the gear the sim already buys serves them (`capacityOf`), served users pay (`arpuOf`), dropped requests cost, and the footprint is the free home region. The Prestige bonus and Viral loop multiply growth, Platform multiplies revenue, the win at 7B users pays its x1.25 on everything earned after and records the night owl ending and its 5 Prestige. Early adopters seeds 1,000 users; Long weekend lengthens the offline cap; Volume discount, Bulk hardware, Raise season and Compounding change prices and income through the game's own functions.
+- **Left out.** Incidents (the random draw never throws one), hires, the fork and its burn and bridges (so Lean team and Friendly investors do nothing, and only the **night owl** ending can be won: the Hall of Fame's other two are not modeled, and neither is "all three in about a month"), regions and points of presence beyond the free home region, and any gear bought to serve users beyond what the one-of-each and stacker rules already buy. A one-of-each player never buys enough serving gear to win the world in the first career; a later career wins on the Prestige growth bonus.
+
+Product revenue does not change the day a career owns everything: with no Exit the stacker owns everything on day 4.33 and the one-of-each player on day 9.01, the same as the single-run table. It does change when the world is won (day 5.33 for the stacker; the one-of-each player does not win within 60 days of a career with no Prestige).
+
+The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product it leaves late (day 4.0 for the one-of-each player, who finishes in career 3, day 11.7) or never (the stacker owns everything and wins in career 1, day 5.3), so it would not test the replay.
+
+Tuned constants (`src/data/legacy.ts`), kept at v1's values because they still land (tuning before equals after: the three constants did not move): `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second):
+
+| Scale | Per Prestige | Ending bonus | First Exit (stacker / one-of-each) | Done (stacker / one-of-each) |
+| --- | --- | --- | --- | --- |
+| 5e11 | 0.03 | 5 | day 1.67 +5 / day 2.00 +6 | career 6, day 12.7 / career 6, day 16.3 |
+| 5e11 | 0.03 | 10 | day 1.67 +5 / day 2.00 +6 | career 7, day 14.0 / career 6, day 16.0 |
+| 5e11 | 0.06 | 5 | day 1.33 +3 / day 1.67 +3 | career 9, day 14.3 / career 8, day 15.3 |
+| 3e11 | 0.03 | 5 | day 1.67 +6 / day 2.00 +7 | career 7, day 13.7 / career 7, day 17.7 |
+| 1e12 | 0.03 | 5 | day 2.00 +7 / day 2.00 +5 | career 6, day 13.7 / career 6, day 18.0 |
+| 2e11 | 0.10 | 5 | day 1.00 +2 / day 1.33 +3 | career 7, day 9.3 / career 9, day 12.0 |
+
+A larger bonus per Prestige finishes in more careers, not fewer (each Exit pays fewer rungs), and a smaller scale pays the first Exit earlier for more Prestige but also adds careers. For reference, the numbers this page gave for v1, which predate the whiteboard's removal and had no product in the model: first Exit day 1.67 for +5 (stacker) and day 2.00 for +6 (one-of-each), done in the 6th career on day 13.0 and day 18.0 (owning everything only). Now the same two players take the first Exit on the same days for the same Prestige, and are done (owning everything and winning the world) in the 6th career on day 12.7 and day 16.3.
+
+The stacker, career by career (users at the Exit, Prestige paid, the bonus after):
+
+| Career | Day in | Day out | Row 6 after (days) | Matched last career's earnings after (days) | Users | Perks held | Prestige paid | Prestige total | Bonus |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.00 | 1.67 | 0.67 | - | 322M | 0 | 5 | 5 | ×1.15 |
+| 2 | 1.67 | 3.67 | 0.34 | 1.67 | 581M | 3 | 7 | 12 | ×1.36 |
+| 3 | 3.67 | 6.00 | 0.34 | 2.00 | 1.9B | 5 | 14 | 26 | ×1.78 |
+| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.4B | 8 | 18 | 44 | ×2.32 |
+| 5 | 8.33 | 10.67 | 0.33 | 2.00 | 6.9B | 10 | 22 | 66 | ×2.98 |
+| 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 7.5B | 12 | - | 66 | ×2.98 |
+
+Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 4th career on day 20 while the one-of-each player takes 7 careers and 48 days.
+
+The one-of-each player's run is the same shape: Exits on days 2.0, 4.3, 7.0, 10.0, 13.0, done on day 16.3 in career 6, the world first won in career 5 (+5 Prestige for the night owl ending).
+
+Against the targets for the Regular player:
+
+- **First Exit around day 1.5 to 2:** met (1.67 and 2.00).
+- **Career 2 reaches the point where career 1 exited in under half the time:** met for the **capital row**: row 6 comes 0.34 days in against 0.67 (one visit; the model cannot see faster than the 8 hours between visits). **Not met for earnings:** career 2 earns what career 1 earned in all after 1.67 days, for both players, against career 1's 1.67 days (stacker) and 2.00 (one-of-each). Income grows exponentially through the second day, so a head start of a few hours saves a few hours, and no value of the three knobs fixes it in the sweep above (the best case, 0.06 per Prestige, takes 0.80 of the first career's time and finishes in 8 to 9 careers). The perks are for the player who plays the early game by hand.
+- **The career that owns everything (or wins the world, whichever is later) is the 4th to 6th, about two weeks:** met (6th, day 12.7 and 16.3). `pace.test.ts` checks it.
+- **All three endings in about a month:** not checked. The model has no fork and no hires, so it can only reach the night owl ending (career 5 for the one-of-each player). The first Exit after a win pays the 5 Prestige once.
 
 ## Reading it
 
@@ -61,7 +107,7 @@ To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visi
 
 ## What the model assumes
 
-`simulatePace` in `src/game/pace.ts` plays the real tables with the real gates and the game's own economy functions, so a table change moves the answer.
+`simulatePace` in `src/game/pace.ts` (no product; see above for `simulateExits`, which has one) plays the real tables with the real gates and the game's own economy functions, so a table change moves the answer.
 
 - You visit `visitsPerDay` times, evenly spaced, for `minutesPerVisit` each, clicking `clicksPerSec` the whole visit. You buy only while you are there.
 - Time away pays idle income and idle XP, up to the offline cap, once, when you return.

@@ -31,14 +31,15 @@ export function MetricsBar() {
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
-  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+  const legacy = useGame((state) => state.legacy)
+  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
   // clickPower is $1 before any gear, but a click does not pay that dollar until the first job.
   const paidClick = clickPaysMoney({ jobs }) ? rates.click : 0
   const worldOpen = useFeatureOpen("studio")
   const company = useGame((state) => state.company)
   const users = totalUsers(company.users)
   const incidents = company.incidents.length
-  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, founder)
+  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, founder, legacy.perks)
   const product = useGame((state) => state.profile.product)
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0

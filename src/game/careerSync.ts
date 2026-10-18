@@ -26,7 +26,7 @@ export type CareerSlice = {
   whatsNew: boolean
 }
 
-type SyncState = Progress & { gold: readonly number[]; stats: { playTimeMs: number }; returns: number }
+type SyncState = Progress & { gold: readonly number[]; stats: { playTimeMs: number; lifetimeEarned?: number }; returns: number; legacy?: { runs: number; perks?: readonly string[] }; company?: { won: boolean } }
 
 export function progressOf(state: SyncState): FeatureProgress {
   return {
@@ -42,6 +42,10 @@ export function progressOf(state: SyncState): FeatureProgress {
     gold: state.gold,
     returns: state.returns,
     playTimeMs: state.stats.playTimeMs,
+    runs: state.legacy?.runs ?? 1,
+    earned: state.stats.lifetimeEarned ?? 0,
+    won: state.company?.won ?? false,
+    ...(state.legacy?.perks ? { legacy: { perks: state.legacy.perks } } : {}),
   }
 }
 
@@ -107,7 +111,7 @@ export function newlyOpen(progress: FeatureProgress, unlocked: readonly FeatureI
 
 /** NEW markers sit on things the player can go and use. Boards change the tab on their own, and dollars are just a number. */
 export function getsMarker(row: FeatureRow): boolean {
-  return row.size !== "phase" && row.id !== "money" && row.id !== "studio"
+  return row.size !== "phase" && row.id !== "money" && row.id !== "studio" && !row.admin
 }
 
 /** How loud each size is, for picking the one reveal a batch keeps. */
@@ -132,6 +136,7 @@ export function planUnlocks(
   rows: readonly FeatureRow[],
   slice: Pick<CareerSlice, "unlocked" | "fresh" | "reveals">,
   quiet = false,
+  showAdmin = false,
 ): UnlockPlan {
   const unlocked = [...slice.unlocked]
   const fresh = [...slice.fresh]
@@ -144,6 +149,8 @@ export function planUnlocks(
     if (getsMarker(row) && !fresh.includes(row.id)) fresh.push(row.id)
     if (row.size === "phase") continue
     if (isCosmetic(row) && !(row.parent && slice.unlocked.includes(row.parent))) continue
+    // A row behind admin mode opens quietly outside it: it is logged, but there is nothing on screen to reveal.
+    if (row.admin && !showAdmin) continue
     queued.push(row)
   }
   const loud = queued.filter((row) => !isCosmetic(row))
@@ -203,6 +210,7 @@ export function bootCareer(save: SaveData, now: number): CareerBoot {
     gold: save.gold ?? [],
     returns,
     playTimeMs: save.stats?.playTimeMs ?? 0,
+    runs: save.legacy?.runs ?? 1,
   })
 
   if (!save.career) {
@@ -233,6 +241,6 @@ export function bootCareer(save: SaveData, now: number): CareerBoot {
     unlocked: plan.unlocked,
     fresh: plan.fresh,
     reveals: plan.reveals,
-    awayUnlocks: rows.filter((row) => row.size !== "phase").map((row) => featureById(row.id)?.name ?? row.id),
+    awayUnlocks: rows.filter((row) => row.size !== "phase" && !row.admin).map((row) => featureById(row.id)?.name ?? row.id),
   }
 }
