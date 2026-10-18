@@ -79,6 +79,32 @@ describe("hover click", () => {
     expect(useGame.getState().xp).toBe(xpEach * 20)
   })
 
+  it("auto-clicks while a finger is held on the emoji and stops on release", () => {
+    vi.useFakeTimers()
+    setDeskPref("sounds", false)
+    setDeskPref("hoverClick", true)
+    useGame.setState({ gold: [2], xpTotal: 1e6, event: null })
+    const host = renderStage()
+    const button = host.querySelector<HTMLButtonElement>("[data-testid='stage']")
+    if (!button) throw new Error("missing stage")
+    const fire = (type: string, buttons: number) =>
+      flushSync(() => {
+        button.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "touch", buttons, clientX: 40, clientY: 36 }))
+      })
+    fire("pointerdown", 1)
+    const xpEach = xpPerClick(useGame.getState().skills)
+    expect(useGame.getState().xp).toBe(xpEach)
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpEach * 3)
+    fire("pointerup", 0)
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpEach * 3)
+  })
+
   it("clicks at the rate of the hover gold skill owned, before the catalog is complete", () => {
     vi.useFakeTimers()
     setDeskPref("sounds", false)

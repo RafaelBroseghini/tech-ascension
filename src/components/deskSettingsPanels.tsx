@@ -30,10 +30,10 @@ export const DESK_TOGGLES: readonly {
   { key: "clicks", label: "Click sound", Icon: MousePointer2 },
   {
     key: "hoverClick",
-    label: "Hover click",
+    label: "Hover or hold click",
     Icon: MousePointerClick,
     complete: true,
-    title: "Hover the emoji to click automatically",
+    title: "Hover or hold the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
 ]
@@ -75,7 +75,7 @@ export function DeskToggleList({ desk, hoverPerSec, keys }: DeskToggleListProps)
           className="desk-toggle"
           data-testid={`desk-${toggle.key}`}
           aria-pressed={desk[toggle.key]}
-          title={toggle.key === "hoverClick" ? `Hover the emoji to click at ${hoverPerSec}/s` : toggle.title}
+          title={toggle.key === "hoverClick" ? `Hover or hold the emoji to click at ${hoverPerSec}/s` : toggle.title}
           onClick={() => setDeskPref(toggle.key, !desk[toggle.key])}
         >
           <span className="desk-toggle-label">

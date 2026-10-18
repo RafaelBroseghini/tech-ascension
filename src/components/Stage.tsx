@@ -341,8 +341,9 @@ export function Stage() {
     return () => window.clearInterval(id)
   }, [autoClick, hoverPerSec])
 
+  // A mouse auto-clicks while it rests on the emoji; touch and pen have no hover, so they auto-click while pressed.
   function trackHover(event: PointerEvent<HTMLButtonElement>) {
-    if (event.pointerType !== "mouse") return
+    if (event.pointerType !== "mouse" && event.buttons === 0) return
     hoverRef.current = true
     pointRef.current = { x: event.clientX, y: event.clientY }
   }
@@ -352,9 +353,14 @@ export function Stage() {
     pointRef.current = null
   }
 
+  function clearTouchHold(event: PointerEvent<HTMLButtonElement>) {
+    if (event.pointerType !== "mouse") clearHover()
+  }
+
   function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return
     fire(event.clientX, event.clientY, event.pointerType === "touch" || event.pointerType === "pen")
+    if (event.pointerType !== "mouse") trackHover(event)
   }
 
   function onClick(event: MouseEvent<HTMLButtonElement>) {
@@ -388,13 +394,14 @@ export function Stage() {
         onPointerEnter={trackHover}
         onPointerMove={trackHover}
         onPointerLeave={clearHover}
+        onPointerUp={clearTouchHold}
         onPointerCancel={clearHover}
         onPointerDown={onPointerDown}
         onClick={onClick}
         onKeyDown={onKeyDown}
         aria-label={
           autoClick
-            ? `Click to earn. Hover to auto-click at ${hoverPerSec} per second. Current stage ${stageName}.`
+            ? `Click to earn. Hover or hold to auto-click at ${hoverPerSec} per second. Current stage ${stageName}.`
             : `Click to earn. Current stage ${stageName}.`
         }
       >

@@ -35,7 +35,7 @@ type GoldRow = Omit<GoldSkill, "cost">
 
 const GOLD_ROWS: readonly GoldRow[] = [
   { id: 1, name: "Bulk Buy ×5", blurb: "Buy up to 5 copies of a row in one click.", family: "buy", effect: { kind: "buyStep", step: 5 }, unlockXp: 8_000 },
-  { id: 2, name: "Hover Tap", blurb: "Rest the pointer on the emoji to click 2 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 2 }, unlockXp: 20_000 },
+  { id: 2, name: "Hover Tap", blurb: "Rest the pointer on the emoji, or hold it on touch, to click 2 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 2 }, unlockXp: 20_000 },
   { id: 3, name: "Bulk Buy ×10", blurb: "Buy up to 10 copies of a row in one click.", family: "buy", effect: { kind: "buyStep", step: 10 }, unlockXp: 60_000 },
   { id: 4, name: "Overnight Cron", blurb: "Time away pays for up to 12 hours.", family: "away", effect: { kind: "offlineCap", hours: 12 }, unlockXp: 100_000 },
   { id: 5, name: "Hover Rhythm", blurb: "Hover clicking speeds up to 5 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 5 }, unlockXp: 250_000 },
