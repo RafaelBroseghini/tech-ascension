@@ -8,21 +8,25 @@ import { GOLD_SKILLS } from "../data/gold.ts"
 import { ownedCount } from "../game/economy.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
+import { BuyMultiplier } from "./BuyMultiplier.tsx"
 import { Shop } from "./Shop.tsx"
 
 const roots: Root[] = []
 const idOf = (name: string) => GOLD_SKILLS.find((row) => row.name === name)!.id
 
-function renderShop(): HTMLDivElement {
+function renderInto(element: ReturnType<typeof createElement>): HTMLDivElement {
   const host = document.createElement("div")
   document.body.append(host)
   const root = createRoot(host)
   roots.push(root)
   flushSync(() => {
-    root.render(createElement(Shop))
+    root.render(element)
   })
   return host
 }
+
+const renderShop = () => renderInto(createElement(Shop))
+const renderMultiplier = () => renderInto(createElement(BuyMultiplier))
 
 function click(el: Element | null | undefined) {
   flushSync(() => {
@@ -51,6 +55,10 @@ describe("10x dev skills in the shop", () => {
     expect(host.querySelector("[role='tab'][data-view]")).toBeNull()
     expect(host.querySelector("[data-testid='buy-amount']")).toBeNull()
     expect(host.querySelectorAll(".shop-list .offer-actions button.ghost")).toHaveLength(0)
+    // The sidebar explains the one-copy buying instead of showing a multiplier.
+    const sidebar = renderMultiplier()
+    expect(sidebar.querySelector("[data-testid='buy-multiplier']")).toBeNull()
+    expect(sidebar.querySelector("[data-testid='buy-hint']")).not.toBeNull()
   })
 
   it("keeps the perks out of the skills list and in their own 10x dev sub-tab", () => {
@@ -91,15 +99,23 @@ describe("10x dev skills in the shop", () => {
     expect(goldRows(host)).toContain("Bulk Buy ×10")
   })
 
-  it("shows the Buy control on the skills list only, and buys that many copies", () => {
+  it("cycles the sidebar multiplier through the unlocked amounts, and the skills list buys that many copies", () => {
     writeSavedShopTab("A")
     useGame.setState({ xpTotal: 8_000, xp: 1e9, skills: { "1": 1 }, gold: [idOf("Bulk Buy ×5")] })
     const host = renderShop()
-    const steps = [...host.querySelectorAll("[data-testid='buy-amount'] button")].map((b) => b.textContent)
-    expect(steps).toEqual(["×1", "×5"])
-    click(host.querySelector("[data-amount='5']"))
+    const sidebar = renderMultiplier()
+    const multiplier = () => sidebar.querySelector<HTMLButtonElement>("[data-testid='buy-multiplier']")
+    expect(multiplier()?.textContent).toBe("1×")
+    expect(host.querySelector("[data-testid='buy-amount']")).toBeNull()
+
+    click(multiplier())
     expect(useGame.getState().buyAmount).toBe(5)
-    expect(host.querySelector("[data-amount='5']")?.getAttribute("aria-pressed")).toBe("true")
+    expect(multiplier()?.textContent).toBe("5×")
+    expect(multiplier()?.dataset.amount).toBe("5")
+    click(multiplier())
+    expect(useGame.getState().buyAmount).toBe(1)
+
+    click(multiplier())
     const learn = host.querySelector<HTMLButtonElement>(".shop-list .offer:not(.gold-offer) .offer-actions button")!
     expect(learn.textContent).toContain("×5")
     click(learn)
