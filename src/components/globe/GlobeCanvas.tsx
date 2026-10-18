@@ -61,9 +61,12 @@ export default function GlobeCanvas({ company, rows, home, compact = false }: { 
       scenery.frame(performance.now(), true)
     }
     scenery.onLoad = redraw
-    scenery.onNotes = (notes: readonly Note[]) => {
-      const pane = el.parentElement
-      if (pane) placeNotes(labelsRef.current, notes, noteEls.current, pane.clientWidth, pane.clientHeight, earned.current)
+    // The small globe has no labels to place, so it skips projecting them every frame.
+    if (!compact) {
+      scenery.onNotes = (notes: readonly Note[]) => {
+        const pane = el.parentElement
+        if (pane) placeNotes(labelsRef.current, notes, noteEls.current, pane.clientWidth, pane.clientHeight, earned.current)
+      }
     }
 
     // The company's traffic is one stream: a burst every BURST_MS, sent from the latest clients, on a clock that never restarts.
