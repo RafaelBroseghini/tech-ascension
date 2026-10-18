@@ -202,7 +202,7 @@ describe("shop rows", () => {
     expect(qa?.className.split(/\s+/).sort()).toEqual(["afford", "offer"].sort())
     expect(qa?.querySelector(".branch-mark, .side-tag")).toBeNull()
     const price = qa?.querySelector<HTMLButtonElement>(".offer-actions button")
-    expect(price?.textContent).toMatch(/^Take [\d,]+ XP$/)
+    expect(price?.textContent).toMatch(/^[\d,]+ XP$/)
     expect(price?.disabled).toBe(false)
   })
 
@@ -233,7 +233,7 @@ describe("shop rows", () => {
       const host = readyJobs(Math.floor(cost * 0.4))
       expect(job5(host)?.querySelector("[data-testid='offer-progress']")).toBeNull()
       expect(job5(host)?.querySelector<HTMLButtonElement>(".offer-actions button")?.disabled).toBe(true)
-      expect(job5(host)?.querySelector(".offer-actions button")?.textContent).toMatch(/^Take [\d,]+ XP$/)
+      expect(job5(host)?.querySelector(".offer-actions button")?.textContent).toMatch(/^[\d,]+ XP$/)
       flushSync(() => useGame.setState({ xp: cost }))
       expect(job5(host)?.querySelector<HTMLButtonElement>(".offer-actions button")?.disabled).toBe(false)
     })

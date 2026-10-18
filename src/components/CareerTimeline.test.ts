@@ -9,7 +9,6 @@ import { SKILL_TIERS } from "../data/phases.ts"
 import { setSidebarView } from "../game/ideSidebar.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
-import { onSurface } from "../game/surfaces.ts"
 import { CareerLog } from "./CareerLog.tsx"
 import { GitHugCorner } from "./CornerActions.tsx"
 import { IdentityPicker } from "./IdentityPicker.tsx"
@@ -62,57 +61,34 @@ afterEach(() => {
 })
 
 describe("reveals", () => {
-  it("lights a standard unlock up where it lives with a card, and its button opens it", async () => {
-    const anchor = document.createElement("button")
-    anchor.dataset.featureAnchor = "linkedout"
-    document.body.append(anchor)
-    let opened = 0
-    const off = onSurface("linkedout", () => (opened += 1))
+  it("drains the queue without a pop-up: the NEW marker is the only sign", async () => {
     useGame.setState({ unlocked: ["studio", "linkedout"], fresh: ["linkedout"], reveals: ["linkedout"] })
     render(UnlockReveals)
     await settle()
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("LinkedOut profile")
-    expect($("[data-testid='unlock-card']")?.textContent).toContain("from Portfolio site live")
-    expect(anchor.classList.contains("ul-lit")).toBe(true)
     expect(useGame.getState().reveals).toEqual([])
-
-    click($("[data-testid='unlock-card-action']"))
-    expect(opened).toBe(1)
-    expect(useGame.getState().fresh).not.toContain("linkedout")
-    await settle(400)
+    expect(useGame.getState().fresh).toContain("linkedout")
     expect($("[data-testid='unlock-card']")).toBeNull()
-    expect(anchor.classList.contains("ul-lit")).toBe(false)
-    off()
+    expect(useGame.getState().toast).toBeNull()
   })
 
-  it("slams a big unlock in the centre first, then shows its card", async () => {
-    useGame.setState({ unlocked: ["studio"], reveals: ["studio"] })
+  it("does not slam a big unlock, and does not toast a small one", async () => {
+    useGame.setState({ unlocked: ["studio", "themes", "theme:monokai"], reveals: ["studio", "theme:monokai"] })
     render(UnlockReveals)
     await settle()
-    expect(useGame.getState().pop).toMatchObject({ kind: "unlock", size: "large", label: "Your company" })
-    expect($("[data-testid='unlock-card']")).toBeNull()
-    await settle(1_000)
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("Your company")
-  })
-
-  it("turns a small unlock into a toast", async () => {
-    useGame.setState({ unlocked: ["themes", "theme:monokai"], reveals: ["theme:monokai"] })
-    render(UnlockReveals)
-    await settle()
-    expect(useGame.getState().toast?.text).toBe("New editor theme: Monokai")
+    expect(useGame.getState().reveals).toEqual([])
+    expect($("[data-testid='score-pop']")).toBeNull()
+    expect(useGame.getState().toast).toBeNull()
     expect($("[data-testid='unlock-card']")).toBeNull()
   })
 
-  it("waits while an event is on screen", async () => {
+  it("does not wait for an event or a 1:1 to drain", async () => {
     useGame.getState().fireEvent(1)
-    useGame.setState({ unlocked: ["linkedout"], reveals: ["linkedout"] })
+    useGame.setState({ unlocked: ["linkedout"], fresh: ["linkedout"], reveals: ["linkedout"] })
     render(UnlockReveals)
     await settle()
     expect($("[data-testid='unlock-card']")).toBeNull()
-    expect(useGame.getState().reveals).toEqual(["linkedout"])
-    flushSync(() => useGame.getState().dismissEvent())
-    await settle()
-    expect($("[data-testid='unlock-card-title']")?.textContent).toBe("LinkedOut profile")
+    expect(useGame.getState().reveals).toEqual([])
+    expect(useGame.getState().fresh).toContain("linkedout")
   })
 
   it("shows a save from before the timeline one card about the career log", async () => {

@@ -13,7 +13,7 @@ import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
 import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
-import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, visibleGold } from "../game/gold.ts"
+import { buyAmounts, canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
 import type { BuyAmount } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
 import { nextUnlock, shopFocus } from "../game/nextUnlock.ts"
@@ -174,14 +174,17 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
   )
 }
 
-/** `Learn 480 XP` for one copy; `Learn ×5 2,400 XP` when a gold amount is set and the budget covers more than one. */
-function buyLabel(verb: string, currency: "xp" | "money", baseCost: number, have: number, budget: number, amount: BuyAmount, firstCost?: number): string {
+/**
+ * The price on a buy button: just the currency, `480 XP` or `$1,200`. A gold amount adds its count, `×5 2,400 XP`,
+ * when the budget covers more than one copy. The verb is left to the aria-label.
+ */
+function buyLabel(currency: "xp" | "money", baseCost: number, have: number, budget: number, amount: BuyAmount, firstCost?: number): string {
   const price = (n: number) => (currency === "money" ? `$${formatNumber(n)}` : `${formatNumber(n)} XP`)
   const one = have === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, have)
-  if (amount === 1) return `${verb} ${price(one)}`
+  if (amount === 1) return price(one)
   const quote = quotePurchase(budget, baseCost, have, amount, firstCost)
-  if (quote.count <= 1) return `${verb} ${price(one)}`
-  return `${verb} ×${quote.count} ${price(quote.total)}`
+  if (quote.count <= 1) return price(one)
+  return `×${quote.count} ${price(quote.total)}`
 }
 
 /** 10x dev skills (gold in the code) carry a trophy in the art column instead of a sprite. */
@@ -514,17 +517,17 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         {SHOP_TABS.map((id) => {
           const locked = !unlocked[id]
           if (locked && id !== nextLockedTab) return null
-          const affordable =
+          // A marker means something new is open to buy: a row unlocked and never bought. It does not say you can afford it.
+          const hasNew =
             !locked &&
             ((id === "W" && forkPending) ||
               (id === "A" &&
-              (skillRows.some((row) => canAfford(xp, skillCost(row, ownedCount(skills, row.id)))) ||
-                visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)))) ||
+                (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
+                  visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
               (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-              (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready" && canAfford(xp, job.xpCost))) ||
-              (id === "G" && equipRows.some((row) => canAfford(money, nextCost(gearBase(row, perksHeld), ownedCount(equipment, row.id))))) ||
-              (id === "D" &&
-                [...revealedByEra.values()].flat().some((tier) => canAfford(money, nextCost(capitalBase(tier, perksHeld), ownedCount(owned, tier.id))))))
+              (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready")) ||
+              (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs))) ||
+              (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0)))
           return (
             <button
               key={id}
@@ -542,7 +545,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             >
               {locked ? <i className="lock-pip" aria-label="Locked" /> : null}
               {PHASE_TAB[id].label}
-              {affordable ? <i className="deal-dot" aria-label="Something is available" /> : null}
+              {hasNew ? <i className="deal-dot" aria-label="Something new to buy" /> : null}
               {id === "G" ? <NewMark id="boardGear" pill /> : null}
             </button>
           )
@@ -603,7 +606,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
           >
             <Trophy {...UI_ICON_SM} aria-hidden />
             10x dev
-            {visibleGold(gold).some((row) => canBuyGold({ xp, xpTotal, gold }, row)) ? <i className="deal-dot" aria-label="Something is available" /> : null}
+            {visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)) ? <i className="deal-dot" aria-label="Something new to buy" /> : null}
             <NewMark id="tenx" pill />
           </button>
         </div>
@@ -665,7 +668,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, buyAmount))}>
-                        {!revealed && have === 0 ? "Locked" : buyLabel("Learn", "xp", row.baseXpCost, have, xp, buyAmount, row.firstXpCost)}
+                        {!revealed && have === 0 ? "Locked" : buyLabel("xp", row.baseXpCost, have, xp, buyAmount, row.firstXpCost)}
                       </button>
                     </>
                   }
@@ -721,7 +724,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                       </button>
                     ) : (
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buyGold(row.id))}>
-                        {!revealed && !owns ? "Locked" : `Claim ${formatNumber(row.cost)} XP`}
+                        {!revealed && !owns ? "Locked" : `${formatNumber(row.cost)} XP`}
                       </button>
                     )
                   }
@@ -806,7 +809,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `Take ${formatNumber(job.xpCost)} XP` : "Accept"}
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `${formatNumber(job.xpCost)} XP` : "Accept"}
                     </button>
                   }
                 >
@@ -860,7 +863,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                           actions={
                             <>
                               <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, buyAmount))}>
-                                {!revealed && have === 0 ? "Locked" : buyLabel("Buy", "money", gearBase(row, perksHeld), have, money, buyAmount)}
+                                {!revealed && have === 0 ? "Locked" : buyLabel("money", gearBase(row, perksHeld), have, money, buyAmount)}
                               </button>
                             </>
                           }
@@ -908,7 +911,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                     actions={
                       <>
                         <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, buyAmount))}>
-                          {buyLabel("Buy", "money", capitalBase(tier, perksHeld), have, money, buyAmount)}
+                          {buyLabel("money", capitalBase(tier, perksHeld), have, money, buyAmount)}
                         </button>
                       </>
                     }

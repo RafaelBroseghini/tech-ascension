@@ -23,6 +23,7 @@ import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { MiniGlobe } from "./globe/MiniGlobe.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
+import { OwnedButton } from "./OwnedModal.tsx"
 import { Skills } from "./Skills.tsx"
 import { ScorePop } from "./ScorePop.tsx"
 import { useFeatureOpen } from "./useFeature.ts"
@@ -112,6 +113,7 @@ const DeskCatMemo = memo(DeskCat)
 const HeroMoneyMemo = memo(HeroMoney)
 const OwnedStripMemo = memo(OwnedStrip)
 const SkillsMemo = memo(Skills)
+const OwnedButtonMemo = memo(OwnedButton)
 const ScorePopMemo = memo(ScorePop)
 
 const BOOST_CHIP_MS = 12000
@@ -394,11 +396,6 @@ export function Stage() {
         }
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
-        <span className="motes" aria-hidden="true">
-          {Array.from({ length: 9 }, (_, index) => (
-            <i key={index} style={{ ["--i" as string]: index }} />
-          ))}
-        </span>
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">
@@ -499,6 +496,7 @@ export function Stage() {
         <OwnedStripMemo />
         <SkillsMemo />
       </div>
+      <OwnedButtonMemo />
       <ScorePopMemo />
     </section>
   )

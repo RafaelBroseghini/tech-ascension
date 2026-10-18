@@ -149,7 +149,7 @@ describe("next suggestion click", () => {
     expect(next?.textContent).not.toContain("Gear")
     const row = host.querySelector<HTMLElement>("[data-row='skill:1']")
     const buy = row?.querySelector<HTMLButtonElement>(".offer-actions button:not(.ghost)")
-    expect(buy?.textContent).toMatch(/Learn/)
+    expect(buy?.textContent).toMatch(/^90 XP$/)
     expect(buy?.textContent).not.toContain("Locked")
     expect(buy?.disabled).toBe(true)
     expect(row?.querySelector("[data-testid='offer-unlock']")).toBeNull()

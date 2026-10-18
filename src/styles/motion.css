@@ -3,7 +3,7 @@
  *  - click is a ~260ms bump: the sprite pops up, tips away from the pointer and
  *    settles with a tiny jitter; it restarts on every click and is a little
  *    bigger when hot. No side-to-side shaking.
- *  - idle life (side-to-side sway, motes) is slow and never covers the UI
+ *  - idle life (side-to-side sway) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
  * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
@@ -30,12 +30,6 @@
 @keyframes sway {
   0%, 100% { transform: translateX(-6px) rotate(-0.5deg); }
   50% { transform: translateX(6px) rotate(0.5deg); }
-}
-
-@keyframes mote-rise {
-  0% { transform: translate(0, 0) rotate(45deg) scale(0.6); opacity: 0; }
-  15% { opacity: 0.95; }
-  100% { transform: translate(calc(var(--i) * 3px - 12px), -300px) rotate(225deg) scale(1.1); opacity: 0; }
 }
 
 /* Payout pops up a hair, then drops so the next click does not land on the same pixels. */
@@ -187,7 +181,6 @@
   .confetti,
   .ring,
   .spark,
-  .motes,
   .era-sweep,
   .rim::before {
     display: none !important;

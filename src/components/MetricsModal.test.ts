@@ -30,8 +30,10 @@ describe("metrics modal", () => {
     })
 
     const dialog = document.body.querySelector("[data-testid='stats-modal']")
-    expect(dialog?.textContent).toContain("Total clicks")
-    expect(dialog?.textContent).toContain("42")
+    expect(dialog?.textContent).toContain("Lifetime earnings")
     expect(dialog?.textContent).toContain("$900")
+    // Click stats live in the top bar's currency slots, not here.
+    expect(dialog?.textContent).not.toContain("Total clicks")
+    expect(dialog?.textContent).not.toContain("From clicking")
   })
 })

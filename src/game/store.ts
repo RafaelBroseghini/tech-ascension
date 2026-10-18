@@ -1134,11 +1134,9 @@ useGame.subscribe((state) => {
     useGame.setState({ phase })
     return
   }
-  const toastSeq = state.toastSeq + 1
+  // The new phase shows as its NEW marks on the tabs and rows; no pop-up, so the pop only feeds the harness.
   useGame.setState({
     phase,
-    toast: { id: toastSeq, text: PHASE_UNLOCK_COPY[phase] },
-    toastSeq,
     ...makePop(state, "unlock", 0, PHASE_UNLOCK_COPY[phase]),
   })
 })

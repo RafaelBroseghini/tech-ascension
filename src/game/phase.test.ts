@@ -233,7 +233,7 @@ describe("phase A: XP only", () => {
     const state = useGame.getState()
     expect(state.phase).toBe("B")
     expect(state.pop).toMatchObject({ kind: "unlock", size: "large", amount: 0 })
-    expect(state.toast?.text).toBe("Gig Board unlocked")
+    expect(state.toast).toBeNull()
     const id = state.pop?.id
     useGame.getState().tick(state.now + 1_000)
     expect(useGame.getState().pop?.id).toBe(id)
@@ -317,7 +317,7 @@ describe("phase C: jobs and equipment", () => {
     const state = useGame.getState()
     expect(state.phase).toBe("C")
     expect(state.pop).toMatchObject({ kind: "unlock", size: "large" })
-    expect(state.toast?.text).toBe("Job Board unlocked")
+    expect(state.toast).toBeNull()
   })
 
   it("takes the free internship, then salaried roles that add $/s", () => {

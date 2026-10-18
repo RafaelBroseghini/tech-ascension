@@ -24,8 +24,6 @@ export type DeskPrefs = {
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
   heroOffsetX: number
   heroOffsetY: number
-  /** Dismissed the small-screen “best on desktop” notice. */
-  mobilePlayAck: boolean
 }
 
 const DEFAULTS: DeskPrefs = {
@@ -39,7 +37,6 @@ const DEFAULTS: DeskPrefs = {
   hoverClick: false,
   heroOffsetX: 0,
   heroOffsetY: 0,
-  mobilePlayAck: false,
 }
 
 const HERO_OFFSET_CLAMP = 280
@@ -66,7 +63,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ...DEFAULTS }
-  for (const key of ["music", "sounds", "clicks", "cat", "hoverClick", "mobilePlayAck"] as const) {
+  for (const key of ["music", "sounds", "clicks", "cat", "hoverClick"] as const) {
     const value = (body as Record<string, unknown>)[key]
     if (typeof value === "boolean") next[key] = value
   }
