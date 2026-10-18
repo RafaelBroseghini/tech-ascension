@@ -1,8 +1,9 @@
 import { Maximize2 } from "lucide-react"
-import { lazy, memo, Suspense, useMemo } from "react"
+import { lazy, memo, Suspense, useMemo, useSyncExternalStore } from "react"
 import "../../styles/globe.css"
 import { HOME } from "../../data/geo.ts"
 import { formatCompact } from "../../game/format.ts"
+import { isMobileViewport, subscribeMobileViewport } from "../../game/mobileViewport.ts"
 import { cityRows } from "../../game/globe/tip.ts"
 import { INCIDENTS } from "../../game/globe/world.ts"
 import { useGame } from "../../game/store.ts"
@@ -19,10 +20,12 @@ const GlobeCanvas = lazy(() => import("./GlobeCanvas.tsx"))
 /** The company's globe on the desk, bottom left: small and always turning, with a button for the numbers and the status page. */
 export const MiniGlobe = memo(function MiniGlobe() {
   const open = useFeatureOpen("studio")
+  const narrow = useSyncExternalStore(subscribeMobileViewport, isMobileViewport, () => false)
   const product = useGame((state) => state.profile.product)
   const company = useCompany()
   const rows = useMemo(() => cityRows(company.audience, company.demand, company.pops), [company])
-  if (!open || !canDrawWave()) return null
+  // Below the breakpoint the CSS hides the globe, so it is not mounted: no render loop, and the three.js chunk is never fetched.
+  if (!open || narrow || !canDrawWave()) return null
   const alert = alertOf(company)
   const count = company.incidents.length
   return (
