@@ -41,12 +41,13 @@ export const NO_PERKS: PerkEffects = {
 }
 
 const KNOWN = new Set(LEGACY_PERKS.map((perk) => perk.id))
-const memo = new WeakMap<readonly string[], PerkEffects>()
+const memo = new Map<string, PerkEffects>()
 
-/** The effects of the perks held. Unknown ids are ignored. The last answer for an array is kept, since the game asks every tick. */
+/** The effects of the perks held. Unknown ids are ignored. Answers are kept by the ids held (the game asks every tick), so a list changed in place is read afresh. */
 export function perkEffects(perks: readonly string[] | undefined): PerkEffects {
   if (!perks || perks.length === 0) return NO_PERKS
-  const cached = memo.get(perks)
+  const key = perks.join(",")
+  const cached = memo.get(key)
   if (cached) return cached
   const has = (id: string) => KNOWN.has(id) && perks.includes(id)
   const effects: PerkEffects = {
@@ -61,7 +62,7 @@ export function perkEffects(perks: readonly string[] | undefined): PerkEffects {
     revenue: has("founder.revenue") ? PERK.revenue : 1,
     startUsers: has("founder.users") ? PERK.startUsers : 0,
   }
-  memo.set(perks, effects)
+  memo.set(key, effects)
   return effects
 }
 

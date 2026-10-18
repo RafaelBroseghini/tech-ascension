@@ -492,7 +492,7 @@ function buyPerks(legacy: LegacyState) {
     for (const perk of LEGACY_PERKS) if (canBuyPerk(legacy, perk.id) && (pick === null || perk.cost < pick.cost)) pick = perk
     if (!pick) return
     legacy.prestige -= pick.cost
-    legacy.perks.push(pick.id)
+    legacy.perks = [...legacy.perks, pick.id]
   }
 }
 

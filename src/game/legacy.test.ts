@@ -20,6 +20,7 @@ import {
   freshLegacy,
   isFreshLegacy,
   normalizeLegacy,
+  pastProductsOf,
   prestigeOnExit,
   prestigeTotalFor,
   startingGrant,
@@ -307,5 +308,21 @@ describe("save: legacy", () => {
     const eight = hydrate(JSON.stringify(base), day).save.money
     const twelve = hydrate(JSON.stringify({ ...base, legacy: { runs: 2, prestige: 0, prestigeTotal: 0, earnedAllRuns: 0, perks: ["capital.offline"], endings: [] } }), day).save.money
     expect(twelve / eight).toBeCloseTo(12 / 8)
+  })
+})
+
+describe("past products on the résumé", () => {
+  it("lists the products sold, newest first, by how far they got", () => {
+    const exit = (data: Record<string, number | string | boolean>) => ({ type: "exit", data })
+    const past = pastProductsOf([
+      { type: "skill" },
+      exit({ product: "Otterly", users: 12_345, won: false }),
+      exit({ product: "Foxly", users: 7e9, won: true, ending: "sponsor" }),
+      exit({ product: "Mooly", users: 7e9, won: true, ending: "founder" }),
+      exit({ users: 4 }),
+    ])
+    expect(past.map((p) => p.role)).toEqual(["Founder, Mooly", "Executive sponsor, Foxly", "Side project, Otterly"])
+    expect(past[2]!.meta).toBe("Sold · 12,345 users")
+    expect(past[0]!.meta).toBe("Sold · seven billion users")
   })
 })

@@ -793,6 +793,9 @@ test("prestige: selling the product pays Prestige, restarts the career and the p
   game.keepProfile()
   // Taken once: the new career has earned nothing yet.
   expect(game.exit()).toBe(false)
+  // The regions bought start over too: Europe can be bought again.
+  game.setMoney(1e9)
+  expect(game.buyRegion("europe")).toBe(true)
 
   // The multiplier is in the rates: the first skill pays its click bonus times it.
   game.setXp(90)

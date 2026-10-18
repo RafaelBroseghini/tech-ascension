@@ -4,7 +4,7 @@ import { GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.t
 import { HOME_REGION_ID } from "../data/regions.ts"
 import { jobById, skillCost } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
-import { isEnding } from "./globe/hires.ts"
+import { isEnding, productRole } from "./globe/hires.ts"
 import type { Ending } from "./globe/hires.ts"
 import { totalUsers } from "./globe/world.ts"
 import { perkEffects } from "./perks.ts"
@@ -241,6 +241,30 @@ export function exitHeadline(f: HeadlineFacts): string {
   if (f.users < 1_000_000) return `${handle} acqui-hired; ${f.product} sunset 'to focus on the core'`
   if (f.users < 1_000_000_000) return `${f.product} acquired; ${handle} stays on as 'advisor'`
   return `${f.product} sold in a blockbuster deal`
+}
+
+/** A product sold in an earlier career, as the résumé lists it. */
+export type PastProduct = { product: string; role: string; meta: string }
+
+/**
+ * The products of earlier careers, newest first, from the journal's `exit` entries: "Founder, Otterly" (or the sponsor
+ * line) for one that won the world, "Side project, Otterly" for one sold before that.
+ */
+export function pastProductsOf(entries: readonly { type: string; data?: Readonly<Record<string, number | string | boolean>> | undefined }[]): PastProduct[] {
+  const out: PastProduct[] = []
+  for (const entry of entries) {
+    if (entry.type !== "exit" || typeof entry.data?.product !== "string") continue
+    const product = entry.data.product
+    const users = typeof entry.data.users === "number" ? entry.data.users : 0
+    const ending = isEnding(entry.data.ending) ? entry.data.ending : null
+    const won = entry.data.won === true
+    out.push({
+      product,
+      role: won ? productRole(ending, product) : `Side project, ${product}`,
+      meta: won ? "Sold · seven billion users" : `Sold · ${users.toLocaleString("en-US")} users`,
+    })
+  }
+  return out.reverse()
 }
 
 /** The card shown after an Exit. Not saved. */

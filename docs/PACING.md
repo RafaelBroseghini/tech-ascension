@@ -49,8 +49,6 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. "Ha
 
 To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
 
-> The figures below predate the removal of the whiteboard interviews. Rerun `npm run pace` for the current numbers.
-
 ## Over several careers (the Exit)
 
 `simulateExits` in `src/game/pace.ts` plays the same player through the Exit (`docs/PRESTIGE.md`): the first career leaves once the Exit would raise the Prestige bonus enough, every career after that can leave at any visit. After each Exit it spends the Prestige on the cheapest perk it can pay for across the Network, Founder and Capital tracks (Network first on ties), applies the Prestige multiplier to every income and XP rate, and stops when a career owns everything **and** has won the world. `npm run pace` prints it for the Regular player after the table; `npm run pace -- exit [visits minutes clicks] [falling]` prints it for any profile.
@@ -64,7 +62,7 @@ Product revenue does not change the day a career owns everything: with no Exit t
 
 The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product it leaves late (day 4.0 for the one-of-each player, who finishes in career 3, day 11.7) or never (the stacker owns everything and wins in career 1, day 5.3), so it would not test the replay.
 
-Tuned constants (`src/data/legacy.ts`), kept at v1's numbers because they still land: `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second):
+Tuned constants (`src/data/legacy.ts`), kept at v1's values because they still land (tuning before equals after: the three constants did not move): `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second):
 
 | Scale | Per Prestige | Ending bonus | First Exit (stacker / one-of-each) | Done (stacker / one-of-each) |
 | --- | --- | --- | --- | --- |
@@ -75,14 +73,7 @@ Tuned constants (`src/data/legacy.ts`), kept at v1's numbers because they still 
 | 1e12 | 0.03 | 5 | day 2.00 +7 / day 2.00 +5 | career 6, day 13.7 / career 6, day 18.0 |
 | 2e11 | 0.10 | 5 | day 1.00 +2 / day 1.33 +3 | career 7, day 9.3 / career 9, day 12.0 |
 
-A larger bonus per Prestige finishes in more careers, not fewer (each Exit pays fewer rungs), and a smaller scale pays the first Exit earlier for more Prestige but also adds careers. Before and after, from the same player, Regular:
-
-| | Before (no product in the model) | After (with the product) |
-| --- | --- | --- |
-| Stacker: first Exit | day 1.67, +5 (×1.15) | day 1.67, +5 (×1.15) |
-| One-of-each: first Exit | day 2.00, +6 (×1.18) | day 2.00, +6 (×1.18) |
-| Stacker: done | 6th career, day 13.0 (owns everything) | 6th career, day 12.7 (owns everything and wins the world) |
-| One-of-each: done | 6th career, day 18.0 (owns everything) | 6th career, day 16.3 (owns everything and wins the world) |
+A larger bonus per Prestige finishes in more careers, not fewer (each Exit pays fewer rungs), and a smaller scale pays the first Exit earlier for more Prestige but also adds careers. For reference, the numbers this page gave for v1, which predate the whiteboard's removal and had no product in the model: first Exit day 1.67 for +5 (stacker) and day 2.00 for +6 (one-of-each), done in the 6th career on day 13.0 and day 18.0 (owning everything only). Now the same two players take the first Exit on the same days for the same Prestige, and are done (owning everything and winning the world) in the 6th career on day 12.7 and day 16.3.
 
 The stacker, career by career (users at the Exit, Prestige paid, the bonus after):
 
@@ -94,6 +85,8 @@ The stacker, career by career (users at the Exit, Prestige paid, the bonus after
 | 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.4B | 8 | 18 | 44 | ×2.32 |
 | 5 | 8.33 | 10.67 | 0.33 | 2.00 | 6.9B | 10 | 22 | 66 | ×2.98 |
 | 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 7.5B | 12 | - | 66 | ×2.98 |
+
+Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 4th career on day 20 while the one-of-each player takes 7 careers and 48 days.
 
 The one-of-each player's run is the same shape: Exits on days 2.0, 4.3, 7.0, 10.0, 13.0, done on day 16.3 in career 6, the world first won in career 5 (+5 Prestige for the night owl ending).
 
