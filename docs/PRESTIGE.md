@@ -1,6 +1,6 @@
 # Prestige: the Exit (design, v2)
 
-Status: built, behind admin mode (see "Built" at the end). Part of the company arc (`docs/COMPANY_ARC.md`). The first version's interview parts and Paths are dropped.
+Status: built, behind admin mode (see "Built" at the end). Part of the company arc (`docs/COMPANY_ARC.md`). Paths are dropped.
 
 ## Why
 
@@ -128,7 +128,7 @@ Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk 
 ## Decisions
 
 - **Names:** the Exit (in the UI, "Sell <Product>"), Prestige for the points (Rep was unclear), Legacy perks, Hall of Fame.
-- **The globe replaced the whiteboard interviews**, so nothing about interviews carries over, and v1's Craft track (interview and click perks) is replaced by the Founder track.
+- **The Craft track is replaced by the Founder track.**
 - **Paths are dropped**: the ladder/founder fork and the three endings already make careers differ.
 - **Rollout:** the Exit UI is behind admin mode (`getAdminMode()`) for now; the harness works regardless.
 

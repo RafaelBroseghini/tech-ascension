@@ -1,6 +1,6 @@
 # Earth textures
 
-An image of the Earth from NASA, resized and recompressed (JPEG). The whiteboard's globe reads it once to find the land and never draws it. NASA imagery is not under
+An image of the Earth from NASA, resized and recompressed (JPEG). The globe reads it once to find the land and never draws it. NASA imagery is not under
 copyright unless noted on its page. These pages carry no restriction, and the NASA logo is not used.
 
 | File | Source page | Original |

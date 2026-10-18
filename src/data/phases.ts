@@ -94,7 +94,7 @@ const SKILL_ROWS: readonly SkillTier[] = [
   { id: 63, name: "Design doc practice", baseXpCost: 57978, xpPerClick: 0, xpPerSec: 8, unlockAtXp: 37200 },
   { id: 64, name: "Architecture Decision Records", baseXpCost: 66675, xpPerClick: 0, xpPerSec: 8, unlockAtXp: 62000 },
   { id: 65, name: "Discourd / study group", baseXpCost: 76676, xpPerClick: 0, xpPerSec: 3.5, unlockAtXp: 7200 },
-  { id: 66, name: "Mock interviews", baseXpCost: 88178, xpPerClick: 8, xpPerSec: 5, unlockAtXp: 8400 },
+  { id: 66, name: "Practice problem sets", baseXpCost: 88178, xpPerClick: 8, xpPerSec: 5, unlockAtXp: 8400 },
   { id: 67, name: "AWS essentials", baseXpCost: 116615, xpPerClick: 0, xpPerSec: 5, unlockAtXp: 8000 },
   { id: 68, name: "Azure essentials", baseXpCost: 134108, xpPerClick: 0, xpPerSec: 6, unlockAtXp: 10000 },
   { id: 69, name: "GCP essentials", baseXpCost: 154224, xpPerClick: 0, xpPerSec: 6.5, unlockAtXp: 12000 },
