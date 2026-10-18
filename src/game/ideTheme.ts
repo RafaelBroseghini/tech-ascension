@@ -18,10 +18,10 @@ export function parseIdeThemeId(value: string | null): IdeThemeId {
   return value && isIdeThemeId(value) ? value : "mocha"
 }
 
-/** What a first run gets: GitHub Light for a light OS, Mocha otherwise (and where there is no matchMedia, as under node). Never written to prefs; only a click stores a theme. */
+/** What a first run gets: Latte for a light OS (a base theme, so no unlock is given away), Mocha otherwise (and where there is no matchMedia, as under node). Never written to prefs; only a click stores a theme. */
 function osThemeId(): IdeThemeId {
   const light = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches
-  return light ? "github-light" : "mocha"
+  return light ? "latte" : "mocha"
 }
 
 function readStoredId(): IdeThemeId {
