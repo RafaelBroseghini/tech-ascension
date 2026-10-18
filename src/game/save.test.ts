@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { freshSave, hydrate, parseSave } from "./save.ts"
 import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
 import { REGIONS } from "../data/regions.ts"
@@ -26,7 +26,10 @@ describe("save: the company's users", () => {
   it("grows the company while away and pays the win's multiplier once", () => {
     const near = Object.fromEntries(REGIONS.map((region) => [region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING)]))
     const saved = { ...freshSave(0), gigs: [1, 2, 3], company: { ...company, users: near, resistance: 100 }, equipment: { "110": 40, "109": 40 } }
+    // No incidents while away: a block or a law rolled in those hours can hold the crowd under eight billion, and the win is what is under test.
+    const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
     const first = hydrate(JSON.stringify(saved), 24 * 3_600_000)
+    calmRolls.mockRestore()
     expect(first.save.company?.won).toBe(true)
     expect(first.save.foreverMult).toBeCloseTo(1.25)
     expect(first.toast?.split("\n")[0]).toContain("Eight billion users")
