@@ -1,0 +1,45 @@
+/*
+ * Windows High Contrast and other forced-colors modes. The browser swaps every color for a system one and drops
+ * box-shadows and most backgrounds, and many edges here are drawn with those (the hard offset shadows, flat fills).
+ * So the controls and surfaces get real borders, and focus and selection get a system color that survives.
+ * Loaded last so it wins at equal weight.
+ */
+
+@media (forced-colors: active) {
+  button:not(.emoji-tap, .hitbox),
+  [role="tab"],
+  [role="option"],
+  .offer,
+  .ul-chip,
+  .ide-status-chip,
+  .event-modal,
+  [role="dialog"],
+  .toast {
+    border: 1px solid ButtonBorder;
+  }
+
+  .event-modal,
+  [role="dialog"],
+  .toast {
+    border-color: CanvasText;
+  }
+
+  /* The tab strip's underline is a border; keep it a real, colored one. */
+  [role="tab"] {
+    border-bottom: 4px solid ButtonBorder;
+  }
+
+  [role="tab"][aria-selected="true"],
+  [role="option"][aria-selected="true"],
+  [aria-pressed="true"],
+  [aria-expanded="true"],
+  .is-active {
+    border-color: Highlight;
+  }
+
+  :focus-visible,
+  .roster-cell:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
