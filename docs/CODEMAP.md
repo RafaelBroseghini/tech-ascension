@@ -41,7 +41,7 @@
 | Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
-| Your company: the activity-bar button, the shop's Company tab, and the burst that drives the globe | `src/components/globe/CompanyTab.tsx`, `src/components/globe/traffic.ts` |
+| Your company: the activity-bar button and the shop's Company tab | `src/components/globe/CompanyTab.tsx` |
 | The globe: three.js scene, canvas (a lazy chunk), the small one on the desk (`MiniGlobe.tsx`, drawn `compact`) and the numbers pane in the details view | `src/components/globe/` (`GlobeScene.ts`, `GlobeCanvas.tsx`, `MiniGlobe.tsx`, `GlobePane.tsx`, `notes.ts`, `feed.ts` and `GlobeFeed.tsx` for the desk globe's one-line feed, `nextStep.ts` for the world pane's lead line) |
 | Users, incidents and the win: regions, seeds, reach, resistance, the world's rules (the `INCIDENTS` table) and calibration | `src/game/globe/world.ts`, `src/game/globe/growth.ts` (`stepCompany`, `settleGrowth`) |
 | Serving: demand, capacity, drops, lost dollars and health in one `servingOf` | `src/game/globe/load.ts` |
@@ -54,7 +54,7 @@
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
 | GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/CornerActions.tsx`, `src/styles/githug.css` |
 
-Replacing `CAPITAL` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.
+Editing the rows in `src/data/capital.ts` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.
 
 ## Catalog capacity
 
@@ -64,7 +64,7 @@ The 66 drawings stay in use: skills, gigs, jobs and gear borrow them through `sr
 
 ## Numbers
 
-Money and costs are JavaScript numbers (IEEE-754 doubles). `Math.floor` is exact only through `Number.MAX_SAFE_INTEGER` (~9.01e15). Foundry and Mars prices (~1e16–5e22) still run, but the last dollars are approximate. Switch `src/game/economy.ts` to `decimal.js` or `break_infinity.js` when exact integers past ~1e15 matter. Display keeps raw digits below 10 million, then M / B / T / Qa / Qi / Sx / Sp / Oc / No / Dc, then scientific notation past 1e36.
+Money and costs are JavaScript numbers (IEEE-754 doubles). `Math.floor` is exact only through `Number.MAX_SAFE_INTEGER` (~9.01e15). The late capital prices (the last row, Mars megacampus Holdings, is about 4e16 after the purchase scale) are still well inside that range, but dollars past 1e15 are approximate. Switch `src/game/economy.ts` to `decimal.js` or `break_infinity.js` when exact integers past ~1e15 matter. Display keeps raw digits below 10 million, then M / B / T / Qa / Qi / Sx / Sp / Oc / No / Dc, then scientific notation past 1e36.
 
 ## GitHub Pages
 

@@ -1,6 +1,6 @@
 # Prestige: the Exit (design, v2)
 
-Status: built (see "Built" at the end), behind admin mode. Reworked for the company arc (`docs/COMPANY_ARC.md`). Paths are dropped.
+Status: built, behind admin mode (see "Built" at the end). Part of the company arc (`docs/COMPANY_ARC.md`). Paths are dropped.
 
 ## Why
 
@@ -24,9 +24,9 @@ prestigeTotalFor(earned) = floor( cbrt(earned / PRESTIGE_EARN_SCALE) )
 prestigeOnExit = prestigeTotalFor(earnedAllRuns + runEarned) - prestigeTotal + endingBonus
 ```
 
-- `endingBonus`: when this career reached the 7B win with an ending (`founder`, `nightOwl`, `sponsor` from `src/game/globe/hires.ts`) not yet in the Hall of Fame, `ENDING_BONUS` (start at 5) Prestige, once per ending, ever.
+- `endingBonus`: when this career reached the 7B win with an ending (`founder`, `nightOwl`, `sponsor`, from `src/game/globe/hires.ts`) not yet in the Hall of Fame, `ENDING_BONUS` (5) Prestige, once per ending, ever.
 - **Permanent bonus:** every money and XP stream, and product growth, × `(1 + PRESTIGE_MULT_PER × prestigeTotal)`. It folds in through `modFactors` (`src/game/mods.ts`) like `foreverMult`, so offline credit gets it too.
-- Starting constants from v1's tuning: `PRESTIGE_EARN_SCALE = 5e11`, `PRESTIGE_MULT_PER = 0.03`. Product revenue and the win multiplier changed the economy, so they are re-tuned (see Tuning).
+- Constants: `PRESTIGE_EARN_SCALE = 5e11`, `PRESTIGE_MULT_PER = 0.03`. They were kept after the sweep in `docs/PACING.md`.
 
 ## When the Exit opens
 
@@ -60,7 +60,7 @@ Then the start card's product beat opens: a new product name is drawn (Reroll as
 | the product: users, regions, hires, `hiredUsers`, resistance, incidents, the win and its multiplier | the handle (a new product name is drawn) |
 | the track (back to `ladder`), burn, bridges and their equity cost | every cosmetic, the desk cat, the career timeline's unlocked rows (reveals never replay) |
 | click boost, `tempMults`, `foreverMult` | the career log, with an `exit` entry between careers |
-| `stats.lifetimeEarned` (summed into `earnedAllRuns`) | GitHug and LinkedOut (each product is a past "Founder, Otterly" / "Side project" line) |
+| `stats.lifetimeEarned` (summed into `earnedAllRuns`) | LinkedOut (each sold product stays as a past "Founder, Otterly" or "Side project" line) |
 
 `reset()` stays a full wipe, Legacy and Hall of Fame included.
 
@@ -78,7 +78,7 @@ Three tracks, each a ladder; a perk waits on the one before it in its track, is 
 
 ## Hall of Fame (the long goal)
 
-The three endings, each recorded the first time a career wins with it: **Founder** (you built it), **Night owl** (nights and weekends, mostly your own growth), **Executive sponsor** (mostly hired growth). Owning all three is the game's long finish. The How to play card names it; Sabbatical stays the last trophy of a single career.
+The three endings, each recorded the first time a career wins with it: **Founder** (you built it), **Night owl** (nights and weekends, mostly your own growth), **Executive sponsor** (mostly hired growth). Owning all three is the game's long finish. It is shown in the Prestige panel, with `???` for each ending not yet won.
 
 The fork already makes careers play differently (ladder or founder, hires or not), so v1's Paths are dropped: the endings are the paths.
 
@@ -114,14 +114,14 @@ setPrestige(n: number): void    // tests only: spendable to n, total raised to a
 
 ## Tuning
 
-`simulatePace`'s multi-run mode (`simulateExits` in `src/game/pace.ts`) exits when an Exit would raise the bonus by 15% or more, buys the cheapest affordable perk after each Exit (Network first on ties), and plays the next career. It has to include product revenue, product growth and the win if `simulatePace` does not yet (check; if the globe is not modeled, model served users and revenue with the real `stepCompany`, or state plainly what is left out).
+`simulateExits` in `src/game/pace.ts` models the Exit over several careers. It exits when an Exit would raise the bonus by 15% or more, buys the cheapest affordable perk after each Exit (Network first on ties), and plays the next career. It includes product users, revenue, growth and the win, and it models only the night owl ending. Details and results are in `docs/PACING.md`.
 
-Targets for the Regular player (3 visits a day of 15 minutes, 2 clicks/s):
+Targets for the Regular player (3 visits a day of 15 minutes, 2 clicks/s), and where they stand:
 
-- first Exit taken around day 1.5 to 2;
-- career 2 reaches the point where career 1 exited in under half the time;
-- the career that owns everything (or wins the world, whichever is later) is career 4 to 6, about 2 weeks;
-- all three endings: about a month.
+- first Exit around day 1.5 to 2: met (day 1.67 and 2.00);
+- career 2 reaches the point where career 1 exited in under half the time: not met for earnings, met for capital row 6;
+- the career that owns everything (or wins the world, whichever is later) is career 4 to 6, about 2 weeks: met (career 6, day 12.7 and 16.3);
+- all three endings in about a month: not checked, since the model has no fork or hires.
 
 Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk prices.
 
@@ -130,7 +130,7 @@ Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk 
 - **Names:** the Exit (in the UI, "Sell <Product>"), Prestige for the points (Rep was unclear), Legacy perks, Hall of Fame.
 - **The Craft track is replaced by the Founder track.**
 - **Paths are dropped**: the ladder/founder fork and the three endings already make careers differ.
-- **Rollout:** behind admin mode (`getAdminMode()`) until the pace model meets the targets; the harness works regardless.
+- **Rollout:** the Exit UI is behind admin mode (`getAdminMode()`) for now; the harness works regardless.
 
 ## Built
 
@@ -144,9 +144,9 @@ All of the above is built, behind admin mode (`getAdminMode()`); the harness wor
 
 Choices the spec left open, and where the build differs:
 
-- **The bonus is not a rung.** The spec's `prestigeTotalFor(earned) − prestigeTotal + endingBonus` would count an ending bonus in `prestigeTotal`, so the bonus would eat the next earnings Prestige. The build subtracts the bonuses already paid (`ENDING_BONUS × endings.length`) from `prestigeTotal` before it takes the difference, so the bonus is paid on top, as written in the brief.
+- **The bonus is not a rung.** The spec's `prestigeTotalFor(earned) − prestigeTotal + endingBonus` would count an ending bonus in `prestigeTotal`, so the bonus would eat the next earnings Prestige. The build subtracts the bonuses already paid (`ENDING_BONUS × endings.length`) from `prestigeTotal` before it takes the difference, so the bonus is paid on top.
 - **Product revenue is not multiplied by the permanent bonus.** The bonus folds into `modFactors` (clicks, idle $/s, XP/s, the offline credit) and into growth. Revenue from users stays as the arc defines it (track, equity, Platform), as it already ignores the win's `foreverMult`. Multiplying growth already raises revenue through the user count.
 - **A win opens the first Exit** (its bonus is at least 1 Prestige), through both the gate and the `exit` timeline row.
 - **Only the night owl ending is modeled** by the pace model, so "all three endings in about a month" is not checked, and career 2 reaching career 1's earnings in under half the time is not met (it is met for capital row 6). Both are explained in `docs/PACING.md`.
-- **GitHug and LinkedOut keep the past products.** LinkedOut lists each sold product under Experience, newest first, from the journal's `exit` entries (`pastProductsOf`): "Founder, <Product>" (or the sponsor line) for one that won, "Side project, <Product>" for one sold before that. GitHug already draws from the journal and is unchanged. The How to play card does not name the Hall of Fame, since the Exit is admin only for now.
+- **LinkedOut keeps the past products.** It lists each sold product under Experience, newest first, from the journal's `exit` entries (`pastProductsOf`): "Founder, <Product>" (or the sponsor line) for one that won, "Side project, <Product>" for one sold before that. GitHug is unchanged. The How to play card does not name the Hall of Fame, since the Exit is admin only for now.
 - **Regions bought reset with the Exit** (`footprint` back to the free home region with Ashburn), because the spec lists "regions" among what starts over.
