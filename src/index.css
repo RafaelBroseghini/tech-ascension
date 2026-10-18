@@ -1036,7 +1036,7 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .pop-boosted { color: var(--text); font-size: clamp(2.4rem, 1.6rem + 2.2vw, 3.2rem); }
 
-/* Waterfall: developer-icons of owned rows, dropped from the cursor. */
+/* Fountain: developer-icons of owned rows, tossed up from the cursor. */
 .drops {
   position: fixed;
   inset: 0;
@@ -1077,7 +1077,7 @@ img { -webkit-user-drag: none; user-select: none; }
   text-shadow:
     0 3px 0 var(--ink), 3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 -3px 0 var(--ink),
     2px 2px 0 var(--ink), -2px 2px 0 var(--ink), 2px -2px 0 var(--ink), -2px -2px 0 var(--ink);
-  animation: loot-fall 500ms linear forwards;
+  animation: loot-fall 1100ms linear forwards;
 }
 
 .loot-xp { color: var(--accent-hi); font-size: 1.1rem; }
@@ -2325,58 +2325,6 @@ img { -webkit-user-drag: none; user-select: none; }
 .lock-panel li.met { color: var(--text); }
 .lock-panel li.met svg { color: var(--accent); }
 .lock-note { margin: var(--sp-2) 0 0; color: var(--text-faint); font-family: var(--font-mono); font-size: var(--fs-2xs); }
-
-/* Balatro score pop: centered, squashed in, chromatic split that settles, then gone. */
-.score-pop {
-  position: absolute;
-  z-index: 8;
-  left: 50%;
-  top: 44%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  max-width: 92%;
-  pointer-events: none;
-  text-align: center;
-  transform: translate(-50%, -50%);
-  animation: score-pop 1500ms cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
-}
-
-.score-pop-kicker,
-.score-pop-label {
-  padding: 2px 10px;
-  background: var(--ink);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-}
-
-.score-pop-kicker { color: var(--accent-hi); }
-
-.score-pop-amount {
-  position: relative;
-  color: var(--mocha-peach);
-  font-family: var(--font-mono);
-  font-size: clamp(3rem, 1.6rem + 5vw, 5.4rem);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-  text-shadow: 0 5px 0 var(--ink), 4px 0 0 var(--ink), -4px 0 0 var(--ink), 0 -4px 0 var(--ink);
-  animation: score-chroma 1500ms ease-out forwards;
-}
-
-.score-pop-amount.is-title {
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 1rem + 3vw, 3.2rem);
-  white-space: normal;
-  letter-spacing: 0;
-  color: var(--accent-hi);
-}
 
 /* ---------- fun metrics modal ---------- */
 

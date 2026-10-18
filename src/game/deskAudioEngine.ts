@@ -5,6 +5,7 @@
 import "./toneQuiet.ts"
 import {
   AMSynth,
+  FeedbackDelay,
   Filter,
   Gain,
   MembraneSynth,
@@ -47,9 +48,10 @@ type Graph = {
   wood: Synth
   woodHigh: Synth
   blip: PolySynth
-  clink: Synth
-  /** The unlock chime: a short bright arpeggio, apart from the room's blips. */
+  /** The unlock chime: a soft bell arpeggio with a long tail, apart from the room's blips. */
   chime: PolySynth
+  /** A low sine under a big unlock's chime, so it lands warm rather than bright. */
+  chimeBed: Synth
   noise: NoiseSynth
   noiseFilter: Filter
   /** The player's click has its own grain, so it never fights the room for the shared noise voice. */
@@ -133,14 +135,17 @@ function build(): Graph | null {
       oscillator: { type: "sine" },
       envelope: { attack: 0.002, decay: 0.03, sustain: 0, release: 0.02 },
     }).connect(soundGain)
-    const clink = new Synth({
-      oscillator: { type: "triangle" },
-      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.03 },
-    }).connect(soundGain)
+    // Rounded off and echoed once or twice, so it rings out like a small bell instead of beeping.
+    const chimeTone = new Filter({ frequency: 3200, type: "lowpass", rolloff: -12 }).connect(soundGain)
+    const chimeEcho = new FeedbackDelay({ delayTime: 0.19, feedback: 0.28, wet: 0.22 }).connect(chimeTone)
     const chime = new PolySynth(Synth, {
-      oscillator: { type: "triangle" },
-      envelope: { attack: 0.004, decay: 0.22, sustain: 0, release: 0.28 },
-    }).connect(soundGain)
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.012, decay: 1.1, sustain: 0, release: 1.4 },
+    }).connect(chimeEcho)
+    const chimeBed = new Synth({
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.08, decay: 1.4, sustain: 0, release: 1.2 },
+    }).connect(chimeTone)
     const noiseFilter = new Filter({ type: "bandpass", frequency: 2000, Q: 0.8 }).connect(soundGain)
     const noise = new NoiseSynth({
       noise: { type: "white" },
@@ -162,8 +167,8 @@ function build(): Graph | null {
       wood,
       woodHigh,
       blip,
-      clink,
       chime,
+      chimeBed,
       noise,
       noiseFilter,
       clickNoise,
@@ -369,7 +374,10 @@ export function playCozyClick(): void {
   syncDeskAudio()
 }
 
-/** A rising arpeggio when part of the desk unlocks: two notes for a small one, five and a clink for a big one. */
+/**
+ * A soft rising bell when something unlocks: two notes for a small one, a major-seventh arpeggio over a warm low note
+ * for a big one. Quiet, slow to fade, never a beep.
+ */
 export function playUnlockChime(size: "big" | "standard" | "small"): void {
   const prefs = readPrefs()
   if (!(prefs.sounds || prefs.clicks) || !canHear()) return
@@ -380,10 +388,15 @@ export function playUnlockChime(size: "big" | "standard" | "small"): void {
     return
   }
   syncDeskAudio()
-  const steps = size === "small" ? [7, 12] : size === "standard" ? [0, 7, 12] : [0, 4, 7, 12, 16]
-  const start = now() + 0.02
-  steps.forEach((semi, index) => g.chime.triggerAttackRelease(freq(semi + 12), 0.12, start + index * 0.07, size === "small" ? 0.32 : 0.45))
-  if (size === "big") g.clink.triggerAttackRelease(freq(31), 0.06, start + steps.length * 0.07, 0.35)
+  const steps = size === "small" ? [7, 12] : size === "standard" ? [0, 7, 12] : [0, 4, 7, 11, 16]
+  const gap = size === "big" ? 0.11 : 0.09
+  const start = now() + 0.03
+  steps.forEach((semi, index) => {
+    // Each note a touch softer than the last, so the run settles instead of climbing to a shout.
+    const level = (size === "small" ? 0.16 : 0.2) * (1 - index * 0.08)
+    g.chime.triggerAttackRelease(freq(semi + 12), 0.5, start + index * gap, level)
+  })
+  if (size === "big") g.chimeBed.triggerAttackRelease(freq(-12), 0.8, noiseStart(g.chimeBed, start), 0.14)
 }
 
 /** Starts or stops the room from the saved switches. Does not touch the audio context until a pointer or key. */

@@ -14,7 +14,7 @@
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
-| Click waterfall (owned developer-icons, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
+| Click fountain (owned developer-icons, toss, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
 | Keyframes and the `prefers-reduced-motion` kill switch | `src/styles/motion.css` |
 | Phase screenshots (A XP, B gig pop, C jobs, D capital) through `__GAME__` and agent-browser | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
@@ -33,7 +33,7 @@
 | Time-to-finish model and its formula (`npm run pace`) | `src/game/pace.ts` (`simulatePace`, and `simulateExits` over several careers, with the product), `scripts/pace.mjs`, [PACING.md](PACING.md) |
 | Loop, purchases, money pops | `src/game/store.ts` |
 | Shop panel, rows and banner | `src/components/Shop.tsx` |
-| Centered score pop and hero squash | `src/components/ScorePop.tsx`, `src/components/HeroMoney.tsx` |
+| Hero squash | `src/components/HeroMoney.tsx` |
 | Career timeline: what unlocks, its trigger and reveal size (a drop-in table) | `src/data/features.ts` |
 | Timeline gates, tease progress, Up next, the dim outline, earned cosmetics | `src/game/features.ts` |
 | Career journal: entries, JSON lines, the career log's rows | `src/game/careerLog.ts` |

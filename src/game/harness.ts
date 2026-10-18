@@ -261,6 +261,8 @@ export type GameHarness = {
   setRegionActive: (regionId: string, on: boolean) => boolean
   /** Hire a kind of person on the ladder, as many as the shop's Buy control allows (`amount` overrides it, clamped to what the gold skills unlock). False as a founder, in a closed row, or short of the price. */
   hire: (id: string, amount?: 1 | 5 | 10 | "max") => boolean
+  /** Let go of people of a kind, as many as the Buy control allows (`amount` overrides it, clamped; Max is all of them), on either track. No refund. False with nobody of that kind. */
+  fire: (id: string, amount?: 1 | 5 | 10 | "max") => boolean
   /** Quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for. */
   goFullTime: () => boolean
   /** Close the fork's modal. */
@@ -557,6 +559,7 @@ export function installGameHarness(): GameHarness {
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
     hire: (id, amount) => useGame.getState().hire(id, amount),
+    fire: (id, amount) => useGame.getState().fire(id, amount),
     goFullTime: () => useGame.getState().goFullTime(),
     keepClimbing: () => useGame.getState().keepClimbing(),
     raiseBridge: () => useGame.getState().raiseBridge(),
