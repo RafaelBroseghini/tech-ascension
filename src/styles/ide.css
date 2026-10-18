@@ -47,8 +47,10 @@
   color: inherit;
   cursor: pointer;
 }
-.ide-activity-btn:hover:not(:disabled) {
-  background: var(--ide-surface);
+@media (hover: hover) {
+  .ide-activity-btn:hover:not(:disabled) {
+    background: var(--ide-surface);
+  }
 }
 .ide-activity-btn:disabled {
   opacity: 0.38;
@@ -97,9 +99,11 @@
   font-weight: 600;
   cursor: pointer;
 }
-.ide-buy-amount:hover {
-  background: var(--ide-surface);
-  color: var(--ide-text);
+@media (hover: hover) {
+  .ide-buy-amount:hover {
+    background: var(--ide-surface);
+    color: var(--ide-text);
+  }
 }
 .ide-buy-hint {
   cursor: help;
@@ -157,8 +161,10 @@
   text-transform: lowercase;
   white-space: nowrap;
 }
-.ide-settings-powered:hover {
-  color: var(--ide-text);
+@media (hover: hover) {
+  .ide-settings-powered:hover {
+    color: var(--ide-text);
+  }
 }
 .ide-mode {
   align-self: stretch;

@@ -62,7 +62,9 @@
 .githug-day[data-level="2"] { background: color-mix(in srgb, var(--ide-green) 55%, transparent); }
 .githug-day[data-level="3"] { background: color-mix(in srgb, var(--ide-green) 78%, transparent); }
 .githug-day[data-level="4"] { background: var(--ide-green); }
-.githug-graph .githug-day:hover { outline: 1px solid var(--ide-text); outline-offset: 0; }
+@media (hover: hover) {
+  .githug-graph .githug-day:hover { outline: 1px solid var(--ide-text); outline-offset: 0; }
+}
 .githug-tip {
   /* A fixed box: five repo lines and "more" always fit, so hovering never resizes the modal. */
   height: calc(6 * 1.4em);
@@ -141,7 +143,9 @@
   font-weight: 600;
   text-decoration: none;
 }
-.githug-real a:hover { background: #eef1f4; }
+@media (hover: hover) {
+  .githug-real a:hover { background: #eef1f4; }
+}
 
 .githug-who { min-width: 0; }
 
