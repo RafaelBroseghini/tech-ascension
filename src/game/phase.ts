@@ -13,9 +13,9 @@ export type Phase = "A" | "B" | "C" | "D"
 export const PHASES: readonly Phase[] = ["A", "B", "C", "D"]
 
 /** Shop tabs, left to right. "G" (Gear) sits between Jobs and Capital and never becomes the current phase. */
-export type ShopTab = Phase | "G"
+export type ShopTab = Phase | "G" | "W"
 
-export const SHOP_TABS: readonly ShopTab[] = ["A", "B", "C", "G", "D"]
+export const SHOP_TABS: readonly ShopTab[] = ["A", "B", "C", "G", "D", "W"]
 
 export const PHASE_NAME: Record<Phase, string> = {
   A: "Skill grind",
@@ -61,7 +61,7 @@ export function phaseRank(phase: Phase): number {
   return PHASES.indexOf(phase)
 }
 
-/** Fights and cash events start once a gig is cleared, a job is held, or money already exists. */
+/** Cash events start once a gig is cleared, a job is held, or money already exists. */
 export function moneyMode(p: Pick<Progress, "peakMoney" | "gigs" | "jobs">): boolean {
   return p.gigs.length > 0 || p.jobs.length > 0 || p.peakMoney > 0
 }
@@ -97,8 +97,8 @@ export function jobState(p: Gates, job: JobTier): JobState {
   return "ready"
 }
 
-export function canBuyJob(p: Gates & Pick<Progress, "money">, job: JobTier): boolean {
-  return jobState(p, job) === "ready" && canAfford(p.money, job.baseCost)
+export function canBuyJob(p: Gates & Pick<Progress, "xp">, job: JobTier): boolean {
+  return jobState(p, job) === "ready" && canAfford(p.xp, job.xpCost)
 }
 
 /** The Gear tab opens at GEAR_TAB_UNLOCK lifetime XP, independent of the boards. Owning gear keeps it open, so forced progress never hides it. */
@@ -110,7 +110,7 @@ export type Stage = {
   /** Code-overlay id (see src/data/art.ts). The picture on screen comes from `source`, not this id. */
   artId: number
   name: string
-  /** Era for boosts, fights and the stage accent. Only owned capital rows move it past "early". */
+  /** Era for boosts and the stage accent. Only owned capital rows move it past "early". */
   era: Era
   /** Catalog row whose sprite file, if one exists, is the stage picture. */
   source: { kind: EmojiKind; id: number }

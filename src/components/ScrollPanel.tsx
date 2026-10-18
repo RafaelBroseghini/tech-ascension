@@ -18,6 +18,8 @@ export type ScrollPanelProps = {
   className?: string
   scrollRef?: Ref<ScrollEl>
   showArrow?: boolean
+  /** Tells the parent when the list overflows, so it can draw its own jump button elsewhere. */
+  onOverflowChange?: (overflow: boolean) => void
   onScrollBottom?: () => void
   arrowLabel?: string
   arrowTitle?: string
@@ -37,6 +39,7 @@ export function ScrollPanel({
   className,
   scrollRef,
   showArrow = true,
+  onOverflowChange,
   onScrollBottom,
   arrowLabel = "Scroll to bottom",
   arrowTitle = "Scroll to bottom",
@@ -59,7 +62,11 @@ export function ScrollPanel({
   useEffect(() => {
     const el = localRef.current
     if (!el) return
-    const check = () => setOverflow(el.scrollHeight - el.clientHeight > 6)
+    const check = () => {
+      const next = el.scrollHeight - el.clientHeight > 6
+      setOverflow(next)
+      onOverflowChange?.(next)
+    }
     check()
     el.addEventListener("scroll", check, { passive: true })
     const ro = new ResizeObserver(check)
@@ -71,7 +78,7 @@ export function ScrollPanel({
       ro.disconnect()
       mo.disconnect()
     }
-  }, [])
+  }, [onOverflowChange])
 
   function scrollBottom() {
     if (onScrollBottom) onScrollBottom()

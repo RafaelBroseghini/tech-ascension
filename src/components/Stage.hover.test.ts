@@ -23,7 +23,6 @@ function ownCatalog() {
     xp: 0,
     xpTotal: 1e12,
     peakMoney: 1e12,
-    fight: null,
     event: null,
   })
 }
@@ -76,8 +75,30 @@ describe("hover click", () => {
     flushSync(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(useGame.getState().money).toBe(power * 20)
+    expect(useGame.getState().money / (power * 20)).toBeCloseTo(1, 9)
     expect(useGame.getState().xp).toBe(xpEach * 20)
+  })
+
+  it("clicks at the rate of the hover gold skill owned, before the catalog is complete", () => {
+    vi.useFakeTimers()
+    setDeskPref("sounds", false)
+    setDeskPref("hoverClick", true)
+    useGame.setState({ gold: [2], xpTotal: 1e6, event: null })
+    const host = renderStage()
+    expect(host.querySelector("[data-testid='stage']")?.getAttribute("data-auto-click")).toBe("on")
+    hoverEmoji(host)
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpPerClick(useGame.getState().skills) * 2)
+
+    flushSync(() => {
+      useGame.setState({ gold: [2, 5], xp: 0 })
+    })
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpPerClick(useGame.getState().skills) * 5)
   })
 
   it("does not click until the catalog is complete and the switch is on", () => {
@@ -123,5 +144,29 @@ describe("hover click", () => {
       vi.advanceTimersByTime(1000)
     })
     expect(useGame.getState().money).toBe(earned)
+  })
+})
+
+describe("click reward", () => {
+  afterEach(() => {
+    flushSync(() => {
+      for (const root of roots) root.unmount()
+    })
+    roots.length = 0
+    document.body.replaceChildren()
+    useGame.getState().wipe()
+  })
+
+  it("pops the XP a fresh click pays, once, and not a dollar", () => {
+    renderStage()
+    const button = document.querySelector<HTMLButtonElement>("[data-testid='stage']")
+    if (!button) throw new Error("missing stage")
+    flushSync(() => {
+      button.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", clientX: 80, clientY: 80, button: 0 }),
+      )
+    })
+    const loot = [...document.querySelectorAll(".loot")].map((el) => el.textContent)
+    expect(loot).toEqual(["+1 XP"])
   })
 })

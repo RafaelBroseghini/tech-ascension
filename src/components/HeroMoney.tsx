@@ -7,6 +7,7 @@ import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { useDeskMoneyHeroDrag } from "./useDeskMoneyHeroDrag.ts"
+import { useFeatureOpen } from "./useFeature.ts"
 
 const COUNT_UP_MS = 720
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -19,7 +20,7 @@ function easeOutBack(t: number): number {
 }
 
 /**
- * Money shown on screen. Normally the live balance. After a large pop (gig clear, fight win) it counts up
+ * Money shown on screen. Normally the live balance. After a large pop (gig clear, phase unlock) it counts up
  * from the pre-payout balance with overshoot, so the lump feels like it lands. Idle ticks never animate.
  */
 function useScore(target: number): number {
@@ -85,13 +86,16 @@ function HeroMoneyBody() {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
+  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
+  const legacy = useGame((state) => state.legacy)
   const now = useGame((state) => state.now)
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
   const valueRef = useRef<HTMLSpanElement>(null)
+  const squash = useRef<Animation | null>(null)
   const shownMoney = useScore(money)
   const shownXp = Math.floor(xp)
   const moneyText = formatNumber(shownMoney)
@@ -99,17 +103,21 @@ function HeroMoneyBody() {
   const fullXp = formatFullNumber(shownXp)
   const showFullMoney = shownMoney >= RAW_DIGITS_BELOW
   const paysClickMoney = clickPaysMoney({ jobs })
-  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+  // Until the first dollar the card is about XP: no "$0" for money that cannot be earned yet.
+  const moneyOpen = useFeatureOpen("money")
+  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
 
   useEffect(() => {
     const el = valueRef.current
     if (!pop || !el || typeof el.animate !== "function" || prefersReducedMotion()) return
-    for (const animation of el.getAnimations()) {
-      animation.finished.catch(() => {})
-      animation.cancel()
+    // Only the last squash can still be running. getAnimations() would flush style on every click.
+    const last = squash.current
+    if (last) {
+      last.finished.catch(() => {})
+      last.cancel()
     }
     if (pop.size === "large") {
-      el.animate(
+      squash.current = el.animate(
         [
           { transform: "scale(1)", textShadow: "0 4px 0 var(--ink)" },
           {
@@ -129,7 +137,7 @@ function HeroMoneyBody() {
       )
       return
     }
-    el.animate(
+    squash.current = el.animate(
       [
         { transform: "scale(1)" },
         { transform: "scale(1.14, 0.9)", offset: 0.3 },
@@ -140,12 +148,27 @@ function HeroMoneyBody() {
     )
   }, [pop])
 
+  if (!moneyOpen) {
+    return (
+      <>
+        <span className="hero-money-value hero-xp-value" data-testid="hero-xp">
+          {formatNumber(shownXp)} XP
+        </span>
+        {shownXp >= RAW_DIGITS_BELOW ? <span className="hero-money-full hero-money-full-xp">{fullXp} XP</span> : null}
+        <span className="hero-money-sub">
+          <MousePointerClick className="hero-money-click-icon" {...UI_ICON} aria-hidden />+{formatNumber(rates.xpClick * rates.mult)} XP per click
+        </span>
+      </>
+    )
+  }
+
   return (
     <>
       <span
         key={buyStamp}
         ref={valueRef}
         data-testid="money"
+        data-feature-anchor="money"
         className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", moneyText.length > 11 ? "is-long" : ""]
           .filter(Boolean)
           .join(" ")}

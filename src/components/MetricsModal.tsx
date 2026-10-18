@@ -2,6 +2,7 @@ import { X } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { UI_ICON } from "./icons/ui.tsx"
+import { CAT_ROSTER } from "../game/catRoster.ts"
 import { formatNumber } from "../game/format.ts"
 import { formatIdleStreak, formatPlayTime } from "../game/stats.ts"
 import type { GameStats } from "../game/stats.ts"
@@ -11,14 +12,10 @@ type Row = { label: string; value: string }
 
 function buildRows(stats: GameStats, peakMoney: number, gigs: number, jobs: number): Row[] {
   return [
-    { label: "Total clicks", value: formatNumber(stats.totalClicks) },
-    { label: "Longest click streak", value: formatNumber(stats.longestClickStreak) },
     { label: "Longest idle streak", value: formatIdleStreak(stats.longestIdleMs) },
     { label: "Highest balance held", value: `$${formatNumber(peakMoney)}` },
     { label: "Lifetime earnings", value: `$${formatNumber(stats.lifetimeEarned)}` },
-    { label: "From clicking", value: `$${formatNumber(stats.moneyFromClicks)}` },
     { label: "From idle & offline", value: `$${formatNumber(stats.moneyFromIdle)}` },
-    { label: "Fight wins", value: formatNumber(stats.fightWins) },
     { label: "Gigs cleared", value: formatNumber(gigs) },
     { label: "Jobs held", value: formatNumber(jobs) },
     { label: "Time played", value: formatPlayTime(stats.playTimeMs) },
@@ -72,6 +69,12 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
               <dd>{row.value}</dd>
             </div>
           ))}
+          <div className="stats-row">
+            <dt>Cats discovered</dt>
+            <dd data-testid="stats-cats">
+              {formatNumber(stats.catsFound.length)} / {formatNumber(CAT_ROSTER.length)}
+            </dd>
+          </div>
         </dl>
       </div>
     </div>,

@@ -1,6 +1,6 @@
 import { hydrate, type SaveData } from "./save.ts"
 
-export const PREF_IDS = ["desk", "theme", "shopTab", "treeFolds", "ideLore"] as const
+export const PREF_IDS = ["desk", "theme", "shopTab", "shopPanel"] as const
 export type PrefId = (typeof PREF_IDS)[number]
 
 type RecordRev = number
@@ -30,7 +30,7 @@ export type LoadedShelf = {
   readonly desk: PrefRow | null
   readonly theme: PrefRow | null
   readonly shopTab: PrefRow | null
-  readonly treeFolds: PrefRow | null
+  readonly shopPanel: PrefRow | null
 }
 
 /** Durability boundary. Store, harness, and React do not see this. */
@@ -51,11 +51,11 @@ type Image = {
 }
 
 function blankClock(): Clock {
-  return { career: 0, desk: 0, theme: 0, shopTab: 0, treeFolds: 0 }
+  return { career: 0, desk: 0, theme: 0, shopTab: 0, shopPanel: 0 }
 }
 
 function blankPrefs(): PrefBodies {
-  return { desk: null, theme: null, shopTab: null, treeFolds: null }
+  return { desk: null, theme: null, shopTab: null, shopPanel: null }
 }
 
 function blankImage(): Image {
@@ -261,13 +261,13 @@ export function createMemoryPort(): DurablePort & { failNextCas(times: number): 
       const desk = rows.get("desk")
       const theme = rows.get("theme")
       const shopTab = rows.get("shopTab")
-      const treeFolds = rows.get("treeFolds")
+      const shopPanel = rows.get("shopPanel")
       return Promise.resolve({
         career: career && career.id === "career" ? { id: "career" as const, rev: career.rev, body: career.body } : null,
         desk: desk && desk.id === "desk" ? { id: "desk" as const, rev: desk.rev, body: desk.body } : null,
         theme: theme && theme.id === "theme" ? { id: "theme" as const, rev: theme.rev, body: theme.body } : null,
         shopTab: shopTab && shopTab.id === "shopTab" ? { id: "shopTab" as const, rev: shopTab.rev, body: shopTab.body } : null,
-        treeFolds: treeFolds && treeFolds.id === "treeFolds" ? { id: "treeFolds" as const, rev: treeFolds.rev, body: treeFolds.body } : null,
+        shopPanel: shopPanel && shopPanel.id === "shopPanel" ? { id: "shopPanel" as const, rev: shopPanel.rev, body: shopPanel.body } : null,
       })
     },
     casPut(row) {

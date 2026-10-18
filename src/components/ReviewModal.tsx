@@ -24,16 +24,18 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
+  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
+  const legacy = useGame((state) => state.legacy)
   const now = useGame((state) => state.now)
   const answer = useGame((state) => state.answerReview)
   const dismiss = useGame((state) => state.dismissReview)
   const view = useMemo(() => {
     const prompt = reviewById(review.promptId)
     if (!prompt) return null
-    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults }))
+    const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
     const earning = {
       cps: rates.idle,
       click: rates.click,
@@ -48,7 +50,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
         preview: previewReviewChoice(reply.choice, earning, money, xp),
       })),
     }
-  }, [review, money, xp, skills, equipment, owned, jobs, gigs, activeBoost, foreverMult, tempMults, now])
+  }, [review, money, xp, skills, equipment, owned, jobs, gigs, founder, activeBoost, foreverMult, tempMults, legacy, now])
   const dialogRef = useRef<HTMLDivElement>(null)
   const reviewId = review.id
 

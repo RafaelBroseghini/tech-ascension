@@ -1,36 +1,42 @@
+import { isRosterCat } from "./catRoster.ts"
 import { bindDeskAudio, playCozyClick, syncDeskAudio } from "./deskAudio.ts"
+import { parseClickKitId } from "./deskClickKits.ts"
+import type { ClickKitId } from "./deskClickKits.ts"
 import { parseMusicStyleId } from "./deskMusicStyles.ts"
 import type { MusicStyleId } from "./deskMusicStyles.ts"
 import { readPref, writePref } from "./ledger.ts"
 
-/** Separate from the career save, so wiping a run keeps the room. */
+/** Separate from the career save, so wiping a run keeps the room. The exception is the chosen cat (`catArt`): the store resets it on wipe, since the roster is found per run. */
 
 export type DeskPrefs = {
   music: boolean
   musicStyle: MusicStyleId
+  /** The room: typing, coffee, a mouse. Not the player's own click. */
   sounds: boolean
+  /** The player's own click. Separate from the room, so either can be off. */
+  clicks: boolean
+  clickKit: ClickKitId
   cat: boolean
-  /** When false, rare enemies do not spawn. A fight already on screen is dismissed. */
-  enemies: boolean
+  /** Roster cat picked to sit on the desk instead of the sleeping one. Null is the default cat. */
+  catArt: string | null
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
   heroOffsetX: number
   heroOffsetY: number
-  /** Dismissed the small-screen “best on desktop” notice. */
-  mobilePlayAck: boolean
 }
 
 const DEFAULTS: DeskPrefs = {
   music: false,
   musicStyle: "cozy",
   sounds: true,
+  clicks: true,
+  clickKit: "thock",
   cat: true,
-  enemies: true,
+  catArt: null,
   hoverClick: false,
   heroOffsetX: 0,
   heroOffsetY: 0,
-  mobilePlayAck: false,
 }
 
 const HERO_OFFSET_CLAMP = 280
@@ -57,11 +63,16 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ...DEFAULTS }
-  for (const key of ["music", "sounds", "cat", "enemies", "hoverClick", "mobilePlayAck"] as const) {
+  for (const key of ["music", "sounds", "clicks", "cat", "hoverClick"] as const) {
     const value = (body as Record<string, unknown>)[key]
     if (typeof value === "boolean") next[key] = value
   }
+  // A room saved before the click had its own switch keeps what its desk sounds said.
+  if (typeof (body as Record<string, unknown>).clicks !== "boolean") next.clicks = next.sounds
   next.musicStyle = parseMusicStyleId((body as Record<string, unknown>).musicStyle)
+  next.clickKit = parseClickKitId((body as Record<string, unknown>).clickKit)
+  const catArt = (body as Record<string, unknown>).catArt
+  next.catArt = isRosterCat(catArt) ? catArt : null
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
   next.heroOffsetY = parseHeroOffset((body as Record<string, unknown>).heroOffsetY)
   return next
@@ -87,7 +98,7 @@ export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[
   writePrefs(prefs)
   for (const listener of prefListeners) listener()
   syncDeskAudio()
-  if (key === "sounds" && value) playCozyClick()
+  if ((key === "clicks" && value) || (key === "clickKit" && prefs.clicks)) playCozyClick()
 }
 
 export function setDeskHeroOffset(x: number, y: number): void {
@@ -123,7 +134,16 @@ export function pokeDesk(): void {
   syncDeskAudio()
 }
 
+/** Music is earned in a career (the headset). The saved switch stays the player's; it only plays once allowed. */
+let musicAllowed = true
+
+export function setMusicAllowed(on: boolean): void {
+  if (musicAllowed === on) return
+  musicAllowed = on
+  syncDeskAudio()
+}
+
 bindDeskAudio(() => {
   const prefs = getDeskPrefs()
-  return { music: prefs.music, sounds: prefs.sounds, musicStyle: prefs.musicStyle }
+  return { music: prefs.music && musicAllowed, sounds: prefs.sounds, clicks: prefs.clicks, musicStyle: prefs.musicStyle, clickKit: prefs.clickKit }
 })

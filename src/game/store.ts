@@ -13,6 +13,8 @@ import {
   ownedCount,
   production,
   quotePurchase,
+  capitalBase,
+  gearBase,
   skillById,
   equipById,
   capitalById,
@@ -20,22 +22,34 @@ import {
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { advanceEventClock, eventById, resolveOffer } from "./events.ts"
+import { canBuyGold, clampBuyAmount, goldById, offlineCapMs, toBuyAmount } from "./gold.ts"
+import type { BuyAmount } from "./gold.ts"
 import type { EarningRates, EventLine } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
-import { advanceEnemyClock, applyDamage, endFight, enemyById, startFight } from "./fight.ts"
-import type { Fight, FightOutcome } from "./fight.ts"
-import { getDeskPrefs } from "./desk.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
-import type { IdeSelection } from "./ide.ts"
-import { modFactors, modsOf, pruneTemp } from "./mods.ts"
+import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
+import { HALL_OF_FAME } from "../data/legacy.ts"
+import { canBuyPerk, canExit, earningsPrestige, endingBonus, exitHeadline, freshLegacy, isFreshLegacy, legacyPerkById, mergeGrant, startingGrant, withStartUsers } from "./legacy.ts"
+import type { ExitCard, LegacyState } from "./legacy.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
 import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigState, moneyMode, phaseOf, phaseRank } from "./phase.ts"
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, stageCareer, writeCareer } from "./ledger.ts"
-import { freshSave, OFFLINE_CAP_MS, SAVE_VERSION } from "./save.ts"
+import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
+import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./globe/growth.ts"
+import * as companyActions from "./globe/actions.ts"
+import type { CompanyPatch } from "./globe/actions.ts"
+import { totalUsers } from "./globe/world.ts"
+import { canGoFullTime, FRESH_FOUNDER, goFullTime as startFullTime, productRevenueOf, forkOpen, raiseBridge as raiseFounderBridge, returnToLadder as returnFounderToLadder, trackFactsOf, winMultOf } from "./globe/track.ts"
+import type { FounderState } from "./globe/track.ts"
+import type { CompanyState } from "./globe/growth.ts"
+import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
+import { winNote } from "./globe/hires.ts"
+import { servingOf } from "./globe/load.ts"
+import type { Footprint } from "./globe/footprint.ts"
 import type { SaveData } from "./save.ts"
 import {
   creditMoney,
@@ -46,19 +60,33 @@ import {
   touchIdleRecord,
 } from "./stats.ts"
 import type { GameStats, StatsClock } from "./stats.ts"
+import { addCatFound } from "./catRoster.ts"
+import { setDeskPref } from "./desk.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { MONEY_POP } from "../data/phases.ts"
 import { firstNewMilestone } from "./milestones.ts"
+import { appendNotes, toSavedEntries } from "./careerLog.ts"
+import type { CareerEntry, CareerJournal, CareerNote } from "./careerLog.ts"
+import { bootCareer, newlyOpen, planUnlocks, progressOf, purchaseNotes, seenFresh } from "./careerSync.ts"
+import type { CareerSlice } from "./careerSync.ts"
+import type { FeatureId } from "../data/features.ts"
+import { featureById } from "./features.ts"
+import { freshCareer } from "./save.ts"
+import type { SavedCareerEntry } from "./save.ts"
+import { setMusicAllowed } from "./desk.ts"
+import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
+import { randomHandle, randomIdentity, randomProduct } from "./identity.ts"
+import type { SavedIdentity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
-
-export type FightResult = FightOutcome & { id: number }
 
 export type ToastMessage = {
   id: number
   text: string
   /** Diary sentence when this toast is the offline sticky note. `text` is the credit line. */
   note?: string
+  /** On the sticky note: what unlocked while the player was away. */
+  unlocked?: string[]
 }
 
 /** A 1:1 on screen. Nothing is applied until a reply is chosen. */
@@ -73,7 +101,7 @@ export type ActiveReview = {
 export type PopKind = keyof typeof MONEY_POP
 export type PopSize = (typeof MONEY_POP)[PopKind]
 
-/** A money pop for the stage: medium on a click, large on gig clear, fight win and phase unlock. */
+/** A money pop for the stage: medium on a click, large on gig clear and phase unlock. */
 export type MoneyPop = {
   id: number
   kind: PopKind
@@ -83,7 +111,8 @@ export type MoneyPop = {
   label: string
 }
 
-export type BuyMode = "one" | "max"
+/** What a caller asks for. The store never buys more than the gold skills allow (see `clampBuyAmount`). */
+export type BuyMode = "one" | "max" | number
 
 /** A random event on screen. Nothing is applied until the player accepts. */
 export type ActiveEvent = {
@@ -107,15 +136,15 @@ type GameState = {
   owned: OwnedMap
   jobs: number[]
   gigs: number[]
+  /** Owned gold skill ids. */
+  gold: number[]
+  /** The amount the Buy control is set to. Always one of the unlocked amounts. */
+  buyAmount: BuyAmount
   phase: Phase
   activeBoost: ActiveBoost | null
   nextBoostAt: number | null
   idleSince: number
   now: number
-  fight: Fight | null
-  nextEnemyAt: number | null
-  fightResult: FightResult | null
-  fightSeq: number
   /** Permanent event multiplier on every income stream. */
   foreverMult: number
   /** Timed event multipliers, one per target. */
@@ -131,8 +160,7 @@ type GameState = {
   lastReview: ActiveReview | null
   reviewSeq: number
   nextReviewAt: number | null
-  ideSel: IdeSelection
-  /** Era the shop is browsing, shown in the IDE pane until it snaps back. Null means the owned era. */
+  /** Era the shop is browsing, named in the desk status bar until it snaps back. Null means the owned era. */
   previewEra: Era | null
   previewUntil: number
   toast: ToastMessage | null
@@ -142,37 +170,121 @@ type GameState = {
   seenMilestones: string[]
   buyStamp: number
   celebrationNonce: number
+  /** The career timeline: journal, unlocks, NEW markers, returns, and reveals waiting to play. */
+  journal: CareerJournal
+  /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
+  profile: SavedIdentity
+  /** Users by region, the world's resistance, its incidents and the uptime bars for the company on the globe. */
+  company: CompanyState
+  /** The regions bought and the cities with a point of presence. */
+  footprint: Footprint
+  /** The fork: ladder or founder, the bridges raised, and the run-out choice. */
+  founder: FounderState
+  /** The "Go full-time?" modal is on screen. Not saved; the red button opens it again. */
+  forkModal: boolean
+  /** Prestige: careers started, Prestige, earnings of earlier careers, Legacy perks, the Hall of Fame. Survives an Exit; `wipe` clears it. */
+  legacy: LegacyState
+  /** The headline card after the latest Exit, until dismissed. Not saved. */
+  exitCard: ExitCard | null
+  unlocked: FeatureId[]
+  fresh: FeatureId[]
+  returns: number
+  reveals: FeatureId[]
+  whatsNew: boolean
   click: () => { money: number; xp: number }
   /** Buy a Phase D capital row. */
   buy: (tierId: number, mode?: BuyMode) => void
   buySkill: (skillId: number, mode?: BuyMode) => void
   buyEquipment: (equipId: number, mode?: BuyMode) => void
   buyJob: (jobId: number) => boolean
+  /**
+   * Leave this career: pay the Prestige its earnings climbed to, reset the run and the product (see `exit` in the store),
+   * start the next career under the Network and Founder perks held. Returns the Prestige earned, or false when the Exit is not open or would pay nothing.
+   */
+  exit: () => number | false
+  /** Spend Prestige on a Legacy perk. It lands in the career under way and starts every later one. False when unknown, owned, out of order, or too dear. */
+  buyLegacy: (perkId: string) => boolean
+  /** Close the headline card an Exit opened. */
+  dismissExitCard: () => void
+  /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
+  buyGold: (goldId: number) => boolean
+  /** Buy a region with money. False when it is unknown, owned, or unaffordable. */
+  buyRegion: (regionId: string) => boolean
+  /** Deploy a point of presence in a city of a region you own, for its cost in money. */
+  deployPop: (cityId: string) => boolean
+  /** Switch a deployed point of presence on or off. Its traffic goes to the nearest one still on; the last one on stays on. */
+  setPopActive: (cityId: string, on: boolean) => boolean
+  /** Pays to end an incident now, in minutes of what the company earns. False when the incident is gone or the money is short. */
+  respondIncident: (id: number) => boolean
+  /** Quit the ladder for the product. False before the fork opens, after quitting, or while below the users a return asked for. */
+  goFullTime: () => boolean
+  /** Open the "Go full-time?" modal again from the red button. False before the fork has been offered, or as a founder. */
+  openFork: () => boolean
+  /** Close the modal and keep climbing. Does nothing while the out-of-runway choice is open. */
+  keepClimbing: () => void
+  /** Raise a bridge after running out. False with bridges used up or when not out of runway. */
+  raiseBridge: () => boolean
+  /** Hire a kind of person on the ladder (see `HIRES`), as many as the Buy control allows. False as a founder, in a closed row, or short of the price. */
+  hire: (id: string, amount?: BuyAmount) => boolean
+  /** Take a job again. After running out it gives up the highest job; by choice it keeps them all. False off the founder track. */
+  returnToLadder: () => boolean
+  /** Switch a bought region on or off as a whole. The last region serving stays on. */
+  setRegionActive: (regionId: string, on: boolean) => boolean
+  /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
+  setBuyAmount: (amount: BuyAmount) => void
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
   clearGig: (gigId: number, force?: boolean) => boolean
-  hit: () => { money: number; xp: number }
-  flee: () => void
-  forceEnemy: (enemyId: number) => boolean
+  /** Note a cat the desk cat turned into. True the first time this cat is seen. */
+  discoverCat: (url: string) => boolean
   dismissToast: () => void
-  dismissFightResult: () => void
-  /** Open an event now (harness only). False for an unknown id or during a fight. Replaces an open one without applying it. */
+  /** Open an event now (harness only). False for an unknown id. Replaces an open one without applying it. */
   fireEvent: (eventId: number) => boolean
   /** Take the open deal. False when nothing is open or the cost cannot be paid. */
   acceptEvent: () => boolean
   /** Decline the open event. Balances stay put. */
   dismissEvent: () => void
-  /** Open a 1:1 for the highest job. False with no job, during a fight, or for a prompt outside that job's band. */
+  /** Open a 1:1 for the highest job. False with no job or for a prompt outside that job's band. */
   fireReview: (promptId?: number) => boolean
   /** Take a reply. False when nothing is open, the choice is unknown, or the plan cannot be paid. */
   answerReview: (choice: ReviewChoiceId) => boolean
   /** Leave the 1:1. Balances stay put. */
   dismissReview: () => void
-  selectIde: (packId: string, index: number) => void
   setPreviewEra: (era: Era | null) => void
-  /** Keep a browsed era alive while the shop or the IDE is being used. */
+  /** Keep a browsed era alive while the shop or the desk is being used. */
   holdPreview: () => void
   tick: (now: number) => void
   wipe: () => void
+  /** Clears a NEW marker: the player opened or used the thing. Opening a picker clears the items inside it. */
+  seeFeature: (id: FeatureId) => void
+  /** Takes the next reveal off the queue to play it. Null when none is waiting. */
+  takeReveal: () => FeatureId | null
+  /** Drops every waiting reveal (the NEW markers stay). */
+  clearReveals: () => void
+  dismissWhatsNew: () => void
+  /** Draw another handle from the word lists, and a product from its animal. Only before the player keeps it; false after. */
+  rerollProfile: () => boolean
+  /** Draw another suffix for the product. Only before the player keeps it; false after. */
+  rerollProduct: () => boolean
+  /** Keep the current handle for the rest of the career. */
+  keepProfile: () => void
+  /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
+  noteReturn: (awayMs: number) => void
+  /** The big unlock slam: the centred UNLOCKED pop with confetti. */
+  announceUnlock: (label: string) => void
+  /** A one-line toast. Never covers the sticky note. */
+  notify: (text: string) => void
+}
+
+let savedEntriesFor: CareerEntry[] | null = null
+let savedEntries: SavedCareerEntry[] = []
+
+/** The journal as saved tuples. Rebuilt only when the journal changed since the last save. */
+function savedLog(entries: CareerEntry[]): SavedCareerEntry[] {
+  if (entries !== savedEntriesFor) {
+    savedEntriesFor = entries
+    savedEntries = toSavedEntries(entries)
+  }
+  return savedEntries
 }
 
 function toSave(state: GameState, now: number): SaveData {
@@ -190,10 +302,24 @@ function toSave(state: GameState, now: number): SaveData {
     peakMoney: Math.max(state.peakMoney, state.money),
     stats: state.stats,
   }
+  if (state.gold.length > 0) save.gold = state.gold
+  if (!isFreshLegacy(state.legacy)) save.legacy = state.legacy
+  if (state.buyAmount !== 1) save.buyAmount = state.buyAmount
   if (state.foreverMult !== 1) save.foreverMult = state.foreverMult
   const temp = pruneTemp(state.tempMults, now)
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
+  save.profile = state.profile
+  save.company = state.company
+  save.footprint = state.footprint
+  if (state.founder.offered || Object.keys(state.founder.hires).length > 0) save.founder = state.founder
+  save.career = {
+    seq: state.journal.seq,
+    log: savedLog(state.journal.entries),
+    unlocked: state.unlocked,
+    fresh: state.fresh,
+    returns: state.returns,
+  }
   if (state.activeBoost && state.activeBoost.endsAt > now) {
     save.activeBoost = state.activeBoost
   }
@@ -202,6 +328,11 @@ function toSave(state: GameState, now: number): SaveData {
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
   return Object.keys(owned).some((key) => capitalById(Number(key))?.era === era && ownedCount(owned, Number(key)) > 0)
+}
+
+/** A request is held to the amounts the gold skills unlock: without any, every purchase is one copy. */
+function allowedMode(state: Pick<GameState, "gold">, mode: BuyMode): BuyAmount {
+  return clampBuyAmount(state.gold, toBuyAmount(mode))
 }
 
 let lastSaveAt = 0
@@ -217,11 +348,25 @@ function boot() {
   const now = Date.now()
   const { save, toast } = loadCareerForBoot(now)
   lastSaveAt = save.savedAt
-  const message = noteToast(toast, 1)
-  return { save, toast: message, toastSeq: message ? 1 : 0, now }
+  const career = bootCareer(save, now)
+  let message: ToastMessage | null = noteToast(toast, 1)
+  if (career.awayUnlocks.length > 0) {
+    message = message?.note
+      ? { ...message, unlocked: career.awayUnlocks }
+      : { id: 1, text: "", note: "Things changed while you were out.", unlocked: career.awayUnlocks }
+  }
+  return { save, toast: message, toastSeq: message ? 1 : 0, now, career }
 }
 
 const booted = boot()
+
+/** Applies a company action's patch and saves. Spending stamps the clock, as every purchase does. False when it was refused. */
+function commitCompany(patch: CompanyPatch, spends: boolean): boolean {
+  if (!patch) return false
+  useGame.setState(spends ? { ...patch, now: Date.now() } : patch)
+  persistNow()
+  return true
+}
 
 function makePop(state: Pick<GameState, "popSeq">, kind: PopKind, amount: number, label: string) {
   const popSeq = state.popSeq + 1
@@ -261,6 +406,23 @@ function reviewResolution(state: GameState, choice: ReviewChoiceId) {
   return resolveReviewChoice(choice, state.money, state.xp, state.xpTotal, earningRates(state, now))
 }
 
+/** Appends journal notes stamped with the balances they leave behind. */
+function noted(journal: CareerJournal, notes: readonly CareerNote[], at: { money: number; xpTotal: number }): CareerJournal {
+  return appendNotes(journal, notes, at, Date.now())
+}
+
+function freshCareerSlice(now: number): CareerSlice {
+  const career = bootCareer({ ...freshSave(now), career: freshCareer(now) }, now)
+  return {
+    journal: career.journal,
+    unlocked: career.unlocked,
+    fresh: career.fresh,
+    returns: career.returns,
+    reveals: [],
+    whatsNew: false,
+  }
+}
+
 export const useGame = create<GameState>((set, get) => ({
   money: booted.save.money,
   xp: booted.save.xp,
@@ -272,15 +434,13 @@ export const useGame = create<GameState>((set, get) => ({
   owned: booted.save.owned,
   jobs: booted.save.jobs,
   gigs: booted.save.gigs,
+  gold: booted.save.gold ?? [],
+  buyAmount: booted.save.buyAmount ?? 1,
   phase: phaseOf(booted.save),
   activeBoost: booted.save.activeBoost ?? null,
   nextBoostAt: null,
   idleSince: booted.now,
   now: booted.now,
-  fight: null,
-  nextEnemyAt: null,
-  fightResult: null,
-  fightSeq: 0,
   foreverMult: booted.save.foreverMult ?? 1,
   tempMults: booted.save.tempMults ?? {},
   event: null,
@@ -291,7 +451,6 @@ export const useGame = create<GameState>((set, get) => ({
   lastReview: null,
   reviewSeq: 0,
   nextReviewAt: null,
-  ideSel: { packId: "", index: 0 },
   previewEra: null,
   previewUntil: 0,
   toast: booted.toast,
@@ -301,10 +460,23 @@ export const useGame = create<GameState>((set, get) => ({
   seenMilestones: booted.save.seenMilestones ?? [],
   buyStamp: 0,
   celebrationNonce: 0,
+  journal: booted.career.journal,
+  // A save from before names were drawn is a career already under way: it gets one, kept, with no start card.
+  profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
+  company: booted.save.company ?? FRESH_COMPANY,
+  footprint: booted.save.footprint ?? FRESH_FOOTPRINT,
+  founder: booted.save.founder ?? FRESH_FOUNDER,
+  forkModal: false,
+  legacy: booted.save.legacy ?? freshLegacy(),
+  exitCard: null,
+  unlocked: booted.career.unlocked,
+  fresh: booted.career.fresh,
+  returns: booted.career.returns,
+  reveals: booted.career.reveals,
+  whatsNew: booted.career.whatsNew,
 
   click: () => {
     const state = get()
-    if (state.fight) return get().hit()
     const now = Date.now()
     const stats = applyClickStats(state.stats, now)
     const rates = production(state, state.activeBoost, now, modsOf(state))
@@ -312,6 +484,8 @@ export const useGame = create<GameState>((set, get) => ({
     const clickMoney = clickPaysMoney(state) ? rates.click : 0
     set({
       money: state.money + clickMoney,
+      // Kept here so the peak subscriber below does not notify everyone a second time.
+      peakMoney: Math.max(state.peakMoney, state.money + clickMoney),
       xp: state.xp + xpGain,
       xpTotal: state.xpTotal + xpGain,
       stats: clickMoney > 0 ? creditMoney(stats, clickMoney, "click") : stats,
@@ -321,48 +495,13 @@ export const useGame = create<GameState>((set, get) => ({
     return { money: clickMoney, xp: xpGain }
   },
 
-  hit: () => {
-    const state = get()
-    const fight = state.fight
-    if (!fight) return { money: 0, xp: 0 }
-    const now = Date.now()
-    const stats = applyClickStats(state.stats, now)
-    const damage = production(state, state.activeBoost, now, modsOf(state)).click
-    const result = applyDamage(fight, damage)
-    if (!result.outcome) {
-      set({ fight: result.fight, stats, now })
-      return { money: 0, xp: 0 }
-    }
-    const fightSeq = state.fightSeq + 1
-    const reward = result.outcome.reward
-    let nextStats = stats
-    if (result.outcome.kind === "win") nextStats = { ...nextStats, fightWins: nextStats.fightWins + 1 }
-    if (reward > 0) nextStats = creditMoney(nextStats, reward, "other")
-    set({
-      fight: null,
-      nextEnemyAt: null,
-      money: state.money + reward,
-      stats: nextStats,
-      now,
-      fightResult: { ...result.outcome, id: fightSeq },
-      fightSeq,
-      ...makePop(state, "fightWin", reward, enemyById(result.outcome.enemyId)?.name ?? "Enemy defeated"),
-    })
+  discoverCat: (url) => {
+    const stats = get().stats
+    const catsFound = addCatFound(stats.catsFound, url)
+    if (catsFound === stats.catsFound) return false
+    set({ stats: { ...stats, catsFound } })
+    // A find is rare and the periodic save could miss it on a quick reload.
     persistNow()
-    return { money: 0, xp: 0 }
-  },
-
-  flee: () => {
-    const fight = get().fight
-    if (!fight) return
-    const fightSeq = get().fightSeq + 1
-    set({ fight: null, nextEnemyAt: null, fightResult: { ...endFight(fight, "flee"), id: fightSeq }, fightSeq })
-  },
-
-  forceEnemy: (enemyId) => {
-    const enemy = enemyById(enemyId)
-    if (!enemy) return false
-    set({ fight: startFight(enemy, get().now), nextEnemyAt: null, fightResult: null, event: null, review: null })
     return true
   },
 
@@ -373,7 +512,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!capitalUnlocked(state)) return
     const have = ownedCount(state.owned, tier.id)
     if (have === 0 && !isRevealed(tier, state.owned, state.peakMoney)) return
-    const quote = quotePurchase(state.money, tier.baseCost, have, mode)
+    const quote = quotePurchase(state.money, capitalBase(tier, state), have, allowedMode(state, mode))
     if (quote.count <= 0) return
 
     const owned: OwnedMap = { ...state.owned, [String(tier.id)]: have + quote.count }
@@ -401,7 +540,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const have = ownedCount(state.skills, skill.id)
     if (have === 0 && state.xpTotal < skill.unlockAtXp) return
-    const quote = quotePurchase(state.xp, skill.baseXpCost, have, mode)
+    const quote = quotePurchase(state.xp, skill.baseXpCost, have, allowedMode(state, mode), skill.firstXpCost)
     if (quote.count <= 0) return
 
     const prevBest = highestOwnedSkill(state.skills)
@@ -424,7 +563,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!equipmentOpen(state)) return
     const have = ownedCount(state.equipment, equip.id)
     if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs)) return
-    const quote = quotePurchase(state.money, equip.baseCost, have, mode)
+    const quote = quotePurchase(state.money, gearBase(equip, state), have, allowedMode(state, mode))
     if (quote.count <= 0) return
     set({
       money: Math.max(0, state.money - quote.total),
@@ -435,12 +574,196 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
+  buyGold: (goldId) => {
+    const row = goldById(goldId)
+    const state = get()
+    if (!row || !canBuyGold(state, row)) return false
+    set({
+      xp: Math.max(0, state.xp - row.cost),
+      gold: [...state.gold, row.id].sort((a, b) => a - b),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+    })
+    persistNow()
+    return true
+  },
+
+  setBuyAmount: (amount) => {
+    set({ buyAmount: clampBuyAmount(get().gold, amount) })
+    persistNow()
+  },
+
+  hire: (id, amount) => commitCompany(companyActions.hire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
+  buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
+  deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
+  setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),
+  respondIncident: (id) => commitCompany(companyActions.respondIncident(get(), id, earnedPerSec(get())), true),
+  setRegionActive: (regionId, on) => commitCompany(companyActions.setRegionActive(get(), regionId, on), false),
+
+  goFullTime: () => {
+    const state = get()
+    if (!canGoFullTime(state.founder, totalUsers(state.company.users), state.jobs)) return false
+    set({ founder: startFullTime(state.founder), forkModal: false, now: Date.now() })
+    persistNow()
+    return true
+  },
+
+  openFork: () => {
+    const state = get()
+    if (!state.founder.offered || state.founder.track !== "ladder") return false
+    set({ forkModal: true })
+    return true
+  },
+
+  keepClimbing: () => {
+    if (get().forkModal) set({ forkModal: false })
+  },
+
+  raiseBridge: () => {
+    const state = get()
+    const raised = raiseFounderBridge(state.founder, totalUsers(state.company.users), state.legacy.perks)
+    if (!raised) return false
+    set({ founder: raised.founder, money: state.money + raised.cash, now: Date.now() })
+    persistNow()
+    return true
+  },
+
+  returnToLadder: () => {
+    const state = get()
+    const back = returnFounderToLadder(state.founder, totalUsers(state.company.users), state.jobs, state.founder.broke)
+    if (!back) return false
+    set({ founder: back.founder, jobs: back.jobs, now: Date.now(), buyStamp: state.buyStamp + 1 })
+    persistNow()
+    return true
+  },
+
+  exit: () => {
+    const state = get()
+    const earned = state.stats.lifetimeEarned
+    const win = { won: state.company.won, ending: state.company.ending }
+    if (!canExit(state.legacy, earned, win)) return false
+    const bonus = endingBonus(state.legacy, win)
+    const gained = earningsPrestige(state.legacy, earned) + bonus
+    const newEnding = bonus > 0 && win.ending ? win.ending : null
+    const endings = newEnding ? HALL_OF_FAME.filter((entry) => entry.id === newEnding || state.legacy.endings.includes(entry.id)).map((entry) => entry.id) : state.legacy.endings
+    const legacy: LegacyState = {
+      ...state.legacy,
+      runs: state.legacy.runs + 1,
+      prestige: state.legacy.prestige + gained,
+      prestigeTotal: state.legacy.prestigeTotal + gained,
+      earnedAllRuns: state.legacy.earnedAllRuns + earned,
+      endings,
+    }
+    const start = mergeGrant({ skills: {}, gigs: [], jobs: [], xp: 0, xpTotal: 0, money: 0, peakMoney: 0 }, startingGrant(legacy.perks))
+    const now = Date.now()
+    const fresh = { ...start, equipment: {}, owned: {} }
+    const users = totalUsers(state.company.users)
+    const product = state.profile.product
+    const note: CareerNote = {
+      type: "exit",
+      ref: "",
+      data: {
+        run: state.legacy.runs,
+        prestigeEarned: gained,
+        prestigeTotal: legacy.prestigeTotal,
+        earned: Math.floor(earned),
+        product,
+        users: Math.floor(users),
+        won: state.company.won,
+        ...(win.won && win.ending ? { ending: win.ending } : {}),
+        ...(newEnding ? { endingBonus: bonus } : {}),
+        highestCapital: highestOwnedCapital(state.owned)?.id ?? 0,
+      },
+    }
+    set({
+      money: start.money,
+      peakMoney: start.peakMoney,
+      xp: start.xp,
+      xpTotal: start.xpTotal,
+      skills: start.skills,
+      equipment: {},
+      owned: {},
+      jobs: start.jobs,
+      gigs: start.gigs,
+      // The product starts over: users, regions, hires, the win and its multiplier, the track, the burn and the bridges.
+      company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
+      footprint: FRESH_FOOTPRINT,
+      founder: FRESH_FOUNDER,
+      forkModal: false,
+      buyAmount: clampBuyAmount(state.gold, state.buyAmount),
+      phase: phaseOf(fresh),
+      activeBoost: null,
+      nextBoostAt: null,
+      idleSince: now,
+      now,
+      foreverMult: 1,
+      tempMults: {},
+      event: null,
+      lastEvent: null,
+      nextEventAt: null,
+      review: null,
+      lastReview: null,
+      nextReviewAt: null,
+      previewEra: null,
+      previewUntil: 0,
+      pop: null,
+      stats: { ...state.stats, lifetimeEarned: 0 },
+      // Every career is a new product. The handle stays; the start card opens on the product beat.
+      profile: { handle: state.profile.handle, product: randomProduct(state.profile.handle, Math.random, product), chosen: false },
+      legacy,
+      exitCard: {
+        run: state.legacy.runs,
+        headline: exitHeadline({ handle: state.profile.handle, product, users, won: state.company.won, ending: state.company.ending }),
+        prestigeEarned: gained,
+        newEnding,
+        endingBonus: bonus,
+        mult: prestigeMult(legacy.prestigeTotal),
+      },
+      journal: noted(state.journal, [note], state),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+    })
+    persistNow()
+    return gained
+  },
+
+  dismissExitCard: () => set({ exitCard: null }),
+
+  buyLegacy: (perkId) => {
+    const state = get()
+    const perk = legacyPerkById(perkId)
+    if (!perk || !canBuyPerk(state.legacy, perk.id)) return false
+    // A perk is a head start: it lands in the career under way (a union, nothing taken away) and in every later one.
+    const merged = mergeGrant(state, startingGrant([perk.id]))
+    const perks = [...state.legacy.perks, perk.id]
+    set({
+      skills: merged.skills,
+      gigs: merged.gigs,
+      jobs: merged.jobs,
+      xp: merged.xp,
+      xpTotal: merged.xpTotal,
+      money: merged.money,
+      peakMoney: merged.peakMoney,
+      company: perk.id === "founder.users" ? { ...state.company, users: withStartUsers(state.company.users, perks) } : state.company,
+      legacy: { ...state.legacy, prestige: state.legacy.prestige - perk.cost, perks },
+      journal: noted(state.journal, [{ type: "legacy", ref: `legacy:${perk.id}`, data: { cost: perk.cost } }], state),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+    })
+    persistNow()
+    return true
+  },
+
   buyJob: (jobId) => {
     const job = jobById(jobId)
     const state = get()
-    if (!job || !canBuyJob(state, job)) return false
+    // A founder draws no salary and climbs no ladder: taking a job is going back to one.
+    if (!job || state.founder.track === "founder" || !canBuyJob(state, job)) return false
     set({
-      money: Math.max(0, state.money - job.baseCost),
+      // A job costs spendable XP, then a job that teaches pays its lump of XP once, on hire. Lifetime XP rises with the lump.
+      xp: Math.max(0, state.xp - job.xpCost) + job.xpLump,
+      xpTotal: state.xpTotal + job.xpLump,
       jobs: [...state.jobs, job.id].sort((a, b) => a - b),
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
@@ -470,12 +793,10 @@ export const useGame = create<GameState>((set, get) => ({
 
   dismissToast: () => set({ toast: null }),
 
-  dismissFightResult: () => set({ fightResult: null }),
-
   fireEvent: (eventId) => {
     const def = eventById(eventId)
     const state = get()
-    if (!def || state.fight) return false
+    if (!def) return false
     const eventSeq = state.eventSeq + 1
     const event: ActiveEvent = { id: eventSeq, eventId: def.id, lines: [] }
     set({ event, lastEvent: event, eventSeq, nextEventAt: null, review: null })
@@ -496,6 +817,7 @@ export const useGame = create<GameState>((set, get) => ({
       event: null,
       lastEvent: { ...state.event, lines: resolved.lines },
       nextEventAt: null,
+      journal: noted(state.journal, [{ type: "event", ref: `event:${state.event.eventId}`, data: { accepted: true } }], resolved),
     })
     persistNow()
     return true
@@ -508,13 +830,16 @@ export const useGame = create<GameState>((set, get) => ({
       event: null,
       nextEventAt: null,
       lastEvent: state.event ? { ...state.event, lines: resolved?.lines ?? state.event.lines } : state.lastEvent,
+      journal: state.event
+        ? noted(state.journal, [{ type: "event", ref: `event:${state.event.eventId}`, data: { accepted: false } }], state)
+        : state.journal,
     })
   },
 
   fireReview: (promptId) => {
     const state = get()
     const jobId = highestJobId(state.jobs)
-    if (state.fight || jobId == null) return false
+    if (jobId == null) return false
     const pool = promptsForJob(jobId)
     const prompt = promptId == null ? pickPrompt(pool, Math.random()) : pool.find((row) => row.id === promptId) ?? null
     if (!prompt) return false
@@ -539,6 +864,7 @@ export const useGame = create<GameState>((set, get) => ({
       review: null,
       lastReview: { ...state.review, lines: resolved.lines, choice },
       nextReviewAt: null,
+      journal: noted(state.journal, [{ type: "review", ref: `review:${state.review.promptId}`, data: { choice } }], resolved),
     })
     persistNow()
     return true
@@ -551,14 +877,7 @@ export const useGame = create<GameState>((set, get) => ({
       review: null,
       nextReviewAt: null,
       lastReview: state.review,
-    })
-  },
-
-  selectIde: (packId, index) => {
-    const held = get().previewEra
-    set({
-      ideSel: { packId, index },
-      ...(held ? { previewUntil: Math.max(Date.now(), get().now) + PREVIEW_HOLD_MS } : {}),
+      journal: noted(state.journal, [{ type: "review", ref: `review:${state.review.promptId}` }], state),
     })
   },
 
@@ -574,38 +893,35 @@ export const useGame = create<GameState>((set, get) => ({
 
   tick: (now) => {
     const state = get()
-    const dt = Math.max(0, Math.min(now - state.now, OFFLINE_CAP_MS))
+    const dt = Math.max(0, Math.min(now - state.now, offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks)))
     const era = eraOf(state)
-    // Rare enemies only show up once money exists. The desk switch skips the clock entirely;
-    // a fight already on screen is cleared without a toast. forceEnemy still starts one.
-    const enemy = getDeskPrefs().enemies
-      ? state.fight || moneyMode(state)
-        ? advanceEnemyClock({ fight: state.fight, nextEnemyAt: state.nextEnemyAt }, era, now, Math.random)
-        : { clock: { fight: null, nextEnemyAt: null }, spawned: null, outcome: null }
-      : { clock: { fight: null, nextEnemyAt: null }, spawned: null, outcome: null }
-    // Boost rolls wait out a fight so a boost cannot land and expire unseen behind the overlay.
-    const fighting = enemy.clock.fight !== null
     const clock: BoostClock = {
       activeBoost: state.activeBoost,
       nextBoostAt: state.nextBoostAt,
       idleSince: state.idleSince,
     }
-    const advanced = fighting ? { clock, spawned: null } : advanceBoostClock(clock, era, now, Math.random)
+    const advanced = advanceBoostClock(clock, era, now, Math.random)
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const xpGain = xpPerSec(state.skills) * fx.xpIdle * (dt / 1000)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder, state.legacy)), now - dt, now, Math.random)
+    const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
-    if (gain > 0) stats = creditMoney(stats, gain, "idle")
-    const balance = { money: state.money + gain, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
-    // Events wait out fights and each other: one slot, never stacked.
+    stats = creditMoney(stats, gain + grown.earned, "idle")
+    const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown, { track: state.founder.track, broke: state.founder.broke, away: false })
+    // Running out stops the burn and opens the choice. The first time the product has its users and a job is held, the fork opens too.
+    const founder: FounderState = settled.broke && !state.founder.broke ? { ...state.founder, broke: true } : state.founder
+    const offerFork = !founder.offered && forkOpen(totalUsers(grown.state.users), state.jobs)
+    const foreverMult = settled.foreverMult
+    const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
+    // Events wait out each other and 1:1s: one slot, never stacked.
     const eventAdvance = advanceEventClock(
       state.nextEventAt,
       {
         era,
         paying: moneyMode(state),
-        blocked: fighting || state.fight !== null || state.event !== null || state.review !== null,
+        blocked: state.event !== null || state.review !== null,
         owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
       },
       now,
@@ -613,15 +929,14 @@ export const useGame = create<GameState>((set, get) => ({
     )
     const fired = eventAdvance.fire
     const eventSeq = fired ? state.eventSeq + 1 : state.eventSeq
-    // A spawning enemy closes an open event without applying it, so the fight clock never runs behind the modal.
     const opened: ActiveEvent | null = fired ? { id: eventSeq, eventId: fired.id, lines: [] } : null
-    const event: ActiveEvent | null = enemy.spawned ? null : opened ?? state.event
+    const event: ActiveEvent | null = opened ?? state.event
     const reviewJob = highestJobId(state.jobs)
     const reviewAdvance = advanceReviewClock(
       state.nextReviewAt,
       {
         jobId: reviewJob,
-        blocked: fighting || state.fight !== null || state.event !== null || state.review !== null || fired !== null || enemy.spawned !== null,
+        blocked: state.event !== null || state.review !== null || fired !== null,
       },
       now,
       Math.random,
@@ -632,24 +947,14 @@ export const useGame = create<GameState>((set, get) => ({
       reviewFired && reviewJob != null
         ? { id: reviewSeq, promptId: reviewFired.id, jobId: reviewJob, lines: [], choice: null }
         : null
-    const review: ActiveReview | null = enemy.spawned ? null : openedReview ?? (fired ? null : state.review)
-    let toastSeq = state.toastSeq
-    let toast = state.toast
-    let fightResult = state.fightResult
-    let fightSeq = state.fightSeq
-    if (enemy.outcome) {
-      fightSeq += 1
-      fightResult = { ...enemy.outcome, id: fightSeq }
-      toastSeq += 1
-      toast = { id: toastSeq, text: `${enemyById(enemy.outcome.enemyId)?.name ?? "Enemy"} got away` }
-    }
-
+    const review: ActiveReview | null = openedReview ?? (fired ? null : state.review)
     set({
       money: balance.money,
+      peakMoney: Math.max(state.peakMoney, balance.money),
       xp: balance.xp,
       xpTotal: balance.xpTotal,
       stats,
-      foreverMult: state.foreverMult,
+      foreverMult,
       tempMults,
       event,
       lastEvent: fired ? event : state.lastEvent,
@@ -661,15 +966,13 @@ export const useGame = create<GameState>((set, get) => ({
       nextReviewAt: reviewAdvance.nextReviewAt,
       previewEra: state.previewEra && now >= state.previewUntil ? null : state.previewEra,
       now,
+      company: grown.state,
+      founder: offerFork ? { ...founder, offered: true } : founder,
+      forkModal: offerFork || state.forkModal,
+      journal: grown.notes.length > 0 ? noted(state.journal, grown.notes, balance) : state.journal,
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
       idleSince: advanced.clock.idleSince,
-      fight: enemy.clock.fight,
-      nextEnemyAt: enemy.clock.nextEnemyAt,
-      fightResult,
-      fightSeq,
-      toast,
-      toastSeq,
     })
 
     if (now - lastSaveAt >= SAVE_EVERY_MS) {
@@ -684,26 +987,31 @@ export const useGame = create<GameState>((set, get) => ({
     writeCareer(save)
     lastSaveAt = now
     statsClock = emptyStatsClock()
+    // The roster is found cat by cat, so the cat on the desk goes back to the default with the run. The
+    // rest of the room (music, sounds, theme) is the player's and stays.
+    setDeskPref("catArt", null)
     set({
       money: 0,
       xp: 0,
       xpTotal: 0,
       peakMoney: 0,
+      company: FRESH_COMPANY,
+      footprint: FRESH_FOOTPRINT,
+      founder: FRESH_FOUNDER,
+      forkModal: false,
       stats: emptyStats(),
       skills: {},
       equipment: {},
       owned: {},
       jobs: [],
       gigs: [],
+      gold: [],
+      buyAmount: 1,
       phase: "A",
       activeBoost: null,
       nextBoostAt: null,
       idleSince: now,
       now,
-      fight: null,
-      nextEnemyAt: null,
-      fightResult: null,
-      fightSeq: 0,
       foreverMult: 1,
       tempMults: {},
       event: null,
@@ -714,7 +1022,6 @@ export const useGame = create<GameState>((set, get) => ({
       lastReview: null,
       reviewSeq: 0,
       nextReviewAt: null,
-      ideSel: { packId: "", index: 0 },
       previewEra: null,
       previewUntil: 0,
       toast: null,
@@ -723,20 +1030,94 @@ export const useGame = create<GameState>((set, get) => ({
       seenMilestones: [],
       buyStamp: 0,
       celebrationNonce: 0,
+      ...freshCareerSlice(now),
+      profile: { ...randomIdentity(), chosen: false },
+      legacy: freshLegacy(),
+      exitCard: null,
     })
+  },
+
+  seeFeature: (id) => {
+    const state = get()
+    const fresh = seenFresh(state.fresh, id)
+    if (fresh === state.fresh) return
+    set({ fresh })
+  },
+
+  takeReveal: () => {
+    const [head, ...rest] = get().reveals
+    if (!head) return null
+    set({ reveals: rest })
+    return head
+  },
+
+  clearReveals: () => {
+    if (get().reveals.length > 0) set({ reveals: [] })
+  },
+
+  rerollProfile: () => {
+    const { profile, legacy } = get()
+    // A later career keeps the handle: only its product is drawn again.
+    if (profile.chosen || legacy.runs > 1) return false
+    const handle = randomHandle(Math.random, profile.handle)
+    set({ profile: { handle, product: randomProduct(handle), chosen: false } })
+    persistNow()
+    return true
+  },
+
+  rerollProduct: () => {
+    const { profile } = get()
+    if (profile.chosen) return false
+    set({ profile: { ...profile, product: randomProduct(profile.handle, Math.random, profile.product) } })
+    persistNow()
+    return true
+  },
+
+  keepProfile: () => {
+    const { profile } = get()
+    if (profile.chosen) return
+    set({ profile: { ...profile, chosen: true } })
+    persistNow()
+  },
+
+  dismissWhatsNew: () => {
+    if (get().whatsNew) set({ whatsNew: false })
+  },
+
+  announceUnlock: (label) => {
+    const state = get()
+    set({ ...makePop(state, "unlock", 0, label), celebrationNonce: state.celebrationNonce + 1 })
+  },
+
+  notify: (text) => {
+    const state = get()
+    if (state.toast?.note) return
+    const toastSeq = state.toastSeq + 1
+    set({ toast: { id: toastSeq, text }, toastSeq })
+  },
+
+  noteReturn: (awayMs) => {
+    if (!(awayMs >= RETURN_BREAK_MS)) return
+    const state = get()
+    const away = Math.min(awayMs, offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks)) / 1000
+    const data = { awayMs: Math.round(awayMs), creditedMoney: Math.floor(idlePerSec(state) * away), creditedXp: Math.floor(xpPerSec(state) * away) }
+    set({ returns: state.returns + 1, journal: noted(state.journal, [{ type: "return", ref: "", data }], state) })
   },
 }))
 
 useGame.subscribe((state, prev) => {
+  if (state.money === prev.money && state.xpTotal === prev.xpTotal) return
   const hit = firstNewMilestone(
     { money: prev.money, xpTotal: prev.xpTotal },
     { money: state.money, xpTotal: state.xpTotal },
     new Set(state.seenMilestones),
   )
   if (!hit || state.seenMilestones.includes(hit.id)) return
+  const current = useGame.getState()
   useGame.setState({
     seenMilestones: [...state.seenMilestones, hit.id],
     ...makePop(state, "unlock", 0, hit.label),
+    journal: noted(current.journal, [{ type: "milestone", ref: `milestone:${hit.id}` }], current),
   })
 })
 
@@ -753,12 +1134,58 @@ useGame.subscribe((state) => {
     useGame.setState({ phase })
     return
   }
-  const toastSeq = state.toastSeq + 1
+  // The new phase shows as its NEW marks on the tabs and rows; no pop-up, so the pop only feeds the harness.
   useGame.setState({
     phase,
-    toast: { id: toastSeq, text: PHASE_UNLOCK_COPY[phase] },
-    toastSeq,
     ...makePop(state, "unlock", 0, PHASE_UNLOCK_COPY[phase]),
+  })
+})
+
+// The career timeline. Registered last, so a phase pop never sees this write mid-update. Each update's transition
+// arrives once: it is diffed for first copies, clears, hires and new phases, and every row whose gate just opened is
+// unlocked, logged and queued. Writes start from the live state, since an earlier listener may have moved it.
+useGame.subscribe((state, prev) => {
+  const notes = purchaseNotes(prev, state)
+  const live = useGame.getState()
+  const rows = newlyOpen(progressOf(live), live.unlocked)
+  if (notes.length === 0 && rows.length === 0) return
+  // While the "while you were out" note is up, what opens is part of the return: one reveal, the rest on the note.
+  const returning = Boolean(live.toast?.note)
+  const plan = rows.length > 0 ? planUnlocks(rows, live, returning, getAdminMode()) : null
+  const patch: Partial<GameState> = { journal: noted(live.journal, [...notes, ...(plan?.notes ?? [])], live) }
+  if (plan) {
+    patch.unlocked = plan.unlocked
+    patch.fresh = plan.fresh
+    patch.reveals = plan.reveals
+    const names = rows.filter((row) => row.size !== "phase").map((row) => featureById(row.id)?.name ?? row.id)
+    if (returning && live.toast && names.length > 0) patch.toast = { ...live.toast, unlocked: [...(live.toast.unlocked ?? []), ...names] }
+  }
+  useGame.setState(patch)
+})
+
+// Music is a career unlock: the saved switch only plays once the headset is bought (or in admin mode, which shows everything).
+function syncMusicGate() {
+  setMusicAllowed(getAdminMode() || useGame.getState().unlocked.includes("music"))
+}
+syncMusicGate()
+subscribeAdminMode(syncMusicGate)
+useGame.subscribe((state, prev) => {
+  if (state.unlocked !== prev.unlocked) syncMusicGate()
+})
+
+/** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
+export function earnedPerSec(state: GameState, at = Date.now()): number {
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.founder, state.legacy.perks)
+}
+
+// The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).
+useGame.subscribe((state, prev) => {
+  if (!state.company.won || prev.company.won) return
+  const toastSeq = state.toastSeq + 1
+  useGame.setState({
+    ...makePop(state, "unlock", 0, "Seven billion users"),
+    celebrationNonce: state.celebrationNonce + 1,
+    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, state.profile.product, winMultOf(state.founder.track)) }, toastSeq }),
   })
 })
 

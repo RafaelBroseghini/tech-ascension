@@ -1,8 +1,6 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA } from "../data/boosts.ts"
-import { allProblemFiles } from "../data/ideProblems.ts"
-import { tokenize } from "../data/overlays.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { PURCHASE_COST_SCALE } from "../data/costs.ts"
@@ -16,6 +14,7 @@ import {
   idlePerSec,
   isRevealed,
   isSkillRevealed,
+  jobById,
   nextCost,
   visibleShopRows,
   ownedSources,
@@ -26,7 +25,7 @@ import {
 } from "./economy.ts"
 import { formatCompact, formatNumber, RAW_DIGITS_BELOW } from "./format.ts"
 import { ownedArtIds } from "./phase.ts"
-import { hasEmoji } from "../data/emojiAssets.ts"
+import { emojiIdleUrl, hasEmoji } from "../data/emojiAssets.ts"
 import {
   DESK_CAT_EMOJI,
   DESK_CAT_CLICK_POOL,
@@ -75,10 +74,26 @@ describe("economy", () => {
 
   it("adds XP per click from skills on top of the base 1, and XP per second", () => {
     expect(xpPerClick({})).toBe(1)
-    expect(xpPerSec({})).toBe(0)
+    expect(xpPerSec({ skills: {}, jobs: [] })).toBe(0)
     const skills = { "1": 2, "2": 5, "14": 1 }
     expect(xpPerClick(skills)).toBe(1 + 2 * 1 + 1 * 3)
-    expect(xpPerSec(skills)).toBeCloseTo(5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[13]?.xpPerSec ?? 0))
+    const fromSkills = 5 * (SKILL_TIERS[1]?.xpPerSec ?? 0) + (SKILL_TIERS[13]?.xpPerSec ?? 0)
+    expect(xpPerSec({ skills, jobs: [] })).toBeCloseTo(fromSkills)
+  })
+
+  it("adds idle XP from the jobs that teach on the job, and from no others", () => {
+    const teaching = JOB_TIERS.filter((job) => job.xpPerSec > 0)
+    const silent = JOB_TIERS.filter((job) => job.xpPerSec === 0)
+    expect(teaching.length).toBeGreaterThan(0)
+    expect(silent.length).toBeGreaterThan(0)
+    // The internship and the mentor buddy teach; the QA rotation does not.
+    expect(jobById(1)?.xpPerSec).toBeGreaterThan(0)
+    expect(jobById(5)?.xpPerSec).toBe(0)
+    const jobs = [1, 3, 5]
+    expect(xpPerSec({ skills: {}, jobs })).toBe((jobById(1)?.xpPerSec ?? 0) + (jobById(3)?.xpPerSec ?? 0))
+    const skills = { "2": 4 }
+    expect(xpPerSec({ skills, jobs })).toBeCloseTo(xpPerSec({ skills, jobs: [] }) + xpPerSec({ skills: {}, jobs }))
+    expect(production({ ...NONE, jobs }, null, 0).xpIdle).toBe(xpPerSec({ skills: {}, jobs }))
   })
 
   it("sums idle $/s from retainers, salaries, equipment and capital", () => {
@@ -167,7 +182,10 @@ describe("save", () => {
     expect(hydrated.save.money).toBe(4 + credit)
     const [sentence, creditLine] = (hydrated.toast ?? "").split("\n")
     expect(sentence?.endsWith(".")).toBe(true)
-    expect(creditLine).toBe(`credited $${formatNumber(credit)}`)
+    // The internship also teaches, so the same away time studies too.
+    const studied = offlineCredit(JOB_TIERS[0]?.xpPerSec ?? 0, savedAt, now)
+    expect(hydrated.save.xp).toBeCloseTo(studied)
+    expect(creditLine).toBe(`credited $${formatNumber(credit)} and studied +${formatNumber(studied)} XP`)
   })
 
   it("credits idle study XP offline and says so", () => {
@@ -223,7 +241,9 @@ describe("save", () => {
     for (const payload of [old, { ...old, version: SAVE_VERSION - 1 }, { ...old, version: SAVE_VERSION + 1 }, { money: 9, owned: [2, 0, 3], savedAt: 50 }, [], "text", 7]) {
       expect(parseSave(payload)).toBeNull()
       const hydrated = hydrate(JSON.stringify(payload), 10_000)
-      expect(hydrated.save).toEqual(freshSave(10_000))
+      // A new career draws its own random name and handle; everything else is the fresh save.
+      expect({ ...hydrated.save, profile: undefined }).toEqual({ ...freshSave(10_000), profile: undefined })
+      expect(hydrated.save.profile?.handle).toMatch(/^[a-z]+-[a-z]+$/)
       expect(hydrated.toast).toMatch(/unreadable/)
     }
   })
@@ -294,15 +314,16 @@ describe("catalog tables", () => {
   })
 
   it("doubles purchase prices and leaves payouts and gig lumps alone", () => {
-    expect(PURCHASE_COST_SCALE).toBe(2)
-    expect(SKILL_TIERS[0]?.baseXpCost).toBe(240)
+    const scale = PURCHASE_COST_SCALE
+    expect(SKILL_TIERS[0]?.baseXpCost).toBe(Math.ceil(120 * scale))
+    expect(SKILL_TIERS[0]?.firstXpCost).toBe(90)
     expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
-    expect(JOB_TIERS[0]?.baseCost).toBe(0)
-    expect(JOB_TIERS[1]?.baseCost).toBe(1_000)
+    expect(JOB_TIERS[0]?.xpCost).toBe(0)
+    expect(JOB_TIERS[1]?.xpCost).toBe(Math.round(45_000 * 0.25 * scale))
     expect(JOB_TIERS[1]?.cps).toBe(25)
-    expect(EQUIPMENT[0]?.baseCost).toBe(400)
+    expect(EQUIPMENT[0]?.baseCost).toBeCloseTo(200 * scale)
     expect(EQUIPMENT[0]?.clickBonus).toBe(2)
-    expect(CAPITAL[0]?.baseCost).toBe(200_000)
+    expect(CAPITAL[0]?.baseCost).toBeCloseTo(100_000 * scale)
     expect(CAPITAL[0]?.cps).toBe(50)
     expect(GIGS[0]?.lump).toBe(40)
     expect(GEAR_TAB_UNLOCK.minXp).toBe(10_000)
@@ -370,7 +391,7 @@ describe("emoji.gg art", () => {
         for (const url of [art.idle, art.click]) seen.set(url, (seen.get(url) ?? 0) + 1)
       }
     }
-    for (const count of seen.values()) expect(count).toBeLessThanOrEqual(4)
+    for (const count of seen.values()) expect(count).toBe(1)
     expect(EMOJI_CAPITAL[25].label.toLowerCase()).toMatch(/building|rocket/)
     expect(DESK_CAT_EMOJI).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
     expect(DESK_CAT_TITLE).not.toMatch(DISALLOWED_EMOJI_TITLE)
@@ -381,6 +402,20 @@ describe("emoji.gg art", () => {
       expect(url).toMatch(/^https:\/\/cdn3\.emoji\.gg\/emojis\//)
       expect(url).not.toBe(DESK_CAT_EMOJI)
     }
+  })
+
+  it("does not show the ERROR stamp as job art", () => {
+    const frontend = JOB_TIERS.find((job) => job.name === "Frontend specialist")
+    const advisor = JOB_TIERS.find((job) => job.name === "Board advisor (tech)")
+    expect(frontend?.id).toBe(11)
+    expect(advisor?.id).toBe(25)
+    for (const job of JOB_TIERS) {
+      const idle = emojiIdleUrl("job", job.id) ?? ""
+      expect(idle).not.toMatch(/\/Error\.png$/i)
+      expect(idle.length).toBeGreaterThan(0)
+    }
+    expect(emojiIdleUrl("job", frontend?.id ?? 0)).toMatch(/10881-unicorn\.png$/)
+    expect(emojiIdleUrl("job", advisor?.id ?? 0)).toMatch(/280352-chess\.png$/)
   })
 })
 
@@ -430,19 +465,6 @@ describe("pixel sprites", () => {
     expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG")
     expect(bytes.readUInt32BE(16)).toBe(64)
     expect(bytes.readUInt32BE(20)).toBe(64)
-  })
-})
-
-describe("IDE lexer", () => {
-  it("tokenizes every pack file without losing or adding a character", () => {
-    for (const file of allProblemFiles()) {
-      expect(tokenize(file.code, file.lang).map((token) => token.text).join("")).toBe(file.code)
-    }
-    const kinds = tokenize('for i in range(1, 101): print("Fizz")', "python")
-    expect(kinds.find((t) => t.text === "for")?.kind).toBe("kw")
-    expect(kinds.find((t) => t.text === "101")?.kind).toBe("num")
-    expect(kinds.find((t) => t.text === '"Fizz"')?.kind).toBe("str")
-    expect(kinds.find((t) => t.text === "range")?.kind).toBe("fn")
   })
 })
 

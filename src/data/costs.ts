@@ -4,7 +4,7 @@
  * retainers) and gates (unlock XP, unlock money, board thresholds) stay as written.
  * Gigs have no purchase price, so this scale does not touch them.
  */
-export const PURCHASE_COST_SCALE = 2
+export const PURCHASE_COST_SCALE = 0.85
 
 /** A zero price (the free internship) stays free. */
 export function scalePurchaseCost(cost: number): number {

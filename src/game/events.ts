@@ -55,7 +55,7 @@ export function eventRequiresMet(event: { requires?: EventRequires }, owned: Eve
 /** The table row type. `data/events.ts` is a drop-in file: swap it and nothing here changes. */
 export type EventDef = GameEvent
 
-/** A blocked roll (fight or open modal) fires this long after the block lifts, so it never lands on top of it. */
+/** A blocked roll (an open modal) fires this long after the block lifts, so it never lands on top of it. */
 export const EVENT_AFTER_BLOCK_MS = 5_000
 
 const EVENT_BY_ID = new Map<number, EventDef>(EVENTS.map((event) => [event.id, event]))
@@ -215,7 +215,7 @@ export type EventAdvance = {
 
 /**
  * Advance the single event slot. Unscheduled -> schedule `EVENT_MEAN_WAIT_MS` out (same clamped
- * exponential as boosts and enemies). Due -> fire, unless blocked by a fight or an open modal, in
+ * exponential as boosts). Due -> fire, unless blocked by an open modal, in
  * which case it slips to `EVENT_AFTER_BLOCK_MS` after the block lifts. After a fire the slot stays
  * unscheduled until the store dismisses the modal, so two events never overlap or queue up.
  * `rng` is called only when a wait or an event is rolled.

@@ -1,25 +1,35 @@
-import { Music, MousePointerClick, Palette, Swords, Volume2 } from "lucide-react"
+import { ChevronRight, LayoutGrid, MousePointer2, Palette, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
+import { memo, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle } from "../data/ideThemes.ts"
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
 import { getSavedIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
+import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
+import { openRosters, ROSTER_KINDS, ROSTER_LABEL, rosterEntries, type RosterKind } from "../game/rosters.ts"
 import { useGame } from "../game/store.ts"
 import {
+  ClickKitList,
   DeskToggleList,
   EditorThemeList,
   MusicStyleList,
   SettingsSection,
   clearEditorThemePreview,
 } from "./deskSettingsPanels.tsx"
+import { CatalogRosterModal } from "./CatalogRosterModal.tsx"
+import { CatRosterModal } from "./CatRosterModal.tsx"
 import { UI_ICON_SM } from "./icons/ui.tsx"
+import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
+import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
+import type { FeatureId } from "../data/features.ts"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-type ChipId = "music" | "sounds" | "cat" | "enemies" | "hoverClick" | "theme"
+type ChipId = "sound" | "clicks" | "cat" | "rosters" | "theme"
+
+type OpenRoster = "cats" | RosterKind | null
 
 function StatusChip({
   id,
@@ -30,6 +40,7 @@ function StatusChip({
   onClose,
   icon,
   panel,
+  feature,
 }: {
   id: ChipId
   label: string
@@ -39,6 +50,8 @@ function StatusChip({
   onClose: (id: ChipId) => void
   icon: ReactNode
   panel: ReactNode
+  /** The timeline row this chip belongs to: its reveal points here and its NEW marker sits on it. */
+  feature?: FeatureId
 }) {
   const panelId = useId()
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -106,6 +119,7 @@ function StatusChip({
       ref={wrapRef}
       className={["ide-status-chip-wrap", open ? "is-open" : ""].filter(Boolean).join(" ")}
       data-status-chip={id}
+      data-feature-anchor={feature}
       onPointerEnter={enter}
       onPointerLeave={leave}
       onFocus={enter}
@@ -120,11 +134,42 @@ function StatusChip({
         aria-label={label}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation()
+          if (!open) enter()
+        }}
       >
         {icon}
+        {feature ? <NewMark id={feature} /> : null}
+        {feature === "themes" ? <NewMark id="theme:" /> : feature === "clickKits" ? <NewMark id="kit:" /> : feature === "music" ? <NewMark id="music:" /> : null}
       </button>
       {popover}
+    </div>
+  )
+}
+
+/** One button per shop panel that is open, each with how many rows it holds. */
+function RosterButtons({ onPick }: { onPick: (kind: RosterKind) => void }) {
+  // The gates read lifetime XP and the peak balance, which move every tick. Joined into a string
+  // the selector only changes when a roster actually opens.
+  const kinds = useGame((state) => openRosters(state).join(" "))
+  const skills = useGame((state) => state.skills)
+  const equipment = useGame((state) => state.equipment)
+  const owned = useGame((state) => state.owned)
+  const jobs = useGame((state) => state.jobs)
+  const gigs = useGame((state) => state.gigs)
+  const counts = useMemo(() => {
+    const progress = { skills, equipment, owned, jobs, gigs, xpTotal: 0, peakMoney: 0 }
+    return new Map(ROSTER_KINDS.map((kind) => [kind, rosterEntries(kind, progress).length]))
+  }, [skills, equipment, owned, jobs, gigs])
+  return (
+    <div className="desk-toggles">
+      {(kinds ? (kinds.split(" ") as RosterKind[]) : []).map((kind) => (
+        <button key={kind} type="button" className="desk-toggle" data-testid={`status-roster-${kind}`} onClick={() => onPick(kind)}>
+          <span className="desk-toggle-label">{ROSTER_LABEL[kind]}</span>
+          <i>{counts.get(kind) ?? 0}</i>
+        </button>
+      ))}
     </div>
   )
 }
@@ -141,7 +186,7 @@ function ThemeDots() {
   )
 }
 
-function ChipIcon({ Icon, src, alt }: { Icon?: LucideIcon; src?: string; alt?: string }) {
+function ChipIcon({ Icon, src }: { Icon?: LucideIcon; src?: string }) {
   if (src) {
     return <img className="ide-status-chip-emoji" src={src} alt="" width={14} height={14} draggable={false} decoding="async" />
   }
@@ -149,11 +194,39 @@ function ChipIcon({ Icon, src, alt }: { Icon?: LucideIcon; src?: string; alt?: s
   return null
 }
 
-export function IdeStatusDock() {
+export const IdeStatusDock = memo(function IdeStatusDock() {
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const savedTheme = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
-  const catalogComplete = useGame((state) => ownsEverything(state))
+  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
+  const catsFound = useGame((state) => state.stats.catsFound.length)
+  const seeFeature = useGame((state) => state.seeFeature)
   const [openChip, setOpenChip] = useState<ChipId | null>(null)
+  const [roster, setRoster] = useState<OpenRoster>(null)
+  const music = useFeatureOpen("music")
+  const kits = useFeatureOpen("clickKits")
+  const cat = useFeatureOpen("cat")
+  const rosters = useFeatureOpen("rosters")
+  const themes = useFeatureOpen("themes")
+  const unlocked = useUnlockedSet()
+  const clickChip = kits || hoverPerSec > 0
+
+  // Opening a chip is using what it holds: its NEW markers go.
+  const openChipFor = (id: ChipId) => {
+    setOpenChip(id)
+    if (id === "sound") seeFeature("music")
+    if (id === "clicks") {
+      seeFeature("clickKits")
+      seeFeature("hoverClick")
+    }
+    if (id === "theme") seeFeature("themes")
+    if (id === "rosters") seeFeature("rosters")
+  }
+  useSurface("rosters", () => {
+    seeFeature("rosters")
+    setRoster("skills")
+  })
+  useSurface("clickKits", () => openChipFor("clicks"))
+  useSurface("themes", () => openChipFor("theme"))
 
   const closeChip = (id: ChipId) => {
     setOpenChip((current) => {
@@ -165,113 +238,155 @@ export function IdeStatusDock() {
 
   return (
     <div className="ide-status-dock" onClick={(event) => event.stopPropagation()}>
-      <StatusChip
-        id="music"
-        label="Music"
-        active={desk.music}
-        open={openChip === "music"}
-        onOpen={() => setOpenChip("music")}
-        onClose={closeChip}
-        icon={
-          <span className={desk.music ? "ide-status-music-icon is-on" : "ide-status-music-icon"}>
-            <ChipIcon Icon={Music} />
-          </span>
-        }
-        panel={
-          <>
-            <SettingsSection heading="Music">
-              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["music"]} />
-            </SettingsSection>
-            {desk.music ? (
-              <SettingsSection heading="Music style">
-                <MusicStyleList desk={desk} />
-              </SettingsSection>
-            ) : null}
-          </>
-        }
-      />
-
-      <StatusChip
-        id="sounds"
-        label="Desk sounds"
-        active={desk.sounds}
-        open={openChip === "sounds"}
-        onOpen={() => setOpenChip("sounds")}
-        onClose={closeChip}
-        icon={<ChipIcon Icon={Volume2} />}
-        panel={
-          <SettingsSection heading="Desk sounds">
-            <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["sounds"]} />
-          </SettingsSection>
-        }
-      />
-
-      <StatusChip
-        id="cat"
-        label="Cat"
-        active={desk.cat}
-        open={openChip === "cat"}
-        onOpen={() => setOpenChip("cat")}
-        onClose={closeChip}
-        icon={<ChipIcon src={DESK_CAT_EMOJI} alt="" />}
-        panel={
-          <SettingsSection heading="Cat">
-            <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["cat"]} />
-          </SettingsSection>
-        }
-      />
-
-      <StatusChip
-        id="enemies"
-        label="Enemies"
-        active={desk.enemies}
-        open={openChip === "enemies"}
-        onOpen={() => setOpenChip("enemies")}
-        onClose={closeChip}
-        icon={<ChipIcon Icon={Swords} />}
-        panel={
-          <SettingsSection heading="Enemies">
-            <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["enemies"]} />
-          </SettingsSection>
-        }
-      />
-
-      {catalogComplete ? (
+      {music ? (
         <StatusChip
-          id="hoverClick"
-          label="Hover click"
-          active={desk.hoverClick}
-          open={openChip === "hoverClick"}
-          onOpen={() => setOpenChip("hoverClick")}
+          id="sound"
+          feature="music"
+          label="Sound"
+          active={desk.music || desk.sounds}
+          open={openChip === "sound"}
+          onOpen={() => openChipFor("sound")}
           onClose={closeChip}
-          icon={<ChipIcon Icon={MousePointerClick} />}
+          icon={
+            <span className={desk.music ? "ide-status-music-icon is-on" : "ide-status-music-icon"}>
+              <ChipIcon Icon={Volume2} />
+            </span>
+          }
           panel={
-            <SettingsSection heading="Hover click">
-              <DeskToggleList desk={desk} catalogComplete={catalogComplete} keys={["hoverClick"]} />
+            <>
+              <SettingsSection heading="Sound">
+                <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["music", "sounds"]} />
+              </SettingsSection>
+              {desk.music ? (
+                <SettingsSection heading="Music style">
+                  <MusicStyleList desk={desk} unlocked={unlocked} />
+                </SettingsSection>
+              ) : null}
+            </>
+          }
+        />
+      ) : (
+        <FeatureGhost id="music" place="above" className="ide-status-chip">
+          <ChipIcon Icon={Volume2} />
+        </FeatureGhost>
+      )}
+
+      {clickChip ? (
+        <StatusChip
+          id="clicks"
+          feature={kits ? "clickKits" : "hoverClick"}
+          label="Click"
+          active={desk.clicks || (hoverPerSec > 0 && desk.hoverClick)}
+          open={openChip === "clicks"}
+          onOpen={() => openChipFor("clicks")}
+          onClose={closeChip}
+          icon={<ChipIcon Icon={MousePointer2} />}
+          panel={
+            <>
+              {/* Hover click is listed here once a gold hover skill or every catalog row is owned; before that the list holds the click sound alone. */}
+              <SettingsSection heading="Click">
+                <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["clicks", "hoverClick"]} />
+              </SettingsSection>
+              {desk.clicks && kits ? (
+                <SettingsSection heading="Click kit">
+                  <ClickKitList desk={desk} unlocked={unlocked} />
+                </SettingsSection>
+              ) : null}
+            </>
+          }
+        />
+      ) : (
+        <FeatureGhost id="clickKits" place="above" className="ide-status-chip">
+          <ChipIcon Icon={MousePointer2} />
+        </FeatureGhost>
+      )}
+
+      {cat ? (
+        <StatusChip
+          id="cat"
+          label="Cat"
+          active={desk.cat}
+          open={openChip === "cat"}
+          onOpen={() => openChipFor("cat")}
+          onClose={closeChip}
+          icon={<ChipIcon src={desk.catArt ?? DESK_CAT_EMOJI} />}
+          panel={
+            <SettingsSection heading="Cat">
+              <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["cat"]} />
+              {catsFound > 0 ? (
+                <button
+                  type="button"
+                  className="desk-toggle"
+                  data-testid="status-cat-roster"
+                  onClick={() => {
+                    setOpenChip(null)
+                    setRoster("cats")
+                  }}
+                >
+                  <span className="desk-toggle-label">Cat roster</span>
+                  <ChevronRight {...UI_ICON_SM} aria-hidden />
+                </button>
+              ) : null}
             </SettingsSection>
           }
         />
       ) : null}
+      {roster === "cats" ? <CatRosterModal onClose={() => setRoster(null)} /> : null}
+      {roster && roster !== "cats" ? <CatalogRosterModal key={roster} kind={roster} onClose={() => setRoster(null)} /> : null}
 
-      <StatusChip
-        id="theme"
-        label={`Theme · ${savedTheme.name}`}
-        active
-        open={openChip === "theme"}
-        onOpen={() => setOpenChip("theme")}
-        onClose={closeChip}
-        icon={
-          <>
-            <ChipIcon Icon={Palette} />
-            <ThemeDots />
-          </>
-        }
-        panel={
-          <SettingsSection heading="Editor theme">
-            <EditorThemeList savedThemeId={savedTheme.id} onPreviewEnd={clearEditorThemePreview} />
-          </SettingsSection>
-        }
-      />
+      {rosters ? (
+        <StatusChip
+          id="rosters"
+          feature="rosters"
+          label="Rosters"
+          active={roster !== null && roster !== "cats"}
+          open={openChip === "rosters"}
+          onOpen={() => openChipFor("rosters")}
+          onClose={closeChip}
+          icon={<ChipIcon Icon={LayoutGrid} />}
+          panel={
+            <SettingsSection heading="Rosters">
+              <RosterButtons
+                onPick={(kind) => {
+                  setOpenChip(null)
+                  setRoster(kind)
+                }}
+              />
+            </SettingsSection>
+          }
+        />
+      ) : (
+        <FeatureGhost id="rosters" place="above" className="ide-status-chip">
+          <ChipIcon Icon={LayoutGrid} />
+        </FeatureGhost>
+      )}
+
+      {themes ? (
+        <StatusChip
+          id="theme"
+          feature="themes"
+          label={`Theme · ${savedTheme.name}`}
+          active
+          open={openChip === "theme"}
+          onOpen={() => openChipFor("theme")}
+          onClose={closeChip}
+          icon={
+            <>
+              <ChipIcon Icon={Palette} />
+              <ThemeDots />
+            </>
+          }
+          panel={
+            <SettingsSection heading="Editor theme">
+              <EditorThemeList savedThemeId={savedTheme.id} unlocked={unlocked} onPreviewEnd={clearEditorThemePreview} />
+            </SettingsSection>
+          }
+        />
+      ) : (
+        <FeatureGhost id="themes" place="above" className="ide-status-chip">
+          <ChipIcon Icon={Palette} />
+        </FeatureGhost>
+      )}
     </div>
   )
-}
+})

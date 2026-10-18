@@ -126,6 +126,8 @@
   --ide-rail: calc(var(--ide-activity) + var(--ide-tree));
   --ide-tabs: 34px;
   --ide-status: 24px;
+  --ide-globe: 148px;
+  --ide-globe-gap: 10px;
 
   /* Hot click boost. Peach, so it stays distinct from the mauve accent. */
   --boost-gold: var(--ide-peach);

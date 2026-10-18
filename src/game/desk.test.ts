@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { CAT_ROSTER } from "./catRoster.ts"
 import { getDeskActivity, getDeskPrefs, parseDeskPrefs, pokeDesk, setDeskPref, subscribeDeskActivity, subscribeDeskPrefs } from "./desk.ts"
 import { readPref } from "./ledger.ts"
 
@@ -6,45 +7,65 @@ describe("desk", () => {
   beforeEach(() => {
     setDeskPref("music", false)
     setDeskPref("sounds", true)
+    setDeskPref("clicks", true)
     setDeskPref("cat", true)
-    setDeskPref("enemies", true)
     setDeskPref("hoverClick", false)
   })
 
-  it("starts with music off, desk sounds on, the cat out, and enemies on", () => {
+  it("starts with music off, desk sounds on, and the cat out", () => {
     expect(parseDeskPrefs(null)).toEqual({
       music: false,
       musicStyle: "cozy",
       sounds: true,
+      clicks: true,
+      clickKit: "thock",
       cat: true,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
     expect(parseDeskPrefs("nope")).toEqual({
       music: false,
       musicStyle: "cozy",
       sounds: true,
+      clicks: true,
+      clickKit: "thock",
       cat: true,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
     expect(parseDeskPrefs(JSON.stringify({ music: true, musicStyle: "edm", hoverClick: "yes" }))).toEqual({
       music: true,
       musicStyle: "edm",
       sounds: true,
+      clicks: true,
+      clickKit: "thock",
       cat: true,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
+  })
+
+  it("keeps a stored click kit and falls back to thock for an unknown one", () => {
+    expect(parseDeskPrefs(JSON.stringify({ clickKit: "felt" })).clickKit).toBe("felt")
+    expect(parseDeskPrefs(JSON.stringify({ clickKit: "beep" })).clickKit).toBe("thock")
+    expect(parseDeskPrefs(JSON.stringify({ catArt: CAT_ROSTER[0]!.url })).catArt).toBe(CAT_ROSTER[0]!.url)
+    expect(parseDeskPrefs(JSON.stringify({ catArt: "https://example.com/dog.gif" })).catArt).toBeNull()
+  })
+
+  it("keeps the click apart from the room's desk sounds", () => {
+    expect(parseDeskPrefs(JSON.stringify({ sounds: false, clicks: true }))).toMatchObject({ sounds: false, clicks: true })
+    expect(parseDeskPrefs(JSON.stringify({ sounds: true, clicks: false }))).toMatchObject({ sounds: true, clicks: false })
+    // saved before the click had its own switch: a muted room stays muted
+    expect(parseDeskPrefs(JSON.stringify({ sounds: false })).clicks).toBe(false)
+    expect(parseDeskPrefs(JSON.stringify({ sounds: true })).clicks).toBe(true)
+    setDeskPref("sounds", false)
+    expect(getDeskPrefs().clicks).toBe(true)
   })
 
   it("persists a switch", () => {
@@ -80,12 +101,13 @@ describe("desk", () => {
       music: true,
       musicStyle: "cozy",
       sounds: false,
+      clicks: false,
+      clickKit: "thock",
       cat: false,
-      enemies: true,
+      catArt: null,
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
   })
 })

@@ -1,5 +1,7 @@
+import { setAdminMode } from "./adminMode.ts"
 import { sealImage, storedJson, PREF_IDS, type DurablePort, type Json, type LoadedShelf, type PrefRow } from "./ledger.ts"
 import { freshSave, hydrate, parseSave, type SaveData } from "./save.ts"
+import type { TechDatabase } from "./ledgerDexie.ts"
 
 const DATABASE_ERROR = "Couldn't open the save database."
 
@@ -7,6 +9,47 @@ function showDatabaseError(): void {
   if (typeof document === "undefined") return
   const root = document.getElementById("root")
   if (root) root.textContent = DATABASE_ERROR
+}
+
+function setupAdminToggle(db: TechDatabase): void {
+  if (typeof window === "undefined") return
+
+  const sequence = ["a"]
+  let index = 0
+  let ctrlAlt = false
+
+  window.addEventListener("keydown", (event) => {
+    // Track Ctrl+Alt state
+    if ((event.ctrlKey || event.metaKey) && event.altKey) {
+      ctrlAlt = true
+      index = 0
+    } else {
+      ctrlAlt = false
+    }
+  })
+
+  window.addEventListener("keyup", (event) => {
+    if (!ctrlAlt || event.key.toLowerCase() !== sequence[index]) {
+      index = 0
+      ctrlAlt = false
+      return
+    }
+
+    index++
+    if (index === sequence.length) {
+      index = 0
+      ctrlAlt = false
+      void (async () => {
+        const { toggleAdminMode } = await import("./ledgerDexie.ts")
+        const next = await toggleAdminMode(db)
+        setAdminMode(next)
+        if (typeof document !== "undefined") {
+          const label = next ? "Admin mode ON" : "Admin mode OFF"
+          console.log(`[Tech Ascension] ${label}`)
+        }
+      })()
+    }
+  })
 }
 
 function prefRows(loaded: LoadedShelf): PrefRow[] {
@@ -29,9 +72,13 @@ function careerText(body: Json | undefined): string | null {
 
 async function bootGame(): Promise<void> {
   let port: DurablePort
+  let db: TechDatabase
   try {
     const dexie = await import("./ledgerDexie.ts")
-    port = dexie.createDexiePort(await dexie.openTechDatabase())
+    db = await dexie.openTechDatabase()
+    port = dexie.createDexiePort(db)
+    setAdminMode(await dexie.readAdminMode(db))
+    setupAdminToggle(db)
   } catch {
     showDatabaseError()
     return

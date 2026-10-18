@@ -38,6 +38,8 @@ type Owners = {
   equipment: OwnedMap
   jobs: readonly number[]
   gigs: readonly number[]
+  /** The career's handle (the store's `profile.handle`), the name the résumé goes by. */
+  handle?: string
 }
 
 function when(start: string, end: string, duration: string): string {
@@ -93,7 +95,7 @@ export function resumeDocument(owned: Owners): ResumeDoc | null {
   }))
 
   return {
-    name: "You",
+    name: owned.handle ?? "You",
     headline: profile?.headline ?? "Self-taught",
     location: profile?.location ?? "",
     openToWork: profile?.openToWork ?? skills.length > 0,
@@ -110,7 +112,8 @@ export function resumeDocument(owned: Owners): ResumeDoc | null {
 function entryLines(entry: ResumeEntry, depth: "###" | "####"): string[] {
   const lines = [`${depth} ${entry.title}`]
   if (entry.orgLine) lines.push(entry.orgLine)
-  lines.push(entry.when, entry.place, "", entry.summary, "")
+  lines.push(entry.when, entry.place, "", entry.summary)
+  lines.push("")
   return lines
 }
 
