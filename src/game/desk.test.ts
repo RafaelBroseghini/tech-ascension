@@ -24,7 +24,6 @@ describe("desk", () => {
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
     expect(parseDeskPrefs("nope")).toEqual({
       music: false,
@@ -37,7 +36,6 @@ describe("desk", () => {
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
     expect(parseDeskPrefs(JSON.stringify({ music: true, musicStyle: "edm", hoverClick: "yes" }))).toEqual({
       music: true,
@@ -50,7 +48,6 @@ describe("desk", () => {
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
   })
 
@@ -111,7 +108,6 @@ describe("desk", () => {
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
-      mobilePlayAck: false,
     })
   })
 })

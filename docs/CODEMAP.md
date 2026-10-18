@@ -50,6 +50,8 @@
 | The world pane: users against the target, regions, resistance and the incidents to Respond to | `src/components/globe/WorldPanel.tsx` |
 | Globe tooltip: the city rows, the trip time and the tally of a burst | `src/game/globe/tip.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
+| Small screens (860px and below): stacked stage and shop, the compact top bar, the Owned modal that replaces the list under the art | `src/styles/mobile.css`, `src/components/OwnedModal.tsx`, `src/game/mobileViewport.ts` |
+| Mobile layout check: plays six viewports and fails on layout problems (`npm run check:mobile`) | `scripts/mobile-check.mjs`, `.agents/skills/mobile-check/SKILL.md` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
 | GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/CornerActions.tsx`, `src/styles/githug.css` |

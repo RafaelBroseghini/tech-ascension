@@ -47,8 +47,8 @@ export function MetricsBar() {
   return (
     <header className="topbar">
       <div className="brand">
-        <p className="eyebrow">Career clicker</p>
-        <h1>Tech Ascension</h1>
+        <span className="brand-mark" aria-hidden="true">TA</span>
+        <h1 className="sr-only">Tech Ascension</h1>
       </div>
       <dl className="metrics">
         <div className="m-phase">

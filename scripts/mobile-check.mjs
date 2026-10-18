@@ -10,7 +10,9 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const APP = "http://127.0.0.1:43123"
+// Its own port, so it never talks to a dev server that is serving another checkout.
+const PORT = process.env.MOBILE_CHECK_PORT ?? "43125"
+const APP = `http://127.0.0.1:${PORT}`
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SESSION = process.env.AGENT_BROWSER_SESSION ?? "mobile-check"
 const outDir = process.argv[2] ?? join(tmpdir(), "tech-ascension-mobile")
@@ -49,12 +51,15 @@ const stopVite = () => {
   if (vite?.pid) process.kill(-vite.pid, "SIGTERM")
 }
 if (!(await up())) {
-  vite = spawn("npm", ["run", "dev"], { cwd: ROOT, stdio: "ignore", detached: true })
+  vite = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", PORT, "--strictPort"], { cwd: ROOT, stdio: "ignore", detached: true })
   for (let i = 0; i < 120 && !(await up()); i++) await settle(250)
+  if (!(await up())) throw new Error(`no dev server on ${APP}`)
 }
 
 // One eval, one JSON object. Everything the asserts need is measured in the page.
-const MEASURE = `(() => {
+const MEASURE = `(async () => {
+  // Entrance animations move cards for a moment; measure once the finite ones are done.
+  await Promise.race([Promise.all(document.getAnimations().filter((a) => Number.isFinite(a.effect?.getTiming().iterations)).map((a) => a.finished.catch(() => {}))), new Promise((r) => setTimeout(r, 1500))])
   const vw = innerWidth, vh = innerHeight
   const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height } }
   const visible = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" }
@@ -77,7 +82,9 @@ const MEASURE = `(() => {
   }
   const dialogs = [...document.querySelectorAll("[role=dialog]")].filter(visible).map((d) => {
     const r = d.getBoundingClientRect()
-    const btn = [...d.querySelectorAll("button")].filter(visible).map((b) => b.getBoundingClientRect())
+    // A list inside a scrolling card is allowed to run past the screen; its buttons are reached by scrolling.
+    const scrolls = (b) => { for (let p = b.parentElement; p && p !== d.parentElement; p = p.parentElement) { const o = getComputedStyle(p).overflowY; if (/(auto|scroll)/.test(o) && p.scrollHeight > p.clientHeight && p !== d) return true } return false }
+    const btn = [...d.querySelectorAll("button")].filter(visible).filter((b) => !scrolls(b)).map((b) => b.getBoundingClientRect())
     return { label: name(d), fits: r.left >= -1 && r.right <= vw + 1 && r.top >= -1 && r.bottom <= vh + 1, buttonsInside: btn.length > 0 && btn.every((b) => b.bottom <= vh + 1 && b.right <= vw + 1 && b.top >= -1) }
   })
   const topbar = rect(document.querySelector(".topbar"))
@@ -198,6 +205,21 @@ try {
     await settle()
     check(vp, "company", measure())
     shot(vp, "company")
+
+    // Narrow screens keep the owned list behind a button, in a modal that must fit.
+    if (vp.w <= 860) {
+      game(STATES["mid-d"])
+      await settle()
+      try {
+        ab("find", "role", "button", "click", "--name", "Owned")
+        await settle()
+        check(vp, "owned-modal", measure())
+        shot(vp, "owned-modal")
+        ab("press", "Escape")
+      } catch {
+        failures.push(`${vp.name} owned-modal: no Owned button to open`)
+      }
+    }
 
     // A reveal card queued: it must not bury the click target.
     game("g.reset(); g.keepProfile(); g.setXp(90); g.buySkill(1); return 1")

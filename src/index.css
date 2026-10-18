@@ -104,28 +104,25 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .brand {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   padding: var(--sp-3) 0;
-  min-width: 150px;
 }
 
-.brand h1 {
-  margin: 2px 0 0;
-  font-size: var(--fs-lg);
+/* A small logo in place of the title: the name stays in the page for screen readers. */
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: var(--stroke) solid var(--ink);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: var(--track-tight);
-  text-transform: uppercase;
-  line-height: 1;
-}
-
-.brand h1::after {
-  content: "";
-  display: block;
-  width: 36px;
-  height: 4px;
-  margin-top: 6px;
-  background: var(--accent);
+  box-shadow: 0 3px 0 var(--accent-lo);
+  user-select: none;
 }
 
 .metrics {
@@ -1692,70 +1689,6 @@ img { -webkit-user-drag: none; user-select: none; }
   transform: translateX(-2px);
 }
 
-.mobile-play-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: max(var(--sp-4), env(safe-area-inset-top, 0px)) var(--sp-4) max(var(--sp-4), env(safe-area-inset-bottom, 0px));
-  background: rgb(12 10 18 / 0.92);
-  color: var(--text);
-}
-
-.mobile-play-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  width: min(100%, 22rem);
-  padding: var(--sp-4) var(--sp-4) var(--sp-3);
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--surface-0) 90%, transparent);
-  box-shadow: var(--lift-2);
-}
-
-.mobile-play-warning-kicker {
-  margin: 0;
-  color: var(--accent-hi);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-}
-
-.mobile-play-warning-body {
-  margin: 0;
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-  color: var(--text-dim);
-}
-
-.mobile-play-warning-btn {
-  align-self: flex-end;
-  margin: var(--sp-1) 0 0;
-  padding: var(--sp-2) var(--sp-3);
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--radius);
-  background: var(--surface-1);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--lift-1);
-  transition:
-    background-color var(--dur-fast) var(--ease-out),
-    transform var(--dur-base) var(--ease-out);
-}
-
-.mobile-play-warning-btn:hover {
-  background: var(--surface-2);
-  transform: translateY(-1px);
-}
-
 .shop-head {
   display: flex;
   flex-direction: column;
@@ -2258,38 +2191,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .sticky-note { animation: none; }
-}
-
-/* ---------- small screens ---------- */
-
-@media (max-width: 860px) {
-
-  .layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .topbar { padding: 0 var(--sp-3); gap: 0; box-shadow: 0 2px 0 var(--accent-lo); }
-  .top-actions { padding: var(--sp-2) 0; }
-  .top-actions { padding: var(--sp-2) 0; }
-  .brand { flex-basis: 100%; flex-direction: row; align-items: center; padding: var(--sp-2) 0 0; }
-  .brand .eyebrow { display: none; }
-  .brand h1 { font-size: var(--fs-md); }
-  .brand h1::after { display: none; }
-  .metrics { flex: 1 1 100%; }
-  .metrics > div { padding: var(--sp-2) var(--sp-3); }
-  .metrics .m-world, .metrics .m-xp { display: none; }
-  .nuke-ring { width: 40px; height: 40px; }
-  .nuke-cap { width: 25px; height: 25px; }
-  .metrics dd { font-size: var(--fs-md); }
-
-  .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); }
-  .stage-panel { --ide-tree: 0px; --ide-rail: var(--ide-activity); padding: calc(var(--ide-tabs) + var(--sp-3)) var(--sp-3) calc(var(--ide-status) + var(--sp-3)) calc(var(--ide-rail) + var(--sp-3)); gap: var(--sp-3); }
-  .hitbox { --size: 192px; margin-top: var(--sp-5); }
-  .stage-panel h2 { font-size: var(--fs-lg); }
-
-  .offer { grid-template-columns: var(--art) minmax(0, 1fr); }
-  .offer-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
 }
 
 /* ---------- phase economy ---------- */

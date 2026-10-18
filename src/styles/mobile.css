@@ -1,0 +1,155 @@
+/*
+ * Small screens. One breakpoint, the same one `src/game/mobileViewport.ts` reads. The stage (the click target and the
+ * state) takes the top of the screen and the shop the bottom, so the page never scrolls: the shop list scrolls inside
+ * its half. Loaded after index.css so it wins at equal weight.
+ */
+
+/* The Owned button only exists to replace the list that no longer fits under the art. */
+.owned-open { display: none; }
+
+@media (max-width: 860px) {
+  html, body { overscroll-behavior: none; }
+  button, [role="tab"], a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .app { --ide-tabs: 4px; }
+
+  /* Top bar: logo and corner buttons on one row, the numbers that matter on a second. */
+  .topbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "brand actions" "metrics metrics";
+    gap: 0;
+    padding: 0 var(--sp-2);
+    box-shadow: 0 2px 0 var(--accent-lo);
+  }
+  .brand { grid-area: brand; padding: 2px 0; }
+  .top-actions { grid-area: actions; justify-content: flex-end; margin-left: 0; padding: 2px 0; }
+  .top-actions button, .top-actions a { min-width: 44px; min-height: 44px; }
+  .gh-star { display: none; }
+  .metrics {
+    grid-area: metrics;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    border-top: var(--stroke) solid var(--surface-2);
+    scrollbar-width: none;
+  }
+  .metrics > div { flex: 0 0 auto; padding: 2px var(--sp-3); }
+  .metrics > div:first-child { border-left: 0; }
+  .metrics dd { font-size: var(--fs-md); }
+  /* The hero already shows the balance, the XP and what a click pays. */
+  .metrics .m-phase,
+  .metrics .m-xp,
+  .metrics > div:has([data-testid="per-click"]),
+  .metrics > div:has([data-testid="xp-per-click"]) { display: none; }
+  /* The name sits on top of the button that opens the details, so the cell stays one tap target tall. */
+  .metrics .m-world { position: relative; flex: 1 0 140px; }
+  .metrics .m-world.is-hot { flex-basis: 220px; }
+  .m-world dt { position: absolute; top: 4px; left: var(--sp-3); line-height: 1; }
+  .m-world-open { min-height: 44px; min-width: 96px; padding: 14px var(--sp-2) 0; }
+  .m-world-bar { position: absolute; left: var(--sp-2); right: var(--sp-2); bottom: 5px; min-width: 0; margin-top: 0; }
+  .founder-chip { min-height: 44px; }
+  .nuke-ring { width: 44px; height: 44px; }
+  .nuke-cap { width: 28px; height: 28px; }
+
+  /* Stage on top, shop below. */
+  .layout,
+  .layout.is-shop-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 44fr) minmax(0, 56fr);
+  }
+  .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); box-shadow: inset 0 3px 0 var(--surface-2); animation: none; }
+  .shop-panel-hide, .shop-panel-show, .shop-head .eyebrow, .shop-head-row { display: none; }
+  .shop-head, .shop-head-top { display: contents; }
+  .shop-jump-end {
+    position: absolute;
+    right: var(--sp-3);
+    bottom: var(--sp-3);
+    z-index: 4;
+    width: 44px;
+    height: 44px;
+  }
+  .era-tabs { flex: none; padding: 0 var(--sp-2); }
+  .era-tab { flex: 0 0 auto; min-height: 44px; padding: 0 var(--sp-3); display: inline-flex; align-items: center; gap: 4px; }
+  .next-unlock { min-height: 44px; }
+  .offer { --art: 48px; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
+  .offer::before { top: var(--sp-2); height: var(--art); }
+  .offer img, .offer-art, .offer .emoji-tap { width: var(--art); height: var(--art); }
+  .offer-actions { grid-column: auto; flex-direction: column; justify-content: center; }
+  .shop-list button, .buy-amount-step { min-width: 44px; min-height: 44px; }
+
+  .stage-panel {
+    --ide-tree: 0px;
+    --ide-rail: var(--ide-activity);
+    gap: var(--sp-2);
+    padding: calc(var(--ide-tabs) + var(--sp-2)) var(--sp-2) calc(var(--ide-status) + var(--sp-2)) calc(var(--ide-rail) + var(--sp-2));
+  }
+  .ide-activity-btn { width: 44px; height: 44px; }
+  .ide-status { gap: var(--sp-2); padding-left: var(--sp-2); }
+  .ide-mode, .ide-status-gap { display: none; }
+  .ide-status-powered { position: static; transform: none; order: 3; margin-left: auto; }
+  [data-testid="ide-band"] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 128px is twice the 64px art, so the pixels stay square. */
+  .hitbox { --size: 128px; margin-top: 0; }
+  .hero-money { gap: 2px; margin-top: 0; padding: var(--sp-2) var(--sp-3); }
+  .hero-money-value { font-size: clamp(1.5rem, 8vw, 2.25rem); text-shadow: 0 2px 0 var(--ink); }
+  .stage-panel h2 { font-size: var(--fs-md); }
+  /* The stage name is also in the status bar, and the art and the balance need the room. */
+  .plate, .career-dock { display: none; }
+  .owned-open {
+    position: absolute;
+    right: var(--sp-2);
+    bottom: calc(var(--ide-status) + var(--sp-2));
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 var(--sp-3);
+    border: var(--stroke) solid var(--ink);
+    background: var(--surface-1);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* The unlock card sits at the foot of the screen, not beside what it unlocks, so it never covers the click target. */
+  .ul-card {
+    left: var(--sp-2) !important;
+    right: var(--sp-2) !important;
+    top: auto !important;
+    bottom: calc(var(--sp-2) + env(safe-area-inset-bottom, 0px)) !important;
+    width: auto;
+  }
+  .ul-card::before { display: none; }
+  .ul-card button { min-height: 44px; }
+
+  /* Toasts sit under the top bar: at the foot of the screen they cover the shop buttons. */
+  .toast { top: calc(var(--sp-2) + 100px); bottom: auto; }
+
+  /* Cards and dialogs never outgrow the screen; long ones scroll inside themselves. */
+  [role="dialog"] { max-width: calc(100vw - var(--sp-3)); max-height: calc(100dvh - var(--sp-3)); overflow-y: auto; }
+  .stats-modal { width: min(100%, 32rem); }
+}
+
+/* Short portrait screens give the stage a little more, because the art and the balance have a fixed size. */
+@media (max-width: 860px) and (max-height: 700px) and (orientation: portrait) {
+  .layout,
+  .layout.is-shop-collapsed { grid-template-rows: minmax(0, 50fr) minmax(0, 50fr); }
+}
+
+/* A phone on its side has no room to stack: stage and shop go side by side, and the top bar is one row. */
+@media (max-width: 860px) and (orientation: landscape) {
+  .topbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand metrics actions"; }
+  .toast { top: calc(var(--sp-2) + 52px); }
+  .metrics { border-top: 0; }
+  .layout,
+  .layout.is-shop-collapsed {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 46%);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .shop { border-top: 0; border-left: var(--stroke) solid var(--ink); }
+  .plate { display: none; }
+  /* Over the shop, away from the click target on the left. */
+  .ul-card { left: auto !important; width: min(290px, 44vw); }
+}

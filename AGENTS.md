@@ -212,7 +212,7 @@ Without `play:agent`, start with `npm run dev`, then `npx agent-browser open htt
 - Set state with `eval` and `__GAME__` (`reset()`, `keepProfile()` to clear the start card, `setXp`, `forceGig`, `setMoney`). Do not click through the grind.
 - Read the page with `snapshot -i` (interactive elements as `@e1` refs). Act with `click @e8`. Re-snapshot after the page changes; refs go stale. `find role tab click --name "Gigs"` works without a snapshot. A tab only exists once its board is unlocked, so unlock first.
 - Look with `screenshot <path>`; add `--annotate` to overlay the ref numbers. Set the size first with `set viewport 1280 800`. Read the PNG yourself before calling a visual change fine.
-- Check narrow layouts with `set viewport 390 844`. Below 640 px the desk prompt drops its card, and a "Desktop recommended" card covers the page until "Got it" is clicked, so dismiss it before judging the layout.
+- Check narrow layouts with `npm run check:mobile` (see `.agents/skills/mobile-check/SKILL.md`): it plays six viewports through `__GAME__` and fails on layout problems. Read its screenshots too. For one look by hand, `set viewport 390 844` and `screenshot`.
 - Read `console` and `errors` after a run; a clean game logs only the Vite connect lines and the React DevTools notice.
 - Stay in phases A to C plus the single mid check (see Rules). Always end with `close`.
 - `node scripts/capture-visuals.mjs <prefix> [outDir]` writes the standard phase A to D and mobile screenshots (default outDir is the OS temp dir).
