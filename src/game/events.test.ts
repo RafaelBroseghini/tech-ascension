@@ -231,7 +231,11 @@ describe("advanceEventClock", () => {
 })
 
 describe("events in the store", () => {
-  beforeEach(() => useGame.getState().wipe())
+  // Boosts and events hold each other off, so keep the boost clock quiet while events are under test.
+  beforeEach(() => {
+    useGame.getState().wipe()
+    useGame.setState({ nextBoostAt: Number.MAX_SAFE_INTEGER, idleSince: Number.MAX_SAFE_INTEGER })
+  })
 
   it("schedules on tick, fires one event, then stays quiet until it is dismissed", () => {
     const game = () => useGame.getState()
