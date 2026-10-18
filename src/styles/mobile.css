@@ -4,6 +4,9 @@
  * its half. Loaded after index.css so it wins at equal weight.
  */
 
+/* The live money and XP rates in the metrics modal stand in for the top bar's slots, which only a phone hides. */
+.stats-rates { display: none; }
+
 /* The inventory button only exists to replace the list that no longer fits under the art. */
 .owned-open { display: none; }
 
@@ -35,8 +38,12 @@
   .metrics > div { flex: 0 0 auto; padding: 2px var(--sp-3); }
   .metrics > div:first-child { border-left: 0; }
   .metrics dd { font-size: var(--fs-md); }
-  /* The phase name is in the status bar on a phone. */
-  .metrics .m-phase { display: none; }
+  /* On a phone the phase name, and the money and XP rates, are in the metrics modal; the bar keeps the world and boosts. */
+  .metrics .m-phase, .metrics .m-money, .metrics .m-xp { display: none; }
+  .stats-rates { display: grid; padding-bottom: 0; }
+  /* No status bar on a phone: the band name was noise there, and emoji.gg's credit is in the settings menu. */
+  .app { --ide-status: 0px; }
+  .ide-status { display: none; }
   /* Each currency slot is one line on a phone: the label over its rates, side by side. */
   .metrics .m-slot { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--sp-3); row-gap: 2px; }
   .metrics .m-slot > dt { flex-basis: 100%; }
@@ -84,10 +91,6 @@
     padding: calc(var(--ide-tabs) + var(--sp-2)) var(--sp-2) calc(var(--ide-status) + var(--sp-2)) calc(var(--ide-rail) + var(--sp-2));
   }
   .ide-activity-btn { width: 44px; height: 44px; }
-  .ide-status { gap: var(--sp-2); padding-left: var(--sp-2); }
-  .ide-mode, .ide-status-gap { display: none; }
-  .ide-status-powered { position: static; transform: none; order: 3; margin-left: auto; }
-  [data-testid="ide-band"] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* 128px is twice the 64px art, so the pixels stay square. */
   .hitbox { --size: 128px; margin-top: 0; }
   .hero-money { gap: 2px; margin-top: 0; padding: var(--sp-2) var(--sp-3); }

@@ -102,7 +102,7 @@ describe("wipe save", () => {
     })
   }
 
-  it("is a red button with a trash icon, the last thing in the settings panel", () => {
+  it("is a red button with a trash icon, the last control in the settings panel, above only the emoji.gg credit", () => {
     const host = renderSettings()
     openSettings(host)
     const button = $(host, "wipe-save")
@@ -110,7 +110,8 @@ describe("wipe save", () => {
     expect(button?.classList.contains("ide-wipe")).toBe(true)
     expect(button?.querySelector("svg.lucide-trash-2")).not.toBeNull()
     const menu = host.querySelector("[role='dialog'][aria-label='Settings']")
-    expect(menu?.lastElementChild?.contains(button ?? null)).toBe(true)
+    expect(menu?.lastElementChild?.textContent).toBe("powered by emoji.gg")
+    expect(menu?.lastElementChild?.previousElementSibling?.contains(button ?? null)).toBe(true)
   })
 
   it("asks first: one click does not wipe, and Cancel backs out", () => {

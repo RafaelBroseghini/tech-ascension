@@ -215,3 +215,10 @@
 @media (prefers-reduced-motion: reduce) {
   .first-click { animation: none !important; }
 }
+
+/* A theme change cross-fades the whole page (ideTheme.ts, View Transitions) instead of snapping colour by colour. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: var(--ease-out, ease-out);
+}

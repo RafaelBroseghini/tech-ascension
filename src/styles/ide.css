@@ -115,18 +115,19 @@
   background: var(--ide-crust);
   letter-spacing: 0.04em;
 }
-.ide-status-powered {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.58rem;
+/* The emoji credit, the last line of the settings menu. */
+.ide-settings-powered {
+  display: block;
+  margin-top: var(--sp-2);
+  text-align: center;
+  font-size: 0.62rem;
   color: var(--ide-overlay);
   text-decoration: none;
   letter-spacing: 0.06em;
   text-transform: lowercase;
   white-space: nowrap;
 }
-.ide-status-powered:hover {
+.ide-settings-powered:hover {
   color: var(--ide-text);
 }
 .ide-mode {

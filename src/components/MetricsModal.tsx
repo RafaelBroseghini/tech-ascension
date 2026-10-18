@@ -7,6 +7,7 @@ import { formatNumber } from "../game/format.ts"
 import { formatIdleStreak, formatPlayTime } from "../game/stats.ts"
 import type { GameStats } from "../game/stats.ts"
 import { useGame } from "../game/store.ts"
+import { useLiveRates } from "./useLiveRates.ts"
 
 type Row = { label: string; value: string }
 
@@ -29,6 +30,14 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
   const jobs = useGame((state) => state.jobs.length)
   const dialogRef = useRef<HTMLDivElement>(null)
   const rows = buildRows(stats, peakMoney, gigs, jobs)
+  const live = useLiveRates()
+  // On a phone the top bar has no room for the money and XP slots, so they are here instead. On a wide screen this group is hidden.
+  const rates: Row[] = [
+    ...(live.perSec > 0 ? [{ label: "Money a second", value: `$${formatNumber(live.perSec)}/s` }] : []),
+    ...(live.clickPays ? [{ label: "Money a click", value: `$${formatNumber(live.perClick)}` }] : []),
+    { label: "XP a click", value: formatNumber(live.xpPerClick) },
+    ...(live.xpPerSec > 0 ? [{ label: "XP a second", value: `${formatNumber(live.xpPerSec)}/s` }] : []),
+  ]
 
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true })
@@ -62,6 +71,14 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
             <X {...UI_ICON} aria-hidden />
           </button>
         </header>
+        <dl className="stats-grid stats-rates" data-testid="stats-rates" aria-label="Right now">
+          {rates.map((row) => (
+            <div key={row.label} className="stats-row">
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
         <dl className="stats-grid">
           {rows.map((row) => (
             <div key={row.label} className="stats-row">

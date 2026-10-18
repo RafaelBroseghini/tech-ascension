@@ -120,9 +120,6 @@ export const IdeChrome = memo(function IdeChrome() {
         </aside>
       ) : null}
       <footer className="ide-status">
-        <a className="ide-status-powered" href="https://emoji.gg/" target="_blank" rel="noopener noreferrer">
-          powered by emoji.gg
-        </a>
         <span className={previewing ? "ide-mode is-preview" : "ide-mode"}>{previewing ? "PREVIEW" : "NORMAL"}</span>
         <span data-testid="ide-band">{band.label}</span>
         <span className="ide-status-gap" />
