@@ -1,6 +1,6 @@
 /**
  * The phone shop's bottom sheet: drag the grip down to dock it to a bar, tap or drag up to bring it back. Pure, so the
- * gesture rules run under the node tests; `ShopGrip.tsx` feeds it the pointer and commits the answer.
+ * drag rules run under the node tests; `ShopGrip.tsx` feeds it the pointer and commits the answer.
  */
 
 /** Under this many pixels a press is a tap, not a drag. */
@@ -31,9 +31,10 @@ export function dockOffset(docked: boolean, dy: number, travel: number): number 
   return Math.min(Math.max(toward, 0), Math.max(travel, 0))
 }
 
-/** Whether the sheet ends docked once the finger lifts. A tap flips it. */
+/** Whether the sheet ends docked once the finger lifts. Taps are the button's click, not a drag. */
 export function settleDock({ docked, dy, ms, travel }: DockDrag): boolean {
-  if (isDockTap(dy)) return !docked
+  // A drag that comes back to where it began changes nothing.
+  if (isDockTap(dy)) return docked
   const speed = dy / Math.max(ms, 1)
   if (Math.abs(speed) >= DOCK_FLICK_SPEED) return speed > 0
   const moved = dockOffset(docked, dy, travel)

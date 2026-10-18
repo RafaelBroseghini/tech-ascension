@@ -161,7 +161,8 @@
   .shop-grip-bar { display: none; }
   /* Docked, the rows stay laid out (clipped, not removed) so the list keeps its scroll and its two-row height. */
   .shop.is-docked { max-height: var(--shop-dock-h); overflow: hidden; }
-  .shop.is-docked > :not(.shop-grip) { visibility: hidden; }
+  /* Shown again while a drag up pulls the sheet open, so it fills as it grows. */
+  .shop.is-docked:not(.is-dragging) > :not(.shop-grip) { visibility: hidden; }
   .shop.is-docked .shop-grip { height: calc(var(--shop-dock-h) - var(--stroke)); grid-template-rows: auto 1fr; padding-top: 4px; }
   .shop.is-docked .shop-grip-bar {
     position: relative;
