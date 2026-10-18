@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { readPref } from "./ledger.ts"
 import {
   clearIdeThemePreview,
@@ -74,5 +74,53 @@ describe("editor theme", () => {
     const fresh = await import("./ideTheme.ts")
     expect(fresh.getIdeTheme().id).toBe("dracula")
     expect(fresh.parseIdeThemeId("nope")).toBe("mocha")
+  })
+
+  describe("first run", () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, "window")
+
+    const withOsScheme = (light: boolean) => {
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: { matchMedia: (query: string) => ({ matches: light && query === "(prefers-color-scheme: light)" }) },
+      })
+    }
+
+    afterEach(() => {
+      if (original) Object.defineProperty(globalThis, "window", original)
+      else delete (globalThis as { window?: unknown }).window
+    })
+
+    it("follows a light OS when no theme is stored, without storing it", async () => {
+      withOsScheme(true)
+      vi.resetModules()
+      const ledger = await import("./ledger.ts")
+      const fresh = await import("./ideTheme.ts")
+      expect(fresh.getIdeTheme().id).toBe("github-light")
+      expect(ledger.readPref("theme")).toBeNull()
+    })
+
+    it("starts on Mocha for a dark OS", async () => {
+      withOsScheme(false)
+      vi.resetModules()
+      const fresh = await import("./ideTheme.ts")
+      expect(fresh.getIdeTheme().id).toBe("mocha")
+    })
+
+    it("starts on Mocha where matchMedia is missing", async () => {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: {} })
+      vi.resetModules()
+      const fresh = await import("./ideTheme.ts")
+      expect(fresh.getIdeTheme().id).toBe("mocha")
+    })
+
+    it("keeps a stored theme over the OS", async () => {
+      withOsScheme(true)
+      vi.resetModules()
+      const ledger = await import("./ledger.ts")
+      ledger.writePref("theme", "dracula")
+      const fresh = await import("./ideTheme.ts")
+      expect(fresh.getIdeTheme().id).toBe("dracula")
+    })
   })
 })
