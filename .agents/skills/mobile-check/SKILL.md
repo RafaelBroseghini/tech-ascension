@@ -36,6 +36,7 @@ A pass is not a look. Open the PNGs for 360x640 (the tightest), 390x844, 844x390
 - One breakpoint, 860px, the one `src/game/mobileViewport.ts` reads. Narrow CSS lives in `src/styles/mobile.css`, loaded after `index.css`.
 - Portrait: the stage (the click target and the state) is the top of the screen and the shop is the bottom. The page never scrolls; the shop list scrolls inside its half.
 - The stage art is 128px (twice the 64px grid) so pixels stay square. Do not scale it with `vh`.
+- Visual `:hover` styles go inside `@media (hover: hover)`, so a tapped control does not keep its highlight on a phone. Keep `:active` and `:focus-visible` outside it. The hover-click mechanic on the stage is script (`Stage.tsx`), not CSS, and is not touched by this.
 - Layout and presentation only. Do not change what a click, a purchase or a gate does.
 - Keep every `data-testid`; the happy-dom tests rely on them.
 

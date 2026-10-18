@@ -409,9 +409,11 @@
   box-shadow: 0 3px 0 var(--ink, var(--ide-crust));
 }
 
-.world-hire button:hover:not(:disabled),
-.world-incidents button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ide-green) 70%, white);
+@media (hover: hover) {
+  .world-hire button:hover:not(:disabled),
+  .world-incidents button:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ide-green) 70%, white);
+  }
 }
 
 .world-hire button:active:not(:disabled),
@@ -441,9 +443,11 @@
   padding: 3px 9px 4px;
 }
 
-.world-hire button.world-fire:hover {
-  background: color-mix(in srgb, var(--ide-red) 22%, transparent);
-  color: var(--ide-red);
+@media (hover: hover) {
+  .world-hire button.world-fire:hover {
+    background: color-mix(in srgb, var(--ide-red) 22%, transparent);
+    color: var(--ide-red);
+  }
 }
 
 .world-hire strong {
@@ -619,13 +623,20 @@
   transition: opacity 120ms;
 }
 
-.mini-globe:hover .mini-globe-open,
 .mini-globe-open:focus-visible {
   opacity: 1;
 }
 
-.mini-globe-open:hover {
-  color: var(--ide-text);
+@media (hover: hover) {
+  .mini-globe:hover .mini-globe-open {
+    opacity: 1;
+  }
+}
+
+@media (hover: hover) {
+  .mini-globe-open:hover {
+    color: var(--ide-text);
+  }
 }
 
 /* The career log keeps the room above the globe. */
@@ -684,8 +695,10 @@
   border-bottom: 0;
 }
 
-.globe-zoom button:hover {
-  background: var(--ide-surface);
+@media (hover: hover) {
+  .globe-zoom button:hover {
+    background: var(--ide-surface);
+  }
 }
 
 .globe-notes {
@@ -1286,9 +1299,11 @@
   cursor: pointer;
 }
 
-.footprint button:hover:not(:disabled) {
-  border-color: var(--ide-green);
-  color: var(--ide-green);
+@media (hover: hover) {
+  .footprint button:hover:not(:disabled) {
+    border-color: var(--ide-green);
+    color: var(--ide-green);
+  }
 }
 
 .footprint button:disabled {

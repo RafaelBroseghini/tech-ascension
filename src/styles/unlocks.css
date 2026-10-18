@@ -42,8 +42,10 @@
   position: relative;
   color: var(--ide-overlay);
 }
-.ide-activity > .ide-activity-btn:hover:not(:disabled) {
-  color: var(--ide-text);
+@media (hover: hover) {
+  .ide-activity > .ide-activity-btn:hover:not(:disabled) {
+    color: var(--ide-text);
+  }
 }
 .ide-activity > .ide-activity-btn.is-active {
   color: var(--ide-text);
@@ -308,8 +310,10 @@
   font: 700 12px/1 var(--font-mono);
   cursor: pointer;
 }
-.ul-btn:hover {
-  border-color: color-mix(in srgb, var(--ide-text) 45%, transparent);
+@media (hover: hover) {
+  .ul-btn:hover {
+    border-color: color-mix(in srgb, var(--ide-text) 45%, transparent);
+  }
 }
 .ul-btn.is-primary {
   border-color: var(--ink);
@@ -317,8 +321,10 @@
   color: var(--ide-crust);
   box-shadow: 2px 2px 0 var(--ink);
 }
-.ul-btn.is-primary:hover {
-  filter: brightness(1.06);
+@media (hover: hover) {
+  .ul-btn.is-primary:hover {
+    filter: brightness(1.06);
+  }
 }
 .ul-btn:focus-visible {
   outline: 2px solid var(--ide-green);
