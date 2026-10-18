@@ -1,18 +1,18 @@
-# Lint, unit tests, the smoke play and the build. Runs on every pull request, and the Pages deploy
-# calls it before publishing, so main is checked by the deploy run instead of a second copy here.
+# Lint, unit tests, the smoke play and the build, on every pull request and every push to main.
+# A green run on a push to main is what triggers the Pages deploy (pages.yml).
 name: CI
 
 on:
   pull_request:
-  workflow_call:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
-# A new push to a pull request cancels its older run. A deploy's check is never cancelled.
+# A new push to a pull request cancels its older run. Runs on main all finish, since each one can deploy.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
