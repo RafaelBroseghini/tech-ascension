@@ -572,7 +572,9 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   game.tick(60_000)
   expect(game.getState().money).toBeLessThan(before.money)
 
-  // The world fights back: an incident opens, shows its price, and ends when paid.
+  // The world fights back: an incident opens, shows its price, and ends when paid. The minute above can roll one of
+  // its own, so that one is paid off first and the forced one is alone.
+  for (const incident of game.getState().world.incidents) expect(game.respondIncident(incident.id)).toBe(true)
   const calm = game.getState().world.demand
   expect(game.forceIncident("ddos", "americas-east")).toBe(true)
   const hit = game.getState().world
