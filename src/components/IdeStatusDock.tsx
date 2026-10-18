@@ -6,6 +6,7 @@ import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle } from "../data/ideThemes.ts"
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
 import { getSavedIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
+import { usableHoverRate } from "../game/autoClick.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { openRosters, ROSTER_KINDS, ROSTER_LABEL, rosterEntries, type RosterKind } from "../game/rosters.ts"
@@ -206,7 +207,7 @@ export function RosterModals() {
 export const IdeStatusDock = memo(function IdeStatusDock() {
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const savedTheme = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
-  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
+  const hoverPerSec = useGame((state) => usableHoverRate(hoverRate(state.gold, ownsEverything(state))))
   const catsFound = useGame((state) => state.stats.catsFound.length)
   const seeFeature = useGame((state) => state.seeFeature)
   const [openChip, setOpenChip] = useState<ChipId | null>(null)
