@@ -73,8 +73,7 @@ Tuned constants (`src/data/legacy.ts`), kept at v1's values because they still l
 | 1e12 | 0.03 | 5 | day 2.00 +7 / day 2.00 +5 | career 6, day 13.7 / career 6, day 18.0 |
 | 2e11 | 0.10 | 5 | day 1.00 +2 / day 1.33 +3 | career 7, day 9.3 / career 9, day 12.0 |
 
-A larger bonus per Prestige finishes in more careers, not fewer (each Exit pays fewer rungs), and a smaller scale pays the first Exit earlier for more Prestige but also adds careers. For reference, the numbers this page gave for v1, which predate the whiteboard's removal and had no product in the model: first Exit day 1.67 for +5 (stacker) and day 2.00 for +6 (one-of-each), done in the 6th career on day 13.0 and day 18.0 (owning everything only). Now the same two players take the first Exit on the same days for the same Prestige, and are done (owning everything and winning the world) in the 6th career on day 12.7 and day 16.3.
-
+A larger bonus per Prestige finishes in more careers, not fewer (each Exit pays fewer rungs), and a smaller scale pays the first Exit earlier for more Prestige but also adds careers.
 The stacker, career by career (users at the Exit, Prestige paid, the bonus after):
 
 | Career | Day in | Day out | Row 6 after (days) | Matched last career's earnings after (days) | Users | Perks held | Prestige paid | Prestige total | Bonus |

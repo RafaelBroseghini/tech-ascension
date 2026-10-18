@@ -38,7 +38,7 @@ const STOP = new Set(
   production story journal distributed systems actually posts speaking mentoring juniors
   negotiation scope staff principal teaching workshop prompt engineering array wrangling
   compilers interpreters contracts ops somewhere polished open source pipeline actions craft
-  tooling feature flag hygiene threat modeling decision records mock interviews essentials
+  tooling feature flag hygiene threat modeling decision records practice problems essentials
   migration playbook learn config mgmt playbooks event stream concurrency ownership desktop
   incident runbook blog conference talk list weekend handoff docs plugin tweak slice panel
   endpoint template coding client testimonial internal tool smb payments ish second third

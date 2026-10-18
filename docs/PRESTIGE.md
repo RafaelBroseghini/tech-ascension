@@ -1,6 +1,6 @@
 # Prestige: the Exit (design, v2)
 
-Status: built (see "Built" at the end), behind admin mode. Reworked for the company arc (`docs/COMPANY_ARC.md`). A first version was built on the branch `worktree-bridge-cse_0189znxqaYqCP9B8nbar1tsp` (commits `23b73b7`, `9beeebb`, and the unfinished `beb3cc4`) before the globe reached `main`. Its pure rules, save block, harness, pace mode and UI are reused here; its interview parts and Paths are dropped.
+Status: built (see "Built" at the end), behind admin mode. Reworked for the company arc (`docs/COMPANY_ARC.md`). Paths are dropped.
 
 ## Why
 
@@ -128,7 +128,7 @@ Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk 
 ## Decisions
 
 - **Names:** the Exit (in the UI, "Sell <Product>"), Prestige for the points (Rep was unclear), Legacy perks, Hall of Fame.
-- **The globe replaced the whiteboard interviews** (#59), so nothing about interviews carries over, and v1's Craft track (interview and click perks) is replaced by the Founder track.
+- **The Craft track is replaced by the Founder track.**
 - **Paths are dropped**: the ladder/founder fork and the three endings already make careers differ.
 - **Rollout:** behind admin mode (`getAdminMode()`) until the pace model meets the targets; the harness works regardless.
 
