@@ -13,11 +13,17 @@ export function Toast() {
     return () => window.clearTimeout(id)
   }, [toast, note, dismissToast])
 
-  if (!toast || note) return null
+  const shown = toast && !note ? toast : null
 
+  // The live region stays mounted: a region inserted together with its text is often not announced. It has no box
+  // of its own (the toast is fixed), and focus never moves, so a typing player is not interrupted.
   return (
-    <button type="button" className="toast" data-testid="toast" onClick={dismissToast}>
-      {toast.text}
-    </button>
+    <div role="status" aria-live="polite" aria-atomic="true">
+      {shown ? (
+        <button type="button" className="toast" data-testid="toast" onClick={dismissToast}>
+          {shown.text}
+        </button>
+      ) : null}
+    </div>
   )
 }
