@@ -228,6 +228,8 @@ type GameState = {
   raiseBridge: () => boolean
   /** Hire a kind of person on the ladder (see `HIRES`), as many as the Buy control allows. False as a founder, in a closed row, or short of the price. */
   hire: (id: string, amount?: BuyAmount) => boolean
+  /** Let go of people of a kind, as many as the Buy control says (Max is all of them), on either track. No refund. False with nobody of that kind. */
+  fire: (id: string, amount?: BuyAmount) => boolean
   /** Take a job again. After running out it gives up the highest job; by choice it keeps them all. False off the founder track. */
   returnToLadder: () => boolean
   /** Switch a bought region on or off as a whole. The last region serving stays on. */
@@ -600,6 +602,7 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   hire: (id, amount) => commitCompany(companyActions.hire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
+  fire: (id, amount) => commitCompany(companyActions.fire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
   buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
   deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
   setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),

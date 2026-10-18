@@ -3,7 +3,7 @@ import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, setPop, setRegion 
 import type { Footprint } from "./footprint.ts"
 import type { CompanyState } from "./growth.ts"
 import type { BuyAmount } from "../gold.ts"
-import { hire as hireOne } from "./hires.ts"
+import { fire as fireSome, hire as hireOne } from "./hires.ts"
 import type { FounderState } from "./track.ts"
 import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, totalUsers } from "./world.ts"
 import type { IncidentKind } from "./world.ts"
@@ -42,6 +42,11 @@ export function setRegionActive(s: CompanySlice, regionId: string, on: boolean):
 /** Hires up to `amount` of a kind on the ladder. Refused as a founder, in a closed row, or short of the price. */
 export function hire(s: CompanySlice, id: string, amount: BuyAmount = 1): CompanyPatch {
   return hireOne(s, id, amount)
+}
+
+/** Lets go of up to `amount` of a kind, on either track. Refused when nobody of that kind is on the payroll. */
+export function fire(s: CompanySlice, id: string, amount: BuyAmount = 1): CompanyPatch {
+  return fireSome(s, id, amount)
 }
 
 /** Pays to end an incident now, priced in minutes of `perSec`. Ending one also cools the world a little. */

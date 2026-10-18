@@ -3,7 +3,7 @@ import { REGIONS } from "../../data/regions.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
 import { ceilingOf, incidentCost, INCIDENTS, regionName, WORLD_TARGET } from "../../game/globe/world.ts"
-import { creditOf, headcountOf, hireCost, hireCount, hireGrowthStep, hirePayrollOf, MAX_HIRES, openHires, winNote } from "../../game/globe/hires.ts"
+import { creditOf, fireCount, headcountOf, hireCost, hireCount, hireGrowthStep, hirePayrollOf, MAX_HIRES, openHires, winNote } from "../../game/globe/hires.ts"
 import type { Hires } from "../../game/globe/hires.ts"
 import type { BuyAmount } from "../../game/gold.ts"
 import { winMultOf } from "../../game/globe/track.ts"
@@ -20,7 +20,23 @@ const growth = (n: number) => {
 const users = (n: number) => formatNumber(Math.round(n))
 
 /** The people on the payroll, a row for each kind that is open, and how much of the crowd they brought. */
-function Team({ hires, ladder, cash, share, amount, onHire }: { hires: Hires; ladder: boolean; cash: number; share: number; amount: BuyAmount; onHire: (id: string) => boolean }) {
+function Team({
+  hires,
+  ladder,
+  cash,
+  share,
+  amount,
+  onHire,
+  onFire,
+}: {
+  hires: Hires
+  ladder: boolean
+  cash: number
+  share: number
+  amount: BuyAmount
+  onHire: (id: string) => boolean
+  onFire: (id: string) => boolean
+}) {
   const percent = Math.round(share * 100)
   return (
     <section className="world-team" data-testid="world-team" aria-label="Team">
@@ -38,9 +54,22 @@ function Team({ hires, ladder, cash, share, amount, onHire }: { hires: Hires; la
                 {`${formatNumber(held)} hired · −${money(held * row.salary)}/s`}
                 <small>{`each: −${money(row.salary)}/s · +${growth(hireGrowthStep(row, held))}% growth`}</small>
               </span>
-              <button type="button" disabled={!ladder || count < 1} title={ladder ? row.line : "A founder hires no more."} onClick={() => onHire(row.id)}>
-                {`×${buying} · ${money(cost)}`}
-              </button>
+              <div className="world-hire-actions">
+                <button type="button" disabled={!ladder || count < 1} title={ladder ? row.line : "A founder hires no more."} onClick={() => onHire(row.id)}>
+                  {`×${buying} · ${money(cost)}`}
+                </button>
+                {held > 0 ? (
+                  <button
+                    type="button"
+                    className="world-fire"
+                    data-testid={`world-fire-${row.id}`}
+                    title={`Let ${formatNumber(fireCount(held, amount))} go: −${money(fireCount(held, amount) * row.salary)}/s in salaries, and the growth they add. No refund.`}
+                    onClick={() => onFire(row.id)}
+                  >
+                    {`Fire ×${formatNumber(fireCount(held, amount))}`}
+                  </button>
+                ) : null}
+              </div>
             </li>
           )
         })}
@@ -68,6 +97,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const now = useGame((state) => state.now)
   const product = useGame((state) => state.profile.product)
   const hire = useGame((state) => state.hire)
+  const fire = useGame((state) => state.fire)
   const amount = useGame((state) => state.buyAmount)
   const outlook = founderOutlook({ money: cash, equipment, owned, jobs, gigs, founder, company: raw, foreverMult, tempMults, legacy }, now)
   const next = nextStep(company, founder.track === "founder" && !founder.broke ? { net: outlook.net, runwaySec: outlook.runwaySec } : undefined)
@@ -109,7 +139,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
           )
         })}
       </ul>
-      <Team hires={founder.hires} ladder={founder.track === "ladder"} cash={cash} share={creditOf(raw).hiredShare} amount={amount} onHire={hire} />
+      <Team hires={founder.hires} ladder={founder.track === "ladder"} cash={cash} share={creditOf(raw).hiredShare} amount={amount} onHire={hire} onFire={fire} />
       {company.incidents.length > 0 ? (
         <ul className="world-incidents" data-testid="world-incidents">
           {company.incidents.map((incident) => {

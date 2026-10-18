@@ -73,14 +73,13 @@ export function maxHires(row: Hire, held: number, money: number): number {
   return n
 }
 
-/** The rows the shop lists: the first, and each one after a kind that has a hire. */
+/** The rows the shop lists: every row through the last kind with a hire, and the one after it. Firing a whole kind keeps the rows below it open. */
 export function openHires(hires: Hires): Hire[] {
-  const open: Hire[] = []
-  for (const row of HIRES) {
-    open.push(row)
-    if (heldOf(hires, row) === 0) break
-  }
-  return open
+  let last = -1
+  HIRES.forEach((row, index) => {
+    if (heldOf(hires, row) > 0) last = index
+  })
+  return HIRES.slice(0, Math.min(HIRES.length, last + 2))
 }
 
 /** How many a buy of `amount` hires: up to that many, or as many as the money pays for. */
@@ -99,6 +98,22 @@ export function hire(s: { readonly money: number; readonly founder: FounderState
   const held = heldOf(s.founder.hires, row)
   const count = hireCount(row, held, s.money, amount)
   return { money: s.money - hireCost(row, held, count), founder: { ...s.founder, hires: { ...s.founder.hires, [id]: held + count } } }
+}
+
+/** How many a fire of `amount` lets go: up to that many, or everyone of the kind. */
+export const fireCount = (held: number, amount: BuyAmount): number => Math.min(held, amount === "max" ? held : amount)
+
+/**
+ * What letting people go changes, or null when there is nobody of that kind. Either track can fire: the salaries stop
+ * at once and the growth they added goes with them. Nothing is refunded.
+ */
+export function fire(s: { readonly founder: FounderState }, id: string, amount: BuyAmount = 1): { founder: FounderState } | null {
+  const row = hireById(id)
+  const held = row ? heldOf(s.founder.hires, row) : 0
+  if (!row || held === 0) return null
+  const left = held - fireCount(held, amount)
+  const { [id]: _gone, ...rest } = s.founder.hires
+  return { founder: { ...s.founder, hires: left > 0 ? { ...rest, [id]: left } : rest } }
 }
 
 /** Saved hires, checked: unknown ids, non-integers and zeros are dropped and counts are capped. The old list format reads as nobody. */

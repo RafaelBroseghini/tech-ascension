@@ -126,6 +126,8 @@ setRegionActive(regionId: string, on: boolean): boolean   // switch a bought reg
 forceIncident(kind: "ddos" | "block" | "law" | "rival", regionId?: string): boolean   // open an incident now, on the biggest region by default. False at three live or for an unknown region
 respondIncident(incidentId: number): boolean   // pay `world.incidents[].cost` to end it. False when it is gone or the money is short
 setUsers(regionId: string, users: number): boolean   // set a region's users, up to what it can hold
+hire(hireId: string, amount?: 1 | 5 | 10 | "max"): boolean   // a Team row (src/game/globe/hires.ts), ladder only
+fire(hireId: string, amount?: 1 | 5 | 10 | "max"): boolean   // let people of a kind go, on either track ("max" is all of them); no refund. False with nobody of that kind
 goFullTime(): boolean             // quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for (`requitAt`)
 keepClimbing(): void              // close the fork's card
 raiseBridge(): boolean            // only out of runway and with bridges left: cash worth 30 minutes of burn, 10% of revenue given up for good

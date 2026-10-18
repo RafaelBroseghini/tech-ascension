@@ -8,6 +8,7 @@ import {
   creditOf,
   endingLine,
   endingOf,
+  fire,
   headcountOf,
   hire,
   hireBonusOf,
@@ -125,6 +126,23 @@ describe("the hire gate", () => {
     expect(openHires({ outsourced: 3, bootcamp: 1, copypaste: 1 }).map((h) => h.id)).toEqual(["outsourced", "bootcamp", "copypaste", "senior"])
     expect(openHires(team(8).hires).map((h) => h.id)).toEqual(ids)
     expect(hire(slice({ founder: { ...FRESH_FOUNDER, hires: { outsourced: 1 } } }), "bootcamp")).not.toBeNull()
+  })
+
+  it("fires on either track, up to the amount or everyone on Max, with no refund", () => {
+    const f: FounderState = { ...FRESH_FOUNDER, hires: { outsourced: 12, bootcamp: 3 } }
+    expect(fire({ founder: f }, "outsourced")?.founder.hires).toEqual({ outsourced: 11, bootcamp: 3 })
+    expect(fire({ founder: f }, "outsourced", 10)?.founder.hires).toEqual({ outsourced: 2, bootcamp: 3 })
+    expect(fire({ founder: f }, "bootcamp", 5)?.founder.hires).toEqual({ outsourced: 12 })
+    expect(fire({ founder: f }, "outsourced", "max")?.founder.hires).toEqual({ bootcamp: 3 })
+    expect(fire({ founder: { ...f, track: "founder" } }, "bootcamp")?.founder.hires).toEqual({ outsourced: 12, bootcamp: 2 })
+    expect(fire({ founder: f }, "senior")).toBeNull()
+    expect(fire({ founder: f }, "nobody")).toBeNull()
+    expect(hirePayrollOf(fire({ founder: f }, "outsourced", "max")!.founder.hires)).toBe(3 * HIRES[1]!.salary)
+  })
+
+  it("keeps the rows below a kind fired to nobody open", () => {
+    expect(openHires({ bootcamp: 2 }).map((h) => h.id)).toEqual(["outsourced", "bootcamp", "copypaste"])
+    expect(hire(slice({ founder: { ...FRESH_FOUNDER, hires: { bootcamp: 2 } } }), "outsourced")).not.toBeNull()
   })
 
   it("is saved as counts: unknown ids, fractions, negatives and the old list are dropped, and counts are capped", () => {

@@ -16,6 +16,7 @@ import { readShopPanelOpen, subscribeShopPanelOpen, writeShopPanelOpen } from ".
 import { isMobileViewport, subscribeMobileViewport } from "./game/mobileViewport.ts"
 import { useGame } from "./game/store.ts"
 import { useGameLoop } from "./game/useGameLoop.ts"
+import { watchUnlockChime } from "./game/unlockChime.ts"
 
 export default function App() {
   useGameLoop()
@@ -27,6 +28,8 @@ export default function App() {
   const era = highestOwnedCapital(owned)?.era ?? "early"
   const lastEra = useRef(era)
   const [shifting, setShifting] = useState(false)
+
+  useEffect(() => watchUnlockChime(), [])
 
   useEffect(() => {
     if (lastEra.current === era) return

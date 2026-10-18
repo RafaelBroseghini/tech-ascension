@@ -14,7 +14,7 @@ import { eraOf, stageOf } from "../game/phase.ts"
 import type { Era } from "../data/capital.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
-import { capDrops, FALL_MS, waterfallCount } from "../game/waterfall.ts"
+import { capDrops, FALL_MS, fountainLift, toss, waterfallCount } from "../game/waterfall.ts"
 import type { Drop } from "../game/waterfall.ts"
 import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
@@ -25,11 +25,10 @@ import { MiniGlobe } from "./globe/MiniGlobe.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { OwnedButton } from "./OwnedModal.tsx"
 import { Skills } from "./Skills.tsx"
-import { ScorePop } from "./ScorePop.tsx"
 import { useFeatureOpen } from "./useFeature.ts"
 import { getSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 
-type Loot = { id: number; x: number; y: number; dx: number; dy: number; text: string; kind: "money" | "xp" }
+type Loot = { id: number; x: number; y: number; dx: number; rise: number; text: string; kind: "money" | "xp" }
 type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
 type Ring = { id: number; x: number; y: number; big: boolean }
@@ -88,18 +87,26 @@ function clickSparks(x: number, y: number, color: string, count: number): Spark[
 
 const ICON_PX = 36
 
-/** One random owned logo per spray, dropped from the cursor. */
-function waterfall(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {
+/** Which way the next toss goes. Flips on every toss so the fountain fans out left and right. */
+let nextSide: 1 | -1 = 1
+function flipSide(): 1 | -1 {
+  nextSide = nextSide === 1 ? -1 : 1
+  return nextSide
+}
+
+/** One random owned logo per spray, tossed up from just above the pointer. */
+function fountain(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {
   if (icons.length === 0) return []
   return Array.from({ length: count }, () => {
     const icon = pickClickIcon(icons) ?? icons[0] ?? "Git"
+    const { dx, rise } = toss(flipSide())
     return {
       id: seq++,
-      x: x + (Math.random() - 0.5) * 36,
-      y: y + 18 + Math.random() * 10,
-      dx: (Math.random() - 0.5) * 80,
-      dy: 150 + Math.random() * 100,
-      rot: (Math.random() - 0.5) * 70,
+      x: x + (Math.random() - 0.5) * 14,
+      y,
+      dx,
+      rise,
+      rot: (Math.random() - 0.5) * 140,
       size: ICON_PX,
       icon,
     }
@@ -114,7 +121,6 @@ const HeroMoneyMemo = memo(HeroMoney)
 const OwnedStripMemo = memo(OwnedStrip)
 const SkillsMemo = memo(Skills)
 const OwnedButtonMemo = memo(OwnedButton)
-const ScorePopMemo = memo(ScorePop)
 
 const BOOST_CHIP_MS = 12000
 
@@ -181,7 +187,7 @@ export function Stage() {
     })
   }, [])
 
-  // Large pops (gig clear, phase unlock) get a burst; idle ticks and plain clicks never do.
+  // Large pops (gig clear, phase unlock) get a confetti burst; idle ticks and plain clicks never do.
   useEffect(() => {
     return useGame.subscribe((state, previous) => {
       const pop = state.pop
@@ -250,7 +256,7 @@ export function Stage() {
     )
   }
 
-  function fire(clientX: number | null, clientY: number | null) {
+  function fire(clientX: number | null, clientY: number | null, touch = false) {
     const box = hitboxRef.current
     if (!box) return
     // Measure before any write below, so the read does not force a fresh style and layout pass.
@@ -275,18 +281,21 @@ export function Stage() {
     ]
 
     const originX = hasPoint && clientX !== null ? clientX : rect.left + rect.width / 2
-    const originY = hasPoint && clientY !== null ? clientY : rect.top + rect.height * 0.45
+    // The fountain starts a little above the pointer, and higher above a finger, so the hand never covers it.
+    const originY = (hasPoint && clientY !== null ? clientY : rect.top + rect.height * 0.45) - fountainLift(touch)
     // Text and logos fall for the same time, so one timer clears both.
     const fallen = new Set<number>()
     if (textLabels.length > 0) {
       const bornLoot = textLabels.map((label) => {
-        const side = label.kind === "xp" ? 1 : -1
+        // Money and XP go opposite ways when both pay; a lone label takes the next side.
+        const side = textLabels.length > 1 ? (label.kind === "xp" ? 1 : -1) : flipSide()
+        const { dx, rise } = toss(side)
         return {
           id: seq++,
-          x: originX + (textLabels.length > 1 ? side * 16 : 0),
-          y: originY + (label.kind === "xp" ? -18 : 6),
-          dx: side * (12 + Math.random() * 26),
-          dy: 120 + Math.random() * 80,
+          x: originX + side * 8,
+          y: originY - (label.kind === "xp" ? 10 : 0),
+          dx: dx * 0.7,
+          rise: rise + 8,
           text: label.text,
           kind: label.kind,
         }
@@ -295,7 +304,7 @@ export function Stage() {
       setLoot((current) => [...current, ...bornLoot].slice(-24))
     }
 
-    const born = waterfall(originX, originY, iconPool({ skills, equipment, jobs, gigs }), waterfallCount(boosted))
+    const born = fountain(originX, originY, iconPool({ skills, equipment, jobs, gigs }), waterfallCount(boosted))
     if (born.length > 0) {
       for (const drop of born) fallen.add(drop.id)
       setDrops((current) => capDrops(current, born))
@@ -348,7 +357,7 @@ export function Stage() {
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return
-    fire(event.clientX, event.clientY)
+    fire(event.clientX, event.clientY, event.pointerType === "touch" || event.pointerType === "pen")
   }
 
   function onClick(event: MouseEvent<HTMLButtonElement>) {
@@ -463,7 +472,7 @@ export function Stage() {
                   width: drop.size,
                   height: drop.size,
                   ["--dx" as string]: `${drop.dx}px`,
-                  ["--dy" as string]: `${drop.dy}px`,
+                  ["--rise" as string]: `${drop.rise}px`,
                   ["--rot" as string]: `${drop.rot}deg`,
                 }}
               >
@@ -479,7 +488,7 @@ export function Stage() {
                 left: item.x,
                 top: item.y,
                 ["--dx" as string]: `${item.dx}px`,
-                ["--dy" as string]: `${item.dy}px`,
+                ["--rise" as string]: `${item.rise}px`,
               }}
             >
               {item.text}
@@ -497,7 +506,6 @@ export function Stage() {
         <SkillsMemo />
       </div>
       <OwnedButtonMemo />
-      <ScorePopMemo />
     </section>
   )
 }

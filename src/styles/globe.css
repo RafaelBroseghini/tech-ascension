@@ -426,6 +426,26 @@
   cursor: not-allowed;
 }
 
+.world-hire-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* Firing is the quiet option: outlined, red on hover, never the green call to action. */
+.world-hire button.world-fire {
+  background: transparent;
+  color: var(--ide-subtext, var(--ide-text));
+  box-shadow: none;
+  padding: 3px 9px 4px;
+}
+
+.world-hire button.world-fire:hover {
+  background: color-mix(in srgb, var(--ide-red) 22%, transparent);
+  color: var(--ide-red);
+}
+
 .world-hire strong {
   color: var(--ide-text);
   font-weight: 600;
