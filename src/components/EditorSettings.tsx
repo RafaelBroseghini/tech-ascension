@@ -22,6 +22,7 @@ import { useNarrow } from "./useNarrow.ts"
 import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
 import type { FeatureId } from "../data/features.ts"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 const GROUPS = [
   { kind: "dark", label: "Dark" },
@@ -77,6 +78,7 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
   const [confirming, setConfirming] = useState(false)
   const promptId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef, confirming)
 
   useEffect(() => {
     if (!confirming) return

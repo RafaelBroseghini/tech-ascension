@@ -5,6 +5,7 @@ import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin } from "./useExit.ts"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 const STEPS = 3
 
@@ -31,6 +32,8 @@ function IdentityCard() {
   const first = useGame((state) => (state.legacy.runs > 1 ? 1 : 0))
   const [step, setStep] = useState(first)
   const mainRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
 
   useEffect(() => {
     mainRef.current?.focus({ preventScroll: true })
@@ -45,6 +48,7 @@ function IdentityCard() {
   return createPortal(
     <div className="event-backdrop" data-testid="identity-backdrop" onClick={keep}>
       <div
+        ref={dialogRef}
         className="event-modal identity-card"
         role="dialog"
         aria-modal="true"

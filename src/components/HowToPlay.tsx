@@ -4,6 +4,7 @@ import { createPortal } from "react-dom"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 const LAST_TROPHY = GOLD_SKILLS[GOLD_SKILLS.length - 1]?.name ?? "the last 10x dev skill"
 
@@ -23,6 +24,7 @@ export function HowToPlay() {
   const [open, setOpen] = useState(false)
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef, open)
 
   useEffect(() => {
     if (!open) return

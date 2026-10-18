@@ -4,6 +4,7 @@ import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
 import { useGame } from "../game/store.ts"
 import type { ActiveEvent } from "../game/store.ts"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 /**
  * One random event at a time. Nothing is applied until Yes. No, the backdrop, and Escape
@@ -57,6 +58,7 @@ function EventDialog({ event }: { event: ActiveEvent }) {
     }
   }, [event, money, xp, skills, equipment, owned, jobs, gigs, founder, activeBoost, foreverMult, tempMults, legacy, now])
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const eventId = event.id
 
   useEffect(() => {

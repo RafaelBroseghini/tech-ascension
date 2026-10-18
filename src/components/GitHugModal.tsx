@@ -7,6 +7,7 @@ import { formatNumber } from "../game/format.ts"
 import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 export const REPO = "https://github.com/RafaelBroseghini/tech-ascension"
 
@@ -42,6 +43,7 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
   const xpTotal = useGame((state) => state.xpTotal)
   const identity = useGame((state) => state.profile)
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const [hover, setHover] = useState<GitHugSquare | null>(null)
   const profile = useMemo(() => gitHugProfile({ entries, skills, gigs, jobs, owned, equipment, xpTotal, identity }), [entries, skills, gigs, jobs, owned, equipment, xpTotal, identity])
 
