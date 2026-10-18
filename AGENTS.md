@@ -1,297 +1,78 @@
-# Playing Tech Ascension
+# Tech Ascension
 
-Drive the game through `window.__GAME__`. Do not scrape buttons or guess DOM selectors.
+An incremental game: React 19, TypeScript, Vite, Zustand, three.js (globe), Tone (audio), Dexie (ledger). Game rules and tables live in code (`src/data`, `src/game`); read them there, not from memory or docs.
 
-`__GAME__` is installed for the dev server and for `vite preview` (it ships in the client bundle). `npm run smoke:play` loads the same harness in Vitest.
+## Commands
 
-## Rules
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Vite on http://127.0.0.1:43123 |
+| `npm test` | Unit tests: Vitest, node, `src/**/*.test.ts` |
+| `npm run smoke:play` | Harness playthrough (`src/game/smoke.play.ts`, happy-dom). Exits non-zero on any failed assert |
+| `npm run lint` | oxlint |
+| `npm run build` | `tsc -b && vite build` |
+| `npm run check:mobile` | Plays six viewports, fails on layout problems (skill: `.agents/skills/mobile-check`) |
+| `npm run play:agent` | Starts Vite if needed and opens the app in agent-browser (session `tech-ascension`) |
+| `npm run pace` | Pacing simulations (`docs/PACING.md`) |
 
-- Prefer `__GAME__` over DOM selectors for game state and mechanics. Use snapshot refs only to check the UI itself (see Browser checks).
-- Browser work goes through `npx agent-browser`, not Playwright. Set your own session first: `export AGENT_BROWSER_SESSION=<task-name>`. The unnamed session is shared with every other agent.
-- Run `npm run smoke:play` first to prove mechanics. It must exit non-zero on any failed assert.
-- Free play: `npm run play:agent`, then drive the open page with `npx agent-browser eval` and `__GAME__`.
-- Do not grind past the mid era in automated runs unless the user asks. Mid is capital ids 1-5 (era flips to `upper` at id 6, "Acquire rival SaaS"). Phases A to C and a single mid check (id 3, "WhyCombinator batch investment") are enough.
-- `npm test` runs the unit tests (Vitest, node, `src/**/*.test.ts`). `npm run smoke:play` runs only `src/game/smoke.play.ts` (happy-dom). `npm run lint` is oxlint, `npm run build` is `tsc -b && vite build`.
+CI (`.github/workflows/ci.yml`) runs lint, test, smoke and build on every PR and push to main. Run the same four before you push.
 
-## API
+## Before you finish
 
-```ts
-getState(): {
- money: number
- xp: number              // spendable XP (skills cost XP)
- xpTotal: number         // lifetime XP; gates and job requirements read this
- phase: "A" | "B" | "C" | "D"
- cps: number
- clickPower: number      // base $ per click (paid once the first job is taken)
- xpPerClick: number      // base XP per click, 1 + skills (what a click pays in phase A)
- xpPerSec: number       // idle XP/s: skills plus the jobs held that teach
- owned: Record<string, number>      // phase D capital rows, keyed by id ("1")
- skills: Record<string, number>     // phase A, keyed by skill id
- equipment: Record<string, number>  // Gear tab, keyed by gear id
- jobs: number[]                     // owned job ids
- gigs: number[]                     // cleared gig ids
- gold: number[]                     // owned gold skill ids (src/data/gold.ts)
- buyAmounts: (1 | 5 | 10 | "max")[] // amounts the Buying gold skills unlock; 1 is always there
- buyAmount: 1 | 5 | 10 | "max"      // what the shop's Buy control is set to
- hoverRate: number                  // hover clicks per second: 0 until a hover gold skill (or every catalog row) is owned
- offlineCapHours: number            // 8, or more with the Time away gold skills, plus 4 with the Long weekend Legacy perk
- unlocks: { gigBoard: boolean; jobBoard: boolean; gear: boolean; capital: boolean }   // gear opens at 10,000 lifetime XP (or once any gear is owned), independent of the boards
- nextUnlock: { key: string; name: string; tab: "A" | "B" | "C" | "G" | "D"; needs: string[]; either: boolean } | null   // the next thing to chase across the whole game; the shop has no banner; a locked board's lock panel names what it needs
- era: "early" | "mid" | "upper" | "q3" | "end"
- spriteTierId: number
- activeBoost: { mult: number; endsAt: number } | null
- savedAt: number
- foreverMult: number
- tempMults: Partial<Record<"click" | "cps" | "xpPerSec", { mult: number; endsAt: number }>>
- event: { eventId: number; name: string; lines: string[] } | null
- lastEvent: { eventId: number; name: string; lines: string[] } | null
- review: {
-  promptId: number
-  jobId: number
-  jobName: string
-  question: string
-  replies: { choice: "exceeds" | "meets" | "pip"; label: string; rating: string; lines: string[]; canAccept: boolean }[]
- } | null
- lastReview: { promptId: number; jobId: number; choice: "exceeds" | "meets" | "pip" | null; lines: string[] } | null
- lastPop: { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string } | null
- features: {
-  open: string[]      // career timeline rows unlocked so far, in order ("studio", "careerLog", "theme:dracula", ...)
-  fresh: string[]     // rows still marked NEW (unlocked, not used yet)
-  reveals: string[]   // reveals waiting to play
-  next: { id: string; name: string; via: string; fill: number; left: string } | null // the one dim outline on screen
-  upNext: { id: string; name: string; via: string; fill: number; left: string }[]   // the career log's Up next
- }
- careerLog: { size: number; last: Record<string, number | string | boolean> | null } // journal entries kept, and the newest as JSON
- profile: { handle: string; product: string; chosen: boolean } // the career's handle on GitHug and LinkedOut ("quiet-otter") and its product ("Otterly", the handle's animal plus a suffix), drawn from word lists; chosen once kept
- track: "ladder" | "founder"   // ladder until the player quits for the product
- founder: {
-  offered: boolean            // latched once the fork's card has shown
-  bridges: number             // raised after running out, at most 3
-  equityCut: number           // revenue given up for good: 0.1 per bridge
-  broke: boolean              // the out-of-runway choice is open
-  burnPerSec: number          // the burn running now: 0 on the ladder and while broke
-  runwaySec: number | null    // money over a negative net; null off the founder track or when the money does not run down
- }
- world: {
-  users: number                                  // all users; the goal is `target`
-  target: number                                 // 8,000,000,000
-  regionUsers: Record<string, number>            // by region id; a region with nobody is left out
-  resistance: number                             // 0 to 100
-  incidents: { id: number; kind: "ddos" | "block" | "law" | "rival"; region: string; endsAt: number; strength: number; cost: number }[]   // cost is what ending it takes now
-  demand: number; capacity: number               // requests a second asked and served
-  revenuePerSec: number                          // $/s the served users pay (not in `cps`); dropped users pay nothing
-  won: boolean                                   // latched at the target
- }
- legacy: {
-  runs: number          // careers started, counting the one under way
-  prestige: number      // spendable Prestige (Legacy perks cost it)
-  prestigeTotal: number // every Prestige ever earned; never falls
-  mult: number          // 1 + 0.03 * prestigeTotal, already folded into cps, clickPower, xpPerClick, xpPerSec, the offline credit and product growth
-  exitOpen: boolean     // the Exit would pay at least 1 Prestige (first career), or this is a later career
-  prestigeOnExit: number // Prestige selling the product now pays, earnings plus a new ending's bonus; 0 means exit() refuses
-  perks: string[]       // Legacy perk ids owned
-  endings: ("founder" | "nightOwl" | "sponsor")[] // the Hall of Fame
- }
-}
+- Run `npm run lint`, `npm test` and `npm run build`. Add `npm run smoke:play` when you touched anything the harness reads (store, economy, phases, gates).
+- UI, CSS or layout change: `npm run check:mobile`, then read the screenshots. Do not call a visual change fine without looking.
+- Run the smoke test first when you start, so you know the baseline is green.
+- Commit messages are conventional: `feat(scope):`, `fix(scope):`, `test:`, `perf(scope):`, `ci:`, `docs:`, `chore(deps):`.
 
-click(): { money: number; xp: number }
-buy(tierId: number, amount?: 1 | 5 | 10 | "max"): boolean   // phase D capital row (ids 1-25)
-buySkill(skillId: number, amount?: 1 | 5 | 10 | "max"): boolean
-buyJob(jobId: number): boolean      // a job's lifetime XP and price gate it
-buyEquipment(equipId: number, amount?: 1 | 5 | 10 | "max"): boolean   // a Gear tab row
-buyGold(goldId: number): boolean      // gold skill, paid in spendable XP; normal gates
-forceGold(goldId: number): boolean    // grants a gold skill, bypassing XP, order and price
-setBuyAmount(amount): 1 | 5 | 10 | "max"   // returns the amount now set (clamped to what is unlocked)
-completeGig(gigId: number): boolean   // normal gates
-forceGig(gigId: number): boolean      // bypasses XP / prior-gig / board gates
-setXp(n: number): void
-tick(ms: number): void
-setMoney(n: number): void
-forceBoost(mult: number, ms: number): void
-advanceOffline(ms: number): { credited: number; creditedXp: number; toast: string | null }
-forceEvent(eventId: number): boolean
-acceptEvent(): boolean
-dismissEvent(): void
-forceReview(promptId?: number): boolean // 1:1 for the highest job. False with no job or for a prompt outside that band
-answerReview(choice: "exceeds" | "meets" | "pip"): boolean // meets changes nothing; pip is refused when the cost cannot be paid
-dismissReview(): void
-previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
-careerLog(): Record<string, number | string | boolean>[]  // every journal entry, oldest first, one flat JSON object each
-seeFeature(id: string): boolean   // clear a NEW marker, as using the feature does; false for an unknown id
-clearReveals(): void              // drop the reveals waiting to play (NEW markers stay)
-setPopActive(cityId: string, on: boolean): boolean   // switch a deployed point of presence on or off; its clients go to the nearest one still on. False for the last one on
-setRegionActive(regionId: string, on: boolean): boolean   // switch a bought region on or off whole. False for the last region serving
-forceIncident(kind: "ddos" | "block" | "law" | "rival", regionId?: string): boolean   // open an incident now, on the biggest region by default. False at three live or for an unknown region
-respondIncident(incidentId: number): boolean   // pay `world.incidents[].cost` to end it. False when it is gone or the money is short
-setUsers(regionId: string, users: number): boolean   // set a region's users, up to what it can hold
-hire(hireId: string, amount?: 1 | 5 | 10 | "max"): boolean   // a Team row (src/game/globe/hires.ts), ladder only
-fire(hireId: string, amount?: 1 | 5 | 10 | "max"): boolean   // let people of a kind go, on either track ("max" is all of them); no refund. False with nobody of that kind
-goFullTime(): boolean             // quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for (`requitAt`)
-keepClimbing(): void              // close the fork's card
-raiseBridge(): boolean            // only out of runway and with bridges left: cash worth 30 minutes of burn, 10% of revenue given up for good
-returnToLadder(): boolean         // back to a job, from the founder track. Out of runway it gives up the highest job held (a lone first job stays); by choice all jobs stay. Either way quitting again waits for twice today's users
-rerollProfile(): boolean          // draw another handle (and a product from its animal), as the start card's first Reroll does; false once kept
-rerollProduct(): boolean          // draw another product suffix for the same animal, as the second step's Reroll does; false once kept
-keepProfile(): void               // keep the current one for good, as the start card's Start (agents: call it to clear the card)
-exit(): number | false            // sell the product: Prestige paid, or false when the Exit is not open or would pay 0
-buyLegacy(perkId: string): boolean // a Legacy perk (src/data/legacy.ts, `network.*`, `founder.*`, `capital.*`), each after the one before it in its track, for Prestige
-setPrestige(n: number): void      // sets spendable Prestige; prestigeTotal rises to match (tests only)
-reset(): void
-```
+## Driving the game: `window.__GAME__`
 
-The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/gear.ts`, capital in `src/data/capital.ts`). Every purchase price (skill XP, job XP, gear, capital) is multiplied by `PURCHASE_COST_SCALE = 0.85` in `src/data/costs.ts`; the exported rows are already scaled, so read costs from the data modules, never from memory. Payouts and gates are not scaled. Gates latch: owning what a gate leads to (a gig, a job, a capital row, any gear) keeps it open.
+Drive state and mechanics through `window.__GAME__`. Never scrape buttons or guess DOM selectors for game logic. It is installed in dev and in `vite preview`, and `smoke:play` loads the same harness. Source of truth: `src/game/harness.ts`; full reference: `docs/HARNESS.md`.
 
-- **A Skill grind.** 104 skills, bought with XP only. The used laptop's first copy (skill 1, `firstXpCost`) costs 90 XP so the first unlock comes within a minute; later copies and the skills after it cost a lot of clicks, and the next one stays locked until lifetime XP climbs past the last purchase. There is no $/s.
-- **B Gigs.** Gig Board opens at 14,000 lifetime XP with skills 15 (Portfolio) and 16 (React) owned (`GIG_BOARD_UNLOCK`). 65 gigs, each cleared once for a lump $ and an optional `retainerCps`. Each gig requires every earlier gig plus a skill set that grows by one skill each time (gig 1 needs skills 1–6), capped at the skill table. Gig 1 also needs 12,000 lifetime XP. Gig 8 ("Site maintenance retainer", 2 $/s) is the first retainer; gigs 1-7 pay a lump only.
-- **C Jobs.** Job Board opens at 40,000 lifetime XP and 6 cleared gigs (`JOB_BOARD_UNLOCK`). 31 jobs (each held once, salary $/s; twelve of them, the learning, teaching and research roles, also add idle XP/s through `xpPerSec` in `src/data/phases.ts`, and eleven pay a one-time lump of XP on hire through `xpLump`, added to both `xp` and `xpTotal`). Taking a job costs spendable XP (`xpCost`: a quarter of its `xpReq`, then the purchase scale; the Internship is free), never money. Job 1 (Internship offer) needs 35,000 lifetime XP; job 14 (Senior SWE) needs 160,000 XP.
-- **Your company** (the globe, the fleet, the world and a status page, `src/components/globe`). The globe is a small one on the desk, bottom left under the career log (`MiniGlobe`, shown once Your company is unlocked, hidden below 860 px, captioned with the users; its ring turns peach when serving is slow or dropping some requests and red on an incident or when most requests drop, a red badge counts the live incidents, and `GlobeFeed` says one line at a time above it what just happened: an incident that started or ended, a region's first users, a milestone, requests dropping or recovering (`feed.ts` is the pure part; nothing shows while the away note is up; below 860 px the activity-bar globe button carries a red dot while an incident is live)); drag turns it. The top bar's World cell (where the stage name used to be) shows the users of 8B with a thin progress bar, and goes red with the incident count while one is live; it opens the details too. Its expand button and the activity-bar globe button switch the shop to its **Company** tab (shown if the shop is hidden; `src/components/globe/CompanyTab.tsx`, a sixth shop tab keyed `W` in `ShopTab`, open with the studio, and never part of `nextUnlock` or the phase takeover), one narrow column of the status banner and live incident, the metrics, the world (led by one next-step line from `src/components/globe/nextStep.ts`: no users, a data law, dropped requests, incidents, near capacity, then the cheapest region to buy), the world (users against the 8B, resistance, regions, the Team and its Hire buttons), points of presence, cities, fleet, footprint, uptime bars and past incidents. The goal is `WORLD_TARGET` = 8,000,000,000 users (`src/game/globe/world.ts`). Users are tracked per region (`company.users`, regions in `src/data/regions.ts`, people per region in `world.ts`; the app can reach `REACH_CEILING` = 99% of them, about 8.2 billion in all). Each cleared gig seeds its client's region with `SEED_PER_GIG` users (gig ids walk `CLIENT_CITIES`). A region grows by `GROWTH_PER_SEC × reach × max(users, seed) × (1 − users/ceiling) × served × (1 − resistance/200) × the track's growth` (0.25 on the ladder, 2 as a founder; see The fork); `reach` is 1 for a bought region and 0.15 for one not bought, times how many points of presence it has live (three are full coverage) and how near the nearest one is, so locations drive users. A small share of all users spills into every region. Users send `RPS_PER_USER` = 0.1 requests a second each, so demand is `demandOf(users)` (a DDoS surge multiplies one region's share); capacity is `capacityOf(equipment)` (a base laptop plus the serving gear kinds). The share over capacity is dropped: the dropped users churn away and the drops cost `REVENUE_PER_DROPPED_RPS` dollars a second, so gear is the throttle and every new region forces a gear purchase. **Users pay.** Served users pay `arpuOf(users)` dollars a second each (`load.ts`: $0.0002 at scale, up to 81 times that for the first few thousand, so 1k users pay about the internship and 1M about the Senior SWE; table in `docs/PACING.md`), and dropped users pay nothing. `servingOf(...).revenuePerSec` is that total, `stepCompany` and `advanceCompany` return it as `earned` next to `lost`, and `settleGrowth` adds `earned` before charging `lost`, so the tick and the return from away both pay it (the away note's credit includes it). The top bar's `$ / Second` and the Company tab's "Revenue" figure include it; `getState().cps` does not. **The world fights back.** A global resistance meter (0 to 100, `resistanceTarget` of the users, with a lag) drags growth by up to half and makes incidents more frequent, harder and longer. Incidents are regional and capped at three live (`rollIncident`, `world.ts`): a DDoS surge multiplies a region's traffic, a censorship block stalls it and bleeds its users (a server there halves the bleed), a data-residency law does the same to a region without a live server (and never rolls where one is live), and a rival app halves its growth. They start once there are `INCIDENT_MIN_USERS` users, end on their own, or end at once when the player pays minutes of what the company earns (`incidentCost`; Respond in the world pane), which also takes 3 points off the resistance. **The win.** Reaching 8 billion latches `company.won`, writes the `world:won` journal line, shows a card in the world pane and multiplies everything the company earns by `WIN_MULT` (×1.25, or ×1.5 when won as a founder) for good; the game keeps going. Milestones at one million, one hundred million and one billion are journaled too, as are incidents. Growth, incidents and the win are stepped by `stepCompany`/`advanceCompany` (`src/game/globe/growth.ts`, in steps of `STEP_MS`, so offline time plays out too); the world rules are in `world.ts`. The status page keeps one bar per status day (`STATUS_DAY_MS`, 90 kept) in `company.uptime`, and the page is derived from those numbers (`src/game/globe/status.ts`).
-- **Gear** (its own shop tab, between Jobs and Capital; table in `src/data/gear.ts`). Opens at 10,000 lifetime XP. 110 repeatable items bought with `buyEquipment`. Later rows also wait on a job id. Only the Cloud, GPUs, Racks, Orbit and Mars sections serve requests (`SERVING_KINDS`, `servedUsersOf` in `load.ts`): each copy serves `cps × 12` requests a second, so `cps × 120` users. Those section headers carry a "Serves users" tag and their rows say how many users a copy serves; Desk, Home lab and Storage add no capacity.
-- **10x dev skills** (`gold` in the code and the harness: `src/data/gold.ts`, rules in `src/game/gold.ts`). Ten one-off perks bought once with spendable XP, shown in their own "10x dev" sub-tab of the Skills tab with a trophy and a description. A row opens at its lifetime-XP milestone and waits on the earlier row of its family. **Buying** (Bulk Buy ×5, ×10, Max at 8,000 / 60,000 / 600,000 XP) adds amounts to the shop's Buy control; without one, `buy`, `buySkill` and `buyEquipment` always buy one copy whatever `amount` asks for, and with one they buy up to that many. **Hover clicking** (2, 5, 10, 15 clicks/s from 20,000 XP; the endgame 20/s still comes from owning every catalog row) makes `hoverRate` positive. **Time away** raises the offline cap from 8 to 12, 16 and 24 hours. Prices are a quarter of the opening XP, then the purchase scale. Saves keep them in an optional `gold` list.
-- **D Capital.** 25 rows, from an angel syndicate seat to Mars Holdings. Opens on the Senior job (id >= 14) OR $500,000 held at some point (`peakMoney`, so spending it later does not close the gate). Eras by id: mid 1-5, upper 6-11, q3 12-14, end 15-25. Only `buy(1..25)` is valid. Row 1 costs $85,000 and row 3 costs $1,700,000 after the scale.
+- Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, world, founder, legacy, features, ...).
+- Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`.
+- Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `forceIncident`, `setUsers`, `setPrestige`, `previewEra`.
+- Answer prompts: `acceptEvent`, `dismissEvent`, `answerReview`, `dismissReview`, `keepProfile`, `keepClimbing`.
+- Company and prestige: `goFullTime`, `raiseBridge`, `returnToLadder`, `respondIncident`, `hire`, `fire`, `setPopActive`, `setRegionActive`, `exit`, `buyLegacy`.
+- `reset()` wipes the save back to high school. `careerLog()` returns the journal.
+- Purchase prices are scaled by `PURCHASE_COST_SCALE` in `src/data/costs.ts`; exported rows are already scaled. Never copy a price into a test or a doc; import it from the data module.
+- `forceX` helpers bypass gates; the plain version enforces them. Test gates with the plain version.
+- A save from another `version` is wiped on load (no migration). Change `version` only with the save format (`docs/SAVE.md`).
 
-- **The fork** (`src/game/globe/track.ts`, card in `src/components/globe/ForkCard.tsx`, the top-bar button in `src/components/FullTime.tsx`; the numbers it shows come from `src/game/founderOutlook.ts`, and the sim behind the burn is in `docs/PACING.md`). Every career is on the `ladder`: jobs pay salary and teach XP, and the product grows at ×0.25 (`growthMult` in `GrowthFacts`). The fork opens once the product has 1,000 users and a job is held. The first tick after that latches `founder.offered` and pins a "Go full-time on {product}?" card at the top of the shop's Company tab (no backdrop, no focus grab, nothing else blocked; the tab gets a dot while it waits), which shows the salary given up, the product revenue now and as a founder, the burn and the runway at today's numbers, and offers Quit and go full-time or Keep climbing. From then on a round red button with a hazard ring sits in the top bar beside the World cell (it stays at every width) and reopens the card and opens the Company tab on it; it never quits in one click, and while `requitAt` is set and the users are below it, it is shut and its tooltip says how many are needed. A **founder** draws no salary and learns nothing on the job (`idlePerSec` and `xpPerSec` skip the jobs, in one place, `jobsPay` in `economy.ts`; the jobs stay held, so the résumé, the gates and the features do not change, and `buyJob` is refused), grows ×2, earns ×3 on served users times `1 − equityCut`, and carries a burn of `burnOf(users)` = `BURN_BASE + BURN_ROOT × √users` dollars a second. The top bar shows a Founder chip with the runway ("Runway 12m", "Profitable") that opens the Company tab, and the world pane's next step names the runway while the net is negative. Money reaching 0 as a founder stops the burn and sets `founder.broke`; the card reads "{product} ran out of runway" and cannot be dismissed, with **Raise a bridge** (while `bridges < 3`: cash worth 30 minutes of burn, `equityCut` + 0.1, `broke` cleared) or **Go back to a job** (the track returns to the ladder, the highest job is given up, `requitAt` = twice today's users; users and gear stay). The Jobs tab as a founder says so and offers Take a day job again, which keeps every job. Time away runs the burn too, floored at the smaller of the balance you left with and a minute of burn; if the stretch would have run out, `broke` is set on return. All of this settles in `settleGrowth` (`growth.ts`), which the tick and `hydrate` both use. The win at 8B pays ×1.5 as a founder instead of ×1.25. The fork is in the save as an optional `founder` block (`docs/SAVE.md`).
-- **Demand scale.** `demandOf(users)` is `users × 0.1`: a thousand users send 100 requests a second, a million 100,000, and eight billion 800 million. `src/game/globe/world.test.ts` pins the calibration: one copy of every serving row up to $1M serves over a hundred thousand users but not a billion, and five copies of every serving row serve all eight billion. Points of presence can be switched off one by one or by region (`footprint.off`, `footprint.dark`, both optional in the save); traffic goes to the nearest one still on.
-- **Prestige: the Exit** (`docs/PRESTIGE.md`; data in `src/data/legacy.ts`, rules in `src/game/legacy.ts` and `src/game/perks.ts`; the buttons are in admin mode only). Every career builds one product; `exit()` sells it. It pays `floor(cbrt(earnings across all careers / PRESTIGE_EARN_SCALE))` Prestige in total, so an Exit pays the rungs this career climbed (earnings are dollars credited, `stats.lifetimeEarned`, spending ignored; `setMoney` raising a balance counts), plus `ENDING_BONUS` (5) the first time a career wins the world with an ending (`founder`, `nightOwl`, `sponsor`), which does not count as an earnings rung. The Exit is open on a later career from the start and on the first once it would pay at least 1 (a win alone does), and it needs a total of at least 1. It starts over money, XP, skills, gigs, jobs, gear and capital, the click boost and event multipliers, and the whole product: users, regions bought, hires, resistance, incidents, the win and its multiplier, the track (back to the ladder), the burn, the bridges and their equity cost. A new product name is drawn and the start card reopens on the product beat (the handle stays). Prestige, `prestigeTotal`, Legacy perks, the Hall of Fame, 10x dev skills, the career log and the timeline stay. `prestigeTotal` gives `1 + 0.03 × prestigeTotal` on every income and XP stream (through `modFactors`, so the offline credit gets it) and on product growth, both tracks. Legacy perks (three tracks of five, each after the one before, 106 Prestige in all) apply now and at the start of every career: Network (1, 2, 4, 7, 12) is a head start, Founder (2, 4, 7, 11, 16) is 1,000 users at the home region, burn −25%, the first bridge free, growth ×1.5, product revenue ×1.5, and Capital (2, 4, 7, 11, 16) is offline cap +4 h, capital rows −10%, gear rows −10%, salaries and retainers ×2, capital income ×1.5. The Sell button is in the Company tab and in the Prestige panel (the crown on the activity bar), with a confirmation card (the first Exit asks twice) and a headline card.
-- `cps` is idle $/s from owned items (retainers + salaries + equipment + capital). Click boosts do not change it. Product revenue from users is separate, in `world.revenuePerSec`; the top bar's $ / Second shows both.
-- `clickPower` is the base $ payout. Every click always pays `xpPerClick × activeBoost.mult` XP; dollars wait until the first job. After that, clicks also pay `clickPower × activeBoost.mult`. Idle $/s still starts at the first retainer.
-- Money mode starts at the first cleared gig (or whenever money already exists, as with a forced balance).
-- Skills cost XP and spending never lowers `xpTotal`. Skills and jobs cost XP; equipment and capital cost money. Repeatable items cost `floor(base × 1.15 ^ owned)`.
-- `nextUnlock` is the one thing to chase across the whole game. It names the first skill that has not been bought yet, not a closed tab. Once every skill is owned, closed gates come first: Gear (10K XP), Gig Board, Job Board, then Capital. With every gate open it walks Gigs, Jobs, Gear, then Capital and stops at the first row that has not been bought yet. An earlier unlocked row that was never bought wins over a later row. The first copy is enough for repeatable gear, skills and capital. `needs` is never empty.
-- The shop has no per-tab banner. A closed board shows its lock panel (what it still needs); the rest is the row's own lock. `getState().nextUnlock` is still the whole-game suggestion (`nextUnlock(progress)` in `src/game/nextUnlock.ts`).
-- `spriteTierId` is the art id of the stage sprite: the highest owned capital tier, else the art of the furthest job, gig or skill. It is `1` before the first purchase. `era` is `early` until a capital tier is owned.
-- The shop lists owned rows plus the next unowned row, even while that row is still locked. Skills cannot be bought until `xpTotal` reaches `unlockAtXp`. Gear and capital first copies wait until their reveal gate (held money, and a job for some gear). `buy(tierId)` still enforces the capital gate.
-- `tick(ms)` advances idle time immediately, capped at 8 hours. It can also roll the normal boost clock. Skills keep studying (XP/s) in every phase, and held jobs that teach add to it.
-- `forceBoost(mult, ms)` replaces the current click boost. Use this instead of waiting for a random roll. On screen a boost only turns the balance card (`HeroMoney`) the theme accent, gold at ×10 and up, with the multiplier and a time bar at its foot (`data-testid="hero-boost"`); there is no boost chip on the stage and no boost cell in the top bar.
-- `advanceOffline(ms)` writes `savedAt` that far in the past and rehydrates. Credit is idle × seconds, capped at 8 hours (`offlineCapHours`, longer with Time away gold skills), for both $ and XP. The toast is a sticky note on the desk: one diary sentence, a newline, then the credit (`credited $X`, `studied +X XP`, or both). The sentence follows the career (studying, a retainer, a job, senior, empire) and rotates once per hour away. The credit math is unchanged.
-- `forceEvent(id)` opens a random event now (ids 1–110, `src/data/events.ts`) without applying it. Returns false for an unknown id. An open event is replaced, never stacked. `acceptEvent()` takes the deal and returns false when a trade's cost cannot be paid. `dismissEvent()` declines and changes nothing. `event` is the modal on screen, `lastEvent` is kept after either choice. Stakes are minutes of what you currently earn (idle, or half a click per second when that is higher), and at least 1% of the balance you hold. A gift only adds money or XP. A trade swaps one for the other. Nothing only deducts. Random events roll roughly every 240s from rows whose `eras` include `any` or the current era. Optional `requires` (job, gig, gear) is AND across fields and OR inside a list; a row with no `requires` stays era-only. Cash events (money gifts and every trade) wait until money exists. A loss never pushes money or spendable XP below 0, and lifetime XP never falls.
-- `forceReview(promptId?)` opens a 1:1 for the highest job you hold (`src/data/reviews.ts`). It returns false with no job or when `promptId` is outside that job's band. Omit `promptId` to roll one. It replaces an open event or review without applying it. `answerReview("exceeds")` is a money gift (12 minutes). `answerReview("meets")` closes the meeting and changes nothing. `answerReview("pip")` trades money for XP (10 minutes) and returns false when that cost cannot be paid, leaving the meeting up. `dismissReview()` leaves without a reply. `review.replies[].lines` are the same `+$` / `-XP` strings as events; meets has none and shows no change. A 1:1 rolls about every 12 minutes, only once a job is held, and waits out an event or a meeting already on screen. If both clocks are due, the event wins and the 1:1 slips 5 seconds.
-- `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
-- Completing a gig pays its lump with a confetti burst on the stage and nothing else: no card, no centered pop, nothing to dismiss.
-- The top bar's XP slot shows only the click rate and the idle XP/s; the XP total is in the metrics modal.
-- Below 860 px the desk's status bar is not shown, and the top bar drops the money and XP slots: their rates (money a second and a click, XP a click and a second) are at the top of the metrics modal instead (`useLiveRates`). The emoji.gg credit is the last line of the settings menu at every width. Its controls (Sound, Click, Rosters, Theme) are in the settings menu (`EditorSettings.tsx`), and the settings gear carries a green mark while a new setting is unpicked. Picking a setting clears its mark.
-- Theme changes cross-fade (`ideTheme.ts`, View Transitions, 220 ms; instant without the API or with reduced motion), and a hover preview only paints once the pointer rests on a row for `PREVIEW_REST_MS` (120 ms).
-- The desk behind the stage is an activity bar (the Your company globe, the career log), the career log sidebar and a status bar. The status bar names the band the career is in (High school to Mars, by stage art id, `src/data/idePacks.ts`). `previewEra(era)` shows that era's first band there with a PREVIEW chip, the way the shop's Capital era tab does; `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era. The snapshot has no field for it; read `data-preview` on `[data-testid='ide']`.
-- One tab plays at a time (`src/game/openGame.ts`): the first holds the `tech-ascension-writer` Web Lock. A second tab shows "open in another tab" with Play here, which asks the playing tab over a BroadcastChannel to save once more and stop writing (`handOffCareer`), then boots with that save; the old tab reloads into the same screen. A tab that does not answer in 4 s has its lock stolen. A waiting tab also starts by itself when the playing tab closes. `__GAME__` exists only in the tab that plays.
-- On the first career, before the first click, a "Click me" chip (`Tap me` on a touch screen) beside the stage art points at it (`data-testid="first-click"`); it is gone once lifetime XP is above 0.
-- A save from any other `version` is wiped on load. There is no migration.
-- `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
-- `reset()` wipes the save back to high school.
-- **Career timeline** (table in `src/data/features.ts`, gates in `src/game/features.ts`, journal in `src/game/careerLog.ts`, wiring in `src/game/careerSync.ts`). The desk is earned: a new career has XP and the Skills tab. Used laptop (skill 1) opens Your company (the activity-bar globe button; its reveal card's Try it opens the shop's Company tab), Git + GitHug hygiene (10) the career log and the GitHug profile (a contribution graph from the journal, pinned repos, and the real repo's Star pill, which stays off screen until then), Portfolio site live (15) LinkedOut, the first 10x dev row in reach the 10x dev tab, 10K XP the Gear tab, the first dollar the $ counters (`$/click` shows once a job pays it), the first gig the rosters, the first job the metrics, the Thocky keyboard click sounds, the Drawing tablet editor themes, a hover skill hover click, the headset music, and 15 minutes at the desk (clicking, idling, or with the tab left open) or an earlier return after 10 minutes away the desk cat. Editor themes, click sounds and music styles keep unlocking with stage art tiers (from the Internship band on), desk gear and capital eras. Each unlock is logged, marked NEW until used (`seeFeature`), and queued to reveal (`clearReveals` drops the queue); four or more at once, or any during a return, play only the loudest. Closed shop boards are hidden except the next one. Gates read progress, so forced progress (`forceGig`, `setXp`) unlocks what it reaches. `advanceOffline` past 10 minutes is a return: it logs one and brings the cat. Every step of the career (skills, gigs, jobs, first copies, boards, eras, perks, unlocks, returns, events, 1:1s, milestones) is a journal entry, printed as JSON lines by `careerLog()`. Admin mode shows the whole desk.
-- **Identity** (`src/game/identity.ts`, start card in `src/components/IdentityPicker.tsx`). Every new career (a fresh save or `reset()`) draws a Tailscale-style handle (`quiet-otter`) and a product name (`Otterly`: the handle's animal plus one of eight suffixes), and opens a three-step start card with Next and Back: who you are (handle, Reroll), what you are building (product, its own Reroll that changes only the suffix) and the bet (Start keeps both for good; `keepProfile()` clears the card from any step). Rerolling the handle redraws the product. The product names the globe in the UI (the activity-bar button, the Company tab, the status page, the top-bar World cell). There is no real name; GitHug and LinkedOut (`linkedout.com/in/<handle>`) both go by the handle. Nothing is ever typed. It is saved in an optional `profile` block with `product` and `chosen`; a save is only accepted with a handle the lists can draw, and a product the handle's animal cannot draw is replaced by a fresh one. A save from before handles gets one, already kept, with no card; one from before products gets a product, keeping `chosen`. A test scans all 1,024 handles and all 256 products, as shown and run together, for slurs and slang.
+## Browser work
 
-## Smoke (`npm run smoke:play`)
-
-Vitest + happy-dom, all through `__GAME__`:
-
-1. **Phase A.** Click until the first skill is affordable. Clicks pay XP only, money and $/s stay 0, `buySkill` spends XP and keeps `xpTotal`, skills study while idle.
-2. **A to B.** `setXp` and buy Portfolio and React: the Gig Board opens (not before both), `completeGig` is gated, the first clear pays the lump (clicks stay XP-only until a job), `lastPop` is large.
-3. **B.** The first retainer gig is the first `$/s`.
-4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash.
-   **Gear.** Gear and `buyEquipment` stay shut until 10,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
-5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
-6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
-7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The toast is a diary sentence plus that credit.
-8. **10x dev skills.** A bulk skill is gated by lifetime XP and price, `amount` only works once unlocked, hover rate and offline cap follow the gold owned.
-9. **Events and 1:1s.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, and a 1:1 waits for a job and its three replies pay, sit or bill you.
-10. **The world.** Users seed from gigs and grow per region while the gear serves them (a laptop alone settles near what it serves), a DDoS surge multiplies a region's demand, paying `cost` ends an incident and is refused when short, and eight billion users latch `won` once, pay the ×1.25 forever multiplier once, and write `world:won` to the journal; the game keeps ticking.
-11. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens Your company (logged and queued), Linux CLI basics opens nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return and brings the cat; after a wipe, 15 minutes of `tick` brings it too.
-12. **The fork.** A job and 1,000 users open it and latch the offer, quitting stops the salary and the job XP while the jobs stay and the revenue triples, running out stops the burn and opens the choice, a bridge restores cash and takes a tenth of the revenue, going back resumes a salary one rung down and waits for twice the users, time away floors the balance at a minute of burn and leaves the choice waiting, and the red button reopens the card without quitting.
-13. **Prestige.** The Exit is shut at the start; `setMoney` past the first Prestige opens it; `exit()` pays Prestige, and money, skills, gigs, jobs, capital, users, regions and hires are back to fresh, with a new product name and the handle kept; 10x dev skills survive; the multiplier is in `cps` and `xpPerClick`; `buyLegacy` enforces order and price, and `capital.offline` raises `offlineCapHours` by 4.
-
-## Free play (`npm run play:agent`)
-
-Starts Vite on http://127.0.0.1:43123 if it is not already up, opens the app in agent-browser under the session `tech-ascension`, and stays up until the process is stopped (SIGINT closes the browser and Vite). Set `AGENT_BROWSER_HEADED=1` to show the window. Set `AGENT_BROWSER_EXECUTABLE_PATH` to use a specific Chrome. The first run on a machine needs `npx agent-browser install` (`--with-deps` on Linux).
-
-From another process, use the same session:
-
-```bash
-export AGENT_BROWSER_SESSION=tech-ascension
-npx agent-browser eval "window.__GAME__.getState()"
-npx agent-browser eval "(() => { const g = window.__GAME__; for (let i = 0; i < 90; i++) g.click(); return g.getState().xp })()"
-npx agent-browser close
-```
-
-`eval` takes one JavaScript expression and prints its value as JSON, awaiting a returned promise. Wrap statements in an IIFE, as above. Add `--json` for the full response envelope (the value sits under `data.result`).
-
-## Browser checks (usability and visuals)
-
-Without `play:agent`, start with `npm run dev`, then `npx agent-browser open http://127.0.0.1:43123`. Run `npx agent-browser skills get core --full` once for the full command reference (it matches the installed version).
-
+- Use `npx agent-browser`, not Playwright. Set your own session first: `export AGENT_BROWSER_SESSION=<task-name>`. The unnamed session is shared with every other agent. Always end with `npx agent-browser close`.
 - Set state with `eval` and `__GAME__` (`reset()`, `keepProfile()` to clear the start card, `setXp`, `forceGig`, `setMoney`). Do not click through the grind.
-- Read the page with `snapshot -i` (interactive elements as `@e1` refs). Act with `click @e8`. Re-snapshot after the page changes; refs go stale. `find role tab click --name "Gigs"` works without a snapshot. A tab only exists once its board is unlocked, so unlock first.
-- Look with `screenshot <path>`; add `--annotate` to overlay the ref numbers. Set the size first with `set viewport 1280 800`. Read the PNG yourself before calling a visual change fine.
-- Check narrow layouts with `npm run check:mobile` (see `.agents/skills/mobile-check/SKILL.md`): it plays six viewports through `__GAME__` and fails on layout problems. Read its screenshots too. For one look by hand, `set viewport 390 844` and `screenshot`.
-- Read `console` and `errors` after a run; a clean game logs only the Vite connect lines and the React DevTools notice.
-- Stay in phases A to C plus the single mid check (see Rules). Always end with `close`.
-- `node scripts/capture-visuals.mjs <prefix> [outDir]` writes the standard phase A to D and mobile screenshots (default outDir is the OS temp dir).
+- Read the page with `snapshot -i` (refs like `@e1`), act with `click @e8`, re-snapshot after the page changes. Look with `screenshot <path>` and read the PNG. Set the size first: `set viewport 1280 800`.
+- Check `console` and `errors` after a run; a clean game logs only the Vite connect lines and the React DevTools notice.
+- Full command reference: `npx agent-browser skills get core --full` (once per session). Recipes and example `__GAME__` sequences: `docs/AGENT_PLAY.md`.
 
-## Example sequences
+## Automated runs
 
-Phase A, then the Gig Board:
+- Stay in phases A to C plus one mid-era check (capital id 3). Mid is capital ids 1-5; the era flips to `upper` at id 6. Go further only when the user asks.
+- A phase unlocks by lifetime XP (`xpTotal`), not spendable XP. Spending never lowers `xpTotal`.
+- Free play: `npm run play:agent`, then `npx agent-browser eval "window.__GAME__.getState()"`. `eval` takes one expression; wrap statements in an IIFE.
 
-```js
-const game = window.__GAME__
-game.reset()
-while (game.getState().xp < 90) game.click() // phase A clicks pay XP only (money stays 0); the first skill is 90 clicks
-game.buySkill(1)
-game.setXp(30_000)
-game.buySkill(15) // Portfolio
-game.buySkill(16) // React: Gig Board opens (phase B)
-for (let id = 2; id <= 6; id++) game.buySkill(id) // gig 1 needs skills 1-6
-game.completeGig(1) // first $; clicks still pay XP only until the first job
-game.getState()
-```
+## Code conventions
 
-Jobs and capital:
+- ESM TypeScript with explicit `.ts` / `.tsx` extensions in relative imports (`import { x } from "./economy.ts"`). Use `import type` for types.
+- Game data is plain typed arrays with unique ids in `src/data`. Nothing assumes a row count; a table change is a data edit, not a code change. Rules and pure logic are in `src/game`; keep them free of React so they run under the node tests.
+- Rules go in pure functions and the store commits their patches (see `src/game/globe/actions.ts`). Add the harness method when a new action needs driving from tests.
+- Money is a JS double. Do not add exact-integer logic past 1e15 without switching `economy.ts` to a big-number library.
+- Asset URLs go through `import.meta.env.BASE_URL` or Vite-processed HTML so they work under the GitHub Pages sub-path. Check with `npm run preview:pages`.
+- Styles: tokens in `src/styles/tokens.css`; honor `prefers-reduced-motion` (`src/styles/motion.css`). Small screens are 860 px and below (`src/styles/mobile.css`).
+- Tests sit next to the code as `*.test.ts`. Pin rules with numbers imported from the data modules. Store-level tests are `*.store.test.ts`.
+- Match the surrounding code: comment density, naming, idiom. Comments say why, not what.
+- No new dependencies without a reason; the repo already dropped unused ones.
+- Do not hand-edit `emojiManifest.json`; the generator overwrites it (`npm run generate:emojis`, see the emoji-gg skill).
 
-```js
-const game = window.__GAME__
-game.reset()
-game.setXp(200_000)
-for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job Board
-game.buyJob(1) // free internship (needs 35K XP), salary $/s
-game.buyJob(14) // 34,000 spendable XP: capital opens with no cash (holding $500,000 opens it too)
-game.setMoney(85_000)
-game.buy(1) // $85,000 after the scale; buy(19) and up cost trillions
-```
+## Where things are
 
-Click boost (capital id 3, still mid):
+- `docs/CODEMAP.md`: what to edit for a given change. Start here when you do not know where code lives.
+- `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, the company and world, the fork, prestige, events and 1:1s, offline credit, the career timeline, identity).
+- `docs/AGENT_PLAY.md`: smoke scenarios, free play, browser checks, example sequences.
+- `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/COMPANY_ARC.md`: the company and world design. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art and desk chrome.
+- Skills: `.agents/skills/mobile-check` (layout), `.agents/skills/emoji-gg` (emoji manifest).
 
-```js
-const game = window.__GAME__
-game.reset()
-game.setXp(40_000)
-for (let id = 1; id <= 6; id++) game.forceGig(id)
-game.buyJob(1) // dollars per click wait for the first job; without one a click pays XP only
-game.setMoney(7e6)
-game.buy(3) // $4,000,000: the capital gate opens at $500K held
-game.forceBoost(5, 10_000)
-const before = game.getState()
-game.click()
-// money increased by before.clickPower * 5; cps unchanged
-```
+## Keep this file small
 
-Career timeline:
-
-```js
-const game = window.__GAME__
-game.reset()
-game.getState().features // { open: [], fresh: [], reveals: [], next: { id: "careerLog", ... }, upNext: [...] }
-game.setXp(90)
-game.buySkill(1) // Your company unlocks: logged, queued to reveal
-game.setXp(2_300)
-for (let id = 2; id <= 10; id++) game.buySkill(id) // Git + GitHug hygiene: the career log, marked NEW
-game.seeFeature("careerLog")
-game.advanceOffline(30 * 60 * 1000) // a return: logged, and the desk cat moves in
-game.careerLog() // every step as JSON, oldest first
-```
-
-Offline sim:
-
-```js
-const game = window.__GAME__
-game.reset()
-for (let id = 1; id <= 8; id++) game.forceGig(id) // gig 8 is the first retainer: first $/s
-game.advanceOffline(60 * 60 * 1000)
-game.advanceOffline(10 * 60 * 60 * 1000)
-```
+This file is loaded into every agent's context. Add a rule here only if an agent would get it wrong without it and it is not obvious from the code. Put explanations, tables and numbers in `docs/` and link them. When the harness API changes, update `docs/HARNESS.md`, not this file.
