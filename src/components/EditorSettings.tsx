@@ -12,7 +12,6 @@ import { getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
-import { usableHoverRate } from "../game/autoClick.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
@@ -143,7 +142,7 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
 export function EditorSettings() {
   const saved = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
-  const hoverPerSec = useGame((state) => usableHoverRate(hoverRate(state.gold, ownsEverything(state))))
+  const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuId = useId()
