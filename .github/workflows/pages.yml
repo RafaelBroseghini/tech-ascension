@@ -9,8 +9,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # One production deploy at a time. Let the in-progress run finish.
 concurrency:
@@ -18,7 +16,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Lint, tests, the smoke play and the build must pass before anything is published.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: ci
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
