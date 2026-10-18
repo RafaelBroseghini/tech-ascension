@@ -14,6 +14,8 @@ import { hydrate } from "./save.ts"
 import { advanceCompany, growthFacts } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { trackFactsOf } from "./globe/track.ts"
+import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
+import { REGIONS } from "../data/regions.ts"
 import { useGame } from "./store.ts"
 
 /** The drops the company costs over a span, with incident rolls off. Money tests subtract it so they count the income alone. */
@@ -553,7 +555,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
 test("the world: users per region, gear as the throttle, incidents, and the win", () => {
   game.reset()
   game.keepProfile()
-  expect(game.getState().world).toMatchObject({ users: 0, target: 7_000_000_000, resistance: 0, incidents: [], won: false })
+  expect(game.getState().world).toMatchObject({ users: 0, target: 8_000_000_000, resistance: 0, incidents: [], won: false })
 
   // A cleared gig seeds its client's region, and the users grow from there while the gear serves them.
   game.forceGig(1)
@@ -588,10 +590,8 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   expect(game.getState().world.incidents).toEqual([])
   expect(game.forceIncident("meteor" as never)).toBe(false)
 
-  // Seven billion users win it once: a card, the journal, a forever multiplier, and the game keeps going.
-  for (const [region, share] of Object.entries({ "americas-east": 0.04, "americas-west": 0.043, "south-america": 0.055, europe: 0.093, africa: 0.174, asia: 0.589, oceania: 0.006 })) {
-    game.setUsers(region, 6.999e9 * share)
-  }
+  // Eight billion users win it once: a card, the journal, a forever multiplier, and the game keeps going.
+  for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 31; id++) game.buyJob(id)
@@ -607,7 +607,7 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
   game.tick(Date.now() + 99 * 3_600_000)
   expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
-  expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Seven billion users" })
+  expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Eight billion users" })
 
   // What an incident costs is what the harness says: minutes of everything earned, the product's revenue and the win's multiplier in.
   expect(game.forceIncident("block")).toBe(true)
@@ -629,9 +629,7 @@ test("the world while away: the win is journaled and paid when it happens offlin
   for (let id = 1; id <= 31; id++) game.buyJob(id)
   game.setMoney(1e15)
   for (const id of [109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
-  for (const [region, share] of Object.entries({ "americas-east": 0.04, "americas-west": 0.043, "south-america": 0.055, europe: 0.093, africa: 0.174, asia: 0.589, oceania: 0.006 })) {
-    game.setUsers(region, 6.999e9 * share)
-  }
+  for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
   const mult = game.getState().foreverMult
   game.advanceOffline(8 * 3_600_000)
   expect(game.getState().world.won).toBe(true)

@@ -9,7 +9,7 @@ describe("theme switching is smooth", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     fades = 0
-    ;(document as Document & { startViewTransition?: unknown }).startViewTransition = (update: () => void) => {
+    ;(document as unknown as { startViewTransition?: unknown }).startViewTransition = (update: () => void) => {
       fades++
       update()
       return {}
@@ -19,7 +19,7 @@ describe("theme switching is smooth", () => {
     fades = 0
   })
   afterEach(() => {
-    delete (document as Document & { startViewTransition?: unknown }).startViewTransition
+    delete (document as unknown as { startViewTransition?: unknown }).startViewTransition
     vi.useRealTimers()
   })
 

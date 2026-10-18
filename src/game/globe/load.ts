@@ -7,7 +7,7 @@ import type { Incident } from "./world.ts"
 /** Requests a second one laptop serves before any gear is bought. */
 export const BASE_RPS = 30
 
-/** Requests a second each user sends: one every ten seconds. Seven billion users send 700 million a second. */
+/** Requests a second each user sends: one every ten seconds. Eight billion users send 800 million a second. */
 export const RPS_PER_USER = 0.1
 
 /** Gear kinds that serve requests. Each copy serves `cps × RPS_PER_CPS` requests a second. */

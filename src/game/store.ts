@@ -1186,7 +1186,7 @@ useGame.subscribe((state, prev) => {
   if (!state.company.won || prev.company.won) return
   const toastSeq = state.toastSeq + 1
   useGame.setState({
-    ...makePop(state, "unlock", 0, "Seven billion users"),
+    ...makePop(state, "unlock", 0, "Eight billion users"),
     celebrationNonce: state.celebrationNonce + 1,
     ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, state.profile.product, winMultOf(state.founder.track)) }, toastSeq }),
   })

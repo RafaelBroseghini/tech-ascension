@@ -42,7 +42,7 @@ export function nextStep(company: Company, fork?: ForkView): NextStep {
     return { tone: "warn", text: `${n} incident${n === 1 ? "" : "s"} slowing you down. Respond to end one now, or wait it out.` }
   }
   if (company.health === "d") return { tone: "warn", text: "Serving is near its limit. Gear marked Serves users (Gear tab, Cloud and below) keeps growth going." }
-  if (company.won) return { tone: "won", text: "The world is yours. Keep the seven billion served." }
+  if (company.won) return { tone: "won", text: "The world is yours. Keep the eight billion served." }
   const unbought = REGIONS.filter((region) => !company.regions.includes(region.id)).sort((a, b) => a.price - b.price)[0]
   if (unbought) return { tone: "calm", text: `Growing. Buying ${unbought.name} lets the app reach far more people there.` }
   return { tone: "calm", text: "Growing. More points of presence bring each region closer." }

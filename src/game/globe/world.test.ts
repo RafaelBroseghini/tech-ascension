@@ -25,10 +25,10 @@ const serving = GEAR.filter((item) => SERVING_KINDS.includes(item.kind))
 const copies = (n: number, only: (item: (typeof serving)[number]) => boolean = () => true) => Object.fromEntries(serving.filter(only).map((item) => [String(item.id), n]))
 
 describe("the calibration", () => {
-  it("the target is within the world's reach, and the regions add up to about eight billion", () => {
+  it("the target is within the world's reach, and the regions add up to about eight billion and a bit", () => {
     expect(WORLD_CEILING).toBeGreaterThan(WORLD_TARGET * 1.02)
-    expect(WORLD_POPULATION).toBeGreaterThan(7.8e9)
-    expect(WORLD_POPULATION).toBeLessThan(8.3e9)
+    expect(WORLD_POPULATION).toBeGreaterThan(8.1e9)
+    expect(WORLD_POPULATION).toBeLessThan(8.4e9)
   })
 
   it("early gear cannot serve a billion users, and does serve a hundred thousand", () => {
@@ -37,7 +37,7 @@ describe("the calibration", () => {
     expect(capacityOf(early)).toBeGreaterThan(demandOf(1e5))
   })
 
-  it("a handful of every serving row serves seven billion, so the win can be reached", () => {
+  it("a handful of every serving row serves eight billion, so the win can be reached", () => {
     expect(capacityOf(copies(5))).toBeGreaterThan(demandOf(WORLD_TARGET))
   })
 

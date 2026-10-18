@@ -158,8 +158,8 @@ describe("milestones and the win", () => {
     expect(stepCompany(step.state, facts(3, { "110": 1 }), 60_000, 120_000, never).notes).toEqual([])
   })
 
-  it("latches the win at seven billion and keeps the company running", () => {
-    const near = Object.fromEntries(REGIONS.map((r) => [r.id, ceilingOf(r.id) * (6.999e9 / WORLD_CEILING)]))
+  it("latches the win at eight billion and keeps the company running", () => {
+    const near = Object.fromEntries(REGIONS.map((r) => [r.id, ceilingOf(r.id) * (7.999e9 / WORLD_CEILING)]))
     const full = growthFacts(gigs(8), { "110": 20 }, { regions: REGIONS.map((r) => r.id), pops: ["ashburn", "frankfurt", "tokyo", "saopaulo", "lagos", "sydney", "sf"], off: [], dark: [] })
     const step = stepCompany(state({ users: near }), full, 60_000, 60_000, never)
     expect(totalUsers(step.state.users)).toBeGreaterThanOrEqual(WORLD_TARGET)

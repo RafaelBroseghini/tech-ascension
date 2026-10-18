@@ -151,13 +151,13 @@ export function endingOf(track: Track, hiredShare: number): Ending {
 export function endingLine(ending: Ending | null | undefined, product: string): string {
   switch (ending) {
     case "founder":
-      return `Seven billion people use ${product}. You built this.`
+      return `Eight billion people use ${product}. You built this.`
     case "sponsor":
-      return "Seven billion users. Your team was incredible. You were in a lot of their standups."
+      return "Eight billion users. Your team was incredible. You were in a lot of their standups."
     case "nightOwl":
-      return "Seven billion users, on nights and weekends. Go to bed."
+      return "Eight billion users, on nights and weekends. Go to bed."
     default:
-      return "Seven billion users. The world is yours."
+      return "Eight billion users. The world is yours."
   }
 }
 
