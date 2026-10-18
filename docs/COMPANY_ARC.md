@@ -4,7 +4,7 @@ Status: steps 1 (names and the intro), 2 (users pay), 3 (the fork), 4 (hires and
 
 ## The story
 
-You have a used laptop and an idea. The idea becomes a product. The product is yours for the whole game: it is the globe. Gigs pay rent and bring its first customers. Jobs pay for its servers at night and on weekends. At some point you can bet on it: quit the ladder and run it full-time. Its finish line is seven billion users.
+You have a used laptop and an idea. The idea becomes a product. The product is yours for the whole game: it is the globe. Gigs pay rent and bring its first customers. Jobs pay for its servers at night and on weekends. At some point you can bet on it: quit the ladder and run it full-time. Its finish line is eight billion users.
 
 Today the globe is "Your company" with no name, the jobs read as other people's companies, and the capital rows read as investing in other people's companies. This plan gives the product a name, makes the day job and the product two visible tracks, and turns the moment you choose between them into the game's central decision.
 
@@ -13,7 +13,7 @@ Today the globe is "Your company" with no name, the jobs read as other people's 
 The start card (`IdentityPicker`) is already the first modal. It grows into a short intro of three beats, with one card and a Next button, and no typing.
 
 1. **Who you are.** Your handle (`quiet-otter`), with Reroll. "High school. A used laptop. Big plans."
-2. **What you're building.** A product name drawn to match the handle (`Otterly`), with its own Reroll, and a small globe with one dot on it. "Every career here builds one product. Gigs and jobs pay for it. Its users are the score. The goal is seven billion."
+2. **What you're building.** A product name drawn to match the handle (`Otterly`), with its own Reroll, and a small globe with one dot on it. "Every career here builds one product. Gigs and jobs pay for it. Its users are the score. The goal is eight billion."
 3. **The bet.** "One day you can quit and go full-time. Bigger upside, real risk. Or keep climbing the ladder and build on nights and weekends." Then Start keeps both names for good.
 
 Both names are saved in the `profile` block, so an existing save gets a product name drawn and kept, with no card, the way handles were added. Esc and the backdrop keep what is on screen, as now. The card stays under 640 px tall so a phone shows it whole.
@@ -22,9 +22,9 @@ Both names are saved in the `profile` block, so an existing save gets a product 
 
 There are two modes, saved as `track: "ladder" | "founder"`. Every career starts on the ladder.
 
-**Ladder (default).** Jobs pay salary and teach XP, as now. The product grows at its nights-and-weekends pace, which is much slower: growth × 0.25, so 7B on the ladder alone is a very long road. Gear and regions are bought out of salary. Capital rows stay as they are today: you invest in other companies.
+**Ladder (default).** Jobs pay salary and teach XP, as now. The product grows at its nights-and-weekends pace, which is much slower: growth × 0.25, so 8B on the ladder alone is a very long road. Gear and regions are bought out of salary. Capital rows stay as they are today: you invest in other companies.
 
-**Hires (ladder only).** You can't give the product your days, so you pay people who can. A Hires row in the Company tab sells smart people, cheapest first: an outsourced body shop, a bootcamp grad, a Stack Overflow copy-paster, a senior engineer, a staff engineer, a 10x developer, a greybeard, a code god. Each is hired again and again, costs a salary a second per head and adds growth, up to and past what a founder gets. Hiring is how the ladder can still reach 7B in reasonable time, but the people you hired do the growing, and the game keeps count. The product tracks how many of its users came from growth your hires added (`hiredUsers`, against the total).
+**Hires (ladder only).** You can't give the product your days, so you pay people who can. A Hires row in the Company tab sells smart people, cheapest first: an outsourced body shop, a bootcamp grad, a Stack Overflow copy-paster, a senior engineer, a staff engineer, a 10x developer, a greybeard, a code god. Each is hired again and again, costs a salary a second per head and adds growth, up to and past what a founder gets. Hiring is how the ladder can still reach 8B in reasonable time, but the people you hired do the growing, and the game keeps count. The product tracks how many of its users came from growth your hires added (`hiredUsers`, against the total).
 
 **Founder.** You quit. Salaries stop. The XP a job teaches stops too, but jobs held stay on the résumé, and the next job gate is unchanged if you come back. The product gets your full attention: growth × 2, user revenue × 3, and the capital rows become the company's own moves ("Raise a seed round", "Acquire a rival", "Build a training campus"), with the same prices. You carry a **burn**: a team and an office that cost money a second, scaling with users. The money you hold is your **runway**.
 
@@ -36,12 +36,12 @@ There are two modes, saved as `track: "ladder" | "founder"`. Every career starts
 
 Nothing is ever wiped, and there is no game over, because an idle game should not punish leaving the tab open.
 
-**The reward.** As a founder, the win at 7B is ×1.5 for good instead of ×1.25, and the capital rows feed the product (each one adds capacity or reach, not only $/s). On the ladder, the win is reachable but much slower, and exec salaries are not raised to make up for it. Both routes finish the game. The founder route is faster and riskier. The ladder route is safe, slow, or bought.
+**The reward.** As a founder, the win at 8B is ×1.5 for good instead of ×1.25, and the capital rows feed the product (each one adds capacity or reach, not only $/s). On the ladder, the win is reachable but much slower, and exec salaries are not raised to make up for it. Both routes finish the game. The founder route is faster and riskier. The ladder route is safe, slow, or bought.
 
-**How the win reads.** The 7B moment depends on how you got there.
-- **Founder, mostly your own growth.** The full celebration. "Seven billion people use Otterly. You built this."
-- **Ladder, mostly hired growth (over half of the users came from hires).** The game mocks you, kindly. "Seven billion users. Your team was incredible. You were in a lot of their standups." The journal entry and the LinkedOut line say the same ("Executive sponsor, Otterly"). The ×1.25 still pays.
-- **Ladder, mostly your own growth.** The rare, slow, stubborn route gets its own line. "Seven billion users, on nights and weekends. Go to bed."
+**How the win reads.** The 8B moment depends on how you got there.
+- **Founder, mostly your own growth.** The full celebration. "Eight billion people use Otterly. You built this."
+- **Ladder, mostly hired growth (over half of the users came from hires).** The game mocks you, kindly. "Eight billion users. Your team was incredible. You were in a lot of their standups." The journal entry and the LinkedOut line say the same ("Executive sponsor, Otterly"). The ×1.25 still pays.
+- **Ladder, mostly your own growth.** The rare, slow, stubborn route gets its own line. "Eight billion users, on nights and weekends. Go to bed."
 
 The quit-or-climb modal tells the player this up front, in one line, so the mockery is a promise and not a surprise.
 

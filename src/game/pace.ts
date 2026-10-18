@@ -381,7 +381,7 @@ export type ExitRun = {
   row6Days: number | null
   /** Days into the career when the Exit first opened (the first career: when it would pay a Prestige), or null if it never did. */
   exitOpenDays: number | null
-  /** Days into the career when the world was won (7B users), or null. */
+  /** Days into the career when the world was won (8B users), or null. */
   winDays: number | null
   /** Days into the career when every row was owned (`ownsEverything`), or null. */
   ownedDays: number | null
@@ -504,7 +504,7 @@ function buyPerks(legacy: LegacyState) {
  * those perks. It stops when a career owns everything and has won the world.
  *
  * The product is modeled with the game's own growth and serving functions, and it is the only difference from the
- * single-run model: served users pay, the win (7B users) pays its x1.25 and its Hall of Fame bonus. Left out: incidents,
+ * single-run model: served users pay, the win (8B users) pays its x1.25 and its Hall of Fame bonus. Left out: incidents,
  * hires, the fork (so only the night owl ending can be won, and Early adopters, Lean team, Friendly investors and the
  * hires' share do nothing), extra regions and points of presence, and any gear bought to serve users beyond what the
  * model already buys. `simulatePace` is untouched and does not model the product.

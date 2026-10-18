@@ -4,7 +4,7 @@ Status: built, behind admin mode (see "Built" at the end). Part of the company a
 
 ## Why
 
-A career ends at "own everything", or at the 7B win, and then there is nothing left to do. The pace model shows the run is front-loaded: jobs and gigs are done on the second visit, and most of the remaining days wait on the last capital rows. The Exit turns that wait into a decision and the finished career into a faster next one.
+A career ends at "own everything", or at the 8B win, and then there is nothing left to do. The pace model shows the run is front-loaded: jobs and gigs are done on the second visit, and most of the remaining days wait on the last capital rows. The Exit turns that wait into a decision and the finished career into a faster next one.
 
 ## The loop
 
@@ -24,7 +24,7 @@ prestigeTotalFor(earned) = floor( cbrt(earned / PRESTIGE_EARN_SCALE) )
 prestigeOnExit = prestigeTotalFor(earnedAllRuns + runEarned) - prestigeTotal + endingBonus
 ```
 
-- `endingBonus`: when this career reached the 7B win with an ending (`founder`, `nightOwl`, `sponsor`, from `src/game/globe/hires.ts`) not yet in the Hall of Fame, `ENDING_BONUS` (5) Prestige, once per ending, ever.
+- `endingBonus`: when this career reached the 8B win with an ending (`founder`, `nightOwl`, `sponsor`, from `src/game/globe/hires.ts`) not yet in the Hall of Fame, `ENDING_BONUS` (5) Prestige, once per ending, ever.
 - **Permanent bonus:** every money and XP stream, and product growth, × `(1 + PRESTIGE_MULT_PER × prestigeTotal)`. It folds in through `modFactors` (`src/game/mods.ts`) like `foreverMult`, so offline credit gets it too.
 - Constants: `PRESTIGE_EARN_SCALE = 5e11`, `PRESTIGE_MULT_PER = 0.03`. They were kept after the sweep in `docs/PACING.md`.
 
@@ -42,9 +42,9 @@ After the Exit, a full-screen **headline card**, by how far the product got:
 | --- | --- |
 | under 1M users | "<handle> acqui-hired; <Product> sunset 'to focus on the core'" |
 | 1M to under 1B | "<Product> acquired; <handle> stays on as 'advisor'" |
-| 1B to under 7B | "<Product> sold in a blockbuster deal" |
-| won, `founder` | "<handle> sells <Product>, the app seven billion people use" |
-| won, `nightOwl` | "<handle> sells the side project seven billion people use. Get some sleep." |
+| 1B to under 8B | "<Product> sold in a blockbuster deal" |
+| won, `founder` | "<handle> sells <Product>, the app eight billion people use" |
+| won, `nightOwl` | "<handle> sells the side project eight billion people use. Get some sleep." |
 | won, `sponsor` | "<Product> sold; its team thanks their executive sponsor" |
 
 A new ending also shows "New in the Hall of Fame: <ending>" and its bonus.
@@ -120,7 +120,7 @@ Targets for the Regular player (3 visits a day of 15 minutes, 2 clicks/s), and w
 
 - first Exit around day 1.5 to 2: met (day 1.67 and 2.00);
 - career 2 reaches the point where career 1 exited in under half the time: not met for earnings, met for capital row 6;
-- the career that owns everything (or wins the world, whichever is later) is career 4 to 6, about 2 weeks: met (career 6, day 12.7 and 16.3);
+- the career that owns everything (or wins the world, whichever is later) is career 4 to 7, two to three weeks: met (career 6 on day 12.7, career 7 on day 19.3);
 - all three endings in about a month: not checked, since the model has no fork or hires.
 
 Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk prices.

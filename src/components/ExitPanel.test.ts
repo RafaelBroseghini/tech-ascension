@@ -151,7 +151,7 @@ describe("the Sell button", () => {
   })
 
   it("names the Hall of Fame entry on the headline after a win", () => {
-    useGame.setState({ company: { ...FRESH_COMPANY, users: { "americas-east": 7e9 }, won: true, ending: "founder" } })
+    useGame.setState({ company: { ...FRESH_COMPANY, users: { "americas-east": 8e9 }, won: true, ending: "founder" } })
     render(CompanyTab)
     render(ExitHeadline)
     flushSync(() => setMoneyDirect(PRESTIGE_EARN_SCALE * 8))

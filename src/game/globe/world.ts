@@ -4,21 +4,21 @@ import { activePops, nearestPop } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
 
 /** Users the company needs to win. Past it the game keeps going. */
-export const WORLD_TARGET = 7_000_000_000
+export const WORLD_TARGET = 8_000_000_000
 
-/** People in each region, in millions. They sum to about 8 billion, so the target takes most of the world. */
+/** People in each region, in millions. They sum to about 8.3 billion, today's world, so the target is nearly everyone. */
 const POPULATION_M: Readonly<Record<string, number>> = {
   "americas-east": 330,
   "americas-west": 350,
   "south-america": 440,
   europe: 750,
-  africa: 1400,
-  asia: 4750,
+  africa: 1550,
+  asia: 4850,
   oceania: 45,
 }
 
-/** The share of a region's people the app can reach: the rest have no phone, no line, or no wish to sign up. */
-export const REACH_CEILING = 0.93
+/** The share of a region's people the app can reach: the rest have no phone, no line, or no wish to sign up. About 8.2 billion in all. */
+export const REACH_CEILING = 0.99
 
 export const populationOf = (regionId: string): number => (POPULATION_M[regionId] ?? 0) * 1_000_000
 export const ceilingOf = (regionId: string): number => populationOf(regionId) * REACH_CEILING
@@ -44,7 +44,7 @@ export const MILESTONES: readonly { readonly id: string; readonly users: number;
   { id: "1m", users: 1_000_000, label: "One million users" },
   { id: "100m", users: 100_000_000, label: "One hundred million users" },
   { id: "1b", users: 1_000_000_000, label: "One billion users" },
-  { id: "won", users: WORLD_TARGET, label: "Seven billion users" },
+  { id: "won", users: WORLD_TARGET, label: "Eight billion users" },
 ]
 
 /** The permanent multiplier on everything the company earns, once it has the world. */

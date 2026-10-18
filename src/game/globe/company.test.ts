@@ -73,7 +73,7 @@ describe("your company on the globe", () => {
     expect(company.idlePops).toEqual(["frankfurt"])
   })
 
-  it("seven billion users send seven hundred million requests a second", () => {
-    expect(demandOf(WORLD_TARGET)).toBeCloseTo(7e8)
+  it("eight billion users send eight hundred million requests a second", () => {
+    expect(demandOf(WORLD_TARGET)).toBeCloseTo(8e8)
   })
 })

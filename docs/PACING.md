@@ -55,18 +55,18 @@ To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visi
 
 **The single-run table does not model the product.** `simulatePace` leaves it out; only `simulateExits` models it:
 
-- **Modeled.** Users by region, grown with the game's own `advanceCompany` on the ladder track: gigs seed regions, the gear the sim already buys serves them (`capacityOf`), served users pay (`arpuOf`), dropped requests cost, and the footprint is the free home region. The Prestige bonus and Viral loop multiply growth, Platform multiplies revenue, the win at 7B users pays its x1.25 on everything earned after and records the night owl ending and its 5 Prestige. Early adopters seeds 1,000 users; Long weekend lengthens the offline cap; Volume discount, Bulk hardware, Raise season and Compounding change prices and income through the game's own functions.
+- **Modeled.** Users by region, grown with the game's own `advanceCompany` on the ladder track: gigs seed regions, the gear the sim already buys serves them (`capacityOf`), served users pay (`arpuOf`), dropped requests cost, and the footprint is the free home region. The Prestige bonus and Viral loop multiply growth, Platform multiplies revenue, the win at 8B users pays its x1.25 on everything earned after and records the night owl ending and its 5 Prestige. Early adopters seeds 1,000 users; Long weekend lengthens the offline cap; Volume discount, Bulk hardware, Raise season and Compounding change prices and income through the game's own functions.
 - **Left out.** Incidents (the random draw never throws one), hires, the fork and its burn and bridges (so Lean team and Friendly investors do nothing, and only the **night owl** ending can be won: the Hall of Fame's other two are not modeled, and neither is "all three in about a month"), regions and points of presence beyond the free home region, and any gear bought to serve users beyond what the one-of-each and stacker rules already buy. A one-of-each player never buys enough serving gear to win the world in the first career; a later career wins on the Prestige growth bonus.
 
 Product revenue is not in the single-run table, so that table reads the same whether or not a career has a product. In `simulateExits`, the product changes when the world is won: the one-of-each player does not win within 60 days of a career with no Prestige.
 
 The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product it leaves late (day 4.0 for the one-of-each player, who finishes in career 3, day 11.7) or never (the stacker owns everything and wins in career 1, day 5.3), so it would not test the replay.
 
-Tuned constants (`src/data/legacy.ts`), kept at their original values because they still land: `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second):
+Tuned constants (`src/data/legacy.ts`), kept at their original values because they still land: `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second). The first row is measured at the 8B target; the other rows were swept at the old 7B target and are kept for their direction:
 
 | Scale | Per Prestige | Ending bonus | First Exit (stacker / one-of-each) | Done (stacker / one-of-each) |
 | --- | --- | --- | --- | --- |
-| 5e11 | 0.03 | 5 | day 1.67 +5 / day 2.00 +6 | career 6, day 12.7 / career 6, day 16.3 |
+| 5e11 | 0.03 | 5 | day 1.67 +5 / day 2.00 +6 | career 6, day 12.7 / career 7, day 19.3 |
 | 5e11 | 0.03 | 10 | day 1.67 +5 / day 2.00 +6 | career 7, day 14.0 / career 6, day 16.0 |
 | 5e11 | 0.06 | 5 | day 1.33 +3 / day 1.67 +3 | career 9, day 14.3 / career 8, day 15.3 |
 | 3e11 | 0.03 | 5 | day 1.67 +6 / day 2.00 +7 | career 7, day 13.7 / career 7, day 17.7 |
@@ -79,23 +79,23 @@ The stacker, career by career (users at the Exit, Prestige paid, the bonus after
 
 | Career | Day in | Day out | Row 6 after (days) | Matched last career's earnings after (days) | Users | Perks held | Prestige paid | Prestige total | Bonus |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 0.00 | 1.67 | 0.67 | - | 322M | 0 | 5 | 5 | ×1.15 |
-| 2 | 1.67 | 3.67 | 0.34 | 1.67 | 581M | 3 | 7 | 12 | ×1.36 |
-| 3 | 3.67 | 6.00 | 0.34 | 2.00 | 1.9B | 5 | 14 | 26 | ×1.78 |
-| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.4B | 8 | 18 | 44 | ×2.32 |
-| 5 | 8.33 | 10.67 | 0.33 | 2.00 | 6.9B | 10 | 22 | 66 | ×2.98 |
-| 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 7.5B | 12 | - | 66 | ×2.98 |
+| 1 | 0.00 | 1.67 | 0.67 | - | 343M | 0 | 5 | 5 | ×1.15 |
+| 2 | 1.67 | 3.67 | 0.34 | 1.67 | 620M | 3 | 7 | 12 | ×1.36 |
+| 3 | 3.67 | 6.00 | 0.34 | 2.00 | 2.0B | 5 | 14 | 26 | ×1.78 |
+| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.9B | 8 | 18 | 44 | ×2.32 |
+| 5 | 8.33 | 10.67 | 0.33 | 2.00 | 7.6B | 10 | 22 | 66 | ×2.98 |
+| 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 8.2B | 12 | - | 66 | ×2.98 |
 
 Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 4th career on day 20 while the one-of-each player takes 7 careers and 48 days.
 
-The one-of-each player's run is the same shape: Exits on days 2.0, 4.3, 7.0, 10.0, 13.0, done on day 16.3 in career 6, the world first won in career 5 (+5 Prestige for the night owl ending).
+The one-of-each player's run is the same shape, one career longer: Exits on days 2.0, 4.3, 7.0, 10.0, 13.3, 16.3, done on day 19.3 in career 7, the world first won in career 6 (+5 Prestige for the night owl ending). At the old 7B target it was done on day 16.3 in career 6; the extra billion users is the seventh career.
 
 Against the targets for the Regular player:
 
 - **First Exit around day 1.5 to 2:** met (1.67 and 2.00).
 - **Career 2 reaches the point where career 1 exited in under half the time:** met for the **capital row**: row 6 comes 0.34 days in against 0.67 (one visit; the model cannot see faster than the 8 hours between visits). **Not met for earnings:** career 2 earns what career 1 earned in all after 1.67 days, for both players, against career 1's 1.67 days (stacker) and 2.00 (one-of-each). Income grows exponentially through the second day, so a head start of a few hours saves a few hours, and no value of the three knobs fixes it in the sweep above (the best case, 0.06 per Prestige, takes 0.80 of the first career's time and finishes in 8 to 9 careers). The perks are for the player who plays the early game by hand.
-- **The career that owns everything (or wins the world, whichever is later) is the 4th to 6th, about two weeks:** met (6th, day 12.7 and 16.3). `pace.test.ts` checks it.
-- **All three endings in about a month:** not checked. The model has no fork and no hires, so it can only reach the night owl ending (career 5 for the one-of-each player). The first Exit after a win pays the 5 Prestige once.
+- **The career that owns everything (or wins the world, whichever is later) is the 4th to 7th, two to three weeks:** met (6th on day 12.7 for the stacker, 7th on day 19.3 for the one-of-each player). `pace.test.ts` checks it.
+- **All three endings in about a month:** not checked. The model has no fork and no hires, so it can only reach the night owl ending (career 6 for the one-of-each player). The first Exit after a win pays the 5 Prestige once.
 
 ## Reading it
 
@@ -143,9 +143,9 @@ Three targets set it: 1,000 served users pay about the internship ($8/s), about 
 | 1M | $1.8M | $200/s | $2.0k/s | $8.0k/s | $216/s |
 | 100M | $321M | $20k/s | $200k/s | $800k/s | $20k/s |
 | 1B | $13.5B | $200k/s | $2.0M/s | $8.0M/s | $200k/s |
-| 7B | $520B | $1.4M/s | $14M/s | $56M/s | $1.4M/s |
+| 8B | about $595B | $1.6M/s | $16M/s | $64M/s | $1.6M/s |
 
-Reference incomes: internship $8/s, Senior SWE $200/s, capital rows 1-5 $16,050/s, rows 6-11 $695,000/s. The chosen curve gives 1.0 internships at 1k, 1.08 Seniors at 1M, and 29% of upper capital (12.5 times mid capital) at 1B. At 7B it pays $1.4M/s, about the whole of q3 capital (rows 12-14 pay $6.5M/s). Product revenue is not scaled by the event multipliers, so it stays the same size under a boost.
+Reference incomes: internship $8/s, Senior SWE $200/s, capital rows 1-5 $16,050/s, rows 6-11 $695,000/s. The chosen curve gives 1.0 internships at 1k, 1.08 Seniors at 1M, and 29% of upper capital (12.5 times mid capital) at 1B. At 8B it pays $1.6M/s, about a quarter of q3 capital (rows 12-14 pay $6.5M/s). Product revenue is not scaled by the event multipliers, so it stays the same size under a boost.
 
 ## The fork
 
@@ -187,12 +187,12 @@ Decisions behind the numbers: a founder cannot take a job (`buyJob` is refused),
 
 A ladder career can hire (`src/game/globe/hires.ts`): eight tiers of person, from an outsourced body shop to a code god, each hired again and again. Copy `n` of a tier costs `floor(price × 1.003^n)`, pays a salary a second per head, and adds `growth × (1 − e^(−heads / 400))` to the growth multiplier, so each tier has diminishing returns and a cap. Base prices run $5k to $50B (×10 a tier), salaries $1 to $400/s per head (1, 5, 12, 25, 50, 100, 200, 400), caps 2.5, 3, 3.5, 4, 4.5, 5, 5.7, 6.4. A tier lists once the one before it has a hire.
 
-`src/game/globe/hires.pace.test.ts` runs the real `stepCompany` from 1,000 users to 7B, on the same footprint and serving gear, with no incidents, and a day job that pays $200/s (a Senior SWE; a founder gives it up). It pins three careers and the test fails if they drift:
+`src/game/globe/hires.pace.test.ts` runs the real `stepCompany` from 1,000 users to 8B, on the same footprint and serving gear, with no incidents, and a day job that pays $200/s (a Senior SWE; a founder gives it up). It pins three careers and the test fails if they drift:
 
-| Career | Time to 7B | Ending |
+| Career | Time to 8B | Ending |
 | --- | --- | --- |
-| Founder, full-time | 1.47 h (0.061 days) | founder |
-| Ladder, no hires | 10.7 h (0.445 days), 7.3× the founder | night owl |
-| Ladder, spends all its cash on hires (best growth per dollar first, about 2,100 heads in the first three tiers) | 1.78 h (0.074 days), 1.22× the founder | sponsor (95% of users from hires) |
+| Founder, full-time | 1.53 h (0.064 days) | founder |
+| Ladder, no hires | 11.3 h (0.470 days), 7.4× the founder | night owl |
+| Ladder, spends all its cash on hires (best growth per dollar first, about 2,300 heads in the first three tiers) | 1.80 h (0.075 days), 1.17× the founder | sponsor (95% of users from hires) |
 
 The bounds are: hiring within 1.5× of the founder, no hires at least 5× slower, and the team above half the users. The greedy buyer can open every tier but never gets past copy-paster: the cheap tiers give more growth per dollar until the world is won. Gear, capital and incidents are left out of all three, so these are shapes, not forecasts.

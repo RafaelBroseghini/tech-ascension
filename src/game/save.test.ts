@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { freshSave, hydrate, parseSave } from "./save.ts"
+import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
+import { REGIONS } from "../data/regions.ts"
 
 describe("save: a block this build does not know", () => {
   it("still loads, and the unknown block is dropped", () => {
@@ -22,14 +24,14 @@ describe("save: the company's users", () => {
   })
 
   it("grows the company while away and pays the win's multiplier once", () => {
-    const near = Object.fromEntries([["americas-east", 0.04], ["americas-west", 0.043], ["south-america", 0.055], ["europe", 0.093], ["africa", 0.174], ["asia", 0.589], ["oceania", 0.006]].map(([id, share]) => [id, (6.999e9 * (share as number))]))
+    const near = Object.fromEntries(REGIONS.map((region) => [region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING)]))
     const saved = { ...freshSave(0), gigs: [1, 2, 3], company: { ...company, users: near, resistance: 100 }, equipment: { "110": 40, "109": 40 } }
     const first = hydrate(JSON.stringify(saved), 24 * 3_600_000)
     expect(first.save.company?.won).toBe(true)
     expect(first.save.foreverMult).toBeCloseTo(1.25)
-    expect(first.toast?.split("\n")[0]).toContain("Seven billion users")
+    expect(first.toast?.split("\n")[0]).toContain("Eight billion users")
     const again = hydrate(JSON.stringify(first.save), 25 * 3_600_000)
     expect(again.save.foreverMult).toBeCloseTo(1.25)
-    expect(again.toast ?? "").not.toContain("Seven billion users")
+    expect(again.toast ?? "").not.toContain("Eight billion users")
   })
 })

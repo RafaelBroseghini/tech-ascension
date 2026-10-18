@@ -82,7 +82,7 @@ function IdentityCard() {
               </strong>
             </div>
             <p className="event-flavor">
-              Every career here builds one product. Gigs and jobs pay for it. Its users are the score. The goal is seven billion.
+              Every career here builds one product. Gigs and jobs pay for it. Its users are the score. The goal is eight billion.
             </p>
           </>
         ) : null}

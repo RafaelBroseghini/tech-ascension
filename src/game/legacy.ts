@@ -230,13 +230,13 @@ export function mergeGrant(target: GrantTarget, grant: StartingGrant): GrantTarg
 /** What the headline card says about how the product ended. */
 export type HeadlineFacts = { handle: string; product: string; users: number; won: boolean; ending?: Ending | undefined }
 
-/** "@quiet-otter sells Otterly, the app seven billion people use". The first three rows are by users; a win reads by its ending. */
+/** "@quiet-otter sells Otterly, the app eight billion people use". The first three rows are by users; a win reads by its ending. */
 export function exitHeadline(f: HeadlineFacts): string {
   const handle = `@${f.handle}`
   if (f.won) {
     if (f.ending === "sponsor") return `${f.product} sold; its team thanks their executive sponsor`
-    if (f.ending === "nightOwl") return `${handle} sells the side project seven billion people use. Get some sleep.`
-    return `${handle} sells ${f.product}, the app seven billion people use`
+    if (f.ending === "nightOwl") return `${handle} sells the side project eight billion people use. Get some sleep.`
+    return `${handle} sells ${f.product}, the app eight billion people use`
   }
   if (f.users < 1_000_000) return `${handle} acqui-hired; ${f.product} sunset 'to focus on the core'`
   if (f.users < 1_000_000_000) return `${f.product} acquired; ${handle} stays on as 'advisor'`
@@ -261,7 +261,7 @@ export function pastProductsOf(entries: readonly { type: string; data?: Readonly
     out.push({
       product,
       role: won ? productRole(ending, product) : `Side project, ${product}`,
-      meta: won ? "Sold · seven billion users" : `Sold · ${users.toLocaleString("en-US")} users`,
+      meta: won ? "Sold · eight billion users" : `Sold · ${users.toLocaleString("en-US")} users`,
     })
   }
   return out.reverse()

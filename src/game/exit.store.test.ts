@@ -22,7 +22,7 @@ function earn(earned = PRESTIGE_EARN_SCALE * 3) {
 
 /** A career that has won the world with `ending`, users and all. */
 function winWith(ending: "founder" | "nightOwl" | "sponsor") {
-  const company: CompanyState = { ...FRESH_COMPANY, users: { "americas-east": 7e9 }, won: true, ending, hiredUsers: 1 }
+  const company: CompanyState = { ...FRESH_COMPANY, users: { "americas-east": 8e9 }, won: true, ending, hiredUsers: 1 }
   useGame.setState({ company })
 }
 

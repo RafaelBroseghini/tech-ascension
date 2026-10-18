@@ -36,7 +36,7 @@ const never = () => 0.999
 const crowd = (n = 1000) => ({ ...FRESH_COMPANY, users: { "americas-east": n } })
 const run = (f: FounderState, company = crowd(), ms = 60_000) => stepCompany(company, growthFacts([1, 2, 3], roomy, undefined, trackFactsOf(f)), ms, ms, never)
 const team = (n: number, each = 20): FounderState => ({ ...FRESH_FOUNDER, hires: Object.fromEntries(ids.slice(0, n).map((id) => [id, each])) })
-const nearWin = Object.fromEntries(REGIONS.map((r) => [r.id, ceilingOf(r.id) * (6.9999e9 / WORLD_CEILING)]))
+const nearWin = Object.fromEntries(REGIONS.map((r) => [r.id, ceilingOf(r.id) * (7.9999e9 / WORLD_CEILING)]))
 const everywhere = { regions: REGIONS.map((r) => r.id), pops: ["ashburn", "frankfurt", "tokyo", "saopaulo", "lagos", "sydney", "sf"], off: [], dark: [] }
 const winFacts = (f: FounderState) => growthFacts([1, 2, 3, 4, 5, 6, 7, 8], { "110": 20 }, everywhere, trackFactsOf(f))
 const slice = (over: Partial<CompanySlice> = {}): CompanySlice => ({ money: 1e12, footprint: FRESH_FOOTPRINT, company: FRESH_COMPANY, founder: FRESH_FOUNDER, ...over })
@@ -260,7 +260,7 @@ describe("the endings", () => {
   })
 
   it("is picked once, when the win latches, and written in the journal note", () => {
-    const near = { ...FRESH_COMPANY, users: nearWin, hiredUsers: 6.9999e9 * 0.9 }
+    const near = { ...FRESH_COMPANY, users: nearWin, hiredUsers: 7.9999e9 * 0.9 }
     const facts = winFacts(team(6))
     const won = stepCompany(near, facts, 60_000, 60_000, never)
     expect(won.state.won).toBe(true)
@@ -278,9 +278,9 @@ describe("the endings", () => {
   })
 
   it("has the three lines, the product on the founder's, and the LinkedOut role", () => {
-    expect(endingLine("founder", "Otterly")).toBe("Seven billion people use Otterly. You built this.")
-    expect(endingLine("sponsor", "Otterly")).toBe("Seven billion users. Your team was incredible. You were in a lot of their standups.")
-    expect(endingLine("nightOwl", "Otterly")).toBe("Seven billion users, on nights and weekends. Go to bed.")
+    expect(endingLine("founder", "Otterly")).toBe("Eight billion people use Otterly. You built this.")
+    expect(endingLine("sponsor", "Otterly")).toBe("Eight billion users. Your team was incredible. You were in a lot of their standups.")
+    expect(endingLine("nightOwl", "Otterly")).toBe("Eight billion users, on nights and weekends. Go to bed.")
     expect(winNote("founder", "Otterly", 1.5)).toContain("×1.5")
     expect(productRole("sponsor", "Otterly")).toBe("Executive sponsor, Otterly")
     expect(productRole("nightOwl", "Otterly")).toBe("Founder, Otterly")

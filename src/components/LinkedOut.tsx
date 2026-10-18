@@ -158,7 +158,7 @@ export function LinkedOut() {
         <section className="lo-block" aria-label="Experience">
           <h4>Experience</h4>
           <ol className="lo-timeline">
-            {ending || isFounder ? <ProductRole role={productRole(ending, product)} product={product} meta={ending !== null ? "Seven billion users" : "Present"} /> : null}
+            {ending || isFounder ? <ProductRole role={productRole(ending, product)} product={product} meta={ending !== null ? "Eight billion users" : "Present"} /> : null}
             {past.map((entry, index) => (
               <ProductRole key={`${entry.product}-${index}`} role={entry.role} product={entry.product} meta={entry.meta} />
             ))}

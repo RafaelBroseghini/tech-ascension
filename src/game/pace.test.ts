@@ -134,9 +134,10 @@ describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
       // head start of a day saves a fraction of a day (docs/PACING.md, "Over several careers").
       expect(second!.catchUpDays).not.toBeNull()
       expect(second!.catchUpDays! / first!.endDay).toBeLessThan(1.01)
-      // Owning everything and winning the world is done by the sixth career, in about two weeks (the one-of-each player is slower).
+      // Owning everything and winning the world is done by the sixth career for the stacker and the seventh for the one-of-each
+      // player, in two to three weeks: eight billion users take one more career than seven did.
       expect(result.finishRun).toBeGreaterThanOrEqual(4)
-      expect(result.finishRun).toBeLessThanOrEqual(6)
+      expect(result.finishRun).toBeLessThanOrEqual(7)
       expect(result.days).toBeGreaterThan(8)
       expect(result.days).toBeLessThan(22)
     })

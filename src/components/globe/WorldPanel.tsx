@@ -79,7 +79,7 @@ function Team({
   )
 }
 
-/** The conquest: users against the seven billion, where they are, how hard the world pushes back, and what it has thrown. */
+/** The conquest: users against the eight billion, where they are, how hard the world pushes back, and what it has thrown. */
 export const WorldPanel = memo(function WorldPanel({ company }: { company: Company }) {
   const cash = useGame((state) => state.money)
   const perSec = useGame((state) => earnedPerSec(state, state.now))

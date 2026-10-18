@@ -267,9 +267,9 @@ describe("the headline by outcome", () => {
     expect(exitHeadline({ ...base, users: 999_999_999, won: false })).toBe("Otterly acquired; @quiet-otter stays on as 'advisor'")
     expect(exitHeadline({ ...base, users: 1_000_000_000, won: false })).toBe("Otterly sold in a blockbuster deal")
     expect(exitHeadline({ ...base, users: 6_999_999_999, won: false })).toBe("Otterly sold in a blockbuster deal")
-    expect(exitHeadline({ ...base, users: 7e9, won: true, ending: "founder" })).toBe("@quiet-otter sells Otterly, the app seven billion people use")
-    expect(exitHeadline({ ...base, users: 7e9, won: true, ending: "nightOwl" })).toBe("@quiet-otter sells the side project seven billion people use. Get some sleep.")
-    expect(exitHeadline({ ...base, users: 7e9, won: true, ending: "sponsor" })).toBe("Otterly sold; its team thanks their executive sponsor")
+    expect(exitHeadline({ ...base, users: 8e9, won: true, ending: "founder" })).toBe("@quiet-otter sells Otterly, the app eight billion people use")
+    expect(exitHeadline({ ...base, users: 8e9, won: true, ending: "nightOwl" })).toBe("@quiet-otter sells the side project eight billion people use. Get some sleep.")
+    expect(exitHeadline({ ...base, users: 8e9, won: true, ending: "sponsor" })).toBe("Otterly sold; its team thanks their executive sponsor")
   })
 })
 
@@ -317,12 +317,12 @@ describe("past products on the résumé", () => {
     const past = pastProductsOf([
       { type: "skill" },
       exit({ product: "Otterly", users: 12_345, won: false }),
-      exit({ product: "Foxly", users: 7e9, won: true, ending: "sponsor" }),
-      exit({ product: "Mooly", users: 7e9, won: true, ending: "founder" }),
+      exit({ product: "Foxly", users: 8e9, won: true, ending: "sponsor" }),
+      exit({ product: "Mooly", users: 8e9, won: true, ending: "founder" }),
       exit({ users: 4 }),
     ])
     expect(past.map((p) => p.role)).toEqual(["Founder, Mooly", "Executive sponsor, Foxly", "Side project, Otterly"])
     expect(past[2]!.meta).toBe("Sold · 12,345 users")
-    expect(past[0]!.meta).toBe("Sold · seven billion users")
+    expect(past[0]!.meta).toBe("Sold · eight billion users")
   })
 })
