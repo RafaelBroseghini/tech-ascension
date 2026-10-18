@@ -14,7 +14,7 @@ To change a sprite, edit its entry in `DRAW` in `src/pixel/art.ts`; `npm test` c
 
 Clicks register on pointer-down. The sprite bumps up, tips slightly away from the click point and settles with a tiny jitter (~260ms, restarted instantly on every click), flashes brighter, and sends out a flat ring, square sparks, a `$` / XP payout that pops up and then drops so rapid clicks stack, and the click waterfall.
 
-- **Waterfall.** One developer-icon from the owned pool (skills, gigs, jobs, gear that have a real logo) spawns at the cursor at about half opacity and falls for 300ms under gravity (x drifts, y follows t²) while fading out. Soft skills with no logo stay out of the pool, so the early game is thin. One icon per click, one or two more during a boost, never more than 14 alive at once (the oldest is dropped).
+- **Waterfall.** One developer-icon from the owned pool (skills, gigs, jobs, gear that have a real logo) spawns at the cursor at about half opacity and falls for 1.4 seconds (`FALL_MS`) under gravity (x drifts, y follows t²) while fading out. Soft skills with no logo stay out of the pool, so the early game is thin. One icon per click, one or two more during a boost, never more than 14 alive at once (the oldest is dropped).
 - **Heat.** Fast clicking builds "heat", which makes the bump a little bigger and strengthens the glow around the sprite.
 - **Idle.** The sprite floats, an aura breathes and motes rise.
 - **Boost.** An active click boost adds a chip over the sprite, a rotating rim light, bigger payouts, and a lit metrics cell.

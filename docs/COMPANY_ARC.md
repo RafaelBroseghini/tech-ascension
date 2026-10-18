@@ -1,6 +1,6 @@
 # Company arc: one product, and the bet to go full-time
 
-Status: steps 1 (names and the intro), 2 (users pay) and 3 (the fork) are built. The rest is plan.
+Status: steps 1 (names and the intro), 2 (users pay), 3 (the fork), 4 (hires and the endings) and 7 (the Exit) are built. Steps 5 (capital as company moves) and 6 (story events) are plan.
 
 ## The story
 
@@ -78,7 +78,7 @@ The product name replaces "Your company" wherever it shows:
 - the status page ("Current Status: Otterly");
 - the journal ("Otterly reached one million users").
 
-LinkedOut lists "Founder, Otterly" with the dates. While on the ladder, it shows as a side project under the current job. GitHug pins the repo.
+LinkedOut lists each sold product under Experience: "Founder, Otterly" once it wins, "Side project, Otterly" otherwise. GitHug pins the repo.
 
 ## Build order
 
@@ -90,7 +90,6 @@ Each step ships and verifies on its own.
 4. **Hires and the endings.** The Hires row, `hiredUsers`, and the three win texts. Smoke steps: a ladder win with hires reads the mocking line.
 5. **Capital as company moves.** Reword the 25 rows for founders, and make each one feed capacity or reach.
 6. **Story events** for both tracks.
-
 7. **The Exit.** Selling the product for Prestige, and a new product for the next career. Built in `docs/PRESTIGE.md`.
 
 ## Decided
@@ -101,5 +100,5 @@ Each step ships and verifies on its own.
 
 ## Calls still open
 
-- **The bridge cap.** Three bridges, then a forced return to a job. The alternative is unlimited bridges at a growing equity cost.
+- **The bridge cap.** Built as three bridges, then only a return to a job. The alternative is unlimited bridges at a growing equity cost.
 - **The mocking threshold.** Over half the users from hires. It could also be graded (a quarter gets a gentler jab).
