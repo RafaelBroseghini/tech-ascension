@@ -12,12 +12,9 @@ type Row = { label: string; value: string }
 
 function buildRows(stats: GameStats, peakMoney: number, gigs: number, jobs: number): Row[] {
   return [
-    { label: "Total clicks", value: formatNumber(stats.totalClicks) },
-    { label: "Longest click streak", value: formatNumber(stats.longestClickStreak) },
     { label: "Longest idle streak", value: formatIdleStreak(stats.longestIdleMs) },
     { label: "Highest balance held", value: `$${formatNumber(peakMoney)}` },
     { label: "Lifetime earnings", value: `$${formatNumber(stats.lifetimeEarned)}` },
-    { label: "From clicking", value: `$${formatNumber(stats.moneyFromClicks)}` },
     { label: "From idle & offline", value: `$${formatNumber(stats.moneyFromIdle)}` },
     { label: "Gigs cleared", value: formatNumber(gigs) },
     { label: "Jobs held", value: formatNumber(jobs) },

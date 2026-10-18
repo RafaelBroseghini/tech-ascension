@@ -35,11 +35,12 @@
   .metrics > div { flex: 0 0 auto; padding: 2px var(--sp-3); }
   .metrics > div:first-child { border-left: 0; }
   .metrics dd { font-size: var(--fs-md); }
-  /* The hero already shows the balance, the XP and what a click pays. */
-  .metrics .m-phase,
-  .metrics .m-xp,
-  .metrics > div:has([data-testid="per-click"]),
-  .metrics > div:has([data-testid="xp-per-click"]) { display: none; }
+  /* The phase name is in the status bar on a phone. */
+  .metrics .m-phase { display: none; }
+  /* Each currency slot is one line on a phone: the label over its rates, side by side. */
+  .metrics .m-slot { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--sp-3); row-gap: 2px; }
+  .metrics .m-slot > dt { flex-basis: 100%; }
+  .metrics .m-line { font-size: var(--fs-xs); }
   /* The name sits on top of the button that opens the details, so the cell stays one tap target tall. */
   .metrics .m-world { position: relative; flex: 1 0 140px; }
   .metrics .m-world.is-hot { flex-basis: 220px; }

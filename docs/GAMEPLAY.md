@@ -60,7 +60,7 @@ Cosmetics keep coming after that: a new editor theme with each new stage band fr
 **How an unlock is shown.** Every row goes through the same four steps.
 
 1. **Before.** The shop row that opens something carries a small green badge wearing that feature's icon (hover or focus it for `Unlocks Career log` and what it does), and the Next banner, which has room, prints the name beside the icon. The next closed row with a place on screen stands there as a dim dashed outline with a lock and a ring that fills as it gets close; hover or focus says what opens it. One outline at a time. Closed boards are hidden from the tab bar, except the next one, which waits there dimmed.
-2. **The moment.** `big`: the UNLOCKED slam, confetti and a chime, then a card. `standard`: the thing lights up where it lives and a card beside it says what it does, with a button that opens it ("Try it", "Open it"). `small`: a toast and a glow. Cards never take focus or cover the stage, and tuck away after 8 seconds (Esc closes them).
+2. **The moment.** Nothing pops up. The NEW marker and the tab or row mark are the whole signal, so a new unlock never covers the click target, a buy button or a modal. (The one card left is the "What's new" note an older save gets once.)
 3. **After.** A green NEW dot or pill stays on the thing until it is used once. Inside a menu, the menu's button carries it too.
 4. **Remember.** Every unlock is a line in the career log.
 
@@ -102,7 +102,7 @@ The stage shows the highest capital tier you own, else the furthest job, gig or 
 
 - **Raw digits first.** `formatNumber` keeps whole numbers as raw digits with separators (`1,234,567`) up to 9,999,999, then abbreviates (`10M`, `1.5B`, ... `Qa`). The hero balance has more room and keeps its digits up to $999,999,999,999 (`HERO_RAW_DIGITS_BELOW`), shrinking the font a notch once it is long. `formatNumber(v, 1000)` / `formatCompact` give the old tight K/M form.
 - **Medium on a click** once money exists: the hero total squashes and rebounds (about 190ms).
-- **Large** on a gig clear and a phase unlock: a centered slam-in pop (`+$1,200`, `Gig cleared`) with a chromatic red/cyan split that converges, a bigger squash on the hero total, a count-up of the running total that overshoots then settles, plus the confetti burst and ring.
+- **Large** on a gig clear: a centered slam-in pop (a phase unlock no longer pops; its NEW marks say so) (`+$1,200`, `Gig cleared`) with a chromatic red/cyan split that converges, a bigger squash on the hero total, a count-up of the running total that overshoots then settles, plus the confetti burst and ring.
 - **Never per idle tick.** Idle income just moves the number. `prefers-reduced-motion` turns the pops into a plain fade.
 - The pop kinds are `MONEY_POP` in `src/data/phases.ts`; the last one is exposed as `__GAME__.getState().lastPop`.
 

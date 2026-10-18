@@ -38,7 +38,7 @@ export function FootprintPanel() {
           <li key={row.id}>
             <span>{row.name}</span>
             <button type="button" disabled={cash < row.price} onClick={() => buyRegion(row.id)}>
-              {`Buy · ${money(row.price)}`}
+              {money(row.price)}
             </button>
           </li>
         ))}

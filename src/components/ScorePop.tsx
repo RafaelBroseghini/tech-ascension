@@ -8,7 +8,7 @@ const HOLD_MS = 1500
 const KICKER: Record<MoneyPop["kind"], string> = {
   click: "",
   gigClear: "Gig cleared",
-  unlock: "Unlocked",
+  unlock: "",
 }
 
 /**
@@ -24,7 +24,8 @@ export function ScorePop() {
   useEffect(() => {
     const unsubscribe = useGame.subscribe((state, previous) => {
       const pop = state.pop
-      if (!pop || pop === previous.pop || pop.size !== "large") return
+      // Unlocks are marked by NEW badges and tabs now, not by a pop.
+      if (!pop || pop === previous.pop || pop.size !== "large" || pop.kind === "unlock") return
       setLive(pop)
       window.clearTimeout(timer.current)
       timer.current = window.setTimeout(() => setLive(null), HOLD_MS)

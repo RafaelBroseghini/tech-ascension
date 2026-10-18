@@ -32,7 +32,8 @@ function hasNew(row: HTMLElement): boolean {
 }
 
 function buyRow(host: ParentNode, name: string) {
-  const button = [...offer(host, name).querySelectorAll("button")].find((el) => el.textContent?.startsWith("Buy"))
+  // The button shows its price only; the first one with a currency figure is the buy.
+  const button = [...offer(host, name).querySelectorAll("button")].find((el) => /\$|XP/.test(el.textContent ?? ""))
   if (!button) throw new Error(`no buy button for ${name}`)
   flushSync(() => {
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }))
@@ -143,5 +144,33 @@ describe("shop row badges and job art", () => {
     const advisorSrc = advisor?.querySelector("img")?.getAttribute("src") ?? ""
     expect(advisorSrc).toMatch(/280352-chess\.png$/)
     expect(advisorSrc).not.toMatch(/Error\.png/i)
+  })
+})
+
+describe("tab markers", () => {
+  afterEach(() => {
+    if (root) flushSync(() => root?.unmount())
+    root = null
+    document.body.replaceChildren()
+    writeSavedShopTab(null)
+    useGame.getState().wipe()
+  })
+
+  function tabDot(host: ParentNode, id: string): boolean {
+    return host.querySelector(`[role='tab'][data-phase='${id}'] .deal-dot`) !== null
+  }
+
+  it("marks a tab for something new to buy, not for something the money can afford", () => {
+    writeSavedShopTab("G")
+    // Gear is open, and the first copy of the Thocky keyboard is unbought: a new thing.
+    useGame.setState({ xpTotal: 20_000, money: 5_000_000, peakMoney: 5_000_000, equipment: {}, jobs: [] })
+    const host = renderShop()
+    expect(tabDot(host, "G")).toBe(true)
+
+    // Once every gear row has a copy, nothing is new, even with plenty of money left.
+    flushSync(() => {
+      useGame.setState({ equipment: Object.fromEntries(Array.from({ length: 110 }, (_, index) => [String(index + 1), 1])) })
+    })
+    expect(tabDot(host, "G")).toBe(false)
   })
 })

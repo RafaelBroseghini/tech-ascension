@@ -396,11 +396,6 @@ export function Stage() {
         }
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
-        <span className="motes" aria-hidden="true">
-          {Array.from({ length: 9 }, (_, index) => (
-            <i key={index} style={{ ["--i" as string]: index }} />
-          ))}
-        </span>
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">

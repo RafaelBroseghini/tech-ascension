@@ -39,7 +39,7 @@ function Team({ hires, ladder, cash, share, amount, onHire }: { hires: Hires; la
                 <small>{`each: −${money(row.salary)}/s · +${growth(hireGrowthStep(row, held))}% growth`}</small>
               </span>
               <button type="button" disabled={!ladder || count < 1} title={ladder ? row.line : "A founder hires no more."} onClick={() => onHire(row.id)}>
-                {`Hire ×${buying} · ${money(cost)}`}
+                {`×${buying} · ${money(cost)}`}
               </button>
             </li>
           )
