@@ -1,6 +1,7 @@
 import { Crown, GitBranch, Globe } from "lucide-react"
 import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
+import { BuyMultiplier } from "./BuyMultiplier.tsx"
 import { CareerLog } from "./CareerLog.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
@@ -112,6 +113,9 @@ export const IdeChrome = memo(function IdeChrome() {
             <Crown className="ide-activity-icon" {...UI_ICON} aria-hidden />
           </button>
         ) : null}
+        <div className="ide-activity-foot">
+          <BuyMultiplier />
+        </div>
       </nav>
       {prestigeVisible && prestigeOpen ? <PrestigePanel onClose={closePrestige} /> : null}
       {showLog ? (

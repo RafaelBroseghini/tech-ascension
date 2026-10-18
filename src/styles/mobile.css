@@ -82,7 +82,7 @@
   .offer::before { top: var(--sp-2); height: var(--art); }
   .offer img, .offer-art, .offer .emoji-tap { width: var(--art); height: var(--art); }
   .offer-actions { grid-column: auto; flex-direction: column; justify-content: center; }
-  .shop-list button, .buy-amount-step { min-width: 44px; min-height: 44px; }
+  .shop-list button { min-width: 44px; min-height: 44px; }
 
   .stage-panel {
     --ide-tree: 0px;
