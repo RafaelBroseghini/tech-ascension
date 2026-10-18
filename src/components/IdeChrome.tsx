@@ -10,6 +10,7 @@ import { ideView } from "../game/ide.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
+import { CatRosterButton } from "./CatRosterButton.tsx"
 import { OwnedButton } from "./OwnedModal.tsx"
 import { useExitVisible } from "./useExit.ts"
 import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
@@ -100,6 +101,7 @@ export const IdeChrome = memo(function IdeChrome() {
           </FeatureGhost>
         )}
         <OwnedButton />
+        <CatRosterButton place="activity" />
         {prestigeVisible ? (
           <button
             type="button"

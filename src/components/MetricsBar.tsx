@@ -1,5 +1,5 @@
 import { memo } from "react"
-import { MousePointerClick, Timer } from "lucide-react"
+import { MousePointerClick, Timer, Users } from "lucide-react"
 import { CornerActions } from "./CornerActions.tsx"
 import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { TEMP_TARGETS } from "../game/mods.ts"
@@ -94,6 +94,7 @@ export function MetricsBar() {
             <dt>{incidents > 0 ? `${product} · ${incidents} incident${incidents === 1 ? "" : "s"}` : product}</dt>
             <dd>
               <button type="button" className="m-world-open" data-testid="world-users" title={product} onClick={() => openSurface("studio")}>
+                <Users {...UI_ICON_SM} aria-hidden />
                 {users > 0 ? formatNumber(Math.floor(users), 1000) : "0"}
                 <small> / {formatNumber(WORLD_TARGET, 1000)}</small>
                 <span className="m-world-bar" aria-hidden>

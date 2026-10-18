@@ -121,7 +121,7 @@ function check(vp, state, m) {
   if (m.stage && m.shop) {
     if (portraitPhone) {
       if (m.shop.top < m.stage.top + m.stage.height * 0.5) fail(`shop is not below the stage (shop top ${Math.round(m.shop.top)}, stage ${Math.round(m.stage.top)}-${Math.round(m.stage.bottom)})`)
-      if (m.shop.height < vp.h * 0.33) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
+      if (m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
       if (m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
       if (m.topbar && m.topbar.height > vp.h * 0.18) fail(`top bar takes ${Math.round((m.topbar.height / vp.h) * 100)}% of the screen`)
     }

@@ -1,4 +1,4 @@
-import { MousePointer2, MousePointerClick, Music, Settings, Trash2, Volume2 } from "lucide-react"
+import { ChartLine, MousePointer2, MousePointerClick, Music, ScrollText, Settings, Trash2, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
@@ -16,6 +16,7 @@ import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
+import { openSurface } from "../game/surfaces.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
 import { RosterButtons } from "./IdeStatusDock.tsx"
@@ -60,7 +61,7 @@ const TOGGLES: readonly {
 const SETTINGS_FEATURES: readonly FeatureId[] = ["music", "clickKits", "hoverClick", "themes", "cat", "rosters"]
 const SETTINGS_PICK_PREFIXES = ["music:", "kit:", "theme:"] as const
 /** Anchors for the reveal cards on narrow screens, where the status bar is folded into this menu. */
-const SETTINGS_ANCHORS = [...SETTINGS_FEATURES, ...SETTINGS_PICK_PREFIXES.map((prefix) => prefix.slice(0, -1))].join(" ")
+const SETTINGS_ANCHORS = [...SETTINGS_FEATURES, "metrics", "linkedout", ...SETTINGS_PICK_PREFIXES.map((prefix) => prefix.slice(0, -1))].join(" ")
 
 const isSettingsMark = (key: string) =>
   (SETTINGS_FEATURES as readonly string[]).includes(key) || SETTINGS_PICK_PREFIXES.some((prefix) => key.startsWith(prefix))
@@ -150,6 +151,8 @@ export function EditorSettings() {
   const seeFeature = useGame((state) => state.seeFeature)
   const anyNew = useGame((state) => state.fresh.some(isSettingsMark))
   const rosters = useFeatureOpen("rosters")
+  const metrics = useFeatureOpen("metrics")
+  const linkedout = useFeatureOpen("linkedout")
   // Settings only offer what the career has unlocked: music after the headset, the cat after it moves in, and the
   // styles, kits and themes earned so far (plus whichever one is in use).
   const music = useFeatureOpen("music")
@@ -169,6 +172,11 @@ export function EditorSettings() {
   const close = () => {
     clearIdeThemePreview()
     setOpen(false)
+  }
+  // The modals are owned by the (hidden on a phone) top-bar buttons; the menu closes first so it does not sit under them.
+  const openFrom = (surface: "metrics" | "linkedout") => {
+    close()
+    openSurface(surface)
   }
 
   // On narrow screens the status bar's rosters and picks live in this menu, so its reveals open the menu.
@@ -220,6 +228,37 @@ export function EditorSettings() {
       {open ? (
         <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => clearIdeThemePreview()}>
           <HowToPlay />
+          {narrow && (metrics || linkedout) ? (
+            <section className="ide-settings-section" aria-labelledby={`${menuId}-career`}>
+              <p className="ide-theme-heading" id={`${menuId}-career`}>
+                Career
+              </p>
+              <div className="ide-settings-section-panel">
+                <ul className="desk-toggles">
+                  {metrics ? (
+                    <li>
+                      <button type="button" className="desk-toggle" data-testid="settings-metrics" onClick={() => openFrom("metrics")}>
+                        <span className="desk-toggle-label">
+                          <ChartLine {...UI_ICON_SM} aria-hidden />
+                          Stats
+                        </span>
+                      </button>
+                    </li>
+                  ) : null}
+                  {linkedout ? (
+                    <li>
+                      <button type="button" className="desk-toggle" data-testid="settings-linkedout" onClick={() => openFrom("linkedout")}>
+                        <span className="desk-toggle-label">
+                          <ScrollText {...UI_ICON_SM} aria-hidden />
+                          LinkedOut resume
+                        </span>
+                      </button>
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            </section>
+          ) : null}
           <AdminSettings headingId={`${menuId}-admin`} />
           <section className="ide-settings-section" aria-labelledby={`${menuId}-settings`}>
             <p className="ide-theme-heading" id={`${menuId}-settings`}>

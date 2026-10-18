@@ -10,6 +10,7 @@ import { ResumeModal } from "./ResumeModal.tsx"
 import { GitHugModal, REPO } from "./GitHugModal.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
+import { useNarrow } from "./useNarrow.ts"
 
 function formatStars(count: number): string {
   if (count < 1000) return String(count)
@@ -24,6 +25,7 @@ export function ResumeButton() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const [open, setOpen] = useState(false)
+  const narrow = useNarrow()
   const handle = useGame((state) => state.profile.handle)
   const doc = useMemo(() => resumeDocument({ skills, equipment, jobs, gigs, handle }), [skills, equipment, jobs, gigs, handle])
   // The profile is a career unlock: it arrives with Portfolio site live.
@@ -37,7 +39,7 @@ export function ResumeButton() {
 
   if (!unlocked) {
     return (
-      <FeatureGhost id="linkedout" place="below" className="ide-settings">
+      <FeatureGhost id="linkedout" place="below" className="ide-settings desktop-only">
         <ScrollText {...UI_ICON} aria-hidden />
       </FeatureGhost>
     )
@@ -48,9 +50,9 @@ export function ResumeButton() {
     <>
       <button
         type="button"
-        className="ide-settings"
+        className="ide-settings desktop-only"
         data-testid="view-resume"
-        data-feature-anchor="linkedout"
+        data-feature-anchor={narrow ? undefined : "linkedout"}
         aria-label="View your LinkedOut profile"
         aria-haspopup="dialog"
         aria-expanded={open}
