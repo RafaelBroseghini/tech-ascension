@@ -1289,6 +1289,7 @@
   height: 10px;
   margin-right: 6px;
   vertical-align: -1px;
+  object-fit: contain;
   border-radius: 2px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ide-text) 18%, transparent);
 }

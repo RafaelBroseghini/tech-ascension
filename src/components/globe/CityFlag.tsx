@@ -1,7 +1,8 @@
-import "flag-icons/css/flag-icons.min.css"
+import { FLAG_URLS } from "./flags.ts"
 
 /** A country's flag as an SVG, so it draws the same on every platform. Empty for an unknown country. */
 export function CityFlag({ country }: { country: string }) {
-  if (!/^[A-Z]{2}$/.test(country)) return null
-  return <span className={`fi fi-${country.toLowerCase()} city-flag`} aria-hidden />
+  const url = /^[A-Z]{2}$/.test(country) ? FLAG_URLS[country] : undefined
+  if (!url) return null
+  return <img className="city-flag" src={url} alt="" aria-hidden />
 }
