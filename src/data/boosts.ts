@@ -12,12 +12,13 @@ import type { Era } from "./capital.ts"
  * end (or this session's start), force a roll.
  * One boost at a time: a new roll replaces the active one.
  *
- * Multipliers are only 3×, 5× and 10×. Mean waits are longer than the
- * original 45s–360s table. Gold chrome is UI: activeBoost.mult >= GOLD_MULT_THRESHOLD.
+ * Multipliers are only 3×, 5× and 10×. Mean waits run from 4 minutes early to
+ * 12 minutes at the end, so a boost is an event you notice, not the normal pace.
+ * Gold chrome is UI: activeBoost.mult >= GOLD_MULT_THRESHOLD.
  */
 export const GOLD_MULT_THRESHOLD = 8
 export const BOOST_GRACE_MS = 1_000
-export const BOOST_WAIT_MIN_FACTOR = 0.4
+export const BOOST_WAIT_MIN_FACTOR = 0.5
 export const BOOST_WAIT_MAX_FACTOR = 2.5
 export const BOOST_PITY_FACTOR = 2.5
 
@@ -37,7 +38,7 @@ export type BoostEraConfig = {
 
 export const BOOST_BY_ERA: Record<Era, BoostEraConfig> = {
   early: {
-    meanWaitMs: 75_000,
+    meanWaitMs: 240_000,
     durMinMs: 8_000,
     durMaxMs: 12_000,
     weights: [
@@ -47,7 +48,7 @@ export const BOOST_BY_ERA: Record<Era, BoostEraConfig> = {
     ],
   },
   mid: {
-    meanWaitMs: 120_000,
+    meanWaitMs: 360_000,
     durMinMs: 8_000,
     durMaxMs: 12_000,
     weights: [
@@ -57,7 +58,7 @@ export const BOOST_BY_ERA: Record<Era, BoostEraConfig> = {
     ],
   },
   upper: {
-    meanWaitMs: 180_000,
+    meanWaitMs: 480_000,
     durMinMs: 6_000,
     durMaxMs: 10_000,
     weights: [
@@ -67,7 +68,7 @@ export const BOOST_BY_ERA: Record<Era, BoostEraConfig> = {
     ],
   },
   q3: {
-    meanWaitMs: 300_000,
+    meanWaitMs: 600_000,
     durMinMs: 5_000,
     durMaxMs: 8_000,
     weights: [
@@ -77,7 +78,7 @@ export const BOOST_BY_ERA: Record<Era, BoostEraConfig> = {
     ],
   },
   end: {
-    meanWaitMs: 480_000,
+    meanWaitMs: 720_000,
     durMinMs: 5_000,
     durMaxMs: 8_000,
     weights: [

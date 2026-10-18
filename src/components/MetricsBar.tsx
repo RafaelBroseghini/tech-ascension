@@ -21,7 +21,6 @@ import { UI_ICON_SM } from "./icons/ui.tsx"
 const CornerActionsMemo = memo(CornerActions)
 
 export function MetricsBar() {
-  const xp = useGame((state) => state.xp)
   const phase = useGame((state) => state.phase)
   const skills = useGame((state) => state.skills)
   const equipment = useGame((state) => state.equipment)
@@ -46,7 +45,7 @@ export function MetricsBar() {
   const seconds =
     activeBoost && activeBoost.endsAt > now ? Math.ceil((activeBoost.endsAt - now) / 1000) : 0
 
-  // Currency slots: money and XP, each with its click rate (pointer) and its idle rate (timer).
+  // Currency slots: money and XP, each with its click rate (pointer) and its idle rate (timer). The XP total is in the metrics modal.
   const money = perSec > 0 || clickPaysMoney({ jobs })
   return (
     <header className="topbar">
@@ -78,7 +77,6 @@ export function MetricsBar() {
         ) : null}
         <div className="m-slot m-xp">
           <dt>XP</dt>
-          <dd data-testid="xp">{formatNumber(Math.floor(xp))}</dd>
           <dd className="m-line">
             <MousePointerClick {...UI_ICON_SM} aria-label="Per click" />
             <span data-testid="xp-per-click">{formatNumber(rates.xpClick * rates.mult)}</span>

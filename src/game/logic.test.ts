@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { describe, expect, it } from "vitest"
-import { BOOST_BY_ERA } from "../data/boosts.ts"
+import { BOOST_BY_ERA, BOOST_PITY_FACTOR, BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
 import { EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { PURCHASE_COST_SCALE } from "../data/costs.ts"
@@ -258,7 +258,7 @@ describe("save", () => {
 
 describe("click boosts", () => {
   it("clamps the exponential wait and rolls the era weights", () => {
-    expect(sampleWaitMs(45_000, 0)).toBe(18_000)
+    expect(sampleWaitMs(45_000, 0)).toBe(22_500)
     expect(sampleWaitMs(45_000, 0.999999)).toBe(112_500)
     expect(pickMultiplier(BOOST_BY_ERA.early.weights, 0)).toBe(3)
     expect(pickMultiplier(BOOST_BY_ERA.early.weights, 0.7)).toBe(5)
@@ -272,6 +272,8 @@ describe("click boosts", () => {
 
   it("schedules, replaces a single slot, and force-rolls on pity", () => {
     const rng = () => 0
+    const mean = BOOST_BY_ERA.early.meanWaitMs
+    const wait = BOOST_WAIT_MIN_FACTOR * mean
     const first = advanceBoostClock(
       { activeBoost: null, nextBoostAt: null, idleSince: 0 },
       "early",
@@ -279,25 +281,26 @@ describe("click boosts", () => {
       rng,
     )
     expect(first.spawned).toBeNull()
-    expect(first.clock.nextBoostAt).toBe(30_000)
+    expect(first.clock.nextBoostAt).toBe(wait)
 
-    const spawned = advanceBoostClock(first.clock, "early", 30_000, rng)
-    expect(spawned.spawned).toEqual({ mult: 3, endsAt: 38_000 })
+    const spawned = advanceBoostClock(first.clock, "early", wait, rng)
+    expect(spawned.spawned).toEqual({ mult: 3, endsAt: wait + 8_000 })
     expect(spawned.clock.nextBoostAt).toBeNull()
 
-    const still = advanceBoostClock(spawned.clock, "early", 32_000, rng)
+    const still = advanceBoostClock(spawned.clock, "early", wait + 2_000, rng)
     expect(still.spawned).toBeNull()
     expect(still.clock.activeBoost?.mult).toBe(3)
 
-    const ended = advanceBoostClock(still.clock, "early", 38_000, rng)
+    const endsAt = wait + 8_000
+    const ended = advanceBoostClock(still.clock, "early", endsAt, rng)
     expect(ended.spawned).toBeNull()
     expect(ended.clock.activeBoost).toBeNull()
-    expect(ended.clock.nextBoostAt).toBe(38_000 + 1_000 + 30_000)
+    expect(ended.clock.nextBoostAt).toBe(endsAt + 1_000 + wait)
 
     const pity = advanceBoostClock(
-      { activeBoost: null, nextBoostAt: 999_999, idleSince: 0 },
+      { activeBoost: null, nextBoostAt: 999_999_999, idleSince: 0 },
       "early",
-      187_500,
+      BOOST_PITY_FACTOR * mean,
       rng,
     )
     expect(pity.spawned?.mult).toBe(3)

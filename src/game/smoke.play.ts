@@ -105,6 +105,9 @@ test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gi
   expect(cleared.gigs).toEqual([gig1.id])
   expect(cleared.cps).toBe(0)
   expect(cleared.lastPop).toEqual({ kind: "gigClear", size: "large", amount: gig1.lump, label: gig1.name })
+  expect(cleared.gigCard).toBe(gig1.id)
+  game.dismissGigCard()
+  expect(game.getState().gigCard).toBeNull()
 
   expect(game.click().money).toBe(0)
   expect(game.getState().money).toBe(cleared.money)

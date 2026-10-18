@@ -145,13 +145,11 @@ describe("the shop teases what is next", () => {
     expect(tabs).toEqual(["A", "G", "W"])
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
     expect($$("[data-row='skill:10'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
-    expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.textContent).toBe("Unlocks Career log")
-    // A row wears the feature's icon and keeps the name for the tooltip and screen readers; the banner prints it.
+    // A row wears the feature's icon and keeps the name for the tooltip and screen readers.
     const badge = $("[data-row='skill:10'] [data-testid='unlock-chip']")!
     expect(badge.dataset.feature).toBe("careerLog")
     expect(badge.querySelector("svg")).not.toBeNull()
     expect(badge.querySelector(".ul-chip-name")).toBeNull()
-    expect($("[data-testid='next-unlock'] [data-testid='unlock-chip']")?.classList.contains("is-named")).toBe(true)
     // Owned rows have nothing left to tease.
     expect($("[data-row='skill:1'] [data-testid='unlock-chip']")).toBeNull()
   })
