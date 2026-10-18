@@ -18,9 +18,15 @@ export function parseIdeThemeId(value: string | null): IdeThemeId {
   return value && isIdeThemeId(value) ? value : "mocha"
 }
 
+/** What a first run gets: GitHub Light for a light OS, Mocha otherwise (and where there is no matchMedia, as under node). Never written to prefs; only a click stores a theme. */
+function osThemeId(): IdeThemeId {
+  const light = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches
+  return light ? "github-light" : "mocha"
+}
+
 function readStoredId(): IdeThemeId {
   const raw = readPref("theme")
-  return parseIdeThemeId(typeof raw === "string" ? raw : null)
+  return typeof raw === "string" && isIdeThemeId(raw) ? raw : osThemeId()
 }
 
 function writeStoredId(id: IdeThemeId): void {
