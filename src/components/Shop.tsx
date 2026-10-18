@@ -524,7 +524,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
 
       <ScrollPanel
         key={rowScope}
-        wrapClassName="shop-list-wrap"
+        wrapClassName={tab === "W" ? "shop-list-wrap" : "shop-list-wrap is-capped"}
         className="shop-list"
         scrollRef={listRef}
         showArrow={false}

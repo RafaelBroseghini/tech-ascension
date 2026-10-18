@@ -5,10 +5,12 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { MetricsModal } from "./MetricsModal.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
+import { useNarrow } from "./useNarrow.ts"
 
 /** Career telemetry. It arrives with the first job, when someone starts tracking the numbers. */
 export function MetricsButton() {
   const [open, setOpen] = useState(false)
+  const narrow = useNarrow()
   const unlocked = useFeatureOpen("metrics")
   const seeFeature = useGame((state) => state.seeFeature)
   const show = () => {
@@ -19,7 +21,7 @@ export function MetricsButton() {
 
   if (!unlocked) {
     return (
-      <FeatureGhost id="metrics" place="below" className="ide-settings">
+      <FeatureGhost id="metrics" place="below" className="ide-settings desktop-only">
         <ChartLine {...UI_ICON} aria-hidden />
       </FeatureGhost>
     )
@@ -29,9 +31,9 @@ export function MetricsButton() {
     <>
       <button
         type="button"
-        className="ide-settings"
+        className="ide-settings desktop-only"
         data-testid="metrics-button"
-        data-feature-anchor="metrics"
+        data-feature-anchor={narrow ? undefined : "metrics"}
         aria-label="Metrics"
         aria-haspopup="dialog"
         aria-expanded={open}
