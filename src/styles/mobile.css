@@ -4,7 +4,7 @@
  * its half. Loaded after index.css so it wins at equal weight.
  */
 
-/* The Owned button only exists to replace the list that no longer fits under the art. */
+/* The inventory button only exists to replace the list that no longer fits under the art. */
 .owned-open { display: none; }
 
 @media (max-width: 860px) {
@@ -95,26 +95,8 @@
   .stage-panel h2 { font-size: var(--fs-md); }
   /* The stage name is also in the status bar, and the art and the balance need the room. */
   .plate, .career-dock { display: none; }
-  /* Top right of the stage, clear of the thumb that taps the art. The boost chip moves down under it. */
-  .owned-open {
-    position: absolute;
-    top: var(--sp-2);
-    right: var(--sp-2);
-    z-index: 3;
-    display: inline-grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: var(--stroke) solid var(--ink);
-    background: var(--surface-1);
-    color: var(--text);
-    cursor: pointer;
-  }
-
-  /* Under the briefcase, only the multiplier and its bar, so it stays clear of the balance. */
-  .boost-chip-slot { top: calc(var(--sp-2) * 2 + 44px); right: var(--sp-2); }
-  .boost-chip > span:not(.boost-chip-mult) { display: none; }
+  /* The inventory: an activity-bar button, only on narrow screens (the list fits under the art on wide ones). */
+  .owned-open { display: grid; }
 
   /* The unlock card sits at the foot of the screen, not beside what it unlocks, so it never covers the click target. */
   .ul-card {

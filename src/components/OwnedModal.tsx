@@ -1,18 +1,18 @@
-import { Briefcase, X } from "lucide-react"
+import { Boxes, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { UI_ICON } from "./icons/ui.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 
-/** On a narrow screen the owned list and skill icons do not fit under the art, so a briefcase opens them in a modal. */
+/** On a narrow screen the owned list and skill icons do not fit under the art, so an inventory button in the activity bar opens them in a modal. */
 export function OwnedButton() {
   const [open, setOpen] = useState(false)
   return (
     <>
       <button
         type="button"
-        className="owned-open"
+        className="ide-activity-btn owned-open"
         data-testid="owned-open"
         aria-label="Owned"
         title="Owned"
@@ -20,7 +20,7 @@ export function OwnedButton() {
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <Briefcase {...UI_ICON} aria-hidden />
+        <Boxes className="ide-activity-icon" {...UI_ICON} aria-hidden />
       </button>
       {open ? <OwnedModal onClose={() => setOpen(false)} /> : null}
     </>
