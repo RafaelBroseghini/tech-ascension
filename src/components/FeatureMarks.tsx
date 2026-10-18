@@ -1,5 +1,5 @@
 import { Lock } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 import type { FeatureId } from "../data/features.ts"
@@ -30,12 +30,32 @@ function tipStyle(rect: DOMRect, place: TipPlace): React.CSSProperties {
   return { left: rect.left + rect.width / 2, top: rect.top - 10, transform: "translate(-50%, -100%)" }
 }
 
-/** A tooltip portalled to the body, so a scrolling list or a clipped row never cuts it off. Shown on hover and focus. */
+/**
+ * A tooltip portalled to the body, so a scrolling list or a clipped row never cuts it off. Shown on hover and focus,
+ * and on tap (a touch pointer "leaves" the moment the finger lifts, so the click puts it back). Escape or a tap
+ * elsewhere closes it, since iOS does not focus a span and a blur would never come.
+ */
 function useTip<T extends HTMLElement>() {
   const ref = useRef<T>(null)
   const [rect, setRect] = useState<DOMRect | null>(null)
   const show = () => setRect(ref.current?.getBoundingClientRect() ?? null)
   const hide = () => setRect(null)
+  const open = rect !== null
+  useEffect(() => {
+    if (!open) return
+    const away = (event: PointerEvent) => {
+      if (!(event.target instanceof Node) || !ref.current?.contains(event.target)) setRect(null)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setRect(null)
+    }
+    document.addEventListener("pointerdown", away)
+    document.addEventListener("keydown", escape)
+    return () => {
+      document.removeEventListener("pointerdown", away)
+      document.removeEventListener("keydown", escape)
+    }
+  }, [open])
   const tip = (place: TipPlace, body: ReactNode) =>
     rect && typeof document !== "undefined"
       ? createPortal(
@@ -45,7 +65,7 @@ function useTip<T extends HTMLElement>() {
           document.body,
         )
       : null
-  return { ref, handlers: { onPointerEnter: show, onPointerLeave: hide, onFocus: show, onBlur: hide }, tip }
+  return { ref, handlers: { onPointerEnter: show, onPointerLeave: hide, onFocus: show, onBlur: hide, onClick: show }, tip }
 }
 
 /**

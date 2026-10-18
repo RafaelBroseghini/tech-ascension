@@ -164,6 +164,13 @@
   vertical-align: middle;
   white-space: nowrap;
   cursor: help;
+  position: relative;
+}
+/* The badge stays 18px; the tap target reaches 44px around it. Only the bare icon chip is a control. */
+.ul-chip:not(.is-named)::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
 }
 .ul-chip:focus-visible { outline: 2px solid var(--ide-green); outline-offset: 1px; }
 /* On the Next banner there is room for the name. */
