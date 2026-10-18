@@ -8,6 +8,7 @@ import { prestigeMult } from "../game/mods.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin, useExitState, useExitVisible } from "./useExit.ts"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 const times = (mult: number) => `×${Number(mult.toFixed(2))}`
 
@@ -65,6 +66,7 @@ export function SellButton() {
 
 function ExitConfirm({ step, first, gain, product, onNext, onCancel }: { step: 1 | 2; first: boolean; gain: number; product: string; onNext: () => void; onCancel: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true })
     // Capture phase, and the Prestige panel behind never sees it: Escape closes this card only.
@@ -139,6 +141,8 @@ export function ExitHeadline() {
   const dismiss = useGame((state) => state.dismissExitCard)
   const admin = useAdmin()
   const doneRef = useRef<HTMLButtonElement>(null)
+  const headlineRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(headlineRef, Boolean(card && admin))
   useEffect(() => {
     if (!card || !admin) return
     doneRef.current?.focus({ preventScroll: true })
@@ -152,7 +156,7 @@ export function ExitHeadline() {
   const entry = card.newEnding ? HALL_OF_FAME.find((row) => row.id === card.newEnding) : undefined
   return createPortal(
     <div className="event-backdrop exit-headline-backdrop" data-testid="exit-headline" onClick={dismiss}>
-      <div className="event-modal exit-headline" role="dialog" aria-modal="true" aria-labelledby="exit-headline-text" onClick={(click) => click.stopPropagation()}>
+      <div ref={headlineRef} className="event-modal exit-headline" role="dialog" aria-modal="true" aria-labelledby="exit-headline-text" onClick={(click) => click.stopPropagation()}>
         <p className="event-kicker">Career {card.run} closed</p>
         <h2 id="exit-headline-text" className="event-title">
           {card.headline}
@@ -246,6 +250,7 @@ function HallOfFame() {
 export function PrestigePanel({ onClose }: { onClose: () => void }) {
   const legacy = useGame((state) => state.legacy)
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true })
     const onKey = (key: KeyboardEvent) => {

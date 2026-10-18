@@ -9,6 +9,7 @@ import { createPortal } from "react-dom"
 import type { ResumeDoc, ResumeEntry, ResumeGroup } from "../game/resumeDoc.ts"
 import { LINKEDOUT_TAGLINE } from "./icons/LinkedOut.tsx"
 import { LinkedOut } from "./LinkedOut.tsx"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 function Entry({ entry, heading }: { entry: ResumeEntry; heading: "h3" | "h4" }) {
   const Title = heading
@@ -46,6 +47,7 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
   const skills = useGame((state) => state.skills)
   const handle = useGame((state) => state.profile.handle)
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const linkedOut = useMemo(() => {
     const names = SKILL_TIERS.filter((row) => ownedCount(skills, row.id) > 0).map((row) => row.name)
     return linkedOutProfile({ jobs, gigs, skills: names })

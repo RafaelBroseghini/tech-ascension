@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom"
 import { formatNumber } from "../game/format.ts"
 import { UI_ICON } from "./icons/ui.tsx"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 /** Theme palette keys a roster can take its color from. */
 export type RosterAccent = "mauve" | "green" | "blue" | "peach" | "sky" | "rosewater" | "red"
@@ -144,6 +145,8 @@ export function RosterModal({
   const [firstCells] = useState(() => items.slice(0, Math.max(FIRST_CELLS, cursor + 1)))
   const shown = useDeferredValue(items, firstCells)
   const listRef = useRef<HTMLUListElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const pick = items[Math.min(cursor, items.length - 1)]
   const unlocked = unlockedCount ?? items.filter((item) => !item.locked).length
   // The cells get stable handlers; these refs carry the current list and callback.
@@ -207,6 +210,7 @@ export function RosterModal({
       onPointerDown={(event) => event.stopPropagation()}
     >
       <div
+        ref={dialogRef}
         className="roster"
         role="dialog"
         aria-modal="true"

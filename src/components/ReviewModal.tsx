@@ -4,6 +4,7 @@ import { modsOf } from "../game/mods.ts"
 import { previewReviewChoice, reviewById } from "../game/reviews.ts"
 import { useGame } from "../game/store.ts"
 import type { ActiveReview } from "../game/store.ts"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 /**
  * One 1:1 at a time. Nothing is applied until a reply is chosen. Escape and the backdrop
@@ -52,6 +53,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
     }
   }, [review, money, xp, skills, equipment, owned, jobs, gigs, founder, activeBoost, foreverMult, tempMults, legacy, now])
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const reviewId = review.id
 
   useEffect(() => {

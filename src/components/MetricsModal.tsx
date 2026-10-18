@@ -8,6 +8,7 @@ import { formatIdleStreak, formatPlayTime } from "../game/stats.ts"
 import type { GameStats } from "../game/stats.ts"
 import { useGame } from "../game/store.ts"
 import { useLiveRates } from "./useLiveRates.ts"
+import { useFocusTrap } from "./useFocusTrap.ts"
 
 type Row = { label: string; value: string }
 
@@ -29,6 +30,7 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
   const gigs = useGame((state) => state.gigs.length)
   const jobs = useGame((state) => state.jobs.length)
   const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef)
   const rows = buildRows(stats, peakMoney, gigs, jobs)
   const live = useLiveRates()
   // On a phone the top bar has no room for the money and XP slots, so they are here instead. On a wide screen this group is hidden.
