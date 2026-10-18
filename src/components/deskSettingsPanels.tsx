@@ -1,13 +1,16 @@
 import { MousePointer2, MousePointerClick, Music, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { useEffect } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
+import { UI_FONTS } from "../data/uiFonts.ts"
 import { setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, previewIdeTheme, setIdeTheme } from "../game/ideTheme.ts"
+import { clearUiFontPreview, loadUiFonts, previewUiFont, setUiFont } from "../game/uiFont.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { NewMark } from "./FeatureMarks.tsx"
@@ -195,6 +198,45 @@ export function EditorThemeList({ savedThemeId, unlocked, onPreviewEnd }: Editor
   )
 }
 
+type UiFontListProps = {
+  savedFontId: string
+  onPreviewEnd?: () => void
+}
+
+/** The face rows, each name set in its own face. Same hover, focus and click behavior as the theme rows. */
+export function UiFontList({ savedFontId, onPreviewEnd }: UiFontListProps) {
+  // Each name is set in its own face, so the files are fetched when the list is first shown.
+  useEffect(() => {
+    loadUiFonts()
+  }, [])
+  return (
+    <div className="desk-toggles" role="listbox" aria-label="Fonts">
+      {UI_FONTS.map((entry) => (
+        <button
+          key={entry.id}
+          type="button"
+          role="option"
+          aria-selected={entry.id === savedFontId}
+          className={entry.id === savedFontId ? "ide-theme-option is-active" : "ide-theme-option"}
+          data-testid="ui-font"
+          data-font={entry.id}
+          onPointerEnter={() => previewUiFont(entry.id)}
+          onFocus={() => previewUiFont(entry.id)}
+          onPointerLeave={() => onPreviewEnd?.()}
+          onBlur={() => onPreviewEnd?.()}
+          onClick={() => setUiFont(entry.id)}
+        >
+          <span className="ide-theme-name" style={{ fontFamily: entry.stack }}>
+            {entry.name}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Drops a hover preview of either picker, theme or font. */
 export function clearEditorThemePreview(): void {
   clearIdeThemePreview()
+  clearUiFontPreview()
 }

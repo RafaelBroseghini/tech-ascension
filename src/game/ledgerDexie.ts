@@ -79,6 +79,7 @@ function shelfFrom(records: readonly StoredRecord[]): LoadedShelf {
     career: careerRow(byId.get("career")),
     desk: prefRow("desk", byId.get("desk")),
     theme: prefRow("theme", byId.get("theme")),
+    font: prefRow("font", byId.get("font")),
     shopTab: prefRow("shopTab", byId.get("shopTab")),
     shopPanel: prefRow("shopPanel", byId.get("shopPanel")),
   }

@@ -11,6 +11,7 @@ description: Verify that Tech Ascension plays well on a phone. Use after any cha
 npm run check:mobile                                  # every viewport, about 5 minutes
 MOBILE_CHECK_ONLY=390x844 npm run check:mobile        # one viewport
 node scripts/mobile-check.mjs /tmp/mobile-shots       # choose where the screenshots go
+MOBILE_CHECK_FONT=all npm run check:mobile            # every UI font (or one id); screenshots go in a folder per font
 ```
 
 ## What it asserts

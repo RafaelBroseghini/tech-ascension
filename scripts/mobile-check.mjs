@@ -4,19 +4,28 @@
 //
 //   node scripts/mobile-check.mjs [outDir]          every viewport
 //   MOBILE_CHECK_ONLY=390x844 node scripts/mobile-check.mjs   one viewport
+//   MOBILE_CHECK_FONT=all node scripts/mobile-check.mjs       every UI font (or one id, e.g. jetbrains-mono); screenshots go in a folder per font
 import { execFileSync, spawn } from "node:child_process"
 import { mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { DEFAULT_UI_FONT_ID, UI_FONTS } from "../src/data/uiFonts.ts"
 
 // Its own port, so it never talks to a dev server that is serving another checkout.
 const PORT = process.env.MOBILE_CHECK_PORT ?? "43125"
 const APP = `http://127.0.0.1:${PORT}`
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SESSION = process.env.AGENT_BROWSER_SESSION ?? "mobile-check"
-const outDir = process.argv[2] ?? join(tmpdir(), "tech-ascension-mobile")
-mkdirSync(outDir, { recursive: true })
+const baseDir = process.argv[2] ?? join(tmpdir(), "tech-ascension-mobile")
+
+// The face is a preference, so it survives reset() and a reload. One run covers the default face unless asked for more.
+const FONT_ASK = process.env.MOBILE_CHECK_FONT
+const FONTS = !FONT_ASK ? [DEFAULT_UI_FONT_ID] : FONT_ASK === "all" ? UI_FONTS.map((font) => font.id) : [FONT_ASK]
+for (const id of FONTS) if (!UI_FONTS.some((font) => font.id === id)) throw new Error(`unknown font ${id}`)
+let outDir = baseDir
+let fontId = DEFAULT_UI_FONT_ID
+const tag = (vp) => `${FONTS.length > 1 ? `${fontId} ` : ""}${vp.name}`
 
 const VIEWPORTS = [
   { name: "360x640", w: 360, h: 640 },
@@ -138,7 +147,7 @@ const warnings = []
 const rows = []
 
 function check(vp, state, m) {
-  const where = `${vp.name} ${state}`
+  const where = `${tag(vp)} ${state}`
   const fail = (msg) => failures.push(`${where}: ${msg}`)
   const warn = (msg) => warnings.push(`${where}: ${msg}`)
   const portraitPhone = vp.w <= 860 && vp.h > vp.w
@@ -226,7 +235,34 @@ function shot(vp, state) {
   ab("screenshot", `${outDir}/${vp.name}-${state}.png`)
 }
 
+// Sets the UI font and waits for its files, so the measure sees the face and not the fallback.
+async function pickFont(id) {
+  game(`g.setFont(${JSON.stringify(id)}); return 1`)
+  ab("eval", `(async () => { await new Promise((r) => setTimeout(r, 300)); const face = getComputedStyle(document.documentElement).getPropertyValue("--font-display").trim().split(",")[0]; await Promise.all([500, 600, 700].map((w) => document.fonts.load(w + " 16px " + face))); await document.fonts.ready; return 1 })()`)
+  await settle()
+}
+
 try {
+  for (const id of FONTS) {
+    fontId = id
+    outDir = FONTS.length > 1 ? join(baseDir, id) : baseDir
+    mkdirSync(outDir, { recursive: true })
+    await runViewports()
+  }
+  const errors = ab("errors").trim()
+  if (errors && !/no errors/i.test(errors)) failures.push(`page errors:\n${errors}`)
+} catch (error) {
+  failures.push(`the run stopped: ${error.message}`)
+} finally {
+  try {
+    ab("close")
+  } catch {
+    // Already closed.
+  }
+  stopVite()
+}
+
+async function runViewports() {
   for (const vp of VIEWPORTS) {
     ab("set", "viewport", String(vp.w), String(vp.h))
     ab("open", APP)
@@ -234,6 +270,7 @@ try {
     dismissGate()
     // reset() wipes the career, not the prefs: a dock left over from another run would shrink every shop below.
     ab("eval", UNDOCK)
+    await pickFont(fontId)
 
     // The start card, as a new player sees it.
     game("g.reset(); return 1")
@@ -272,7 +309,7 @@ try {
     try {
       ab("find", "role", "tab", "click", "--name", "Company")
     } catch {
-      failures.push(`${vp.name} company: no Company tab to open`)
+      failures.push(`${tag(vp)} company: no Company tab to open`)
     }
     await settle()
     check(vp, "company", measure())
@@ -285,7 +322,7 @@ try {
       game("g.setMoney(9e12); for (let id = 1; id <= 25; id++) g.buy(id); for (let id = 1; id <= 40; id++) g.buyEquipment(id); g.clearReveals(); g.tick(1000); return 1")
       await settle()
       const rowOut = ab("eval", ROWS)
-      for (const msg of JSON.parse(JSON.parse(rowOut.slice(rowOut.indexOf('"')))) ) failures.push(`${vp.name} shop: ${msg}`)
+      for (const msg of JSON.parse(JSON.parse(rowOut.slice(rowOut.indexOf('"')))) ) failures.push(`${tag(vp)} shop: ${msg}`)
       game(STATES["mid-d"])
       await settle()
       try {
@@ -295,7 +332,7 @@ try {
         shot(vp, "owned-modal")
         ab("press", "Escape")
       } catch {
-        failures.push(`${vp.name} owned-modal: no Owned button to open`)
+        failures.push(`${tag(vp)} owned-modal: no Owned button to open`)
       }
     }
 
@@ -317,21 +354,10 @@ try {
     shot(vp, "review")
     game("g.dismissReview(); return 1")
   }
-  const errors = ab("errors").trim()
-  if (errors && !/no errors/i.test(errors)) failures.push(`page errors:\n${errors}`)
-} catch (error) {
-  failures.push(`the run stopped: ${error.message}`)
-} finally {
-  try {
-    ab("close")
-  } catch {
-    // Already closed.
-  }
-  stopVite()
 }
 
 console.log(rows.join("\n"))
-console.log(`\nscreenshots: ${outDir}`)
+console.log(`\nscreenshots: ${baseDir}`)
 if (warnings.length) console.log(`\nwarnings (${warnings.length})\n${warnings.join("\n")}`)
 if (failures.length) {
   console.error(`\nFAILED (${failures.length})\n${failures.join("\n")}`)

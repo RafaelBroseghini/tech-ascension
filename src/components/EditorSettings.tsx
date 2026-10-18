@@ -12,6 +12,7 @@ import { getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
+import { clearUiFontPreview, getSavedUiFont, subscribeUiFont } from "../game/uiFont.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
@@ -19,6 +20,7 @@ import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts
 import { openSurface } from "../game/surfaces.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
+import { UiFontList } from "./deskSettingsPanels.tsx"
 import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
 import type { FeatureId } from "../data/features.ts"
@@ -144,6 +146,7 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
 
 export function EditorSettings() {
   const saved = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
+  const savedFont = useSyncExternalStore(subscribeUiFont, getSavedUiFont, getSavedUiFont)
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const [open, setOpen] = useState(false)
@@ -173,6 +176,7 @@ export function EditorSettings() {
 
   const close = () => {
     clearIdeThemePreview()
+    clearUiFontPreview()
     setOpen(false)
   }
   // The modals are owned by the (hidden on a phone) top-bar buttons; the menu closes first so it does not sit under them.
@@ -208,6 +212,7 @@ export function EditorSettings() {
       document.removeEventListener("pointerdown", onPointer)
       document.removeEventListener("keydown", onKey)
       clearIdeThemePreview()
+      clearUiFontPreview()
     }
   }, [open])
 
@@ -228,7 +233,10 @@ export function EditorSettings() {
         {anyNew ? <i className="settings-new settings-new-corner" data-testid="settings-new-gear" aria-hidden /> : null}
       </button>
       {open ? (
-        <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => clearIdeThemePreview()}>
+        <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => {
+          clearIdeThemePreview()
+          clearUiFontPreview()
+        }}>
           <HowToPlay />
           {narrow && (metrics || linkedout) ? (
             <section className="ide-settings-section" aria-labelledby={`${menuId}-career`}>
@@ -397,6 +405,14 @@ export function EditorSettings() {
                   </ul>
                 </div>
               ))}
+            </div>
+          </section>
+          <section className="ide-settings-section" aria-labelledby={`${menuId}-ui-font`}>
+            <p className="ide-theme-heading" id={`${menuId}-ui-font`}>
+              Font
+            </p>
+            <div className="ide-settings-section-panel">
+              <UiFontList savedFontId={savedFont.id} onPreviewEnd={clearUiFontPreview} />
             </div>
           </section>
           {narrow && rosters ? (

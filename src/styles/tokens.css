@@ -1,6 +1,8 @@
 /*
  * Design tokens for Tech Ascension.
- * One display face (Chakra Petch). Metrics use GitHub's system mono stack.
+ * One display face, Chakra Petch unless the player picks another in settings (src/data/uiFonts.ts).
+ * The pick paints --font-display and --font-scale on the root; the type tokens below carry the scale so a wide or
+ * small face sets to the same footprint. Metrics use GitHub's system mono stack in every face.
  * The saved editor theme paints every color: surfaces, type, accent, and the
  * IDE. No blur shadows: elevation is a hard offset in ink, Balatro-style.
  */
@@ -66,14 +68,16 @@
   --font-display: "Chakra Petch", "Eurostile", "Bahnschrift", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  --fs-2xs: 0.75rem;
-  --fs-xs: 0.76rem;
-  --fs-sm: 0.88rem;
-  --fs-md: 1rem;
-  --fs-lg: 1.25rem;
-  --fs-xl: 1.75rem;
-  --fs-2xl: 2.25rem;
-  --fs-hero: clamp(2.1rem, 1.2rem + 3vw, 3.4rem);
+  /* --font-scale is set on the root with the picked face; 1 until then. The two smallest sizes never drop below 12px. */
+  --font-scale: 1;
+  --fs-2xs: max(0.75rem, calc(0.75rem * var(--font-scale)));
+  --fs-xs: max(0.75rem, calc(0.76rem * var(--font-scale)));
+  --fs-sm: calc(0.88rem * var(--font-scale));
+  --fs-md: calc(1rem * var(--font-scale));
+  --fs-lg: calc(1.25rem * var(--font-scale));
+  --fs-xl: calc(1.75rem * var(--font-scale));
+  --fs-2xl: calc(2.25rem * var(--font-scale));
+  --fs-hero: calc(clamp(2.1rem, 1.2rem + 3vw, 3.4rem) * var(--font-scale));
 
   --track-caps: 0.14em;
   --track-tight: -0.01em;
