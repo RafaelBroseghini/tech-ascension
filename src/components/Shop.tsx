@@ -7,6 +7,7 @@ import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
+import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
@@ -750,7 +751,14 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
             <>
               {gearSections(equipRows).map((group) => (
                 <Fragment key={group.id}>
-                  <h3 className="shop-section">{group.label}</h3>
+                  <h3 className="shop-section">
+                    {group.label}
+                    {isServingKind(group.id) ? (
+                      <span className="shop-section-tag" title="Gear in this section serves your product's users: it adds request capacity on top of its $/s.">
+                        Serves users
+                      </span>
+                    ) : null}
+                  </h3>
                   {group.rows.map((row, index) => {
                       const have = ownedCount(equipment, row.id)
                       const cost = nextCost(gearBase(row, perksHeld), have)
@@ -787,6 +795,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
                             items={[
                               ...(row.cps > 0 ? [<Stat key="sec">{`+$${formatNumber(row.cps)}/s`}</Stat>] : []),
                               ...(row.clickBonus > 0 ? [<Stat key="click" icon="click">{`+$${formatNumber(row.clickBonus)}`}</Stat>] : []),
+                              ...(servedUsersOf(row) > 0 ? [<Stat key="serves">{`serves ${formatNumber(servedUsersOf(row))} users`}</Stat>] : []),
                             ]}
                           />
                           {" · owned "}

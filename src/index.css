@@ -2316,6 +2316,16 @@ img { -webkit-user-drag: none; user-select: none; }
   border-bottom: var(--stroke) solid var(--surface-1);
 }
 
+.shop-section-tag {
+  margin-left: var(--sp-2);
+  padding: 1px 6px;
+  border-radius: var(--radius, 4px);
+  background: color-mix(in srgb, var(--ide-green) 22%, transparent);
+  color: var(--ide-green);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .offer.is-locked .offer-copy,
 .offer.is-done .offer-copy { opacity: 0.78; }
 .offer.is-done h3 { color: var(--text-dim); }
