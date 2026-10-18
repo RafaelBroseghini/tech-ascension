@@ -64,10 +64,13 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
   }
-  /* A shop tab shows two rows (96px lets two of the tallest, a wrapped capital name, fit whole) and scrolls for the rest, so the stage gets the room.
+  /* A shop tab shows two whole rows and scrolls for the rest, so the stage gets the room. `--rows-h` is the two rows at the top, measured in
+     `useTwoRows` (rows wrap to different heights); scrolling snaps to a row so none is cut in half.
      The Company tab is not a list of rows and keeps the shop's share of the screen. */
   .shop { max-height: 56dvh; }
-  .shop-list-wrap.is-capped { flex: 0 1 auto; max-height: 192px; }
+  .shop-list-wrap.is-capped .shop-list { scroll-snap-type: y mandatory; }
+  .shop-list-wrap.is-capped .offer { scroll-snap-align: start; }
+  .shop-list-wrap.is-capped { flex: 0 1 auto; max-height: var(--rows-h, 192px); }
   .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); box-shadow: inset 0 3px 0 var(--surface-2); animation: none; }
   .shop-panel-hide, .shop-panel-show, .shop-head .eyebrow, .shop-head-row { display: none; }
   .shop-head, .shop-head-top { display: contents; }

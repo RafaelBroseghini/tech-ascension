@@ -37,6 +37,8 @@ import type { Requirement, ShopTab } from "../game/phase.ts"
 import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
+import { useNarrow } from "./useNarrow.ts"
+import { useTwoRows } from "./useTwoRows.ts"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
@@ -235,6 +237,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const [flashKey, setFlashKey] = useState<string | null>(null)
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
   const listRef = useRef<HTMLDivElement>(null)
+  const narrow = useNarrow()
   const seenRows = useRef(new Map<string, number>())
 
   // A newly opened phase takes over the tab so the unlock is not missed.
@@ -314,6 +317,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
   const rowCount =
     tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
+  useTwoRows(listRef, narrow && tab !== "W", rowScope)
   const [listOverflows, setListOverflows] = useState(false)
   const showJumpEnd = tab !== "W" && unlocked[tab] && listOverflows
 
