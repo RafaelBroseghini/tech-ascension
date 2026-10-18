@@ -39,6 +39,7 @@ import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
 import { useNarrow } from "./useNarrow.ts"
 import { useTwoRows } from "./useTwoRows.ts"
+import { ShopGrip } from "./ShopGrip.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
@@ -198,7 +199,7 @@ function LockPanel({ title, lines, either }: { title: string; lines: Requirement
   )
 }
 
-export function Shop({ onCollapse }: { onCollapse: () => void }) {
+export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; docked: boolean; onDock: (docked: boolean) => void }) {
   const money = useGame((s) => s.money)
   const xp = useGame((s) => s.xp)
   const xpTotal = useGame((s) => s.xpTotal)
@@ -395,13 +396,25 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
     window.setTimeout(() => setFlashKey((current) => (current === key ? null : current)), 440)
   }
 
+  // A marker means something new is open to buy: a row unlocked and never bought. It does not say you can afford it.
+  const tabHasNew = (id: ShopTab) =>
+    (id === "W" && forkPending) ||
+    (id === "A" &&
+      (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
+        visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
+    (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
+    (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready")) ||
+    (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs))) ||
+    (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0))
+
   const tabGlow = PHASE_TAB[tab].glow
   useEffect(() => {
     if (tab !== "D") setPickedEra(null)
   }, [tab, setPickedEra])
 
   return (
-    <aside className="shop" data-testid="shop" data-phase={tab} onPointerMove={holdPreview}>
+    <aside className={docked ? "shop is-docked" : "shop"} data-testid="shop" data-phase={tab} onPointerMove={holdPreview}>
+      <ShopGrip docked={docked} label={PHASE_TAB[tab].label} fresh={SHOP_TABS.some((id) => unlocked[id] && tabHasNew(id))} onDock={onDock} />
       <div className="shop-head">
         <div className="shop-head-top">
           <p className="eyebrow">
@@ -438,17 +451,7 @@ export function Shop({ onCollapse }: { onCollapse: () => void }) {
         {SHOP_TABS.map((id) => {
           const locked = !unlocked[id]
           if (locked && id !== nextLockedTab) return null
-          // A marker means something new is open to buy: a row unlocked and never bought. It does not say you can afford it.
-          const hasNew =
-            !locked &&
-            ((id === "W" && forkPending) ||
-              (id === "A" &&
-                (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
-                  visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
-              (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-              (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready")) ||
-              (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs))) ||
-              (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0)))
+          const hasNew = !locked && tabHasNew(id)
           return (
             <button
               key={id}

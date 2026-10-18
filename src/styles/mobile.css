@@ -67,7 +67,7 @@
   /* A shop tab shows two whole rows and scrolls for the rest, so the stage gets the room. `--rows-h` is the two rows at the top, measured in
      `useTwoRows` (rows wrap to different heights); scrolling snaps to a row so none is cut in half.
      The Company tab is not a list of rows and keeps the shop's share of the screen. */
-  .shop { max-height: 56dvh; }
+  .shop { max-height: calc(56dvh + var(--shop-cap-extra, 0px)); }
   .shop-list-wrap.is-capped .shop-list { scroll-snap-type: y mandatory; }
   .shop-list-wrap.is-capped .offer { scroll-snap-align: start; }
   .shop-list-wrap.is-capped { flex: 0 1 auto; max-height: var(--rows-h, 192px); }
@@ -129,7 +129,56 @@
 
 /* Short portrait screens give the stage a little more, because the art and the balance have a fixed size. */
 @media (max-width: 860px) and (max-height: 700px) and (orientation: portrait) {
-  .shop { max-height: 50dvh; }
+  .shop { max-height: calc(50dvh + var(--shop-cap-extra, 0px)); }
+}
+
+/* The shop's grip: a bottom sheet you drag down to dock to a bar and tap or drag up to open (ShopGrip.tsx). Only a
+   portrait phone stacks the shop under the stage, so only there does it dock; on its side the shop is a column again. */
+.shop-grip { display: none; }
+@media (max-width: 860px) and (orientation: portrait) {
+  .shop { --shop-grip-h: 24px; --shop-dock-h: 46px; transition: max-height var(--dur-base) var(--ease-out); }
+  /* The grip adds to the cap rather than taking from a tab's two rows; the Company tab scrolls and keeps its share. */
+  .shop:not([data-phase="W"]) { --shop-cap-extra: var(--shop-grip-h); }
+  .shop.is-dragging { transition: none; }
+  .shop-grip {
+    /* The full width of the shop, so a short handle is still easy to catch; reaching up over the stage would cover the
+       click target when a tall tab pushes the shop up. */
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: var(--shop-grip-h);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ide-mauve);
+    touch-action: none;
+    cursor: grab;
+  }
+  .shop.is-dragging .shop-grip { cursor: grabbing; }
+  .shop-grip-pill { width: 40px; height: 4px; border-radius: 2px; background: currentColor; opacity: 0.7; }
+  .shop-grip-bar { display: none; }
+  /* Docked, the rows stay laid out (clipped, not removed) so the list keeps its scroll and its two-row height. */
+  .shop.is-docked { max-height: var(--shop-dock-h); overflow: hidden; }
+  .shop.is-docked > :not(.shop-grip) { visibility: hidden; }
+  .shop.is-docked .shop-grip { height: calc(var(--shop-dock-h) - var(--stroke)); grid-template-rows: auto 1fr; padding-top: 4px; }
+  .shop.is-docked .shop-grip-bar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding-right: var(--sp-3);
+    color: var(--ide-text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .shop-grip-bar .deal-dot { top: 50%; right: 0; margin-top: -3px; }
+}
+@media (max-width: 860px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
+  .shop { transition: none; }
 }
 
 /* A phone on its side has no room to stack: stage and shop go side by side, and the top bar is one row. */
