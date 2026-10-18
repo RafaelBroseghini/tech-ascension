@@ -16,6 +16,7 @@
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Click fountain (owned developer-icons, toss, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
+| UI font pick (five self-hosted faces, a per-face size scale, lazy CSS, a pref beside the theme) | `src/data/uiFonts.ts`, `src/game/uiFont.ts`, `UiFontList` in `src/components/deskSettingsPanels.tsx` |
 | Keyframes and the `prefers-reduced-motion` kill switch | `src/styles/motion.css` |
 | Phase screenshots (A XP, B gig pop, C jobs, D capital) through `__GAME__` and agent-browser | `node scripts/capture-visuals.mjs <prefix> [outDir]` |
 | Boost rates by era | `src/data/boosts.ts` |

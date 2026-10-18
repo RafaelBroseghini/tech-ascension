@@ -6,6 +6,7 @@ import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle } from "../data/ideThemes.ts"
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
 import { getSavedIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
+import { getSavedUiFont, subscribeUiFont } from "../game/uiFont.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { openRosters, ROSTER_KINDS, ROSTER_LABEL, rosterEntries, type RosterKind } from "../game/rosters.ts"
@@ -15,6 +16,7 @@ import {
   ClickKitList,
   DeskToggleList,
   EditorThemeList,
+  UiFontList,
   MusicStyleList,
   SettingsSection,
   clearEditorThemePreview,
@@ -206,6 +208,7 @@ export function RosterModals() {
 export const IdeStatusDock = memo(function IdeStatusDock() {
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const savedTheme = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
+  const savedFont = useSyncExternalStore(subscribeUiFont, getSavedUiFont, getSavedUiFont)
   const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const catsFound = useGame((state) => state.stats.catsFound.length)
   const seeFeature = useGame((state) => state.seeFeature)
@@ -394,9 +397,14 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
             </>
           }
           panel={
-            <SettingsSection heading="Editor theme">
-              <EditorThemeList savedThemeId={savedTheme.id} unlocked={unlocked} onPreviewEnd={clearEditorThemePreview} />
-            </SettingsSection>
+            <>
+              <SettingsSection heading="Editor theme">
+                <EditorThemeList savedThemeId={savedTheme.id} unlocked={unlocked} onPreviewEnd={clearEditorThemePreview} />
+              </SettingsSection>
+              <SettingsSection heading="Font">
+                <UiFontList savedFontId={savedFont.id} onPreviewEnd={clearEditorThemePreview} />
+              </SettingsSection>
+            </>
           }
         />
       ) : (

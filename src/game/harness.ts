@@ -29,6 +29,8 @@ import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
 import { readCareerText } from "./ledger.ts"
+import { isUiFontId } from "../data/uiFonts.ts"
+import { setUiFont } from "./uiFont.ts"
 import { setMoneyDirect, setPrestigeDirect, setXpDirect } from "./admin.ts"
 import { exitOpen, prestigeOnExit } from "./legacy.ts"
 import type { HallEnding } from "../data/legacy.ts"
@@ -284,6 +286,8 @@ export type GameHarness = {
   /** Clear a gig now, bypassing every requirement. False for an unknown or already cleared id. */
   forceGig: (gigId: number) => boolean
   setXp: (n: number) => void
+  /** Set the UI font (`src/data/uiFonts.ts`: chakra-petch, jetbrains-mono, space-grotesk, pixelify-sans, atkinson), as a click on its settings row does. It is a preference, not part of the career. False for an unknown id. */
+  setFont: (id: string) => boolean
   tick: (ms: number) => void
   setMoney: (n: number) => void
   forceBoost: (mult: number, ms: number) => void
@@ -584,6 +588,12 @@ export function installGameHarness(): GameHarness {
     forceGig: (gigId) => useGame.getState().clearGig(gigId, true),
 
     setXp: setXpDirect,
+
+    setFont: (id) => {
+      if (!isUiFontId(id)) return false
+      setUiFont(id)
+      return true
+    },
 
     tick: (ms) => {
       const state = useGame.getState()
