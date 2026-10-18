@@ -11,14 +11,3 @@ export const HOVER_CLICK_STEP_MS = 1000 / MAX_CLICKS_PER_SEC
 export function hoverStepMs(perSec: number): number {
   return 1000 / Math.max(1, Math.min(MAX_CLICKS_PER_SEC, perSec))
 }
-
-/** False on touch-only devices, where there is no pointer to rest on the emoji. */
-export function canHover(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true
-  return !window.matchMedia("(hover: none)").matches
-}
-
-/** The hover rate this device can use: the unlocked rate with a pointer, 0 on touch. */
-export function usableHoverRate(unlocked: number): number {
-  return canHover() ? unlocked : 0
-}
