@@ -1,6 +1,5 @@
 import { ChevronLeft } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { GigCard } from "./components/GigCard.tsx"
 import { EventModal } from "./components/EventModal.tsx"
 import { ReviewModal } from "./components/ReviewModal.tsx"
 import { MetricsBar } from "./components/MetricsBar.tsx"
@@ -59,7 +58,6 @@ export default function App() {
           ) : null}
         </main>
         <Toast />
-        <GigCard />
         <EventModal />
         <ReviewModal />
         <UnlockReveals />

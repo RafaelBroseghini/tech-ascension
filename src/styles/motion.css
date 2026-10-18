@@ -205,3 +205,13 @@
     box-shadow: 0 0 0 3px var(--boost-gold);
   }
 }
+
+/* First-click hint: the arrow nudges toward the art, over and over, until the first click. */
+@keyframes first-click-nudge {
+  0%, 100% { transform: translate(0, -50%); }
+  50% { transform: translate(-10px, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .first-click { animation: none !important; }
+}

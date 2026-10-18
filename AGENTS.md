@@ -54,7 +54,6 @@ getState(): {
  } | null
  lastReview: { promptId: number; jobId: number; choice: "exceeds" | "meets" | "pip" | null; lines: string[] } | null
  lastPop: { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string } | null
- gigCard: number | null   // the gig id on the gig card, until Continue (dismissGigCard())
  features: {
   open: string[]      // career timeline rows unlocked so far, in order ("studio", "careerLog", "theme:dracula", ...)
   fresh: string[]     // rows still marked NEW (unlocked, not used yet)
@@ -113,7 +112,6 @@ advanceOffline(ms: number): { credited: number; creditedXp: number; toast: strin
 forceEvent(eventId: number): boolean
 acceptEvent(): boolean
 dismissEvent(): void
-dismissGigCard(): void     // close the gig card (its Continue button does the same)
 forceReview(promptId?: number): boolean // 1:1 for the highest job. False with no job or for a prompt outside that band
 answerReview(choice: "exceeds" | "meets" | "pip"): boolean // meets changes nothing; pip is refused when the cost cannot be paid
 dismissReview(): void
@@ -168,10 +166,12 @@ The economy is four phases (tables in `src/data/phases.ts`, gear in `src/data/ge
 - `forceEvent(id)` opens a random event now (ids 1–110, `src/data/events.ts`) without applying it. Returns false for an unknown id. An open event is replaced, never stacked. `acceptEvent()` takes the deal and returns false when a trade's cost cannot be paid. `dismissEvent()` declines and changes nothing. `event` is the modal on screen, `lastEvent` is kept after either choice. Stakes are minutes of what you currently earn (idle, or half a click per second when that is higher), and at least 1% of the balance you hold. A gift only adds money or XP. A trade swaps one for the other. Nothing only deducts. Random events roll roughly every 240s from rows whose `eras` include `any` or the current era. Optional `requires` (job, gig, gear) is AND across fields and OR inside a list; a row with no `requires` stays era-only. Cash events (money gifts and every trade) wait until money exists. A loss never pushes money or spendable XP below 0, and lifetime XP never falls.
 - `forceReview(promptId?)` opens a 1:1 for the highest job you hold (`src/data/reviews.ts`). It returns false with no job or when `promptId` is outside that job's band. Omit `promptId` to roll one. It replaces an open event or review without applying it. `answerReview("exceeds")` is a money gift (12 minutes). `answerReview("meets")` closes the meeting and changes nothing. `answerReview("pip")` trades money for XP (10 minutes) and returns false when that cost cannot be paid, leaving the meeting up. `dismissReview()` leaves without a reply. `review.replies[].lines` are the same `+$` / `-XP` strings as events; meets has none and shows no change. A 1:1 rolls about every 12 minutes, only once a job is held, and waits out an event or a meeting already on screen. If both clocks are due, the event wins and the 1:1 slips 5 seconds.
 - `foreverMult` (permanent) and `tempMults` (timed, one per target) from events are already folded into `cps`, `clickPower`, `xpPerClick` and `xpPerSec`, so the formulas above still hold.
-- Completing a gig (`completeGig`, or the gig's normal gates) opens the gig card (`src/components/GigCard.tsx`): the gig's art, its lump and retainer, and the next gig on the board. Only Continue closes it, and it arms after 900 ms. Events and 1:1s wait while it is open. `gigCard` (the gig id, transient, never saved) is in `getState()`, and `dismissGigCard()` closes it. `forceGig` does not open it.
+- Completing a gig pays its lump with a confetti burst on the stage and nothing else: no card, no centered pop, nothing to dismiss.
 - The top bar's XP slot shows only the click rate and the idle XP/s; the XP total is in the metrics modal.
 - Below 860 px the desk's status bar is not shown. Its controls (Sound, Click, Rosters, Theme) are in the settings menu (`EditorSettings.tsx`), and the settings gear carries a green mark while a new setting is unpicked. Picking a setting clears its mark.
 - The desk behind the stage is an activity bar (the Your company globe, the career log), the career log sidebar and a status bar. The status bar names the band the career is in (High school to Mars, by stage art id, `src/data/idePacks.ts`). `previewEra(era)` shows that era's first band there with a PREVIEW chip, the way the shop's Capital era tab does; `previewEra(null)` or 20s without interaction (`tick`) snaps back, as does buying into a new era. The snapshot has no field for it; read `data-preview` on `[data-testid='ide']`.
+- One tab plays at a time (`src/game/openGame.ts`): the first holds the `tech-ascension-writer` Web Lock. A second tab shows "open in another tab" with Play here, which asks the playing tab over a BroadcastChannel to save once more and stop writing (`handOffCareer`), then boots with that save; the old tab reloads into the same screen. A tab that does not answer in 4 s has its lock stolen. A waiting tab also starts by itself when the playing tab closes. `__GAME__` exists only in the tab that plays.
+- On the first career, before the first click, a "Click me" chip (`Tap me` on a touch screen) beside the stage art points at it (`data-testid="first-click"`); it is gone once lifetime XP is above 0.
 - A save from any other `version` is wiped on load. There is no migration.
 - `lastPop` is the last Balatro money pop: `medium` on a paying click, `large` on a gig clear and a phase unlock.
 - `reset()` wipes the save back to high school.

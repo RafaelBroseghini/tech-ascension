@@ -124,6 +124,19 @@ const OwnedButtonMemo = memo(OwnedButton)
 
 const BOOST_CHIP_MS = 12000
 
+/** The very first career, before the first click: an arrow at the art, so the first move is not a guess. Gone on the first click. */
+function FirstClickHint() {
+  const show = useGame((state) => state.xpTotal === 0 && state.legacy.runs <= 1 && state.profile.chosen)
+  if (!show) return null
+  return (
+    <span className="first-click" data-testid="first-click" aria-hidden="true">
+      <span className="first-click-arrow">◀</span>
+      <span className="first-click-mouse">Click me</span>
+      <span className="first-click-touch">Tap me</span>
+    </span>
+  )
+}
+
 /** The click boost countdown. The only part of the stage that follows the clock. */
 function BoostChip({ mult }: { mult: number }) {
   const left = useGame((state) => (state.activeBoost ? Math.max(0, state.activeBoost.endsAt - state.now) : 0))
@@ -405,6 +418,7 @@ export function Stage() {
         }
       >
         {boosted ? <span className="rim" aria-hidden="true" /> : null}
+        <FirstClickHint />
         <span className="sprite-bob">
           <span ref={tiltRef} className="sprite-tilt">
             <span className="sprite-frame">

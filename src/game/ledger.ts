@@ -183,6 +183,22 @@ export function writeCareer(save: SaveData): void {
   putRow({ id: "career", rev, body: storedJson(save) })
 }
 
+/**
+ * Hand the career to another tab: put this tab's latest save and wait for it to land, then stop writing for good.
+ * Every write after this is dropped, so the tab taking over loads exactly what was left and nothing here overwrites it.
+ */
+export async function retireWriter(save: SaveData): Promise<void> {
+  const current = writer
+  writer = null
+  epoch += 1
+  clearTimers()
+  if (!current) return
+  const rev = clock.career + 1
+  clock.career = rev
+  image.career = save
+  await current.casPut({ id: "career", rev, body: storedJson(save) }).catch(() => "aborted")
+}
+
 // A past savedAt is the offline input. Putting it would race the post-credit write.
 export function stageCareer(save: SaveData): void {
   image.career = save

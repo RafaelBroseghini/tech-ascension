@@ -931,6 +931,37 @@ img { -webkit-user-drag: none; user-select: none; }
     linear-gradient(var(--boost-gold-lo), var(--boost-gold-lo));
 }
 
+/* First career, before the first click: a chip beside the art pointing at it. */
+.first-click {
+  position: absolute;
+  z-index: 4;
+  left: calc(100% + 6px);
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 6px;
+  border: var(--stroke, 2px) solid var(--ink);
+  border-radius: var(--radius, 4px);
+  background: var(--accent);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm, 0.9rem);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 0 var(--ink);
+  animation: first-click-nudge 1.1s var(--ease-in-out, ease-in-out) infinite;
+}
+
+.first-click-arrow { font-size: 0.8em; }
+.first-click-touch { display: none; }
+
+@media (hover: none) and (pointer: coarse) {
+  .first-click-mouse { display: none; }
+  .first-click-touch { display: inline; }
+}
+
 .sprite-bob {
   position: relative;
   z-index: 1;
@@ -3682,21 +3713,6 @@ img { -webkit-user-drag: none; user-select: none; }
   .event-backdrop, .event-modal { animation: none; }
 }
 
-/* ---------- gig card: a cleared gig stops the desk until Continue ---------- */
-
-.gig-card-art {
-  align-self: center;
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  image-rendering: auto;
-}
-
-.gig-card .event-choice:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-
 /* ---------- admin settings (admin mode only) ---------- */
 
 .admin-panel { display: grid; gap: 8px; padding: 6px; }
@@ -3830,3 +3846,43 @@ img { -webkit-user-drag: none; user-select: none; }
   color: var(--boost-gold);
   font-weight: 700;
 }
+
+/* ---------- open in another tab: the one screen a second tab shows ---------- */
+
+.tab-elsewhere {
+  box-sizing: border-box;
+  max-width: 440px;
+  margin: 18vh auto 0;
+  padding: var(--sp-5, 24px);
+  border: var(--stroke, 2px) solid var(--line);
+  border-radius: var(--radius, 4px);
+  background: var(--surface-1);
+  color: var(--text);
+  box-shadow: 0 6px 0 var(--ink);
+}
+
+.tab-elsewhere h1 {
+  margin: 0 0 var(--sp-3, 12px);
+  font-size: var(--fs-lg, 1.3rem);
+  line-height: 1.2;
+}
+
+.tab-elsewhere p {
+  margin: 0 0 var(--sp-4, 16px);
+  color: var(--text-dim);
+  font-size: var(--fs-sm, 0.9rem);
+}
+
+.tab-elsewhere button {
+  padding: 8px 16px 9px;
+  border: var(--stroke, 2px) solid var(--ink);
+  border-radius: var(--radius, 4px);
+  background: var(--accent);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.tab-elsewhere button:disabled { opacity: 0.6; cursor: progress; }
