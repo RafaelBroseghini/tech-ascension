@@ -378,8 +378,8 @@ export class GlobeScene {
   private audience: Wave["audience"] | null = null
   /** Called when the land arrives, so a still globe can draw itself again. */
   onLoad: () => void = () => {}
-  /** Called after every frame with where the labels go, so the DOM can follow the globe. */
-  onNotes: (notes: readonly Note[]) => void = () => {}
+  /** Called after every frame with where the labels go, so the DOM can follow the globe. Without one, the labels are not projected. */
+  onNotes: ((notes: readonly Note[]) => void) | null = null
   private readonly sun = new Vector3(-0.35, 0.45, 0.85).normalize()
   private readonly home = onSphere(HOME.lat, HOME.lon, RADIUS * 1.004)
   /** Deployed points of presence, by city id; the home city is always here. */
@@ -825,7 +825,7 @@ export class GlobeScene {
     if (!still && !this.turned) this.globe.rotation.y += Math.sin(now / 4000) * 0.0004
     const before = performance.now()
     this.renderer.render(this.scene, this.camera)
-    this.onNotes(this.notes())
+    this.onNotes?.(this.notes())
     this.watchSpeed(performance.now() - before)
     return false
   }
