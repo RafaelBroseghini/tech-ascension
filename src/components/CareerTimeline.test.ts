@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { createElement } from "react"
+import { createElement, Fragment } from "react"
 import type { ComponentType } from "react"
 import { createRoot } from "react-dom/client"
 import type { Root } from "react-dom/client"
@@ -10,7 +10,7 @@ import { setSidebarView } from "../game/ideSidebar.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { CareerLog } from "./CareerLog.tsx"
-import { GitHugCorner } from "./CornerActions.tsx"
+import { GitHugButton, GitHugStar } from "./CornerActions.tsx"
 import { IdentityPicker } from "./IdentityPicker.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { Shop } from "./Shop.tsx"
@@ -154,6 +154,9 @@ describe("the shop teases what is next", () => {
     expect($("[data-row='skill:1'] [data-testid='unlock-chip']")).toBeNull()
   })
 })
+
+// The star stays in the top bar; the profile button is in the activity bar.
+const GitHugCorner = () => createElement(Fragment, null, createElement(GitHugStar), createElement(GitHugButton))
 
 describe("the GitHug corner", () => {
   it("stays off the desk, real star included, until Git + GitHug hygiene", () => {

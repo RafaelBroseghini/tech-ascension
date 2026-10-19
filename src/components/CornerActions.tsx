@@ -5,12 +5,10 @@ import { resumeDocument } from "../game/resumeDoc.ts"
 import { useGame } from "../game/store.ts"
 import { CatRosterButton } from "./CatRosterButton.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
-import { MetricsButton } from "./MetricsButton.tsx"
 import { ResumeModal } from "./ResumeModal.tsx"
 import { GitHugModal, REPO } from "./GitHugModal.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
-import { useNarrow } from "./useNarrow.ts"
 
 function formatStars(count: number): string {
   if (count < 1000) return String(count)
@@ -25,7 +23,6 @@ export function ResumeButton() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const [open, setOpen] = useState(false)
-  const narrow = useNarrow()
   const handle = useGame((state) => state.profile.handle)
   const doc = useMemo(() => resumeDocument({ skills, equipment, jobs, gigs, handle }), [skills, equipment, jobs, gigs, handle])
   // The profile is a career unlock: it arrives with Portfolio site live.
@@ -39,8 +36,8 @@ export function ResumeButton() {
 
   if (!unlocked) {
     return (
-      <FeatureGhost id="linkedout" place="below" className="ide-settings desktop-only">
-        <ScrollText {...UI_ICON} aria-hidden />
+      <FeatureGhost id="linkedout" className="ide-activity-btn">
+        <ScrollText className="ide-activity-icon" {...UI_ICON} aria-hidden />
       </FeatureGhost>
     )
   }
@@ -50,15 +47,16 @@ export function ResumeButton() {
     <>
       <button
         type="button"
-        className="ide-settings desktop-only"
+        className="ide-activity-btn"
         data-testid="view-resume"
-        data-feature-anchor={narrow ? undefined : "linkedout"}
+        data-feature-anchor="linkedout"
         aria-label="View your LinkedOut profile"
+        title="LinkedOut"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={show}
       >
-        <ScrollText {...UI_ICON} aria-hidden />
+        <ScrollText className="ide-activity-icon" {...UI_ICON} aria-hidden />
         <NewMark id="linkedout" />
       </button>
       {open ? <ResumeModal doc={doc} onClose={() => setOpen(false)} /> : null}
@@ -66,28 +64,53 @@ export function ResumeButton() {
   )
 }
 
-/** The real repo's star count, fetched once the GitHug corner is on screen. */
+let repoStars: Promise<number | null> | null = null
+
+/** The real repo's star count, fetched once per page for the star pill and the profile both. */
 function useRepoStars(enabled: boolean): number | null {
   const [stars, setStars] = useState<number | null>(null)
   useEffect(() => {
     if (!enabled) return
-    const controller = new AbortController()
-    fetch("https://api.github.com/repos/RafaelBroseghini/tech-ascension", { signal: controller.signal })
+    let live = true
+    repoStars ??= fetch("https://api.github.com/repos/RafaelBroseghini/tech-ascension")
       .then((response) => (response.ok ? response.json() : null))
-      .then((body: { stargazers_count?: unknown } | null) => {
-        if (typeof body?.stargazers_count === "number") setStars(body.stargazers_count)
-      })
-      .catch(() => {})
-    return () => controller.abort()
+      .then((body: { stargazers_count?: unknown } | null) => (typeof body?.stargazers_count === "number" ? body.stargazers_count : null))
+      .catch(() => null)
+    repoStars.then((count) => {
+      if (live) setStars(count)
+    })
+    return () => {
+      live = false
+    }
   }, [enabled])
   return stars
 }
 
+/** The star for the real repo, in the top bar once Git + GitHug hygiene unlocks the GitHug profile. */
+export function GitHugStar() {
+  const unlocked = useFeatureOpen("githug")
+  const stars = useRepoStars(unlocked)
+  if (!unlocked) return null
+  return (
+    <span className="gh-star">
+      <a className="gh-star-main" href={REPO} target="_blank" rel="noreferrer" data-testid="github-star">
+        <Star {...UI_ICON} aria-hidden />
+        Star
+      </a>
+      {stars !== null ? (
+        <a className="gh-star-count" href={`${REPO}/stargazers`} target="_blank" rel="noreferrer">
+          {formatStars(stars)}
+        </a>
+      ) : null}
+    </span>
+  )
+}
+
 /**
- * The GitHug corner, a career unlock with Git + GitHug hygiene: the profile button, and the star for the real repo
- * beside it. Before the unlock only the button's outline stands there, when it is the next thing to open.
+ * The GitHug profile, an activity-bar button and a career unlock with Git + GitHug hygiene. Before the unlock only
+ * its outline stands there, when it is the next thing to open.
  */
-export function GitHugCorner() {
+export function GitHugButton() {
   const unlocked = useFeatureOpen("githug")
   const stars = useRepoStars(unlocked)
   const [open, setOpen] = useState(false)
@@ -100,35 +123,25 @@ export function GitHugCorner() {
 
   if (!unlocked) {
     return (
-      <FeatureGhost id="githug" place="below" className="ide-settings">
-        <Github {...UI_ICON} aria-hidden />
+      <FeatureGhost id="githug" className="ide-activity-btn">
+        <Github className="ide-activity-icon" {...UI_ICON} aria-hidden />
       </FeatureGhost>
     )
   }
   return (
     <>
-      <span className="gh-star">
-        <a className="gh-star-main" href={REPO} target="_blank" rel="noreferrer" data-testid="github-star">
-          <Star {...UI_ICON} aria-hidden />
-          Star
-        </a>
-        {stars !== null ? (
-          <a className="gh-star-count" href={`${REPO}/stargazers`} target="_blank" rel="noreferrer">
-            {formatStars(stars)}
-          </a>
-        ) : null}
-      </span>
       <button
         type="button"
-        className="ide-settings"
+        className="ide-activity-btn"
         data-testid="view-githug"
         data-feature-anchor="githug"
         aria-label="View your GitHug profile"
+        title="GitHug"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={show}
       >
-        <Github {...UI_ICON} aria-hidden />
+        <Github className="ide-activity-icon" {...UI_ICON} aria-hidden />
         <NewMark id="githug" />
       </button>
       {open ? <GitHugModal stars={stars} onClose={() => setOpen(false)} /> : null}
@@ -136,14 +149,14 @@ export function GitHugCorner() {
   )
 }
 
+/** The top bar's corner. Settings sit here only on the bare desk; once the activity bar shows, they move to its foot. */
 export function CornerActions() {
+  const bare = !useFeatureOpen("studio")
   return (
     <div className="top-actions">
-      <GitHugCorner />
-      <ResumeButton />
+      <GitHugStar />
       <CatRosterButton />
-      <MetricsButton />
-      <EditorSettings />
+      {bare ? <EditorSettings /> : null}
     </div>
   )
 }

@@ -77,11 +77,16 @@
   color: var(--ide-overlay);
 }
 
-/* The Buy multiplier and its hint sit at the foot of the activity bar, under the other buttons. */
+/* The Buy multiplier and its hint sit at the foot of the activity bar, under the other buttons, and settings under them. */
 .ide-activity-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
   margin-top: auto;
   padding-bottom: var(--sp-4);
 }
+.ide-activity-foot .ide-activity-btn { position: relative; }
 .ide-buy-amount,
 .ide-buy-hint {
   display: flex;
@@ -261,6 +266,16 @@
   max-height: min(50dvh, 320px);
   pointer-events: auto;
 }
+
+/* The settings menu beside the activity bar, opening upward from the gear at its foot, over the desk like the status popovers. */
+.ide-theme-menu.ide-settings-portal {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 45;
+}
+/* How to play and the wipe confirm open from that menu, so they sit over it. */
+.event-backdrop[data-wipe-modal] { z-index: 46; }
 
 /* Invisible hover bridge between the chip and the portaled menu. */
 .ide-status-chip-wrap.is-open::before {

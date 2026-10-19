@@ -1,11 +1,11 @@
-import { ChartLine, MousePointer2, MousePointerClick, Music, ScrollText, Settings, Trash2, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Settings, Trash2, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { AdminSettings } from "./AdminSettings.tsx"
 import { HowToPlay } from "./HowToPlay.tsx"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
-import type { CSSProperties } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
 import { getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
@@ -17,7 +17,6 @@ import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
-import { openSurface } from "../game/surfaces.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
 import { UiFontList } from "./deskSettingsPanels.tsx"
@@ -64,7 +63,7 @@ const TOGGLES: readonly {
 const SETTINGS_FEATURES: readonly FeatureId[] = ["music", "clickKits", "hoverClick", "themes", "cat", "rosters"]
 const SETTINGS_PICK_PREFIXES = ["music:", "kit:", "theme:"] as const
 /** Anchors for the reveal cards on narrow screens, where the status bar is folded into this menu. */
-const SETTINGS_ANCHORS = [...SETTINGS_FEATURES, "metrics", "linkedout", ...SETTINGS_PICK_PREFIXES.map((prefix) => prefix.slice(0, -1))].join(" ")
+const SETTINGS_ANCHORS = [...SETTINGS_FEATURES, ...SETTINGS_PICK_PREFIXES.map((prefix) => prefix.slice(0, -1))].join(" ")
 
 const isSettingsMark = (key: string) =>
   (SETTINGS_FEATURES as readonly string[]).includes(key) || SETTINGS_PICK_PREFIXES.some((prefix) => key.startsWith(prefix))
@@ -144,20 +143,24 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
   )
 }
 
-export function EditorSettings() {
+/**
+ * The gear and its menu. It sits in the top bar on the bare desk and at the foot of the activity bar after; there the
+ * menu is portaled beside the bar and opens upward, since the desk shell sits under the stage and clips it.
+ */
+export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }) {
   const saved = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
   const savedFont = useSyncExternalStore(subscribeUiFont, getSavedUiFont, getSavedUiFont)
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
   const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [anchor, setAnchor] = useState<{ left: number; bottom: number; maxHeight: number } | null>(null)
   const menuId = useId()
   const narrow = useNarrow()
   const seeFeature = useGame((state) => state.seeFeature)
   const anyNew = useGame((state) => state.fresh.some(isSettingsMark))
   const rosters = useFeatureOpen("rosters")
-  const metrics = useFeatureOpen("metrics")
-  const linkedout = useFeatureOpen("linkedout")
   // Settings only offer what the career has unlocked: music after the headset, the cat after it moves in, and the
   // styles, kits and themes earned so far (plus whichever one is in use).
   const music = useFeatureOpen("music")
@@ -179,12 +182,7 @@ export function EditorSettings() {
     clearUiFontPreview()
     setOpen(false)
   }
-  // The modals are owned by the (hidden on a phone) top-bar buttons; the menu closes first so it does not sit under them.
-  const openFrom = (surface: "metrics" | "linkedout") => {
-    close()
-    openSurface(surface)
-  }
-
+  const gearRef = useRef<HTMLButtonElement>(null)
   // On narrow screens the status bar's rosters and picks live in this menu, so its reveals open the menu.
   useSurface("rosters", () => {
     if (narrow) setOpen(true)
@@ -201,10 +199,13 @@ export function EditorSettings() {
     const onPointer = (event: PointerEvent) => {
       const target = event.target as Element
       if (target.closest?.("[data-wipe-modal]")) return
-      if (!wrapRef.current?.contains(target)) close()
+      if (!wrapRef.current?.contains(target) && !menuRef.current?.contains(target)) close()
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !document.querySelector("[data-wipe-modal]")) close()
+      if (event.key !== "Escape" || document.querySelector("[data-wipe-modal]")) return
+      // The portaled menu is the last thing in the page, so focus goes back to the gear rather than to the body.
+      if (menuRef.current?.contains(document.activeElement)) gearRef.current?.focus()
+      close()
     }
     document.addEventListener("pointerdown", onPointer)
     document.addEventListener("keydown", onKey)
@@ -216,59 +217,58 @@ export function EditorSettings() {
     }
   }, [open])
 
+  useLayoutEffect(() => {
+    if (!open || place !== "activity") return
+    const placeMenu = () => {
+      const rect = wrapRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const bottom = Math.max(6, window.innerHeight - rect.bottom)
+      // Never taller than the room above the gear's foot, so a short screen scrolls the menu instead of cutting its top.
+      setAnchor({ left: rect.right + 6, bottom, maxHeight: Math.min(560, window.innerHeight - bottom - 6) })
+    }
+    placeMenu()
+    window.addEventListener("resize", placeMenu)
+    // Tab from the gear would never reach a menu at the end of the page, so focus starts inside it.
+    requestAnimationFrame(() => menuRef.current?.focus({ preventScroll: true }))
+    return () => window.removeEventListener("resize", placeMenu)
+  }, [open, place])
+
+  const activity = place === "activity"
+  // Beside the activity bar the menu waits for its anchor; in the top bar it drops down in place.
+  const portal = (menu: ReactNode) => (activity ? (anchor ? createPortal(menu, document.body) : null) : menu)
+
   return (
     <div className="ide-settings-wrap" ref={wrapRef}>
       <button
+        ref={gearRef}
         type="button"
-        className="ide-settings"
+        className={activity ? "ide-activity-btn" : "ide-settings"}
         data-testid="editor-settings"
         aria-label="Settings"
+        title={activity ? "Settings" : undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={menuId}
         data-feature-anchor={narrow ? SETTINGS_ANCHORS : undefined}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        <Settings {...UI_ICON} aria-hidden />
+        <Settings {...(activity ? { className: "ide-activity-icon" } : {})} {...UI_ICON} aria-hidden />
         {anyNew ? <i className="settings-new settings-new-corner" data-testid="settings-new-gear" aria-hidden /> : null}
       </button>
-      {open ? (
-        <div className="ide-theme-menu" id={menuId} role="dialog" aria-label="Settings" onPointerLeave={() => {
+      {open ? portal(
+        <div
+          ref={menuRef}
+          className={activity ? "ide-theme-menu ide-settings-portal" : "ide-theme-menu"}
+          id={menuId}
+          role="dialog"
+          aria-label="Settings"
+          tabIndex={activity ? -1 : undefined}
+          style={activity && anchor ? anchor : undefined}
+          onPointerLeave={() => {
           clearIdeThemePreview()
           clearUiFontPreview()
         }}>
           <HowToPlay />
-          {narrow && (metrics || linkedout) ? (
-            <section className="ide-settings-section" aria-labelledby={`${menuId}-career`}>
-              <p className="ide-theme-heading" id={`${menuId}-career`}>
-                Career
-              </p>
-              <div className="ide-settings-section-panel">
-                <ul className="desk-toggles">
-                  {metrics ? (
-                    <li>
-                      <button type="button" className="desk-toggle" data-testid="settings-metrics" onClick={() => openFrom("metrics")}>
-                        <span className="desk-toggle-label">
-                          <ChartLine {...UI_ICON_SM} aria-hidden />
-                          Stats
-                        </span>
-                      </button>
-                    </li>
-                  ) : null}
-                  {linkedout ? (
-                    <li>
-                      <button type="button" className="desk-toggle" data-testid="settings-linkedout" onClick={() => openFrom("linkedout")}>
-                        <span className="desk-toggle-label">
-                          <ScrollText {...UI_ICON_SM} aria-hidden />
-                          LinkedOut resume
-                        </span>
-                      </button>
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
-            </section>
-          ) : null}
           <AdminSettings headingId={`${menuId}-admin`} />
           <section className="ide-settings-section" aria-labelledby={`${menuId}-settings`}>
             <p className="ide-theme-heading" id={`${menuId}-settings`}>

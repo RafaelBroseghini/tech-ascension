@@ -208,6 +208,12 @@
 .cat-roster-open { display: none; }
 @media (max-width: 860px) {
   .cat-roster-open { display: grid; }
-  /* Stats and the LinkedOut resume are rows in the settings menu on a phone; the top bar has no room for them. */
+  /* The top bar has no room on a phone; the cat roster moves to the activity bar. */
   .top-actions .desktop-only { display: none; }
+}
+
+/* With every button unlocked the bar outgrows a phone's stage, so it scrolls and the foot (settings) stays pinned. */
+@media (max-width: 860px) {
+  .ide-activity { overflow-y: auto; scrollbar-width: none; }
+  .ide-activity-foot { position: sticky; bottom: 0; background: var(--ide-crust); }
 }
