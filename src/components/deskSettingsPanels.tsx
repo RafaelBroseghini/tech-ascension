@@ -1,10 +1,11 @@
-import { MousePointer2, MousePointerClick, Music, Sparkles, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useEffect } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
-import { PARADE_STYLES } from "../data/paradeStyles.ts"
+import { PARADE_SOURCES, PARADE_STYLES } from "../data/paradeStyles.ts"
+import type { ParadeSourceId } from "../data/paradeStyles.ts"
 import { UI_FONTS } from "../data/uiFonts.ts"
 import { setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
@@ -18,7 +19,7 @@ import { NewMark } from "./FeatureMarks.tsx"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-export type DeskToggleKey = "music" | "sounds" | "clicks" | "cat" | "parade" | "hoverClick"
+export type DeskToggleKey = "music" | "sounds" | "clicks" | "cat" | "hoverClick"
 
 export const DESK_TOGGLES: readonly {
   key: DeskToggleKey
@@ -40,7 +41,6 @@ export const DESK_TOGGLES: readonly {
     title: "Hover or hold the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
-  { key: "parade", label: "Cat parade", Icon: Sparkles, title: "Found cat gifs drift across the screen" },
 ]
 
 const THEME_GROUPS = [
@@ -130,10 +130,32 @@ export function MusicStyleList({ desk, unlocked }: MusicStyleListProps) {
   )
 }
 
-/** Every path is open from the start: the cats are the unlock. Two columns, since the list is long. */
+/** Every category with a gif unlocked, plus the one picked, each with its count. */
+export function ParadeSourceList({ desk, counts }: { desk: DeskPrefs; counts: Readonly<Record<ParadeSourceId, number>> }) {
+  return (
+    <div className="desk-toggles parade-styles" role="listbox" aria-label="Gif parade categories">
+      {PARADE_SOURCES.filter((source) => counts[source.id] > 0 || source.id === desk.paradeSource).map((source) => (
+        <button
+          key={source.id}
+          type="button"
+          role="option"
+          aria-selected={desk.paradeSource === source.id}
+          className={desk.paradeSource === source.id ? "ide-theme-option is-active" : "ide-theme-option"}
+          data-testid={`desk-parade-source-${source.id}`}
+          onClick={() => setDeskPref("paradeSource", source.id)}
+        >
+          <span className="ide-theme-name">{source.label}</span>
+          <span className="parade-count">{counts[source.id]}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Every path is open from the start: the gifs are the unlock. Two columns, since the list is long. */
 export function ParadeStyleList({ desk }: { desk: DeskPrefs }) {
   return (
-    <div className="desk-toggles parade-styles" role="listbox" aria-label="Cat parade styles">
+    <div className="desk-toggles parade-styles" role="listbox" aria-label="Gif parade styles">
       {PARADE_STYLES.map((style) => (
         <button
           key={style.id}

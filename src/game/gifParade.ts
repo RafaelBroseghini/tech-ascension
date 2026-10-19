@@ -1,4 +1,4 @@
-/** Cat parade: the roster gifs found so far move round the stage along the picked style's path. */
+/** Gif parade: the unlocked gifs move round the stage together, along the picked style's path. The pool is in paradePool.ts. */
 import type { ParadeStyleId } from "../data/paradeStyles.ts"
 
 /** Cap: PARADE_MIN on a phone's stage, PARADE_MAX on a full HD desk's stage, scaled by area between. */
@@ -8,11 +8,11 @@ const SMALL_AREA = 360 * 360
 const LARGE_AREA = 1280 * 900
 /** Rendered size of one cat, px. */
 export const PARADE_SIZE = 40
-/** One cat fades out and a fresh one fades in every SWAP_MIN_MS to SWAP_MIN_MS + SWAP_SPAN_MS. */
+/** One gif fades out and a fresh one fades in every SWAP_MIN_MS to SWAP_MIN_MS + SWAP_SPAN_MS. */
 export const SWAP_MIN_MS = 1000
 export const SWAP_SPAN_MS = 1000
 export const FADE_MS = 600
-/** A cat stays at least this long, so a small collection drifts instead of blinking in and out. */
+/** A gif stays at least this long, so a small collection drifts instead of blinking in and out. */
 export const MIN_STAY_MS = 6000
 export const PARADE_OPACITY = 0.85
 /** Drift speed of the free styles, px per second. */
@@ -21,7 +21,7 @@ export const SPEED_SPAN = 40
 /** A frame longer than this (a tab coming back from the background) moves the clock this far only. */
 export const MAX_STEP_MS = 100
 
-export type ParadeCat = {
+export type ParadeGif = {
   url: string
   /** Four numbers in [0, 1) for the free styles: speed, heading, start x, start y (each style reads them its own way). */
   seed: readonly [number, number, number, number]
@@ -34,8 +34,8 @@ export type ParadeBox = { width: number; height: number }
 
 export const isGif = (url: string): boolean => /\.gif(?:$|\?)/i.test(url)
 
-/** The found cats that move: gifs only, in discovery order. */
-export const paradeGifs = (found: readonly string[]): string[] => found.filter(isGif)
+/** The found cats that can parade: gifs only, in discovery order. */
+export const catGifs = (found: readonly string[]): string[] => found.filter(isGif)
 
 export function paradeCap(width: number, height: number): number {
   const t = Math.max(0, Math.min(1, (width * height - SMALL_AREA) / (LARGE_AREA - SMALL_AREA)))
@@ -53,22 +53,22 @@ export function pickCat(pool: readonly string[], showing: ReadonlySet<string>, r
   return from[Math.floor(random() * from.length)] ?? from[0]!
 }
 
-export function spawnCat(url: string, now: number, random: () => number = Math.random): ParadeCat {
+export function spawnCat(url: string, now: number, random: () => number = Math.random): ParadeGif {
   return { url, seed: [random(), random(), random(), random()], bornAt: now, leavingAt: null }
 }
 
-export function catOpacity(cat: ParadeCat, now: number): number {
+export function catOpacity(cat: ParadeGif, now: number): number {
   const fadeIn = Math.min(1, Math.max(0, (now - cat.bornAt) / FADE_MS))
   const fadeOut = cat.leavingAt === null ? 1 : Math.max(0, 1 - (now - cat.leavingAt) / FADE_MS)
   return PARADE_OPACITY * Math.min(fadeIn, fadeOut)
 }
 
-export const catGone = (cat: ParadeCat, now: number): boolean => cat.leavingAt !== null && now - cat.leavingAt >= FADE_MS
+export const catGone = (cat: ParadeGif, now: number): boolean => cat.leavingAt !== null && now - cat.leavingAt >= FADE_MS
 
 export const nextSwapDelay = (random: () => number = Math.random): number => SWAP_MIN_MS + random() * SWAP_SPAN_MS
 
 /** The cat to send off next: the one on screen longest, if it has had MIN_STAY_MS and is not already leaving. -1 for none. */
-export function oldestStaying(cats: readonly ParadeCat[], now: number): number {
+export function oldestStaying(cats: readonly ParadeGif[], now: number): number {
   let pick = -1
   for (let i = 0; i < cats.length; i += 1) {
     const cat = cats[i]!
@@ -102,7 +102,7 @@ export type ParadeSlot = {
  */
 export function paradeAt(
   style: ParadeStyleId,
-  seed: ParadeCat["seed"],
+  seed: ParadeGif["seed"],
   { slot, count }: ParadeSlot,
   t: number,
   box: ParadeBox,

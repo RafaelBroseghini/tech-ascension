@@ -1,6 +1,6 @@
 import { MousePointer2, MousePointerClick, Music, Settings, Sparkles, Trash2, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { AdminSettings } from "./AdminSettings.tsx"
 import { HowToPlay } from "./HowToPlay.tsx"
@@ -15,12 +15,13 @@ import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, s
 import { clearUiFontPreview, getSavedUiFont, subscribeUiFont } from "../game/uiFont.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
-import { isGif } from "../game/catParade.ts"
+import { paradeCounts as countParadeGifs } from "../game/paradePool.ts"
 import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
-import { ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
+import { ParadeSourceList, ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
+import { useParadeProgress } from "./useParadeProgress.ts"
 import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
 import type { FeatureId } from "../data/features.ts"
@@ -41,7 +42,7 @@ const TOGGLES: readonly {
   Icon?: LucideIcon
   emoji?: string
   /** The career row this switch belongs to: its NEW mark shows here, and picking the switch uses that row. */
-  feature: FeatureId
+  feature?: FeatureId
   /** Hidden until hover clicking is unlocked (a gold hover skill, or every catalog row owned). */
   complete?: boolean
   title?: string
@@ -58,7 +59,7 @@ const TOGGLES: readonly {
     title: "Hover or hold the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI, feature: "cat" },
-  { key: "parade", label: "Cat parade", Icon: Sparkles, feature: "cat", title: "Found cat gifs drift across the screen" },
+  { key: "parade", label: "Gif parade", Icon: Sparkles, title: "Unlocked gifs move round the stage together" },
 ]
 
 /** Rows in the settings menu that can carry a NEW mark: the career rows above, and the recurring picks under them. */
@@ -167,7 +168,8 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
   // styles, kits and themes earned so far (plus whichever one is in use).
   const music = useFeatureOpen("music")
   const cat = useFeatureOpen("cat")
-  const gifsFound = useGame((state) => state.stats.catsFound.some(isGif))
+  const paradeProgress = useParadeProgress()
+  const paradeCounts = useMemo(() => countParadeGifs(paradeProgress), [paradeProgress])
   const kits = useFeatureOpen("clickKits")
   const unlocked = useUnlockedSet()
   const styles = musicChoices(unlocked)
@@ -177,7 +179,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
     if (toggle.complete && hoverPerSec <= 0) return false
     if (toggle.key === "music" && !music) return false
     if (toggle.key === "cat" && !cat) return false
-    if (toggle.key === "parade" && !(cat && gifsFound)) return false
+    if (toggle.key === "parade" && paradeCounts.all === 0) return false
     return true
   })
 
@@ -295,7 +297,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                       title={toggle.key === "hoverClick" ? `Hover or hold the emoji to click at ${hoverPerSec}/s` : toggle.title}
                       onClick={() => {
                         setDeskPref(toggle.key, !desk[toggle.key])
-                        seeFeature(toggle.feature)
+                        if (toggle.feature) seeFeature(toggle.feature)
                       }}
                     >
                       <span className="desk-toggle-label">
@@ -305,7 +307,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                           <toggle.Icon {...UI_ICON_SM} aria-hidden />
                         ) : null}
                         {toggle.label}
-                        <SettingsMark id={toggle.feature} />
+                        {toggle.feature ? <SettingsMark id={toggle.feature} /> : null}
                       </span>
                       <i>{desk[toggle.key] ? "On" : "Off"}</i>
                     </button>
@@ -314,15 +316,25 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
               </ul>
             </div>
           </section>
-          {cat && gifsFound && desk.parade ? (
-            <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-style`}>
-              <p className="ide-theme-heading" id={`${menuId}-parade-style`}>
-                Cat parade
-              </p>
-              <div className="ide-settings-section-panel">
-                <ParadeStyleList desk={desk} />
-              </div>
-            </section>
+          {paradeCounts.all > 0 && desk.parade ? (
+            <>
+              <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-source`}>
+                <p className="ide-theme-heading" id={`${menuId}-parade-source`}>
+                  Parade gifs
+                </p>
+                <div className="ide-settings-section-panel">
+                  <ParadeSourceList desk={desk} counts={paradeCounts} />
+                </div>
+              </section>
+              <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-style`}>
+                <p className="ide-theme-heading" id={`${menuId}-parade-style`}>
+                  Parade style
+                </p>
+                <div className="ide-settings-section-panel">
+                  <ParadeStyleList desk={desk} />
+                </div>
+              </section>
+            </>
           ) : null}
           {music ? (
           <section className="ide-settings-section" aria-labelledby={`${menuId}-music-style`}>
