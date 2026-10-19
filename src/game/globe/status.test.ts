@@ -23,17 +23,17 @@ describe("the status board", () => {
   })
 
   it("stays operational while the base capacity keeps up", () => {
-    const b = board(100)
+    const b = board(50)
     expect(serving(b).health).toBe("operational")
     expect(b.incident).toBeNull()
   })
 
   it("gets slow as demand nears capacity, then drops requests once it outgrows the gear", () => {
-    const warm = board(250)
+    const warm = board(90)
     expect(serving(warm).health).toBe("degraded")
     expect(warm.banner).toBe("Degraded Performance")
     expect(warm.incident?.title).toBe("Elevated latency on request serving")
-    const busy = board(400)
+    const busy = board(133)
     expect(serving(busy).health).toBe("partial")
     expect(busy.banner).toBe("Partial Outage")
     expect(busy.incident?.title).toBe("Requests failing on request serving")
@@ -41,9 +41,9 @@ describe("the status board", () => {
   })
 
   it("buying gear brings the board back to operational", () => {
-    const busy = board(400)
+    const busy = board(133)
     expect(serving(busy).health).toBe("partial")
-    const fixed = board(400, { "44": 1 })
+    const fixed = board(133, { "44": 1 })
     expect(capacityOf({ "44": 1 })).toBeGreaterThan(BASE_RPS)
     expect(serving(fixed).health).toBe("operational")
     expect(fixed.incident).toBeNull()

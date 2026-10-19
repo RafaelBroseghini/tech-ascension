@@ -5,18 +5,18 @@ import { FRESH_FOOTPRINT } from "./footprint.ts"
 import { appMetrics, popRows } from "./metrics.ts"
 import { cityRows } from "./tip.ts"
 
-const facts = { users: { "americas-east": 400, europe: 200 }, resistance: 0, incidents: [], won: false, footprint: FRESH_FOOTPRINT, equipment: {} }
+const facts = { users: { "americas-east": 133, europe: 67 }, resistance: 0, incidents: [], won: false, footprint: FRESH_FOOTPRINT, equipment: {} }
 
 describe("the app's metrics", () => {
   it("shows demand against capacity, and what it costs when the app cannot keep up", () => {
     const busy = companyOf(facts)
     const m = appMetrics(busy, cityRows(busy.audience, busy.demand, busy.pops))
-    expect(m.demand).toBeCloseTo(600 * 0.1)
-    expect(m.capacity).toBe(30)
-    expect(m.dropped).toBeCloseTo(m.demand - 30)
-    expect(m.servedShare).toBeCloseTo(30 / m.demand)
+    expect(m.demand).toBeCloseTo(200 * 0.1)
+    expect(m.capacity).toBe(10)
+    expect(m.dropped).toBeCloseTo(m.demand - 10)
+    expect(m.servedShare).toBeCloseTo(10 / m.demand)
     expect(m.lostPerSec).toBeCloseTo(m.dropped * 0.02)
-    expect(m.load).toBeCloseTo(m.demand / 30)
+    expect(m.load).toBeCloseTo(m.demand / 10)
   })
 
   it("an idle app has no drops and a latency from its users", () => {
