@@ -173,7 +173,7 @@ describe("milestones and the win", () => {
 
 describe("the uptime bars", () => {
   it("records a day's worst state and opens a new bar each day", () => {
-    const crowd = { users: { "americas-east": 400 } }
+    const crowd = { users: { "americas-east": 133 } }
     const first = stepCompany({ ...FRESH_COMPANY, ...crowd }, facts(1), 1_000, 1_000, never)
     expect(first.state.uptime).toBe("p")
     const later = stepCompany(first.state, facts(1), 1_000, 2 * STATUS_DAY_MS + 1_000, never)
@@ -182,7 +182,7 @@ describe("the uptime bars", () => {
   })
 
   it("keeps the worst state of a day", () => {
-    const bad = stepCompany({ ...FRESH_COMPANY, users: { "americas-east": 400 } }, facts(1), 1_000, 1_000, never)
+    const bad = stepCompany({ ...FRESH_COMPANY, users: { "americas-east": 133 } }, facts(1), 1_000, 1_000, never)
     const good = stepCompany({ ...bad.state, users: {} }, facts(0), 1_000, 2_000, never)
     expect(good.state.uptime).toBe("p")
   })

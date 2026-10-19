@@ -5,7 +5,7 @@ import { multiplierOf, totalUsers } from "./world.ts"
 import type { Incident } from "./world.ts"
 
 /** Requests a second one laptop serves before any gear is bought. */
-export const BASE_RPS = 30
+export const BASE_RPS = 10
 
 /** Requests a second each user sends: one every ten seconds. Eight billion users send 800 million a second. */
 export const RPS_PER_USER = 0.1
