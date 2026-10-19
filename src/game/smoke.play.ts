@@ -501,7 +501,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()
   expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "githug", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
-  expect(state.features.open).not.toContain("cat")
+  expect(state.features.open).toContain("cat")
 
   // Every journal line is one flat JSON object with a time, a type and the balances it left.
   const lines = game.careerLog()
@@ -514,14 +514,9 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(lines.some((line) => line.type === "phase" && line.ref === "phase:B")).toBe(true)
   expect(lines.some((line) => line.type === "hire" && line.name === "Internship offer")).toBe(true)
 
-  // Coming back after a break logs the return and brings the cat, named on the sticky note.
-  game.clearReveals()
+  // Coming back after a break logs the return.
   const back = game.advanceOffline(30 * 60 * 1000)
   expect(back.toast).not.toBeNull()
-  state = game.getState()
-  expect(state.features.open).toContain("cat")
-  expect(state.features.reveals).toEqual(["cat"])
-  expect(state.careerLog.last).toMatchObject({ type: "unlock", ref: "cat" })
   expect(game.careerLog().some((line) => line.type === "return" && line.awayMs === 30 * 60 * 1000)).toBe(true)
 
   // The career has a drawn handle, rerolled from the word lists until kept.
@@ -545,11 +540,10 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.getState().features.open).toEqual([])
   expect(game.getState().careerLog.size).toBe(1)
 
-  // Without ever leaving, a quarter of an hour at the desk brings the cat too.
-  game.tick(14 * 60 * 1000)
+  // Neither time at the desk nor a break brings the cat; only the first job does.
+  game.tick(60 * 60 * 1000)
+  game.advanceOffline(30 * 60 * 1000)
   expect(game.getState().features.open).not.toContain("cat")
-  game.tick(60 * 1000)
-  expect(game.getState().features.open).toContain("cat")
 })
 
 test("the world: users per region, gear as the throttle, incidents, and the win", () => {

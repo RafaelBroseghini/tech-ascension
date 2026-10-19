@@ -82,12 +82,11 @@ describe("gates", () => {
     expect(triggerMet({ kind: "board", board: "capital" }, p)).toBe(false)
   })
 
-  it("brings the cat after a quarter of an hour at the desk, or sooner on a return", () => {
-    expect(triggerMet({ kind: "settled" }, progress())).toBe(false)
-    expect(triggerMet({ kind: "settled" }, progress({ playTimeMs: 15 * 60 * 1000 - 1 }))).toBe(false)
-    expect(triggerMet({ kind: "settled" }, progress({ playTimeMs: 15 * 60 * 1000 }))).toBe(true)
-    expect(triggerMet({ kind: "settled" }, progress({ returns: 1 }))).toBe(true)
-    expect(triggerProgress({ kind: "settled" }, progress({ playTimeMs: 5 * 60 * 1000 }))).toEqual({ fill: 1 / 3, left: "more time at the desk" })
+  it("brings the cat with the first job, never for time spent or a return alone", () => {
+    const cat = FEATURES.find((row) => row.id === "cat")!
+    expect(triggerMet(cat.trigger, progress())).toBe(false)
+    expect(triggerMet(cat.trigger, progress({ playTimeMs: 24 * 60 * 60 * 1000, returns: 3 }))).toBe(false)
+    expect(triggerMet(cat.trigger, progress({ jobs: [1] }))).toBe(true)
   })
 
   it("counts an era as reached once any row of that era or a later one is owned", () => {

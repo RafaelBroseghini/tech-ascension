@@ -1,7 +1,7 @@
 import { CAPITAL } from "../data/capital.ts"
 import { PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
 import type { Era } from "../data/capital.ts"
-import { BASE_CLICK_KIT, BASE_THEMES, CAT_DESK_MS, FEATURES } from "../data/features.ts"
+import { BASE_CLICK_KIT, BASE_THEMES, FEATURES } from "../data/features.ts"
 import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { bandForTier } from "../data/idePacks.ts"
@@ -76,8 +76,6 @@ export function triggerMet(trigger: FeatureTrigger, p: FeatureProgress): boolean
       return (stageOf(p)?.artId ?? 0) >= trigger.tier
     case "era":
       return reachedEra(p, trigger.era)
-    case "settled":
-      return p.returns > 0 || p.playTimeMs >= CAT_DESK_MS
     case "exit":
       return (p.runs ?? 1) > 1 || p.won === true || prestigeTotalFor(p.earned ?? 0) >= 1
   }
@@ -117,8 +115,6 @@ export function triggerLabel(trigger: FeatureTrigger): string {
       return `the ${bandForTier(trigger.tier).label} stage`
     case "era":
       return `the ${trigger.era === "q3" ? "scale" : trigger.era} era`
-    case "settled":
-      return `${CAT_DESK_MS / 60_000} minutes at the desk, or a break`
     case "exit":
       return "earning enough for your first Prestige, or winning the world"
   }
@@ -243,10 +239,6 @@ export function triggerProgress(trigger: FeatureTrigger, p: FeatureProgress): Tr
     case "exit": {
       return { fill: ratio(p.earned ?? 0, PRESTIGE_EARN_SCALE) * 0.9, left: "more earnings" }
     }
-    case "settled": {
-      if (p.returns > 0) return { fill: 1, left: "" }
-      return { fill: ratio(p.playTimeMs, CAT_DESK_MS), left: p.playTimeMs < CAT_DESK_MS ? "more time at the desk" : "" }
-    }
   }
 }
 
@@ -273,7 +265,7 @@ function teaseOf(row: FeatureRow, p: FeatureProgress): FeatureTease {
     via: triggerLabel(row.trigger),
     fill: progress.fill,
     left: progress.left,
-    mystery: row.trigger.kind === "settled",
+    mystery: row.id === "cat",
   }
 }
 

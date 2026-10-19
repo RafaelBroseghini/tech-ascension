@@ -51,7 +51,7 @@ The desk is earned, not handed over. A new career starts with the XP counter and
 | 10 min | Metrics | the first job | standard |
 | 10 min | Click sounds, editor themes | Thocky keyboard, Drawing tablet (UI) | small |
 | on a 10x dev skill | Hover click | a hover skill (or every catalog row) | standard |
-| 15 min | Desk cat | 15 minutes at the desk (clicking, idling or with the tab in the background), or sooner on a return after a break (10 minutes away) | big |
+| 10 min | Desk cat | the first job | big |
 | ~28 min | Music | Noise-cancelling headset | standard |
 | second visit | Capital | its gate | the phase pop |
 
