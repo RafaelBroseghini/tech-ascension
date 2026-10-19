@@ -1,6 +1,7 @@
 import { Bell, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import type { FeatureId } from "../data/features.ts"
 import { agoLabel } from "../game/careerLog.ts"
 import { notificationsOf, unreadCount } from "../game/notifications.ts"
 import { useGame } from "../game/store.ts"
@@ -44,7 +45,7 @@ export function NotificationsButton() {
 
 function NotificationsModal({ list, onClose }: { list: ReturnType<typeof notificationsOf>; onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null)
-  const fresh = useGame((state) => state.fresh)
+  const fresh: readonly string[] = useGame((state) => state.fresh)
   const seeFeature = useGame((state) => state.seeFeature)
   const [now] = useState(() => Date.now())
   useFocusTrap(dialogRef)
@@ -91,14 +92,15 @@ function NotificationsModal({ list, onClose }: { list: ReturnType<typeof notific
                   {fresh.includes(item.id) ? <span className="career-log-tag">NEW</span> : null}
                 </b>
                 <small>
-                  {item.blurb} · {agoLabel(item.at, now)}
+                  {item.blurb ? `${item.blurb} · ` : ""}
+                  {agoLabel(item.at, now)}
                 </small>
                 {surface ? (
                   <button
                     type="button"
                     className="notifications-open"
                     onClick={() => {
-                      seeFeature(item.id)
+                      seeFeature(item.id as FeatureId)
                       onClose()
                       openSurface(surface)
                     }}
