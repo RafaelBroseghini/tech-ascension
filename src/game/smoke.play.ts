@@ -5,6 +5,7 @@ import { expect, test, vi } from "vitest"
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
+import { GOLD_SKILLS } from "../data/gold.ts"
 import { ForkCard } from "../components/globe/ForkCard.tsx"
 import { FullTimeCell } from "../components/FullTime.tsx"
 import { PRESTIGE_MULT_PER } from "../data/legacy.ts"
@@ -432,24 +433,24 @@ test("save: a save from another schema version is wiped, not migrated", () => {
   game.reset()
 })
 
-test("10x dev (gold) skills: bulk buying, hover clicking and the offline cap open at XP milestones", () => {
+test("10x dev (gold) skills: hover clicking and the offline cap open at XP milestones", () => {
   game.reset()
-  // The first bulk skill opens at 8,000 lifetime XP and costs spendable XP.
-  game.setXp(7_999)
-  expect(game.buyGold(1)).toBe(false)
-  game.setXp(8_000 + 4_000)
-  expect(game.buyGold(1)).toBe(true)
-  expect(game.getState().gold).toEqual([1])
-  expect(game.getState().xpTotal).toBeGreaterThanOrEqual(12_000)
+  // The first perk opens at its lifetime XP and costs spendable XP.
+  const first = GOLD_SKILLS[0]!
+  game.setXp(first.unlockXp - 1)
+  expect(game.buyGold(first.id)).toBe(false)
+  game.setXp(first.unlockXp + first.cost)
+  expect(game.buyGold(first.id)).toBe(true)
+  expect(game.getState().gold).toEqual([first.id])
+  expect(game.getState().xpTotal).toBeGreaterThanOrEqual(first.unlockXp)
 
-  // Without a bulk skill every purchase is one copy; with x5 it is up to five.
-  expect(game.getState().buyAmounts).toEqual([1, 5])
+  // Every purchase is one copy.
   game.setXp(1e9)
-  expect(game.buySkill(2, 5)).toBe(true)
-  expect(game.getState().skills["2"]).toBe(5)
-  expect(game.setBuyAmount("max")).toBe(5)
+  expect(game.buySkill(2)).toBe(true)
+  expect(game.getState().skills["2"]).toBe(1)
 
   // Hover clicking waits for a hover skill (or the whole catalog) and speeds up per tier.
+  game.reset()
   expect(game.getState().hoverRate).toBe(0)
   expect(game.forceGold(2)).toBe(true)
   expect(game.getState().hoverRate).toBe(2)
@@ -464,7 +465,7 @@ test("10x dev (gold) skills: bulk buying, hover clicking and the offline cap ope
   expect(game.getState().gold).toEqual([])
 })
 
-test("career timeline: the desk is earned piece by piece, logged as JSON, and the cat arrives on a return", () => {
+test("career timeline: the desk is earned piece by piece, logged as JSON, and the cat arrives with the first job", () => {
   game.reset()
   // Minute zero: XP and the Skills tab. Nothing unlocked, the journal holds the start line.
   const start = game.getState()
@@ -770,7 +771,7 @@ test("prestige: selling the product pays Prestige, restarts the career and the p
   game.setXp(200_000)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   expect(game.buyJob(1)).toBe(true)
-  game.forceGold(1)
+  game.forceGold(2)
   const { handle, product } = game.getState().profile
   // The product has users, a region bought, and a hire to throw away.
   game.setMoney(1e13)
@@ -803,7 +804,7 @@ test("prestige: selling the product pays Prestige, restarts the career and the p
   expect(after.profile.product).not.toBe(product)
   expect(after.profile.chosen).toBe(false)
   // Kept: 10x dev skills, the handle, the journal.
-  expect(after.gold).toEqual([1])
+  expect(after.gold).toEqual([2])
   expect(game.careerLog().some((line) => line.type === "exit" && line.prestigeEarned === prestige)).toBe(true)
   game.keepProfile()
   // Taken once: the new career has earned nothing yet.

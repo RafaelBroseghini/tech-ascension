@@ -17,7 +17,6 @@ import {
   hirePrice,
   HIRES,
   MAX_HIRES,
-  maxHires,
   openHires,
   parseHires,
   productRole,
@@ -100,22 +99,15 @@ describe("the hire gate", () => {
     expect(hire(slice({ money: outsourced.price }), "outsourced")).not.toBeNull()
   })
 
-  it("buys up to the amount asked, as many as the money pays for", () => {
-    const five = hire(slice({ money: 1e9 }), "outsourced", 5)!
-    expect(five.founder.hires.outsourced).toBe(5)
-    expect(five.money).toBe(1e9 - hireCost(outsourced, 0, 5))
-    const short = hire(slice({ money: outsourced.price * 2.5 }), "outsourced", 10)!
-    expect(short.founder.hires.outsourced).toBe(2)
-    const max = hire(slice({ money: 1e9 }), "outsourced", "max")!
-    const n = max.founder.hires.outsourced!
-    expect(n).toBe(maxHires(outsourced, 0, 1e9))
-    expect(max.money).toBeGreaterThanOrEqual(0)
-    expect(hireCost(outsourced, 0, n + 1)).toBeGreaterThan(1e9)
+  it("hires one at a time, however much money there is", () => {
+    const one = hire(slice({ money: 1e9 }), "outsourced")!
+    expect(one.founder.hires.outsourced).toBe(1)
+    expect(one.money).toBe(1e9 - hireCost(outsourced, 0, 1))
   })
 
   it("stops at the cap", () => {
     const full = { ...FRESH_FOUNDER, hires: { outsourced: MAX_HIRES - 1 } }
-    expect(hire({ money: 1e30, founder: full }, "outsourced", 5)!.founder.hires.outsourced).toBe(MAX_HIRES)
+    expect(hire({ money: 1e30, founder: full }, "outsourced")!.founder.hires.outsourced).toBe(MAX_HIRES)
     expect(hire({ money: 1e30, founder: { ...full, hires: { outsourced: MAX_HIRES } } }, "outsourced")).toBeNull()
   })
 
@@ -128,16 +120,14 @@ describe("the hire gate", () => {
     expect(hire(slice({ founder: { ...FRESH_FOUNDER, hires: { outsourced: 1 } } }), "bootcamp")).not.toBeNull()
   })
 
-  it("fires on either track, up to the amount or everyone on Max, with no refund", () => {
+  it("fires one at a time, on either track, with no refund", () => {
     const f: FounderState = { ...FRESH_FOUNDER, hires: { outsourced: 12, bootcamp: 3 } }
     expect(fire({ founder: f }, "outsourced")?.founder.hires).toEqual({ outsourced: 11, bootcamp: 3 })
-    expect(fire({ founder: f }, "outsourced", 10)?.founder.hires).toEqual({ outsourced: 2, bootcamp: 3 })
-    expect(fire({ founder: f }, "bootcamp", 5)?.founder.hires).toEqual({ outsourced: 12 })
-    expect(fire({ founder: f }, "outsourced", "max")?.founder.hires).toEqual({ bootcamp: 3 })
+    expect(fire({ founder: { ...f, hires: { bootcamp: 1 } } }, "bootcamp")?.founder.hires).toEqual({})
     expect(fire({ founder: { ...f, track: "founder" } }, "bootcamp")?.founder.hires).toEqual({ outsourced: 12, bootcamp: 2 })
     expect(fire({ founder: f }, "senior")).toBeNull()
     expect(fire({ founder: f }, "nobody")).toBeNull()
-    expect(hirePayrollOf(fire({ founder: f }, "outsourced", "max")!.founder.hires)).toBe(3 * HIRES[1]!.salary)
+    expect(hirePayrollOf(fire({ founder: f }, "outsourced")!.founder.hires)).toBe(11 * HIRES[0]!.salary + 3 * HIRES[1]!.salary)
   })
 
   it("keeps the rows below a kind fired to nobody open", () => {

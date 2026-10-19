@@ -13,9 +13,8 @@ import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, quotePurchase, skillCost, visibleShopRows } from "../game/economy.ts"
+import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, skillCost, visibleShopRows } from "../game/economy.ts"
 import { canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
-import type { BuyAmount } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
 import {
   capitalRequirements,
@@ -160,17 +159,10 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
   )
 }
 
-/**
- * The price on a buy button: just the currency, `480 XP` or `$1,200`. A gold amount adds its count, `×5 2,400 XP`,
- * when the budget covers more than one copy. The verb is left to the aria-label.
- */
-function buyLabel(currency: "xp" | "money", baseCost: number, have: number, budget: number, amount: BuyAmount, firstCost?: number): string {
+/** The price on a buy button: just the currency, `480 XP` or `$1,200`. The verb is left to the aria-label. */
+function buyLabel(currency: "xp" | "money", baseCost: number, have: number, firstCost?: number): string {
   const price = (n: number) => (currency === "money" ? `$${formatNumber(n)}` : `${formatNumber(n)} XP`)
-  const one = have === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, have)
-  if (amount === 1) return price(one)
-  const quote = quotePurchase(budget, baseCost, have, amount, firstCost)
-  if (quote.count <= 1) return price(one)
-  return `×${quote.count} ${price(quote.total)}`
+  return price(have === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, have))
 }
 
 /** 10x dev skills (gold in the code) carry a trophy in the art column instead of a sprite. */
@@ -210,7 +202,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const jobs = useGame((s) => s.jobs)
   const gigs = useGame((s) => s.gigs)
   const gold = useGame((s) => s.gold)
-  const buyAmount = useGame((s) => s.buyAmount)
   const legacyHeld = useGame((s) => s.legacy)
   const perksHeld = { legacy: legacyHeld }
   const buyGold = useGame((s) => s.buyGold)
@@ -582,8 +573,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   title={row.name}
                   actions={
                     <>
-                      <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id, buyAmount))}>
-                        {!revealed && have === 0 ? "Locked" : buyLabel("xp", row.baseXpCost, have, xp, buyAmount, row.firstXpCost)}
+                      <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id))}>
+                        {!revealed && have === 0 ? "Locked" : buyLabel("xp", row.baseXpCost, have, row.firstXpCost)}
                       </button>
                     </>
                   }
@@ -784,8 +775,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                           title={row.name}
                           actions={
                             <>
-                              <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id, buyAmount))}>
-                                {!revealed && have === 0 ? "Locked" : buyLabel("money", gearBase(row, perksHeld), have, money, buyAmount)}
+                              <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id))}>
+                                {!revealed && have === 0 ? "Locked" : buyLabel("money", gearBase(row, perksHeld), have)}
                               </button>
                             </>
                           }
@@ -833,8 +824,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                     title={tier.name}
                     actions={
                       <>
-                        <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id, buyAmount))}>
-                          {buyLabel("money", capitalBase(tier, perksHeld), have, money, buyAmount)}
+                        <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id))}>
+                          {buyLabel("money", capitalBase(tier, perksHeld), have)}
                         </button>
                       </>
                     }

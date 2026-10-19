@@ -22,8 +22,7 @@ import {
 } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
 import { advanceEventClock, eventById, resolveOffer } from "./events.ts"
-import { canBuyGold, clampBuyAmount, goldById, offlineCapMs, toBuyAmount } from "./gold.ts"
-import type { BuyAmount } from "./gold.ts"
+import { canBuyGold, goldById, offlineCapMs } from "./gold.ts"
 import type { EarningRates, EventLine } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
@@ -111,9 +110,6 @@ export type MoneyPop = {
   label: string
 }
 
-/** What a caller asks for. The store never buys more than the gold skills allow (see `clampBuyAmount`). */
-export type BuyMode = "one" | "max" | number
-
 /** A random event on screen. Nothing is applied until the player accepts. */
 export type ActiveEvent = {
   id: number
@@ -138,8 +134,6 @@ type GameState = {
   gigs: number[]
   /** Owned gold skill ids. */
   gold: number[]
-  /** The amount the Buy control is set to. Always one of the unlocked amounts. */
-  buyAmount: BuyAmount
   phase: Phase
   activeBoost: ActiveBoost | null
   nextBoostAt: number | null
@@ -193,9 +187,9 @@ type GameState = {
   whatsNew: boolean
   click: () => { money: number; xp: number }
   /** Buy a Phase D capital row. */
-  buy: (tierId: number, mode?: BuyMode) => void
-  buySkill: (skillId: number, mode?: BuyMode) => void
-  buyEquipment: (equipId: number, mode?: BuyMode) => void
+  buy: (tierId: number) => void
+  buySkill: (skillId: number) => void
+  buyEquipment: (equipId: number) => void
   buyJob: (jobId: number) => boolean
   /**
    * Leave this career: pay the Prestige its earnings climbed to, reset the run and the product (see `exit` in the store),
@@ -224,16 +218,14 @@ type GameState = {
   keepClimbing: () => void
   /** Raise a bridge after running out. False with bridges used up or when not out of runway. */
   raiseBridge: () => boolean
-  /** Hire a kind of person on the ladder (see `HIRES`), as many as the Buy control allows. False as a founder, in a closed row, or short of the price. */
-  hire: (id: string, amount?: BuyAmount) => boolean
-  /** Let go of people of a kind, as many as the Buy control says (Max is all of them), on either track. No refund. False with nobody of that kind. */
-  fire: (id: string, amount?: BuyAmount) => boolean
+  /** Hire one person of a kind on the ladder (see `HIRES`). False as a founder, in a closed row, or short of the price. */
+  hire: (id: string) => boolean
+  /** Let go of one person of a kind, on either track. No refund. False with nobody of that kind. */
+  fire: (id: string) => boolean
   /** Take a job again. After running out it gives up the highest job; by choice it keeps them all. False off the founder track. */
   returnToLadder: () => boolean
   /** Switch a bought region on or off as a whole. The last region serving stays on. */
   setRegionActive: (regionId: string, on: boolean) => boolean
-  /** Set the Buy control. The amount drops to the largest one the gold skills unlock. */
-  setBuyAmount: (amount: BuyAmount) => void
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
   clearGig: (gigId: number, force?: boolean) => boolean
   /** Note a cat the desk cat turned into. True the first time this cat is seen. */
@@ -306,7 +298,6 @@ function toSave(state: GameState, now: number): SaveData {
   }
   if (state.gold.length > 0) save.gold = state.gold
   if (!isFreshLegacy(state.legacy)) save.legacy = state.legacy
-  if (state.buyAmount !== 1) save.buyAmount = state.buyAmount
   if (state.foreverMult !== 1) save.foreverMult = state.foreverMult
   const temp = pruneTemp(state.tempMults, now)
   if (Object.keys(temp).length > 0) save.tempMults = temp
@@ -330,11 +321,6 @@ function toSave(state: GameState, now: number): SaveData {
 
 function eraAlreadyOwned(owned: OwnedMap, era: string): boolean {
   return Object.keys(owned).some((key) => capitalById(Number(key))?.era === era && ownedCount(owned, Number(key)) > 0)
-}
-
-/** A request is held to the amounts the gold skills unlock: without any, every purchase is one copy. */
-function allowedMode(state: Pick<GameState, "gold">, mode: BuyMode): BuyAmount {
-  return clampBuyAmount(state.gold, toBuyAmount(mode))
 }
 
 let lastSaveAt = 0
@@ -437,7 +423,6 @@ export const useGame = create<GameState>((set, get) => ({
   jobs: booted.save.jobs,
   gigs: booted.save.gigs,
   gold: booted.save.gold ?? [],
-  buyAmount: booted.save.buyAmount ?? 1,
   phase: phaseOf(booted.save),
   activeBoost: booted.save.activeBoost ?? null,
   nextBoostAt: null,
@@ -507,14 +492,14 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
-  buy: (tierId, mode = "one") => {
+  buy: (tierId) => {
     const tier = capitalById(tierId)
     if (!tier) return
     const state = get()
     if (!capitalUnlocked(state)) return
     const have = ownedCount(state.owned, tier.id)
     if (have === 0 && !isRevealed(tier, state.owned, state.peakMoney)) return
-    const quote = quotePurchase(state.money, capitalBase(tier, state), have, allowedMode(state, mode))
+    const quote = quotePurchase(state.money, capitalBase(tier, state), have)
     if (quote.count <= 0) return
 
     const owned: OwnedMap = { ...state.owned, [String(tier.id)]: have + quote.count }
@@ -536,13 +521,13 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
-  buySkill: (skillId, mode = "one") => {
+  buySkill: (skillId) => {
     const skill = skillById(skillId)
     if (!skill) return
     const state = get()
     const have = ownedCount(state.skills, skill.id)
     if (have === 0 && state.xpTotal < skill.unlockAtXp) return
-    const quote = quotePurchase(state.xp, skill.baseXpCost, have, allowedMode(state, mode), skill.firstXpCost)
+    const quote = quotePurchase(state.xp, skill.baseXpCost, have, skill.firstXpCost)
     if (quote.count <= 0) return
 
     const prevBest = highestOwnedSkill(state.skills)
@@ -558,14 +543,14 @@ export const useGame = create<GameState>((set, get) => ({
     persistNow()
   },
 
-  buyEquipment: (equipId, mode = "one") => {
+  buyEquipment: (equipId) => {
     const equip = equipById(equipId)
     if (!equip) return
     const state = get()
     if (!equipmentOpen(state)) return
     const have = ownedCount(state.equipment, equip.id)
     if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs)) return
-    const quote = quotePurchase(state.money, gearBase(equip, state), have, allowedMode(state, mode))
+    const quote = quotePurchase(state.money, gearBase(equip, state), have)
     if (quote.count <= 0) return
     set({
       money: Math.max(0, state.money - quote.total),
@@ -591,13 +576,8 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
-  setBuyAmount: (amount) => {
-    set({ buyAmount: clampBuyAmount(get().gold, amount) })
-    persistNow()
-  },
-
-  hire: (id, amount) => commitCompany(companyActions.hire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
-  fire: (id, amount) => commitCompany(companyActions.fire(get(), id, clampBuyAmount(get().gold, amount ?? get().buyAmount)), true),
+  hire: (id) => commitCompany(companyActions.hire(get(), id), true),
+  fire: (id) => commitCompany(companyActions.fire(get(), id), true),
   buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
   deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
   setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),
@@ -694,7 +674,6 @@ export const useGame = create<GameState>((set, get) => ({
       footprint: FRESH_FOOTPRINT,
       founder: FRESH_FOUNDER,
       forkModal: false,
-      buyAmount: clampBuyAmount(state.gold, state.buyAmount),
       phase: phaseOf(fresh),
       activeBoost: null,
       nextBoostAt: null,
@@ -1012,7 +991,6 @@ export const useGame = create<GameState>((set, get) => ({
       jobs: [],
       gigs: [],
       gold: [],
-      buyAmount: 1,
       phase: "A",
       activeBoost: null,
       nextBoostAt: null,

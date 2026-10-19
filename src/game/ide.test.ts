@@ -63,9 +63,9 @@ describe("snap-back in the store", () => {
   it("buying into a new era ends the preview, buying inside the owned era keeps it", () => {
     useGame.setState({ money: 1e15, peakMoney: 1e15, gigs: [1], owned: { "1": 1 } })
     game().setPreviewEra("upper")
-    game().buy(2, "one")
+    game().buy(2)
     expect(game().previewEra).toBe("upper")
-    game().buy(6, "one")
+    game().buy(6)
     expect(game().previewEra).toBeNull()
   })
 

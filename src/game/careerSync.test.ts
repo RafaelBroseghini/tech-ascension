@@ -17,7 +17,7 @@ describe("purchase notes", () => {
       owned: { "1": 1 },
       jobs: [1],
       gigs: [3],
-      gold: [1],
+      gold: [2],
       xpTotal: 50_000,
       peakMoney: 600_000,
     }
@@ -29,7 +29,7 @@ describe("purchase notes", () => {
       "gear:gear:2",
       "invest:capital:1",
       "era:era:mid",
-      "perk:gold:1",
+      "perk:gold:2",
       "phase:phase:B",
       "phase:phase:C",
       "phase:phase:D",

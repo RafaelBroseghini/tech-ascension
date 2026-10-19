@@ -11,8 +11,7 @@ import { nextUnlock } from "./nextUnlock.ts"
 import type { NextUnlock } from "./nextUnlock.ts"
 import { capitalUnlocked, equipmentOpen, eraOf, gigBoardUnlocked, jobBoardUnlocked, stageOf } from "./phase.ts"
 import type { Phase } from "./phase.ts"
-import { buyAmounts, goldById, hoverRate, offlineCapMs } from "./gold.ts"
-import type { BuyAmount } from "./gold.ts"
+import { goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
 import { forceIncident, setRegionUsers } from "./globe/actions.ts"
@@ -130,10 +129,6 @@ export type GameSnapshot = {
   gigs: number[]
   /** Owned gold skill ids. */
   gold: number[]
-  /** Buy amounts the gold skills unlock, in order. One copy is always there. */
-  buyAmounts: BuyAmount[]
-  /** The amount the Buy control is set to. */
-  buyAmount: BuyAmount
   /** Hover clicks per second: 0 until a hover gold skill (or every catalog row) is owned. */
   hoverRate: number
   /** How long time away is paid, in hours. 8 until a gold skill extends it. */
@@ -231,14 +226,11 @@ export type OfflineCatchup = {
 export type GameHarness = {
   getState: () => GameSnapshot
   click: () => { money: number; xp: number }
-  /**
-   * Buy a Phase D capital row: one copy, or up to `amount` when a gold skill unlocks that amount (otherwise it
-   * stays one). False before capital unlocks or when it costs too much.
-   */
-  buy: (tierId: number, amount?: BuyAmount) => boolean
-  buySkill: (skillId: number, amount?: BuyAmount) => boolean
+  /** Buy one copy of a Phase D capital row. False before capital unlocks or when it costs too much. */
+  buy: (tierId: number) => boolean
+  buySkill: (skillId: number) => boolean
   buyJob: (jobId: number) => boolean
-  buyEquipment: (equipId: number, amount?: BuyAmount) => boolean
+  buyEquipment: (equipId: number) => boolean
   /**
    * Sell the product (the Exit): pay the Prestige this career's earnings climbed to, plus a new ending's bonus, and start
    * the next career. Money, XP, skills, gigs, jobs, gear, capital, boosts, event multipliers and the whole product (users,
@@ -261,10 +253,10 @@ export type GameHarness = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Switch a bought region on or off as a whole. False for the last region serving. */
   setRegionActive: (regionId: string, on: boolean) => boolean
-  /** Hire a kind of person on the ladder, as many as the shop's Buy control allows (`amount` overrides it, clamped to what the gold skills unlock). False as a founder, in a closed row, or short of the price. */
-  hire: (id: string, amount?: 1 | 5 | 10 | "max") => boolean
-  /** Let go of people of a kind, as many as the Buy control allows (`amount` overrides it, clamped; Max is all of them), on either track. No refund. False with nobody of that kind. */
-  fire: (id: string, amount?: 1 | 5 | 10 | "max") => boolean
+  /** Hire one person of a kind on the ladder. False as a founder, in a closed row, or short of the price. */
+  hire: (id: string) => boolean
+  /** Let go of one person of a kind, on either track. No refund. False with nobody of that kind. */
+  fire: (id: string) => boolean
   /** Quit the ladder for the product. False before the fork opens (1,000 users and a job held), as a founder, or below the users a return asked for. */
   goFullTime: () => boolean
   /** Close the fork's modal. */
@@ -281,8 +273,6 @@ export type GameHarness = {
   setUsers: (regionId: string, users: number) => boolean
   /** Grant a gold skill now, bypassing XP, order and price. False for an unknown or owned id. */
   forceGold: (goldId: number) => boolean
-  /** Set the Buy control. It drops to the largest unlocked amount. Returns the amount now set. */
-  setBuyAmount: (amount: BuyAmount) => BuyAmount
   /** Clear a gig through the normal gates (board open, XP, prior gigs). */
   completeGig: (gigId: number) => boolean
   /** Clear a gig now, bypassing every requirement. False for an unknown or already cleared id. */
@@ -487,8 +477,6 @@ export function installGameHarness(): GameHarness {
         jobs: [...state.jobs],
         gigs: [...state.gigs],
         gold: [...state.gold],
-        buyAmounts: buyAmounts(state.gold),
-        buyAmount: state.buyAmount,
         hoverRate: hoverRate(state.gold, ownsEverything(state)),
         offlineCapHours: offlineCapMs(state.gold, OFFLINE_CAP_MS, state.legacy.perks) / 3_600_000,
         unlocks: {
@@ -533,23 +521,23 @@ export function installGameHarness(): GameHarness {
 
     click: () => useGame.getState().click(),
 
-    buy: (tierId, amount = 1) => {
+    buy: (tierId) => {
       const before = ownedCount(useGame.getState().owned, tierId)
-      useGame.getState().buy(tierId, amount)
+      useGame.getState().buy(tierId)
       return ownedCount(useGame.getState().owned, tierId) > before
     },
 
-    buySkill: (skillId, amount = 1) => {
+    buySkill: (skillId) => {
       const before = ownedCount(useGame.getState().skills, skillId)
-      useGame.getState().buySkill(skillId, amount)
+      useGame.getState().buySkill(skillId)
       return ownedCount(useGame.getState().skills, skillId) > before
     },
 
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
 
-    buyEquipment: (equipId, amount = 1) => {
+    buyEquipment: (equipId) => {
       const before = ownedCount(useGame.getState().equipment, equipId)
-      useGame.getState().buyEquipment(equipId, amount)
+      useGame.getState().buyEquipment(equipId)
       return ownedCount(useGame.getState().equipment, equipId) > before
     },
 
@@ -561,8 +549,8 @@ export function installGameHarness(): GameHarness {
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
     buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
-    hire: (id, amount) => useGame.getState().hire(id, amount),
-    fire: (id, amount) => useGame.getState().fire(id, amount),
+    hire: (id) => useGame.getState().hire(id),
+    fire: (id) => useGame.getState().fire(id),
     goFullTime: () => useGame.getState().goFullTime(),
     keepClimbing: () => useGame.getState().keepClimbing(),
     raiseBridge: () => useGame.getState().raiseBridge(),
@@ -580,11 +568,6 @@ export function installGameHarness(): GameHarness {
       useGame.setState({ gold: [...state.gold, goldId].sort((a, b) => a - b), now: Date.now() })
       persistNow()
       return true
-    },
-
-    setBuyAmount: (amount) => {
-      useGame.getState().setBuyAmount(amount)
-      return useGame.getState().buyAmount
     },
 
     completeGig: (gigId) => useGame.getState().clearGig(gigId),

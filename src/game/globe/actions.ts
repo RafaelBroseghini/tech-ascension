@@ -2,7 +2,6 @@ import { popCostOf, regionById, regionOfCity } from "../../data/regions.ts"
 import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, setPop, setRegion } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
 import type { CompanyState } from "./growth.ts"
-import type { BuyAmount } from "../gold.ts"
 import { fire as fireSome, hire as hireOne } from "./hires.ts"
 import type { FounderState } from "./track.ts"
 import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, totalUsers } from "./world.ts"
@@ -39,14 +38,14 @@ export function setRegionActive(s: CompanySlice, regionId: string, on: boolean):
   return canSetRegion(s.footprint, regionId, on) ? { footprint: setRegion(s.footprint, regionId, on) } : null
 }
 
-/** Hires up to `amount` of a kind on the ladder. Refused as a founder, in a closed row, or short of the price. */
-export function hire(s: CompanySlice, id: string, amount: BuyAmount = 1): CompanyPatch {
-  return hireOne(s, id, amount)
+/** Hires one of a kind on the ladder. Refused as a founder, in a closed row, or short of the price. */
+export function hire(s: CompanySlice, id: string): CompanyPatch {
+  return hireOne(s, id)
 }
 
-/** Lets go of up to `amount` of a kind, on either track. Refused when nobody of that kind is on the payroll. */
-export function fire(s: CompanySlice, id: string, amount: BuyAmount = 1): CompanyPatch {
-  return fireSome(s, id, amount)
+/** Lets go of one of a kind, on either track. Refused when nobody of that kind is on the payroll. */
+export function fire(s: CompanySlice, id: string): CompanyPatch {
+  return fireSome(s, id)
 }
 
 /** Pays to end an incident now, priced in minutes of `perSec`. Ending one also cools the world a little. */

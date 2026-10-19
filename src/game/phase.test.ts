@@ -181,13 +181,10 @@ describe("phase A: XP only", () => {
     state = useGame.getState()
     expect(ownedCount(state.skills, 1)).toBe(1)
 
-    // Max is a gold skill; without it a "max" request still buys one copy.
+    // Every buy is one copy.
     useGame.setState({ xp: 10_000 })
-    useGame.getState().buySkill(1, "max")
+    useGame.getState().buySkill(1)
     expect(ownedCount(useGame.getState().skills, 1)).toBe(2)
-    useGame.setState({ gold: [1, 3, 6] })
-    useGame.getState().buySkill(1, "max")
-    expect(ownedCount(useGame.getState().skills, 1)).toBeGreaterThan(5)
     expect(nextCost(10, 2)).toBe(13)
   })
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { GOLD_SKILLS } from "../data/gold.ts"
 import { FEATURES } from "../data/features.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { IDE_BANDS } from "../data/idePacks.ts"
@@ -72,7 +73,7 @@ describe("gates", () => {
   })
 
   it("opens the firsts, the boards and the 10x dev section from progress", () => {
-    const p = progress({ gigs: [1], peakMoney: 40, xpTotal: 15_000, skills: { "15": 1, "16": 1 } })
+    const p = progress({ gigs: [1], peakMoney: 40, xpTotal: GOLD_SKILLS[0]!.unlockXp, skills: { "15": 1, "16": 1 } })
     expect(triggerMet({ kind: "firstGig" }, p)).toBe(true)
     expect(triggerMet({ kind: "money" }, p)).toBe(true)
     expect(triggerMet({ kind: "firstJob" }, p)).toBe(false)

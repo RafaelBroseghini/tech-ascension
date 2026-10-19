@@ -20,7 +20,7 @@ The career is one record in a small IndexedDB ledger (Dexie, `src/game/ledger.ts
 ```
 
 - `equipment` is the Gear tab. `owned` is the Phase D capital rows. `peakMoney` is required.
-- `activeBoost`, `foreverMult`, `tempMults`, `stats`, `seenMilestones` and `gold` (owned 10x dev skill ids) and `buyAmount` (the shop Buy control, omitted at ×1) are optional. Unknown gold ids are dropped on load, and `buyAmount` is held to what the owned gold skills unlock.
+- `activeBoost`, `foreverMult`, `tempMults`, `stats`, `seenMilestones` and `gold` (owned 10x dev skill ids) are optional. Unknown gold ids are dropped on load (the Bulk Buy skills, ids 1, 3 and 6, are gone), and a leftover `buyAmount` is ignored.
 - There is no migration. A payload whose `version` is not `SAVE_VERSION`, or that is not a save object, is thrown away and a new career starts (`save was unreadable — new career started`). Bump `SAVE_VERSION` when the shape changes.
 - On load, `activeBoost` and ended `tempMults` are dropped when `endsAt <= Date.now()`.
 - Offline pay uses `savedAt`, ignores click boosts, and caps the gap at 8 hours (12, 16 or 24 with the Time away gold skills). Event multipliers apply to the offline credit for the part of the gap they covered.
