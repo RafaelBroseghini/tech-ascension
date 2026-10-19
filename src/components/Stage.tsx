@@ -14,7 +14,7 @@ import { eraOf, stageOf } from "../game/phase.ts"
 import type { Era } from "../data/capital.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
-import { capDrops, FALL_MS, fountainLift, toss, waterfallCount } from "../game/waterfall.ts"
+import { capDrops, FALL_MS, fallDistance, fountainLift, LOOT_RISE_SCALE, toss, waterfallCount } from "../game/waterfall.ts"
 import type { Drop } from "../game/waterfall.ts"
 import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
@@ -105,6 +105,7 @@ function fountain(x: number, y: number, icons: readonly IconName[], count: numbe
       y,
       dx,
       rise,
+      fall: fallDistance(window.innerHeight, y, ICON_PX),
       rot: (Math.random() - 0.5) * 140,
       size: ICON_PX,
       icon,
@@ -292,7 +293,7 @@ export function Stage() {
           x: originX + side * 8,
           y: originY - (label.kind === "xp" ? 10 : 0),
           dx: dx * 0.7,
-          rise: rise + 8,
+          rise: rise * LOOT_RISE_SCALE + 8,
           text: label.text,
           kind: label.kind,
         }
@@ -475,6 +476,7 @@ export function Stage() {
                   height: drop.size,
                   ["--dx" as string]: `${drop.dx}px`,
                   ["--rise" as string]: `${drop.rise}px`,
+                  ["--fall" as string]: `${drop.fall}px`,
                   ["--rot" as string]: `${drop.rot}deg`,
                 }}
               >

@@ -1102,7 +1102,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .drop {
   position: absolute;
   z-index: 1;
-  animation: drop-fall 1400ms linear forwards;
+  animation: drop-fall 2000ms linear forwards;
 }
 
 .drop .developer-icons,

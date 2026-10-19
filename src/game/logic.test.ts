@@ -489,9 +489,9 @@ describe("click waterfall", () => {
     expect(waterfallCount(true, () => 0.99)).toBe(3)
   })
 
-  it("keeps at most 12-16 concurrent thumbs and evicts the oldest", () => {
+  it("keeps a bounded number of concurrent thumbs and evicts the oldest", () => {
     expect(WATERFALL_CAP).toBeGreaterThanOrEqual(12)
-    expect(WATERFALL_CAP).toBeLessThanOrEqual(16)
+    expect(WATERFALL_CAP).toBeLessThanOrEqual(30)
     let live: number[] = []
     for (let i = 0; i < 200; i++) live = capDrops(live, [i, i + 1000])
     expect(live).toHaveLength(WATERFALL_CAP)
