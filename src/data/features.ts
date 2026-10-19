@@ -122,7 +122,7 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "tenx",
     name: "10x dev skills",
-    blurb: "Perks, not income: bulk buys, hover clicking, longer time away.",
+    blurb: "Perks, not income: hover clicking, longer time away.",
     size: "standard",
     trigger: { kind: "gold" },
     action: "Show me",

@@ -64,9 +64,8 @@ describe("the Exit", () => {
     for (const id of [1, 2, 3]) game.buySkill(id)
     for (const gig of GIGS.slice(0, 6)) game.forceGig(gig.id)
     expect(game.buyJob(JOB_TIERS[0]!.id)).toBe(true)
-    game.forceGold(1)
     game.forceGold(2)
-    game.setBuyAmount(5)
+    game.forceGold(4)
     game.buyEquipment(1)
     game.forceBoost(5, 60_000)
     const handle = game.getState().profile.handle
@@ -84,8 +83,7 @@ describe("the Exit", () => {
     expect(s.tempMults).toEqual({})
     expect(useGame.getState().stats.lifetimeEarned).toBe(0)
     expect(useGame.getState().peakMoney).toBe(0)
-    expect(s.gold).toEqual([1, 2])
-    expect(s.buyAmount).toBe(5)
+    expect(s.gold).toEqual([2, 4])
     expect(s.profile.handle).toBe(handle)
     expect(s.features.open).toEqual(expect.arrayContaining(unlocked))
     expect(game.careerLog().length).toBeGreaterThan(logged)
@@ -279,7 +277,7 @@ describe("Legacy perks", () => {
     game.forceGold(2)
     const gold = game.getState().offlineCapHours
     expect(gold).toBeGreaterThanOrEqual(8 + PERK.offlineHours)
-    for (let id = 1; id <= 12; id++) game.forceGold(id)
+    for (let id = 2; id <= 12; id++) game.forceGold(id)
     expect(game.getState().offlineCapHours).toBeGreaterThan(gold - 1)
   })
 

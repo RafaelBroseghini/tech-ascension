@@ -5,13 +5,11 @@ import type { Root } from "react-dom/client"
 import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it } from "vitest"
 import { GOLD_SKILLS } from "../data/gold.ts"
-import { ownedCount } from "../game/economy.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { Shop } from "./Shop.tsx"
 
 const roots: Root[] = []
-const idOf = (name: string) => GOLD_SKILLS.find((row) => row.name === name)!.id
 
 function renderInto(element: ReturnType<typeof createElement>): HTMLDivElement {
   const host = document.createElement("div")
@@ -57,7 +55,7 @@ describe("10x dev skills in the shop", () => {
 
   it("keeps the perks out of the skills list and in their own 10x dev sub-tab", () => {
     writeSavedShopTab("A")
-    useGame.setState({ xpTotal: 8_000, xp: 0, skills: { "1": 1 } })
+    useGame.setState({ xpTotal: GOLD_SKILLS[0]!.unlockXp, xp: 0, skills: { "1": 1 } })
     const host = renderShop()
     const tabs = [...host.querySelectorAll("[role='tab'][data-view]")]
     // The 10x dev tab opened with this XP, so it carries its NEW pill until it is clicked.
@@ -67,11 +65,11 @@ describe("10x dev skills in the shop", () => {
 
     openTenx(host)
     expect(tabs[1]?.getAttribute("aria-selected")).toBe("true")
-    expect(goldRows(host)).toEqual(["Bulk Buy ×5", "Hover Tap", "Overnight Cron"])
+    expect(goldRows(host)).toEqual(["Hover Tap", "Overnight Cron"])
     expect(host.querySelectorAll(".shop-list .offer:not(.gold-offer)")).toHaveLength(0)
     const first = host.querySelector(".gold-offer")!
     expect(first.querySelector(".gold-art svg")).not.toBeNull()
-    expect(first.textContent).toContain("Buy up to 5 copies")
+    expect(first.textContent).toContain("2 times a second")
     expect(first.querySelector(".offer-actions button")?.hasAttribute("disabled")).toBe(true)
 
     click(host.querySelector("[role='tab'][data-view='skills']"))
@@ -81,31 +79,16 @@ describe("10x dev skills in the shop", () => {
 
   it("claims a perk with XP and then shows it owned", () => {
     writeSavedShopTab("A")
-    const bulk = GOLD_SKILLS[0]!
-    useGame.setState({ xpTotal: 8_000, xp: bulk.cost, skills: { "1": 1 } })
+    const perk = GOLD_SKILLS[0]!
+    useGame.setState({ xpTotal: GOLD_SKILLS[0]!.unlockXp, xp: perk.cost, skills: { "1": 1 } })
     const host = renderShop()
     openTenx(host)
     click(host.querySelector(".gold-offer .offer-actions button"))
-    expect(useGame.getState().gold).toEqual([bulk.id])
+    expect(useGame.getState().gold).toEqual([perk.id])
     expect(useGame.getState().xp).toBe(0)
     expect(host.querySelector(".gold-offer")?.className).toContain("is-done")
     expect(host.querySelector(".gold-offer .offer-actions button")?.textContent).toBe("Owned")
-    expect(goldRows(host)).toContain("Bulk Buy ×10")
+    expect(goldRows(host)).toContain("Overnight Cron")
   })
 
-  it("buys as many copies as the chosen amount from the skills list", () => {
-    writeSavedShopTab("A")
-    useGame.setState({ xpTotal: 8_000, xp: 1e9, skills: { "1": 1 }, gold: [idOf("Bulk Buy ×5")] })
-    const host = renderShop()
-    expect(host.querySelector("[data-testid='buy-amount']")).toBeNull()
-
-    flushSync(() => useGame.getState().setBuyAmount(5))
-    const learn = host.querySelector<HTMLButtonElement>(".shop-list .offer:not(.gold-offer) .offer-actions button")!
-    expect(learn.textContent).toContain("×5")
-    click(learn)
-    expect(ownedCount(useGame.getState().skills, 1)).toBe(6)
-
-    openTenx(host)
-    expect(host.querySelector("[data-testid='buy-amount']")).toBeNull()
-  })
 })

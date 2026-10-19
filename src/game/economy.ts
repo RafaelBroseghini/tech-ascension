@@ -98,31 +98,16 @@ export function canAfford(money: number, cost: number): boolean {
   return cost - money <= Math.max(1, Math.abs(cost)) * 1e-8
 }
 
-/**
- * What buying costs. "one" is a single copy, a number buys up to that many (fewer when the budget runs
- * out first), and "max" buys every copy the budget covers.
- */
+/** What buying the next copy costs: one copy and its price, or none when the budget falls short. */
 export function quotePurchase(
   budget: number,
   baseCost: number,
   owned: number,
-  mode: "one" | "max" | number,
   firstCost?: number,
 ): { count: number; total: number } {
-  const limit = mode === "max" ? 5000 : mode === "one" ? 1 : Math.max(1, Math.min(5000, Math.floor(mode)))
-  let count = 0
-  let total = 0
-  let pool = budget
-  let have = owned
-  for (let i = 0; i < limit; i++) {
-    const cost = have === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, have)
-    if (!(cost > 0) || !Number.isFinite(cost) || !canAfford(pool, cost)) break
-    pool -= cost
-    total += cost
-    have += 1
-    count += 1
-  }
-  return { count, total }
+  const cost = owned === 0 && firstCost !== undefined ? firstCost : nextCost(baseCost, owned)
+  if (!(cost > 0) || !Number.isFinite(cost) || !canAfford(budget, cost)) return { count: 0, total: 0 }
+  return { count: 1, total: cost }
 }
 
 /** A skill's next copy, in XP. The first copy can sit below the curve (`firstXpCost`: the used laptop). */

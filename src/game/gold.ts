@@ -4,12 +4,6 @@ import type { GoldSkill } from "../data/gold.ts"
 import { MAX_CLICKS_PER_SEC } from "./autoClick.ts"
 import { canAfford } from "./economy.ts"
 
-/** How many copies of a repeatable row one click buys. "max" is every copy the budget covers. */
-export type BuyAmount = 1 | 5 | 10 | "max"
-
-/** Amounts in the order the Buy control lists them. */
-export const BUY_AMOUNTS: readonly BuyAmount[] = [1, 5, 10, "max"]
-
 const GOLD_BY_ID = new Map<number, GoldSkill>(GOLD_SKILLS.map((row) => [row.id, row]))
 
 export const goldById = (id: number): GoldSkill | undefined => GOLD_BY_ID.get(id)
@@ -17,29 +11,6 @@ export const goldById = (id: number): GoldSkill | undefined => GOLD_BY_ID.get(id
 /** The gold rows a save holds, in table order. Unknown ids are dropped. */
 export function ownedGold(gold: readonly number[]): GoldSkill[] {
   return GOLD_SKILLS.filter((row) => gold.includes(row.id))
-}
-
-/** Amounts the player may pick. One copy is always on the list. */
-export function buyAmounts(gold: readonly number[]): BuyAmount[] {
-  const steps = new Set<BuyAmount>([1])
-  for (const row of ownedGold(gold)) if (row.effect.kind === "buyStep") steps.add(row.effect.step)
-  return BUY_AMOUNTS.filter((amount) => steps.has(amount))
-}
-
-/** The largest unlocked amount that does not pass `want`. A request nothing unlocks falls back to one copy. */
-export function clampBuyAmount(gold: readonly number[], want: BuyAmount): BuyAmount {
-  const allowed = buyAmounts(gold)
-  const rank = BUY_AMOUNTS.indexOf(want)
-  let best: BuyAmount = 1
-  for (const amount of allowed) if (BUY_AMOUNTS.indexOf(amount) <= rank) best = amount
-  return best
-}
-
-/** Turns the loose modes the store accepts ("one", "max", a count) into a BuyAmount. */
-export function toBuyAmount(mode: "one" | "max" | number): BuyAmount {
-  if (mode === "max") return "max"
-  if (mode === "one" || !(mode > 1)) return 1
-  return mode >= 10 ? 10 : mode >= 5 ? 5 : 1
 }
 
 /** Hover clicks per second. Zero until a hover skill is owned; owning every catalog row always grants the ceiling. */

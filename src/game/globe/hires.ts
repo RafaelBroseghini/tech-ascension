@@ -1,4 +1,3 @@
-import type { BuyAmount } from "../gold.ts"
 import type { FounderState, Track } from "./track.ts"
 import { totalUsers } from "./world.ts"
 
@@ -82,9 +81,6 @@ export function openHires(hires: Hires): Hire[] {
   return HIRES.slice(0, Math.min(HIRES.length, last + 2))
 }
 
-/** How many a buy of `amount` hires: up to that many, or as many as the money pays for. */
-export const hireCount = (row: Hire, held: number, money: number, amount: BuyAmount): number => Math.min(maxHires(row, held, money), amount === "max" ? MAX_HIRES : amount)
-
 /** Only the ladder hires, in an open row, with the money for at least one. */
 export function canHire(track: Track, hires: Hires, money: number, id: string): boolean {
   const row = openHires(hires).find((h) => h.id === id)
@@ -92,26 +88,22 @@ export function canHire(track: Track, hires: Hires, money: number, id: string): 
 }
 
 /** What hiring changes, or null when it is refused and nothing changes. */
-export function hire(s: { readonly money: number; readonly founder: FounderState }, id: string, amount: BuyAmount = 1): { money: number; founder: FounderState } | null {
+export function hire(s: { readonly money: number; readonly founder: FounderState }, id: string): { money: number; founder: FounderState } | null {
   if (!canHire(s.founder.track, s.founder.hires, s.money, id)) return null
   const row = hireById(id)!
   const held = heldOf(s.founder.hires, row)
-  const count = hireCount(row, held, s.money, amount)
-  return { money: s.money - hireCost(row, held, count), founder: { ...s.founder, hires: { ...s.founder.hires, [id]: held + count } } }
+  return { money: s.money - hireCost(row, held, 1), founder: { ...s.founder, hires: { ...s.founder.hires, [id]: held + 1 } } }
 }
-
-/** How many a fire of `amount` lets go: up to that many, or everyone of the kind. */
-export const fireCount = (held: number, amount: BuyAmount): number => Math.min(held, amount === "max" ? held : amount)
 
 /**
  * What letting people go changes, or null when there is nobody of that kind. Either track can fire: the salaries stop
  * at once and the growth they added goes with them. Nothing is refunded.
  */
-export function fire(s: { readonly founder: FounderState }, id: string, amount: BuyAmount = 1): { founder: FounderState } | null {
+export function fire(s: { readonly founder: FounderState }, id: string): { founder: FounderState } | null {
   const row = hireById(id)
   const held = row ? heldOf(s.founder.hires, row) : 0
   if (!row || held === 0) return null
-  const left = held - fireCount(held, amount)
+  const left = held - 1
   const { [id]: _gone, ...rest } = s.founder.hires
   return { founder: { ...s.founder, hires: left > 0 ? { ...rest, [id]: left } : rest } }
 }

@@ -116,11 +116,12 @@ describe("economy", () => {
     expect(rows.find((row) => row.key === "equipment:6")?.click).toBe(6)
   })
 
-  it("quotes a max buy that stops when the next copy is too expensive", () => {
-    const quote = quotePurchase(100, 15, 0, "max")
-    expect(quote.count).toBe(5)
-    expect(quote.total).toBe(99)
-    expect(canAfford(100 - quote.total, nextCost(15, quote.count))).toBe(false)
+  it("quotes the next copy, or nothing when the budget falls short", () => {
+    expect(quotePurchase(100, 15, 0)).toEqual({ count: 1, total: 15 })
+    expect(quotePurchase(100, 15, 0, 7)).toEqual({ count: 1, total: 7 })
+    expect(quotePurchase(14, 15, 0)).toEqual({ count: 0, total: 0 })
+    expect(quotePurchase(nextCost(15, 3) - 1, 15, 3).count).toBe(0)
+    expect(canAfford(nextCost(15, 3), nextCost(15, 3))).toBe(true)
   })
 })
 

@@ -1,7 +1,6 @@
 import type { ActiveBoost } from "../data/boosts.ts"
 import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
-import { clampBuyAmount, goldById, offlineCapMs } from "./gold.ts"
-import type { BuyAmount } from "./gold.ts"
+import { goldById, offlineCapMs } from "./gold.ts"
 import type { OwnedMap } from "./economy.ts"
 import { offlineToastText } from "./offlineNote.ts"
 import { clampForever, modFactors, pruneTemp, prestigeMult, TEMP_TARGETS } from "./mods.ts"
@@ -67,8 +66,6 @@ export type SaveData = {
   gigs: number[]
   /** Owned gold skill ids. Omitted when none. */
   gold?: number[]
-  /** The shop's Buy control. Omitted at one copy; never above what `gold` unlocks. */
-  buyAmount?: BuyAmount
   savedAt: number
   /** Omitted when no boost is running. Cleared on load if endsAt has passed. */
   activeBoost?: ActiveBoost
@@ -264,9 +261,6 @@ export function parseSave(input: unknown): SaveData | null {
   if (boost) save.activeBoost = boost
   const gold = normalizeIds(input.gold, (id) => goldById(id) !== undefined)
   if (gold.length > 0) save.gold = gold
-  const amount = input.buyAmount === "max" ? "max" : input.buyAmount === 5 || input.buyAmount === 10 ? input.buyAmount : 1
-  const buyAmount = clampBuyAmount(gold, amount)
-  if (buyAmount !== 1) save.buyAmount = buyAmount
   const foreverMult = clampForever(finite(input.foreverMult) || 1)
   if (foreverMult !== 1) save.foreverMult = foreverMult
   const temp = normalizeTemp(input.tempMults)
