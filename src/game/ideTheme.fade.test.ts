@@ -13,7 +13,9 @@ describe("theme switching is smooth", () => {
     ;(document as unknown as { startViewTransition?: unknown }).startViewTransition = (update: () => void) => {
       fades++
       update()
-      return {}
+      // Every fade acts skipped (a newer one started), as Firefox reports it: the promises reject, and an unhandled one fails the run.
+      const skipped = () => Promise.reject(new DOMException("Skipped ViewTransition", "AbortError"))
+      return { ready: skipped(), finished: skipped(), updateCallbackDone: skipped() }
     }
     setIdeTheme("mocha")
     vi.runAllTimers()
