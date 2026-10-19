@@ -167,7 +167,7 @@ describe("the GitHug corner", () => {
   })
 
   it("opens a profile with this career's contribution graph and pinned repos", () => {
-    useGame.setState({ skills: { "1": 1, "10": 1 }, unlocked: ["studio", "careerLog", "githug"], fresh: ["githug"] })
+    useGame.setState({ skills: { "1": 1, "5": 1 }, unlocked: ["studio", "careerLog", "githug"], fresh: ["githug"] })
     render(GitHugCorner)
     expect($("[data-testid='github-star']")).not.toBeNull()
     click($("[data-testid='view-githug']"))

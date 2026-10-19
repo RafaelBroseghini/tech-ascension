@@ -126,7 +126,7 @@ describe("teasing", () => {
 
   it("stands one row in its place: the first closed one with a slot on screen", () => {
     expect(nextGhost(progress(), none)?.id).toBe("careerLog")
-    expect(nextGhost(progress({ skills: { "10": 1 } }), new Set(["studio", "careerLog"]))?.id).toBe("linkedout")
+    expect(nextGhost(progress({ skills: { "5": 1 } }), new Set(["studio", "careerLog", "githug"]))?.id).toBe("linkedout")
   })
 
   it("fills the ring as the trigger gets close, and reads full once it opens", () => {

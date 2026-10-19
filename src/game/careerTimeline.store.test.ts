@@ -37,10 +37,10 @@ describe("career timeline", () => {
     expect(state.fresh).toEqual([])
   })
 
-  it("Linux CLI basics opens nothing, and Git + GitHug hygiene opens the career log with a NEW marker that using it clears", () => {
-    learn(1, 8)
+  it("the skills before Git + GitHug hygiene open nothing, and it opens the career log with a NEW marker that using it clears", () => {
+    learn(1, 4)
     expect(useGame.getState().unlocked).toEqual(["studio"])
-    learn(10)
+    learn(5)
     const state = useGame.getState()
     expect(state.unlocked).toContain("careerLog")
     expect(state.fresh).toContain("careerLog")
@@ -171,7 +171,7 @@ describe("career timeline", () => {
   })
 
   it("a save from before the timeline keeps what it earned, quietly, with a one-time card", () => {
-    const old = { ...freshSave(Date.now()), skills: { "1": 1, "8": 1, "10": 1 }, xpTotal: 3_000, xp: 10 }
+    const old = { ...freshSave(Date.now()), skills: { "1": 1, "8": 1, "5": 1 }, xpTotal: 3_000, xp: 10 }
     delete (old as { career?: unknown }).career
     const career = bootCareer(old, Date.now())
     expect(career.unlocked).toEqual(expect.arrayContaining(["studio", "careerLog", "cat"]))

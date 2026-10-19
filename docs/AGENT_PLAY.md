@@ -17,7 +17,7 @@ Vitest + happy-dom, all through `__GAME__`:
 8. **10x dev skills.** A bulk skill is gated by lifetime XP and price, `amount` only works once unlocked, hover rate and offline cap follow the gold owned.
 9. **Events and 1:1s.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, and a 1:1 waits for a job and its three replies pay, sit or bill you.
 10. **The world.** Users seed from gigs and grow per region while the gear serves them (a laptop alone settles near what it serves), a DDoS surge multiplies a region's demand, paying `cost` ends an incident and is refused when short, and eight billion users latch `won` once, pay the ×1.25 forever multiplier once, and write `world:won` to the journal; the game keeps ticking.
-11. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens Your company (logged and queued), Linux CLI basics opens nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return; the desk cat comes with the first job, not with time at the desk or a break.
+11. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens Your company (logged and queued), the skills before Git + GitHug hygiene open nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return; the desk cat comes with the first job, not with time at the desk or a break.
 12. **The fork** (skipped while `FORK_OFFERED` is off). A job and 1,000 users open it and latch the offer, quitting stops the salary and the job XP while the jobs stay and the revenue triples, running out stops the burn and opens the choice, a bridge restores cash and takes a tenth of the revenue, going back resumes a salary one rung down and waits for twice the users, time away floors the balance at a minute of burn and leaves the choice waiting, and the red button reopens the card without quitting.
 13. **Prestige.** The Exit is shut at the start; `setMoney` past the first Prestige opens it; `exit()` pays Prestige, and money, skills, gigs, jobs, capital, users, regions and hires are back to fresh, with a new product name and the handle kept; 10x dev skills survive; the multiplier is in `cps` and `xpPerClick`; `buyLegacy` enforces order and price, and `capital.offline` raises `offlineCapHours` by 4.
 
@@ -103,7 +103,7 @@ game.getState().features // { open: [], fresh: [], reveals: [], next: { id: "car
 game.setXp(90)
 game.buySkill(1) // Your company unlocks: logged, queued to reveal
 game.setXp(2_300)
-for (let id = 2; id <= 10; id++) game.buySkill(id) // Git + GitHug hygiene: the career log, marked NEW
+for (let id = 2; id <= 5; id++) game.buySkill(id) // Git + GitHug hygiene: the career log, marked NEW
 game.seeFeature("careerLog")
 game.advanceOffline(30 * 60 * 1000) // a return: logged (the desk cat waits for the first job)
 game.careerLog() // every step as JSON, oldest first

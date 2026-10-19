@@ -482,17 +482,18 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(state.features.next?.id).toBe("careerLog")
   expect(game.careerLog().slice(-2).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1", "unlock:studio"])
 
-  // Linux CLI basics opens nothing now. Git + GitHug hygiene opens the career log, marked NEW until used.
+  // The skills before it open nothing. Git + GitHug hygiene (skill 5) opens the career log, marked NEW until used.
   game.setXp(2_300)
-  for (let id = 2; id <= 8; id++) game.buySkill(id)
+  for (let id = 2; id <= 4; id++) game.buySkill(id)
   expect(game.getState().features.open).toEqual(["studio"])
-  for (let id = 9; id <= 10; id++) game.buySkill(id)
+  game.buySkill(5)
   state = game.getState()
   expect(state.features.open).toContain("careerLog")
   expect(state.features.fresh).toContain("careerLog")
   expect(game.seeFeature("careerLog")).toBe(true)
   expect(game.getState().features.fresh).not.toContain("careerLog")
   expect(game.seeFeature("terminal")).toBe(false)
+  for (let id = 6; id <= 10; id++) game.buySkill(id)
 
   // The first gig opens the board, the dollars and the rosters; the first job, the metrics.
   game.setXp(60_000)

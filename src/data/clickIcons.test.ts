@@ -28,10 +28,10 @@ describe("click icon pool", () => {
   })
 
   it("builds one pool from every owned mapped row and picks inside it", () => {
-    const early = iconPool({ ...none, skills: { "10": 1 } })
+    const early = iconPool({ ...none, skills: { "5": 1 } })
     expect(early).toEqual(["Git", "GitHubLight"])
     const later = iconPool({
-      skills: { "10": 1, "16": 1 },
+      skills: { "5": 1, "16": 1 },
       equipment: { "17": 1 }, // Raspberry Pie lab
       gigs: [4],
       jobs: [11],

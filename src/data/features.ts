@@ -100,7 +100,7 @@ export const FEATURES: readonly FeatureRow[] = [
     name: "Career log",
     blurb: "Your career, commit by commit. Up next shows what unlocks soon.",
     size: "big",
-    trigger: { kind: "skill", id: 10 },
+    trigger: { kind: "skill", id: 5 },
     action: "Open it",
   },
   {
@@ -108,7 +108,7 @@ export const FEATURES: readonly FeatureRow[] = [
     name: "GitHug profile",
     blurb: "A green square for every day you ship something, the repos you pinned, and a star for the real one.",
     size: "standard",
-    trigger: { kind: "skill", id: 10 },
+    trigger: { kind: "skill", id: 5 },
     action: "View it",
   },
   {
