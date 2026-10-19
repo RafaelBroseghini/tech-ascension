@@ -1,10 +1,11 @@
-/** Cat parade: the roster gifs found so far drift across the screen and bounce off its edges, DVD logo style. */
+/** Cat parade: the roster gifs found so far move round the stage along the picked style's path. */
+import type { ParadeStyleId } from "../data/paradeStyles.ts"
 
-/** On-screen cap: PARADE_MIN on a phone, PARADE_MAX on a full HD desktop, scaled by viewport area between. */
+/** Cap: PARADE_MIN on a phone's stage, PARADE_MAX on a full HD desk's stage, scaled by area between. */
 export const PARADE_MIN = 30
 export const PARADE_MAX = 50
-const SMALL_AREA = 375 * 667
-const LARGE_AREA = 1920 * 1080
+const SMALL_AREA = 360 * 360
+const LARGE_AREA = 1280 * 900
 /** Rendered size of one cat, px. */
 export const PARADE_SIZE = 40
 /** One cat fades out and a fresh one fades in every SWAP_MIN_MS to SWAP_MIN_MS + SWAP_SPAN_MS. */
@@ -14,23 +15,22 @@ export const FADE_MS = 600
 /** A cat stays at least this long, so a small collection drifts instead of blinking in and out. */
 export const MIN_STAY_MS = 6000
 export const PARADE_OPACITY = 0.85
-/** Drift speed, px per second. */
+/** Drift speed of the free styles, px per second. */
 export const SPEED_MIN = 30
 export const SPEED_SPAN = 40
-/** A frame longer than this (a tab coming back from the background) moves as if it were this long. */
+/** A frame longer than this (a tab coming back from the background) moves the clock this far only. */
 export const MAX_STEP_MS = 100
 
 export type ParadeCat = {
   url: string
-  x: number
-  y: number
-  /** px per second */
-  vx: number
-  vy: number
+  /** Four numbers in [0, 1) for the free styles: speed, heading, start x, start y (each style reads them its own way). */
+  seed: readonly [number, number, number, number]
   bornAt: number
   /** When it began to fade out; null while it stays. */
   leavingAt: number | null
 }
+
+export type ParadeBox = { width: number; height: number }
 
 export const isGif = (url: string): boolean => /\.gif(?:$|\?)/i.test(url)
 
@@ -53,39 +53,8 @@ export function pickCat(pool: readonly string[], showing: ReadonlySet<string>, r
   return from[Math.floor(random() * from.length)] ?? from[0]!
 }
 
-export function spawnCat(
-  url: string,
-  width: number,
-  height: number,
-  now: number,
-  random: () => number = Math.random,
-  size: number = PARADE_SIZE,
-): ParadeCat {
-  const angle = random() * Math.PI * 2
-  const speed = SPEED_MIN + random() * SPEED_SPAN
-  return {
-    url,
-    x: random() * Math.max(0, width - size),
-    y: random() * Math.max(0, height - size),
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
-    bornAt: now,
-    leavingAt: null,
-  }
-}
-
-function bounce(pos: number, vel: number, max: number): [number, number] {
-  if (pos < 0) return [Math.min(-pos, max), Math.abs(vel)]
-  if (pos > max) return [Math.max(0, 2 * max - pos), -Math.abs(vel)]
-  return [pos, vel]
-}
-
-/** Move `dtMs` and reflect off the edges. A cat outside the box (the window shrank) is brought back in. */
-export function stepCat(cat: ParadeCat, dtMs: number, width: number, height: number, size: number = PARADE_SIZE): ParadeCat {
-  const dt = Math.max(0, Math.min(MAX_STEP_MS, dtMs)) / 1000
-  const [x, vx] = bounce(cat.x + cat.vx * dt, cat.vx, Math.max(0, width - size))
-  const [y, vy] = bounce(cat.y + cat.vy * dt, cat.vy, Math.max(0, height - size))
-  return { ...cat, x, y, vx, vy }
+export function spawnCat(url: string, now: number, random: () => number = Math.random): ParadeCat {
+  return { url, seed: [random(), random(), random(), random()], bornAt: now, leavingAt: null }
 }
 
 export function catOpacity(cat: ParadeCat, now: number): number {
@@ -107,4 +76,125 @@ export function oldestStaying(cats: readonly ParadeCat[], now: number): number {
     if (pick < 0 || cat.bornAt < cats[pick]!.bornAt) pick = i
   }
   return pick
+}
+
+const TAU = Math.PI * 2
+const mod = (value: number, length: number): number => (length > 0 ? ((value % length) + length) % length : 0)
+const clamp = (value: number, max: number): number => Math.max(0, Math.min(max, value))
+/** Back and forth between 0 and max: the DVD logo's bounce as a function of distance travelled. */
+function tri(value: number, max: number): number {
+  if (max <= 0) return 0
+  const m = mod(value, 2 * max)
+  return m > max ? 2 * max - m : m
+}
+
+export type ParadeSlot = {
+  /** The cat's place in the formation, 0 to count - 1. */
+  slot: number
+  count: number
+}
+
+/**
+ * Where a cat's top-left corner is at `t` seconds of parade time, inside a box of `box` (the stage).
+ * Free styles read the cat's seed; formations (orbit, conga, heart, ...) read its slot, so a swapped cat
+ * fades in where the last one left. Styles that loop round (rain, conga, ...) pass a little past the edges;
+ * the layer clips them.
+ */
+export function paradeAt(
+  style: ParadeStyleId,
+  seed: ParadeCat["seed"],
+  { slot, count }: ParadeSlot,
+  t: number,
+  box: ParadeBox,
+  size: number = PARADE_SIZE,
+): { x: number; y: number } {
+  const W = Math.max(0, box.width - size)
+  const H = Math.max(0, box.height - size)
+  const cx = W / 2
+  const cy = H / 2
+  const R = Math.min(W, H) / 2
+  const n = Math.max(1, count)
+  const phase = (slot / n) * TAU
+  const [s0, s1, s2, s3] = seed
+  const speed = SPEED_MIN + s0 * SPEED_SPAN
+
+  switch (style) {
+    case "bounce": {
+      const heading = s1 * TAU
+      return { x: tri(s2 * W + Math.cos(heading) * speed * t, W), y: tri(s3 * H + Math.sin(heading) * speed * t, H) }
+    }
+    case "rain": {
+      const fall = box.height + size
+      return { x: clamp(s1 * W + Math.sin(t * 1.5 + s3 * TAU) * 6, W), y: mod(s2 * fall + speed * 1.6 * t, fall) - size }
+    }
+    case "bubbles": {
+      const rise = box.height + size
+      return { x: clamp(s1 * W + Math.sin(t * 2 + s3 * TAU) * 16, W), y: box.height - mod(s2 * rise + speed * t, rise) }
+    }
+    case "wave": {
+      const across = box.width + size
+      const x = mod(s1 * across + speed * 1.4 * t, across) - size
+      const lane = H * (0.2 + 0.6 * s2)
+      return { x, y: clamp(lane + Math.sin((x / Math.max(1, box.width)) * TAU * 1.5 + s3 * TAU) * H * 0.15, H) }
+    }
+    case "orbit": {
+      const ring = slot % 3
+      const perRing = Math.ceil(n / 3)
+      const dir = ring % 2 === 0 ? 1 : -1
+      const angle = (Math.floor(slot / 3) / perRing) * TAU + ring * 0.7 + dir * t * (0.7 / (ring + 1))
+      const radius = R * ((ring + 1) / 3)
+      return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius }
+    }
+    case "conga": {
+      // A long line squeezes up to nose-to-tail; past that, the back of the train waits off the right edge.
+      const gap = Math.max(size * 0.6, Math.min(size * 1.15, (box.width + size) / n))
+      const loop = Math.max(box.width + size, n * gap)
+      const hop = Math.abs(Math.sin(t * 6 + slot * 0.7)) * size * 0.35
+      return { x: mod(slot * gap + 60 * t, loop) - size, y: H - hop }
+    }
+    case "spiral": {
+      const angle = phase * 3 + t * 0.8
+      const radius = R * (0.15 + 0.85 * (0.5 + 0.5 * Math.sin(t * 0.6 + phase)))
+      return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius }
+    }
+    case "eight": {
+      const angle = phase + t * 0.6
+      return { x: cx + cx * 0.92 * Math.sin(angle), y: cy + cy * 0.85 * Math.sin(2 * angle) }
+    }
+    case "fireflies": {
+      const a = 0.2 + s0 * 0.5
+      const b = 0.25 + s1 * 0.5
+      return {
+        x: cx + cx * (0.6 * Math.sin(t * a + s2 * TAU) + 0.4 * Math.sin(t * b * 1.7 + s3 * TAU)),
+        y: cy + cy * (0.6 * Math.sin(t * b + s3 * TAU) + 0.4 * Math.sin(t * a * 1.3 + s2 * TAU)),
+      }
+    }
+    case "pendulum": {
+      // The classic pendulum wave: each a little faster than the last, so the row drifts in and out of step.
+      const length = H * (0.3 + 0.7 * ((slot + 1) / n))
+      const swing = 0.7 * Math.sin(t * (1 + slot * 0.04))
+      return { x: clamp(cx + Math.sin(swing) * length, W), y: clamp(Math.cos(swing) * length, H) }
+    }
+    case "zigzag": {
+      const across = box.width + size
+      return { x: mod(s1 * across + speed * t, across) - size, y: tri(s2 * H + speed * 2.4 * t, H) }
+    }
+    case "tornado": {
+      const climb = mod(s1 + t * (0.05 + s0 * 0.04), 1)
+      const radius = cx * (0.08 + 0.9 * climb)
+      return { x: cx + Math.sin(s2 * TAU + t * 2.6) * radius, y: box.height - climb * (box.height + size) }
+    }
+    case "heart": {
+      const angle = phase + t * 0.4
+      const hx = 16 * Math.sin(angle) ** 3
+      const hy = 13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle)
+      const scale = Math.min(cx / 16, cy / 15) * 0.95
+      return { x: cx + hx * scale, y: clamp(cy - (hy + 2.5) * scale, H) }
+    }
+    case "snake": {
+      // Every cat follows the same lissajous path, each a beat behind the one ahead.
+      const at = t * 0.5 - slot * 0.07
+      return { x: cx + cx * Math.sin(at * 1.3), y: cy + cy * Math.sin(at * 1.9 + 0.6) }
+    }
+  }
 }

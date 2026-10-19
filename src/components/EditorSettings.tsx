@@ -20,7 +20,7 @@ import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
-import { UiFontList } from "./deskSettingsPanels.tsx"
+import { ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
 import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
 import type { FeatureId } from "../data/features.ts"
@@ -314,6 +314,16 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
               </ul>
             </div>
           </section>
+          {cat && gifsFound && desk.parade ? (
+            <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-style`}>
+              <p className="ide-theme-heading" id={`${menuId}-parade-style`}>
+                Cat parade
+              </p>
+              <div className="ide-settings-section-panel">
+                <ParadeStyleList desk={desk} />
+              </div>
+            </section>
+          ) : null}
           {music ? (
           <section className="ide-settings-section" aria-labelledby={`${menuId}-music-style`}>
             <p className="ide-theme-heading" id={`${menuId}-music-style`}>

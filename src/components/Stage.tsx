@@ -19,6 +19,7 @@ import { capDrops, FALL_MS, fallDistance, fountainLift, LOOT_RISE_SCALE, toss, w
 import type { Drop } from "../game/waterfall.ts"
 import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
+import { CatParade } from "./CatParade.tsx"
 import { DeskCat } from "./DeskCat.tsx"
 import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
@@ -118,6 +119,7 @@ function fountain(x: number, y: number, icons: readonly IconName[], count: numbe
 // subscriptions and no props that change with a click, so they skip those renders.
 const StickyNoteMemo = memo(StickyNote)
 const DeskCatMemo = memo(DeskCat)
+const CatParadeMemo = memo(CatParade)
 const HeroMoneyMemo = memo(HeroMoney)
 const OwnedStripMemo = memo(OwnedStrip)
 const SkillsMemo = memo(Skills)
@@ -389,6 +391,7 @@ export function Stage() {
       )}
       <StickyNoteMemo />
       <DeskCatMemo />
+      <CatParadeMemo />
       <MiniGlobe />
       <span className="era-sweep" aria-hidden="true" />
       <HeroMoneyMemo stagePanelRef={stagePanelRef} />

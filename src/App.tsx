@@ -1,6 +1,5 @@
 import { ChevronLeft } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { CatParade } from "./components/CatParade.tsx"
 import { EventModal } from "./components/EventModal.tsx"
 import { ReviewModal } from "./components/ReviewModal.tsx"
 import { Shop } from "./components/Shop.tsx"
@@ -59,7 +58,6 @@ export default function App() {
             </button>
           ) : null}
         </main>
-        <CatParade />
         <Toast />
         <EventModal />
         <ReviewModal />
