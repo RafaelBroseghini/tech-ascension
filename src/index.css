@@ -886,13 +886,23 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .pop-boosted { color: var(--text); font-size: clamp(2.4rem, 1.6rem + 2.2vw, 3.2rem); }
 
-/* Cat parade: found roster gifs bouncing round the screen. Under the toast and the fountain, over the desk. */
+/* Cat parade: found roster gifs moving round the stage's editor area, inside the tab strip, rail and status bar. */
 .cat-parade {
-  position: fixed;
-  inset: 0;
-  z-index: 8;
+  position: absolute;
+  inset: var(--ide-tabs) 0 var(--ide-status) var(--ide-rail);
+  z-index: 3;
   pointer-events: none;
   overflow: hidden;
+}
+
+.parade-styles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.parade-styles .ide-theme-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cat-parade img {

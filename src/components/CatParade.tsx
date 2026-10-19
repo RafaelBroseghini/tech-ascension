@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   catGone,
   catOpacity,
+  MAX_STEP_MS,
   nextSwapDelay,
   oldestStaying,
   PARADE_MIN,
   PARADE_SIZE,
+  paradeAt,
   paradeCap,
   paradeCount,
   paradeGifs,
   pickCat,
   spawnCat,
-  stepCat,
+  type ParadeBox,
   type ParadeCat,
 } from "../game/catParade.ts"
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
@@ -22,17 +24,9 @@ import { useFeatureOpen } from "./useFeature.ts"
 const ARRIVE_GAP_MS = 80
 
 const paradePref = () => getDeskPrefs().parade
-const viewportCap = () => paradeCap(window.innerWidth, window.innerHeight)
-const serverCap = () => PARADE_MIN
-
-function subscribeResize(listener: () => void): () => void {
-  window.addEventListener("resize", listener)
-  return () => window.removeEventListener("resize", listener)
-}
-
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 
-/** The roster gifs found this run, bouncing round the screen. A desk switch next to the cat turns it off. */
+/** The roster gifs found this run, moving round the stage. Desk switches next to the cat turn it off and pick the path. */
 export function CatParade() {
   const on = useSyncExternalStore(subscribeDeskPrefs, paradePref, paradePref)
   const cat = useFeatureOpen("cat")
@@ -43,7 +37,9 @@ export function CatParade() {
 }
 
 function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
-  const cap = useSyncExternalStore(subscribeResize, viewportCap, serverCap)
+  const layerRef = useRef<HTMLDivElement>(null)
+  const boxRef = useRef<ParadeBox>({ width: 0, height: 0 })
+  const [cap, setCap] = useState(PARADE_MIN)
   const count = paradeCount(cap, gifs.length)
   const slots = useRef<(HTMLImageElement | null)[]>([])
   const poolRef = useRef(gifs)
@@ -53,23 +49,37 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
     countRef.current = count
   })
 
+  // The layer is the stage's editor area (CSS insets it inside the chrome), so the cats never reach the shop.
+  useEffect(() => {
+    const layer = layerRef.current
+    if (!layer) return
+    const measure = () => {
+      boxRef.current = { width: layer.clientWidth, height: layer.clientHeight }
+      setCap(paradeCap(layer.clientWidth, layer.clientHeight))
+    }
+    measure()
+    if (typeof ResizeObserver !== "function") return
+    const observer = new ResizeObserver(measure)
+    observer.observe(layer)
+    return () => observer.disconnect()
+  }, [])
+
   // One frame loop writes transforms and opacity straight to the images: no React render per frame.
-  // Timing runs on frame timestamps, so a hidden tab pauses both the drift and the rotation.
+  // The parade keeps its own clock, so a hidden tab pauses the paths and the rotation alike.
   useEffect(() => {
     if (typeof requestAnimationFrame !== "function") return
     const still = prefersReducedMotion()
     let cats: ParadeCat[] = []
     let last: number | null = null
-    let swapAt = 0
+    let clock = 0
+    let swapAt = nextSwapDelay()
     let frame = 0
 
-    const loop = (now: number) => {
-      const width = window.innerWidth
-      const height = window.innerHeight
-      const dt = last === null ? 0 : now - last
-      last = now
-      if (swapAt === 0) swapAt = now + nextSwapDelay()
-
+    const loop = (stamp: number) => {
+      clock += last === null ? 0 : Math.min(MAX_STEP_MS, Math.max(0, stamp - last))
+      last = stamp
+      const box = boxRef.current
+      const style = getDeskPrefs().paradeStyle
       const pool = poolRef.current
       const target = countRef.current
       if (cats.length > target) cats = cats.slice(0, target)
@@ -77,33 +87,32 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
       while (cats.length < target) {
         const url = pickCat(pool, new Set(cats.map((cat) => cat.url)))
         if (!url) break
-        const born = now + (filling === 0 ? cats.length * ARRIVE_GAP_MS : 0)
-        cats.push(spawnCat(url, width, height, born))
+        cats.push(spawnCat(url, clock + (filling === 0 ? cats.length * ARRIVE_GAP_MS : 0)))
       }
 
-      if (now >= swapAt) {
-        const leaving = oldestStaying(cats, now)
-        if (leaving >= 0) cats[leaving] = { ...cats[leaving]!, leavingAt: now }
-        swapAt = now + nextSwapDelay()
+      if (clock >= swapAt) {
+        const leaving = oldestStaying(cats, clock)
+        if (leaving >= 0) cats[leaving] = { ...cats[leaving]!, leavingAt: clock }
+        swapAt = clock + nextSwapDelay()
       }
 
+      const t = still ? 0 : clock / 1000
       for (let i = 0; i < cats.length; i += 1) {
         let cat = cats[i]!
-        if (catGone(cat, now)) {
+        if (catGone(cat, clock)) {
           const showing = new Set(cats.filter((_, other) => other !== i).map((other) => other.url))
-          cat = spawnCat(pickCat(pool, showing) ?? cat.url, width, height, now)
-        } else if (!still) {
-          cat = stepCat(cat, dt, width, height)
+          cat = spawnCat(pickCat(pool, showing) ?? cat.url, clock)
+          cats[i] = cat
         }
-        cats[i] = cat
         const img = slots.current[i]
         if (!img) continue
         if (img.dataset.url !== cat.url) {
           img.dataset.url = cat.url
           img.src = cat.url
         }
-        img.style.transform = `translate3d(${cat.x.toFixed(1)}px, ${cat.y.toFixed(1)}px, 0)`
-        img.style.opacity = catOpacity(cat, now).toFixed(3)
+        const { x, y } = paradeAt(style, cat.seed, { slot: i, count: cats.length }, t, box)
+        img.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`
+        img.style.opacity = catOpacity(cat, clock).toFixed(3)
       }
       frame = requestAnimationFrame(loop)
     }
@@ -113,7 +122,7 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
   }, [])
 
   return (
-    <div className="cat-parade" aria-hidden data-testid="cat-parade">
+    <div ref={layerRef} className="cat-parade" aria-hidden data-testid="cat-parade">
       {Array.from({ length: count }, (_, i) => (
         <img
           key={i}

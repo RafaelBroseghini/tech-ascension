@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
+import { PARADE_STYLES } from "../data/paradeStyles.ts"
 import { UI_FONTS } from "../data/uiFonts.ts"
 import { setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
@@ -123,6 +124,28 @@ export function MusicStyleList({ desk, unlocked }: MusicStyleListProps) {
         >
           <span className="ide-theme-name">{MUSIC_STYLES[id].label}</span>
           <NewMark id={`music:${id}`} pill />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Every path is open from the start: the cats are the unlock. Two columns, since the list is long. */
+export function ParadeStyleList({ desk }: { desk: DeskPrefs }) {
+  return (
+    <div className="desk-toggles parade-styles" role="listbox" aria-label="Cat parade styles">
+      {PARADE_STYLES.map((style) => (
+        <button
+          key={style.id}
+          type="button"
+          role="option"
+          aria-selected={desk.paradeStyle === style.id}
+          className={desk.paradeStyle === style.id ? "ide-theme-option is-active" : "ide-theme-option"}
+          data-testid={`desk-parade-${style.id}`}
+          title={style.blurb}
+          onClick={() => setDeskPref("paradeStyle", style.id)}
+        >
+          <span className="ide-theme-name">{style.label}</span>
         </button>
       ))}
     </div>

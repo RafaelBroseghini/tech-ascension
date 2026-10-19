@@ -19,6 +19,7 @@ import {
   EditorThemeList,
   UiFontList,
   MusicStyleList,
+  ParadeStyleList,
   SettingsSection,
   clearEditorThemePreview,
 } from "./deskSettingsPanels.tsx"
@@ -335,6 +336,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
           onClose={closeChip}
           icon={<ChipIcon src={desk.catArt ?? DESK_CAT_EMOJI} />}
           panel={
+            <>
             <SettingsSection heading="Cat">
               <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={gifsFound ? ["cat", "parade"] : ["cat"]} />
               {catsFound > 0 ? (
@@ -352,6 +354,12 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
                 </button>
               ) : null}
             </SettingsSection>
+              {gifsFound && desk.parade ? (
+                <SettingsSection heading="Cat parade">
+                  <ParadeStyleList desk={desk} />
+                </SettingsSection>
+              ) : null}
+            </>
           }
         />
       ) : null}

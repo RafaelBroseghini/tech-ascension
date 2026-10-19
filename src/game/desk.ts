@@ -1,3 +1,5 @@
+import { DEFAULT_PARADE_STYLE, parseParadeStyleId } from "../data/paradeStyles.ts"
+import type { ParadeStyleId } from "../data/paradeStyles.ts"
 import { isRosterCat } from "./catRoster.ts"
 import { bindDeskAudio, playCozyClick, syncDeskAudio } from "./deskAudio.ts"
 import { parseClickKitId } from "./deskClickKits.ts"
@@ -21,6 +23,7 @@ export type DeskPrefs = {
   catArt: string | null
   /** The found cat gifs drifting across the screen. */
   parade: boolean
+  paradeStyle: ParadeStyleId
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
@@ -37,6 +40,7 @@ const DEFAULTS: DeskPrefs = {
   cat: true,
   catArt: null,
   parade: true,
+  paradeStyle: DEFAULT_PARADE_STYLE,
   hoverClick: false,
   heroOffsetX: 0,
   heroOffsetY: 0,
@@ -74,6 +78,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
   if (typeof (body as Record<string, unknown>).clicks !== "boolean") next.clicks = next.sounds
   next.musicStyle = parseMusicStyleId((body as Record<string, unknown>).musicStyle)
   next.clickKit = parseClickKitId((body as Record<string, unknown>).clickKit)
+  next.paradeStyle = parseParadeStyleId((body as Record<string, unknown>).paradeStyle)
   const catArt = (body as Record<string, unknown>).catArt
   next.catArt = isRosterCat(catArt) ? catArt : null
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)

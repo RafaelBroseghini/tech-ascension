@@ -22,6 +22,7 @@ describe("desk", () => {
       cat: true,
       catArt: null,
       parade: true,
+      paradeStyle: "bounce",
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
@@ -35,6 +36,7 @@ describe("desk", () => {
       cat: true,
       catArt: null,
       parade: true,
+      paradeStyle: "bounce",
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
@@ -48,6 +50,7 @@ describe("desk", () => {
       cat: true,
       catArt: null,
       parade: true,
+      paradeStyle: "bounce",
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
@@ -80,6 +83,8 @@ describe("desk", () => {
     setDeskPref("parade", false)
     expect(readPref("desk")).toMatchObject({ parade: false })
     expect(parseDeskPrefs(JSON.stringify({ parade: false })).parade).toBe(false)
+    expect(parseDeskPrefs(JSON.stringify({ paradeStyle: "heart" })).paradeStyle).toBe("heart")
+    expect(parseDeskPrefs(JSON.stringify({ paradeStyle: "moonwalk" })).paradeStyle).toBe("bounce")
   })
 
   it("wakes listeners for switches, and clicks wake the cat without toggling sound", () => {
@@ -112,6 +117,7 @@ describe("desk", () => {
       cat: false,
       catArt: null,
       parade: true,
+      paradeStyle: "bounce",
       hoverClick: false,
       heroOffsetX: 0,
       heroOffsetY: 0,
