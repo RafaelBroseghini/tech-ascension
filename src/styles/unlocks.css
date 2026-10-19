@@ -569,3 +569,20 @@
     box-shadow: 0 0 0 2px var(--ide-green);
   }
 }
+
+/* The notification history: the career log's commit list in a dialog, with an Open button under each row. */
+.notifications-modal { width: min(30rem, 100%); }
+.notifications-list { margin: 0 var(--sp-4) var(--sp-4); padding-top: var(--sp-3); overflow: auto; }
+.notifications-list li { padding-bottom: 12px; }
+.notifications-open {
+  margin-top: 4px;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--ide-text) 24%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ide-text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.notifications-open:hover { background: color-mix(in srgb, var(--ide-text) 10%, transparent); }
