@@ -43,13 +43,13 @@ The desk is earned, not handed over. A new career starts with the XP counter and
 | 4 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 5) | standard |
 | 8 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
 | 8 min | Gear tab | 10,000 lifetime XP | standard |
-| 10 min | 10x dev skills | the first 10x dev row in reach (Hover Tap, 20,000 lifetime XP) | standard |
 | 9 min | Gig Board | its gate | the phase pop |
 | 9 min | Dollars: the $ counters | the first dollar | small |
 | 9 min | Rosters | the first gig | standard |
 | 10 min | Job Board | its gate | the phase pop |
 | 10 min | Metrics | the first job | standard |
 | 10 min | Click sounds, editor themes | Thocky keyboard, Drawing tablet (UI) | small |
+| 10 min | 10x dev skills | the first 10x dev row in reach (Hover Tap, 20,000 lifetime XP) | standard |
 | on a 10x dev skill | Hover click | a hover skill (or every catalog row) | standard |
 | 10 min | Desk cat | the first job | big |
 | ~28 min | Music | Noise-cancelling headset | standard |
