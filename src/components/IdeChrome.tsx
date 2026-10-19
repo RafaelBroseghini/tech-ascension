@@ -15,6 +15,7 @@ import { GitHugButton, GitHugStar, ResumeButton } from "./ActivityLinks.tsx"
 import { StatusRates } from "./StatusRates.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
 import { MetricsButton } from "./MetricsButton.tsx"
+import { NotificationsButton } from "./NotificationsButton.tsx"
 import { OwnedButton } from "./OwnedModal.tsx"
 import { useExitVisible } from "./useExit.ts"
 import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
@@ -122,6 +123,8 @@ export const IdeChrome = memo(function IdeChrome() {
             <Crown className="ide-activity-icon" {...UI_ICON} aria-hidden />
           </button>
         ) : null}
+        {/* Last in the scrolling list, so a short phone still shows Owned without scrolling the bar. */}
+        <NotificationsButton />
         <div className="ide-activity-foot">
           <BuyMultiplier />
           <GitHugStar />

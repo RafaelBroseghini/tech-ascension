@@ -41,6 +41,7 @@
 | Career journal: entries, JSON lines, the career log's rows | `src/game/careerLog.ts` |
 | Turning progress into journal notes, unlocks, NEW markers and reveals; boot and old saves | `src/game/careerSync.ts` (wired in `src/game/store.ts`) |
 | Reveal player and card, NEW marks, dim outlines, feature hooks | `src/components/UnlockReveals.tsx`, `src/components/FeatureMarks.tsx`, `src/components/useFeature.ts` |
+| Notification history: the bell in the activity bar, the unlocks it lists (newest first, from the journal) and its unread count (rows still marked NEW) | `src/game/notifications.ts`, `src/components/NotificationsButton.tsx` |
 | Career log sidebar | `src/components/CareerLog.tsx`, `src/game/ideSidebar.ts` |
 | "Open this" requests (a card's Try it) | `src/game/surfaces.ts` |
 | Your company: the activity-bar button and the shop's Company tab | `src/components/globe/CompanyTab.tsx` |

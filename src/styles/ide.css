@@ -456,3 +456,21 @@
   font-weight: 700;
   line-height: 1;
 }
+
+/* The notification bell's count of unlocks not used yet. */
+.ide-activity-count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--ide-red);
+  box-shadow: 0 0 0 2px var(--ide-crust);
+  color: var(--ide-crust);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
