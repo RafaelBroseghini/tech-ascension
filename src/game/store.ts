@@ -43,7 +43,7 @@ import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./glob
 import * as companyActions from "./globe/actions.ts"
 import type { CompanyPatch } from "./globe/actions.ts"
 import { totalUsers } from "./globe/world.ts"
-import { canGoFullTime, FRESH_FOUNDER, goFullTime as startFullTime, productRevenueOf, forkOpen, raiseBridge as raiseFounderBridge, returnToLadder as returnFounderToLadder, trackFactsOf, winMultOf } from "./globe/track.ts"
+import { canGoFullTime, FORK_OFFERED, FRESH_FOUNDER, goFullTime as startFullTime, productRevenueOf, forkOpen, raiseBridge as raiseFounderBridge, returnToLadder as returnFounderToLadder, trackFactsOf, winMultOf } from "./globe/track.ts"
 import type { FounderState } from "./globe/track.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
@@ -918,7 +918,7 @@ export const useGame = create<GameState>((set, get) => ({
     const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown, { track: state.founder.track, broke: state.founder.broke, away: false })
     // Running out stops the burn and opens the choice. The first time the product has its users and a job is held, the fork opens too.
     const founder: FounderState = settled.broke && !state.founder.broke ? { ...state.founder, broke: true } : state.founder
-    const offerFork = !founder.offered && forkOpen(totalUsers(grown.state.users), state.jobs)
+    const offerFork = FORK_OFFERED && !founder.offered && forkOpen(totalUsers(grown.state.users), state.jobs)
     const foreverMult = settled.foreverMult
     const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.

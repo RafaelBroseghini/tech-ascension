@@ -6,14 +6,14 @@ import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKI
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { ForkCard } from "../components/globe/ForkCard.tsx"
-import { MetricsBar } from "../components/MetricsBar.tsx"
+import { FullTimeCell } from "../components/FullTime.tsx"
 import { PRESTIGE_MULT_PER } from "../data/legacy.ts"
 import { installGameHarness } from "./harness.ts"
 import { formatNumber } from "./format.ts"
 import { hydrate } from "./save.ts"
 import { advanceCompany, growthFacts } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
-import { trackFactsOf } from "./globe/track.ts"
+import { FORK_OFFERED, trackFactsOf } from "./globe/track.ts"
 import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
 import { REGIONS } from "../data/regions.ts"
 import { useGame } from "./store.ts"
@@ -644,7 +644,20 @@ test("the world while away: the win is journaled and paid when it happens offlin
   expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
 })
 
-test("the fork: quit for the product, run out, raise a bridge, go back one rung down, and the red button reopens the choice", () => {
+test.skipIf(FORK_OFFERED)("the fork stays hidden: the product's users and a job never offer it", () => {
+  game.reset()
+  game.keepProfile()
+  game.setXp(1_000_000)
+  for (let id = 1; id <= 8; id++) game.forceGig(id)
+  for (const id of [1, 2, 3]) expect(game.buyJob(id)).toBe(true)
+  game.setUsers("americas-east", 5_000)
+  game.tick(1_000)
+  expect(game.getState().founder.offered).toBe(false)
+  expect(useGame.getState().forkModal).toBe(false)
+})
+
+// The fork is hidden from play for now (`FORK_OFFERED`); its rules are kept and come back with it.
+test.skipIf(!FORK_OFFERED)("the fork: quit for the product, run out, raise a bridge, go back one rung down, and the red button reopens the choice", () => {
   const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
   game.reset()
   game.keepProfile()
@@ -669,7 +682,7 @@ test("the fork: quit for the product, run out, raise a bridge, go back one rung 
   const host = document.createElement("div")
   document.body.append(host)
   const root = createRoot(host)
-  flushSync(() => root.render(createElement("div", null, createElement(MetricsBar), createElement(ForkCard))))
+  flushSync(() => root.render(createElement("div", null, createElement(FullTimeCell), createElement(ForkCard))))
   const hidden = () => host.querySelector("[data-testid='fork-card']") === null
   const button = () => host.querySelector<HTMLButtonElement>("[data-testid='go-full-time']")
   expect(hidden()).toBe(false)

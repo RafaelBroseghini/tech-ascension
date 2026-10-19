@@ -87,134 +87,10 @@ img { -webkit-user-drag: none; user-select: none; }
   text-transform: uppercase;
 }
 
-/* ---------- metrics strip ---------- */
-
-.topbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 0 var(--sp-5);
-  padding: 0 var(--sp-5);
-  background: var(--surface-0);
-  border-bottom: var(--stroke) solid var(--ink);
-  box-shadow: 0 3px 0 var(--accent-lo);
-  position: relative;
-  z-index: 2;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  padding: var(--sp-3) 0;
-}
-
-/* A small logo in place of the title: the name stays in the page for screen readers. */
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: var(--stroke) solid var(--ink);
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: var(--track-tight);
-  box-shadow: 0 3px 0 var(--accent-lo);
-  user-select: none;
-}
-
-.metrics {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  flex: 1;
-  margin: 0;
-  min-width: 0;
-}
-
-.metrics > div {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--sp-3) var(--sp-4);
-  border-left: var(--stroke) solid var(--surface-2);
-  min-width: 0;
-}
-
-.metrics dt {
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  font-weight: 500;
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.metrics dd {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: var(--fs-lg);
-  line-height: 1.1;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.metrics .m-rate dd { color: var(--accent); }
-
-/* Currency slots: money and XP each stack a click rate (pointer icon) over an idle rate (timer icon). */
-.metrics .m-slot { gap: 3px; }
-.metrics .m-line {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-dim);
-  font-size: var(--fs-sm);
-  line-height: 1;
-}
-.metrics .m-line span { font-weight: 700; }
-.metrics .m-line svg { flex: none; color: var(--text-faint); }
-
-.metrics .m-world { flex: 1 1 180px; }
-.metrics .m-world.is-hot dt { color: var(--ide-red); }
-.m-world-open {
-  position: relative;
-  display: block;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.m-world-open small {
-  color: var(--text-faint);
-  font-size: var(--fs-2xs);
-  font-weight: 500;
-}
-.m-world-bar {
-  min-width: 132px;
-  display: block;
-  height: 3px;
-  margin-top: 5px;
-  background: var(--surface-2);
-}
-.m-world-bar i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width 600ms var(--ease-out);
-}
-.m-world.is-hot .m-world-bar i { background: var(--ide-red); }
-
 /* The bet (src/components/FullTime.tsx): a round red button in a yellow-black hazard ring, then a chip once quit. */
-.metrics .m-fork { align-items: center; }
-.metrics .m-fork dd { line-height: 0; }
+.m-fork { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.m-fork dt { color: var(--text-faint); font-family: var(--font-mono); font-size: var(--fs-2xs); text-transform: uppercase; }
+.m-fork dd { margin: 0; line-height: 0; }
 .nuke {
   display: block;
   padding: 0;
@@ -299,71 +175,6 @@ img { -webkit-user-drag: none; user-select: none; }
   @media (hover: hover) {
     .nuke:hover:not([aria-disabled="true"]) { transform: none; }
   }
-}
-
-.metric-in { animation: metric-in var(--dur-base) var(--ease-out); }
-
-.metrics .m-boost {
-  background: var(--accent);
-  border-left-color: var(--ink);
-  animation: metric-in var(--dur-base) var(--ease-out), boost-pulse 1.6s var(--ease-in-out) infinite;
-}
-.metrics .m-boost dt,
-.metrics .m-boost dd { color: var(--accent-ink); }
-
-.top-actions {
-  display: flex;
-  align-items: center;
-  align-self: center;
-  gap: var(--sp-2);
-  margin-left: auto;
-  padding: var(--sp-2) 0;
-  flex: 0 0 auto;
-}
-
-.view-resume {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  background: #f6f8fa;
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  .view-resume:hover { background: #eef1f4; }
-}
-.view-resume:active { transform: translateY(1px); }
-
-.gh-star {
-  display: inline-flex;
-  align-items: stretch;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 20px;
-  color: #24292f;
-}
-
-.gh-star a {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
-  color: inherit;
-  text-decoration: none;
-}
-
-.gh-star-main { border-radius: 6px; }
-.gh-star-count { margin-left: -1px; border-radius: 0 6px 6px 0; }
-.gh-star:has(.gh-star-count) .gh-star-main { border-radius: 6px 0 0 6px; }
-@media (hover: hover) {
-  .gh-star a:hover { background: #eef1f4; }
 }
 
 .ide-settings-wrap { position: relative; }
@@ -501,44 +312,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .desk-toggle[aria-pressed="true"] i { color: var(--accent); }
 
-
-.top-actions {
-  display: flex;
-  align-items: center;
-  align-self: center;
-  gap: var(--sp-2);
-  margin-left: auto;
-  padding: var(--sp-2) 0;
-  flex: 0 0 auto;
-}
-
-.gh-star {
-  display: inline-flex;
-  align-items: stretch;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 20px;
-  color: #24292f;
-}
-
-.gh-star a {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
-  color: inherit;
-  text-decoration: none;
-}
-
-.gh-star-main { border-radius: 6px; }
-.gh-star-count { margin-left: -1px; border-radius: 0 6px 6px 0; }
-.gh-star:has(.gh-star-count) .gh-star-main { border-radius: 6px 0 0 6px; }
-@media (hover: hover) {
-  .gh-star a:hover { background: #eef1f4; }
-}
 
 .ide-settings-wrap { position: relative; }
 
@@ -846,6 +619,14 @@ img { -webkit-user-drag: none; user-select: none; }
   background-color: var(--mocha-base);
 }
 
+/* The bare desk has no activity bar yet, so the settings gear waits in the stage's top-right corner. */
+.stage-corner {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 3;
+}
+
 /* A click boost turns the balance card the theme accent (gold at 10×) and shows the multiplier at its foot. Nothing else shows it. */
 .hero-money { transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
 .hero-money.is-boosted { background: var(--accent); color: var(--accent-ink); }
@@ -880,6 +661,21 @@ img { -webkit-user-drag: none; user-select: none; }
   opacity: 0.55;
   transition: width 120ms linear;
 }
+
+/* Event multipliers under the balance: one quiet line each, the timed ones with their seconds left. */
+.hero-mods {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+}
+.hero-mod b { color: var(--accent); font-weight: 700; }
+.hero-mod.is-timed b { color: var(--ide-green); }
+.hero-money.is-boosted .hero-mods,
+.hero-money.is-boosted .hero-mod b { color: inherit; }
 
 /* Hero balance: sits above the art, mono, big. */
 .hero-money {
@@ -2281,7 +2077,6 @@ img { -webkit-user-drag: none; user-select: none; }
 
 /* ---------- phase economy ---------- */
 
-.metrics .m-phase dd { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
 
 .hero-money-full-xp { color: var(--mocha-sky); }
 .hero-money-full-xp { color: var(--mocha-sky); }

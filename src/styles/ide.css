@@ -182,6 +182,8 @@
 }
 .ide-mode.is-preview { background: var(--ide-peach); }
 .ide-status-gap { flex: 1; }
+.ide-status-rate { display: inline-flex; align-items: center; gap: 4px; color: var(--ide-text); }
+.ide-status-rate svg { flex: none; }
 
 .ide-status-dock {
   display: flex;
@@ -431,4 +433,19 @@
 @media (max-width: 860px) {
   .ide-tree { display: none; }
   .desk-cat { width: 84px; height: 76px; right: 8px; }
+}
+
+/* The repo's star at the bar's foot, its count small under the icon. */
+.ide-activity-btn.gh-star {
+  position: relative;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--ide-overlay);
+  text-decoration: none;
+}
+.gh-star-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }

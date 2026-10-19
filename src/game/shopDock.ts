@@ -1,6 +1,6 @@
 /**
  * The phone shop's bottom sheet has three resting heights: docked to a bar, two whole rows, and expanded (any height
- * from just above the two rows up to the bottom of the top bar). Drag the grip down from the two rows to dock, up to
+ * from just above the two rows up to the top of the screen). Drag the grip down from the two rows to dock, up to
  * expand; tap a docked bar to open it, tap an expanded grip to return to two rows. Pure, so the drag rules run under
  * the node tests; `ShopGrip.tsx` feeds it the pointer and commits the answer.
  */
@@ -61,7 +61,7 @@ export interface SheetDrag {
   readonly ms: number
   /** Height of the sheet at two whole rows. */
   readonly rowsHeight: number
-  /** The tallest the sheet may be: the room under the top bar. */
+  /** The tallest the sheet may be: the room above its foot. */
   readonly maxHeight: number
   /** Height of the docked bar. */
   readonly dockHeight: number

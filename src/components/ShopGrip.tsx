@@ -19,7 +19,7 @@ interface Press {
 
 /**
  * The handle on top of the phone shop (portrait only; mobile.css hides it elsewhere). From two rows, drag it down to
- * dock the shop to a bar, or up to expand the sheet (as high as the bottom of the top bar; it stays there). Tap the bar
+ * dock the shop to a bar, or up to expand the sheet (as high as the top of the screen; it stays there). Tap the bar
  * to open it; tap the grip of an expanded sheet to return to two rows. From the keyboard it steps expanded, two rows,
  * docked. While the finger is down the sheet follows it through inline heights, so the stage grows and shrinks live; on
  * release the classes take over and the CSS transition settles it.
@@ -68,10 +68,9 @@ export function ShopGrip({
     if (mode === "rows") rowsHeight.current = box.height
     const rows = rowsHeight.current || Math.round(window.innerHeight * 0.5)
     const dockHeight = docked ? box.height : parseFloat(getComputedStyle(sheet).getPropertyValue("--shop-dock-h")) || 46
-    // Never past the top bar: the sheet's foot is fixed, so the room is what lies between the bar and it.
-    const barBottom = document.querySelector(".topbar")?.getBoundingClientRect().bottom ?? 0
+    // Never off the screen: the sheet's foot is fixed, so the room is what lies above it.
     event.currentTarget.setPointerCapture(event.pointerId)
-    press.current = { id: event.pointerId, y: event.clientY, t: event.timeStamp, mode, height: box.height, rowsHeight: rows, maxHeight: box.bottom - barBottom, dockHeight, moved: false }
+    press.current = { id: event.pointerId, y: event.clientY, t: event.timeStamp, mode, height: box.height, rowsHeight: rows, maxHeight: box.bottom, dockHeight, moved: false }
   }
 
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {

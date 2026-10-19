@@ -11,7 +11,8 @@ import { useGame } from "../game/store.ts"
 import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
 import { CatRosterButton } from "./CatRosterButton.tsx"
-import { GitHugButton, ResumeButton } from "./CornerActions.tsx"
+import { GitHugButton, GitHugStar, ResumeButton } from "./ActivityLinks.tsx"
+import { StatusRates } from "./StatusRates.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
 import { MetricsButton } from "./MetricsButton.tsx"
 import { OwnedButton } from "./OwnedModal.tsx"
@@ -107,7 +108,7 @@ export const IdeChrome = memo(function IdeChrome() {
         <ResumeButton />
         <MetricsButton />
         <OwnedButton />
-        <CatRosterButton place="activity" />
+        <CatRosterButton />
         {prestigeVisible ? (
           <button
             type="button"
@@ -123,8 +124,9 @@ export const IdeChrome = memo(function IdeChrome() {
         ) : null}
         <div className="ide-activity-foot">
           <BuyMultiplier />
-          {/* The bare desk hides this bar, so settings wait in the top bar until the company opens it. */}
-          {studioOpen ? <EditorSettings place="activity" /> : null}
+          <GitHugStar />
+          {/* The bare desk hides this bar, so settings wait in the stage's corner until the company opens it. */}
+          {studioOpen ? <EditorSettings /> : null}
         </div>
       </nav>
       {prestigeVisible && prestigeOpen ? <PrestigePanel onClose={closePrestige} /> : null}
@@ -136,6 +138,7 @@ export const IdeChrome = memo(function IdeChrome() {
       <footer className="ide-status">
         <span className={previewing ? "ide-mode is-preview" : "ide-mode"}>{previewing ? "PREVIEW" : "NORMAL"}</span>
         <span data-testid="ide-band">{band.label}</span>
+        <StatusRates />
         <span className="ide-status-gap" />
         <IdeStatusDock />
       </footer>

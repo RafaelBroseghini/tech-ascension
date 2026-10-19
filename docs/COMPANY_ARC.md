@@ -28,7 +28,7 @@ There are two modes, saved as `track: "ladder" | "founder"`. Every career starts
 
 **Founder.** You quit. Salaries stop. The XP a job teaches stops too, but jobs held stay on the résumé, and the next job gate is unchanged if you come back. The product gets your full attention: growth × 2, user revenue × 3, and the capital rows become the company's own moves ("Raise a seed round", "Acquire a rival", "Build a training campus"), with the same prices. You carry a **burn**: a team and an office that cost money a second, scaling with users. The money you hold is your **runway**.
 
-**When the fork opens.** It needs users who pay (section 3) and a reason to bet. "Go full-time" opens once the product has 1,000 users and you hold a job. It sits as a button in the top bar and as a one-time card at the top of the Company tab the first time it opens. The card shows the trade in numbers: "Salary −$X/s. Product revenue +$Y/s → ×3. Burn −$Z/s. Runway at today's numbers: N minutes." The player can take it at any time after that, not only at the prompt.
+**When the fork opens.** It needs users who pay (section 3) and a reason to bet. "Go full-time" opens once the product has 1,000 users and you hold a job. (Hidden from play for now: `FORK_OFFERED` is off.) It sits as a red button (`FullTimeCell`) and as a one-time card at the top of the Company tab the first time it opens. The card shows the trade in numbers: "Salary −$X/s. Product revenue +$Y/s → ×3. Burn −$Z/s. Runway at today's numbers: N minutes." The player can take it at any time after that, not only at the prompt.
 
 **The risk.** If money reaches $0 while you're a founder, you have run out of runway. The game stops the burn and opens a choice.
 - **Raise a bridge.** Keep the company, give up equity: a permanent −10% on product revenue, stacking. You can do this at most three times.
@@ -74,7 +74,6 @@ The product name replaces "Your company" wherever it shows:
 
 - the activity-bar tooltip;
 - the Company tab header;
-- the World cell, as "Otterly · 2.9M users";
 - the status page ("Current Status: Otterly");
 - the journal ("Otterly reached one million users").
 

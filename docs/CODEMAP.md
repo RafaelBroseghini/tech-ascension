@@ -51,11 +51,11 @@
 | The world pane: users against the target, regions, resistance and the incidents to Respond to | `src/components/globe/WorldPanel.tsx` |
 | Globe tooltip: the city rows, the trip time and the tally of a burst | `src/game/globe/tip.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
-| Small screens (860px and below): stacked stage and shop (a shop tab shows two rows and scrolls; on a portrait phone the grip drags the shop down to dock it to a bar, and a tap or a drag up opens it, the same `shopPanel` pref that hides it on desktop; dragging the grip up from two rows expands the sheet to any height under the top bar, and a tap on the grip returns it to two rows), the compact top bar, the Owned modal and the cat roster button in the activity bar (GitHug, LinkedOut, Stats and settings are there at every width) | `src/styles/mobile.css`, `src/components/ShopGrip.tsx`, `src/game/shopDock.ts`, `src/components/OwnedModal.tsx`, `src/game/mobileViewport.ts` |
+| Small screens (860px and below): stacked stage and shop (a shop tab shows two rows and scrolls; on a portrait phone the grip drags the shop down to dock it to a bar, and a tap or a drag up opens it, the same `shopPanel` pref that hides it on desktop; dragging the grip up from two rows expands the sheet to any height up to the top of the screen, and a tap on the grip returns it to two rows), no top bar at any width, the Owned modal button in the activity bar (the bar scrolls with its foot pinned) | `src/styles/mobile.css`, `src/components/ShopGrip.tsx`, `src/game/shopDock.ts`, `src/components/OwnedModal.tsx`, `src/game/mobileViewport.ts` |
 | Mobile layout check: plays six viewports and fails on layout problems (`npm run check:mobile`) | `scripts/mobile-check.mjs`, `.agents/skills/mobile-check/SKILL.md` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
-| GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/CornerActions.tsx`, `src/styles/githug.css` |
+| GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/ActivityLinks.tsx`, `src/styles/githug.css` |
 
 Editing the rows in `src/data/capital.ts` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.
 

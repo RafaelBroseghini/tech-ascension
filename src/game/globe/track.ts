@@ -26,6 +26,12 @@ export interface FounderState {
 
 export const FRESH_FOUNDER: FounderState = { track: "ladder", offered: false, bridges: 0, equityCut: 0, requitAt: null, broke: false, hires: {} }
 
+/**
+ * Whether play offers the fork at all. Hidden for now: nothing offers it, so the card and the red button never show. The
+ * rules stay, and `goFullTime` still drives them from tests.
+ */
+export const FORK_OFFERED = false
+
 /** Users the product needs, with a job held, before the fork opens. */
 export const FORK_USERS = 1000
 

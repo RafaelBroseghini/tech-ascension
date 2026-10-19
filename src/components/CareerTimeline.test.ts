@@ -10,7 +10,7 @@ import { setSidebarView } from "../game/ideSidebar.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { CareerLog } from "./CareerLog.tsx"
-import { GitHugButton, GitHugStar } from "./CornerActions.tsx"
+import { GitHugButton, GitHugStar } from "./ActivityLinks.tsx"
 import { IdentityPicker } from "./IdentityPicker.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { Shop } from "./Shop.tsx"
@@ -155,7 +155,7 @@ describe("the shop teases what is next", () => {
   })
 })
 
-// The star stays in the top bar; the profile button is in the activity bar.
+// The star and the profile button both sit on the activity bar.
 const GitHugCorner = () => createElement(Fragment, null, createElement(GitHugStar), createElement(GitHugButton))
 
 describe("the GitHug corner", () => {

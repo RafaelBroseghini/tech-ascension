@@ -33,7 +33,7 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
   useFocusTrap(dialogRef)
   const rows = buildRows(stats, peakMoney, gigs, jobs)
   const live = useLiveRates()
-  // On a phone the top bar has no room for the money and XP slots, so they are here instead. On a wide screen this group is hidden.
+  // Every rate in one place: the status bar has only the idle ones, and a phone has no status bar.
   const rates: Row[] = [
     ...(live.perSec > 0 ? [{ label: "Money a second", value: `$${formatNumber(live.perSec)}/s` }] : []),
     ...(live.clickPays ? [{ label: "Money a click", value: `$${formatNumber(live.perClick)}` }] : []),

@@ -35,8 +35,9 @@ function renderSettings(): HTMLDivElement {
   return host
 }
 
-function openSettings(host: ParentNode) {
-  const button = host.querySelector<HTMLButtonElement>("[data-testid='editor-settings']")
+// Earlier tests can leave a gear mounted, so a test with its own host opens the gear in it.
+function openSettings(root: ParentNode = document) {
+  const button = root.querySelector<HTMLButtonElement>("[data-testid='editor-settings']")
   if (!button) throw new Error("missing settings button")
   flushSync(() => {
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }))
@@ -51,37 +52,37 @@ describe("hover click setting", () => {
   })
 
   it("stays hidden until every catalog row is owned", () => {
-    const host = renderSettings()
-    openSettings(host)
-    expect(host.querySelector("[data-testid='desk-hoverClick']")).toBeNull()
-    expect(host.querySelector("[data-testid='desk-sounds']")).not.toBeNull()
+    renderSettings()
+    openSettings()
+    expect(document.querySelector("[data-testid='desk-hoverClick']")).toBeNull()
+    expect(document.querySelector("[data-testid='desk-sounds']")).not.toBeNull()
   })
 
   it("offers music and the cat only once the career has unlocked them", () => {
-    const host = renderSettings()
-    openSettings(host)
-    expect(host.querySelector("[data-testid='desk-music']")).toBeNull()
-    expect(host.querySelector("[data-testid='desk-cat']")).toBeNull()
+    renderSettings()
+    openSettings()
+    expect(document.querySelector("[data-testid='desk-music']")).toBeNull()
+    expect(document.querySelector("[data-testid='desk-cat']")).toBeNull()
     flushSync(() => {
       useGame.setState({ unlocked: ["music", "music:cozy", "cat"] })
     })
-    expect(host.querySelector("[data-testid='desk-music']")).not.toBeNull()
-    expect(host.querySelector("[data-testid='desk-cat']")).not.toBeNull()
-    expect([...host.querySelectorAll("[data-testid^='desk-music-']")].map((row) => row.getAttribute("data-testid"))).toEqual(["desk-music-cozy"])
+    expect(document.querySelector("[data-testid='desk-music']")).not.toBeNull()
+    expect(document.querySelector("[data-testid='desk-cat']")).not.toBeNull()
+    expect([...document.querySelectorAll("[data-testid^='desk-music-']")].map((row) => row.getAttribute("data-testid"))).toEqual(["desk-music-cozy"])
   })
 
   it("appears once the catalog is complete and saves the switch", () => {
     ownCatalog()
-    const host = renderSettings()
-    openSettings(host)
-    const toggle = host.querySelector<HTMLButtonElement>("[data-testid='desk-hoverClick']")
+    renderSettings()
+    openSettings()
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='desk-hoverClick']")
     expect(toggle?.textContent).toContain("Hover or hold click")
     expect(toggle?.getAttribute("aria-pressed")).toBe("false")
     expect(toggle?.title).toContain("20/s")
     flushSync(() => {
       toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
-    expect(host.querySelector("[data-testid='desk-hoverClick']")?.getAttribute("aria-pressed")).toBe("true")
+    expect(document.querySelector("[data-testid='desk-hoverClick']")?.getAttribute("aria-pressed")).toBe("true")
   })
 })
 
@@ -94,7 +95,7 @@ describe("wipe save", () => {
     useGame.getState().wipe()
   })
 
-  const $ = (host: ParentNode, id: string) => host.querySelector<HTMLElement>(`[data-testid='${id}']`)
+  const $ = (id: string) => document.querySelector<HTMLElement>(`[data-testid='${id}']`)
   const click = (el: HTMLElement | null) => {
     if (!el) throw new Error("missing element")
     flushSync(() => {
@@ -103,68 +104,68 @@ describe("wipe save", () => {
   }
 
   it("is a red button with a trash icon, the last control in the settings panel, above only the emoji.gg credit", () => {
-    const host = renderSettings()
-    openSettings(host)
-    const button = $(host, "wipe-save")
+    renderSettings()
+    openSettings()
+    const button = $("wipe-save")
     expect(button?.textContent).toContain("Wipe save")
     expect(button?.classList.contains("ide-wipe")).toBe(true)
     expect(button?.querySelector("svg.lucide-trash-2")).not.toBeNull()
-    const menu = host.querySelector("[role='dialog'][aria-label='Settings']")
+    const menu = document.querySelector("[role='dialog'][aria-label='Settings']")
     expect(menu?.lastElementChild?.textContent).toBe("powered by emoji.gg")
     expect(menu?.lastElementChild?.previousElementSibling?.contains(button ?? null)).toBe(true)
   })
 
   it("asks first: one click does not wipe, and Cancel backs out", () => {
     useGame.setState({ money: 500, xp: 40, xpTotal: 40 })
-    const host = renderSettings()
-    openSettings(host)
-    click($(host, "wipe-save"))
+    renderSettings()
+    openSettings()
+    click($("wipe-save"))
     expect(useGame.getState().money).toBe(500)
-    expect($(document.body, "wipe-confirm-panel")?.textContent).toContain("Wipe this save?")
-    expect($(document.body, "wipe-confirm-panel")?.textContent).toContain("restarts at high school")
+    expect($("wipe-confirm-panel")?.textContent).toContain("Wipe this save?")
+    expect($("wipe-confirm-panel")?.textContent).toContain("restarts at high school")
 
-    click($(document.body, "wipe-cancel"))
-    expect($(document.body, "wipe-confirm-panel")).toBeNull()
-    expect($(host, "wipe-save")).not.toBeNull()
+    click($("wipe-cancel"))
+    expect($("wipe-confirm-panel")).toBeNull()
+    expect($("wipe-save")).not.toBeNull()
     expect(useGame.getState().money).toBe(500)
   })
 
   it("wipes the career on the red confirm button and closes the panel", () => {
     useGame.setState({ money: 500, xp: 40, xpTotal: 40, skills: { "1": 1 } })
-    const host = renderSettings()
-    openSettings(host)
-    click($(host, "wipe-save"))
-    expect($(document.body, "wipe-confirm")?.querySelector("svg.lucide-trash-2")).not.toBeNull()
-    click($(document.body, "wipe-confirm"))
+    renderSettings()
+    openSettings()
+    click($("wipe-save"))
+    expect($("wipe-confirm")?.querySelector("svg.lucide-trash-2")).not.toBeNull()
+    click($("wipe-confirm"))
     const after = useGame.getState()
     expect(after.money).toBe(0)
     expect(after.xpTotal).toBe(0)
     expect(after.skills).toEqual({})
-    expect(host.querySelector("[role='dialog'][aria-label='Settings']")).toBeNull()
+    expect(document.querySelector("[role='dialog'][aria-label='Settings']")).toBeNull()
   })
 
   it("forgets a half-answered prompt when the panel is closed and opened again", () => {
-    const host = renderSettings()
-    openSettings(host)
-    click($(host, "wipe-save"))
-    expect($(document.body, "wipe-confirm-panel")).not.toBeNull()
-    click(host.querySelector("[data-testid='editor-settings']"))
-    expect(host.querySelector("[role='dialog']")).toBeNull()
-    openSettings(host)
-    expect($(document.body, "wipe-confirm-panel")).toBeNull()
-    expect($(host, "wipe-save")).not.toBeNull()
+    renderSettings()
+    openSettings()
+    click($("wipe-save"))
+    expect($("wipe-confirm-panel")).not.toBeNull()
+    click(document.querySelector("[data-testid='editor-settings']"))
+    expect(document.querySelector("[role='dialog']")).toBeNull()
+    openSettings()
+    expect($("wipe-confirm-panel")).toBeNull()
+    expect($("wipe-save")).not.toBeNull()
   })
 })
 
 describe("how to play", () => {
   it("sits at the top of the settings menu and explains the game, with the last trophy as the finish", () => {
-    const host = renderSettings()
-    flushSync(() => (host.querySelector("[data-testid='editor-settings']") as HTMLButtonElement).click())
-    const menu = host.querySelector(".ide-theme-menu")!
+    renderSettings()
+    flushSync(() => (document.querySelector("[data-testid='editor-settings']") as HTMLButtonElement).click())
+    const menu = document.querySelector(".ide-theme-menu")!
     expect(menu.querySelector("section")?.querySelector("[data-testid='how-to-play']")).not.toBeNull()
     expect(document.querySelector("[data-testid='howto-panel']")).toBeNull()
 
-    flushSync(() => (host.querySelector("[data-testid='how-to-play']") as HTMLButtonElement).click())
+    flushSync(() => (document.querySelector("[data-testid='how-to-play']") as HTMLButtonElement).click())
     expect(document.querySelector("[data-testid='howto-panel']")).not.toBeNull()
     expect(document.querySelector("[data-testid='howto-end']")?.textContent).toContain("keep clicking")
     expect(document.querySelector("[data-testid='howto-end']")?.textContent).toContain("Sabbatical")

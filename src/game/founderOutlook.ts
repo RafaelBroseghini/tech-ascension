@@ -33,7 +33,7 @@ export interface Outlook {
   readonly offer: ForkOffer
 }
 
-/** One place for the numbers the fork shows: the harness, the modal, the top bar and the company view all read this. */
+/** One place for the numbers the fork shows: the harness, the modal, the fork button and the company view all read this. */
 export function founderOutlook(s: OutlookSlice, at: number): Outlook {
   const fx = modFactors(modsOf(s), at, at)
   const serving = servingOf(s.company.users, s.company.incidents, s.equipment)

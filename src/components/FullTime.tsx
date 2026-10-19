@@ -6,7 +6,7 @@ import { useGame } from "../game/store.ts"
 import { openSurface } from "../game/surfaces.ts"
 
 /**
- * The top bar's bet. Once the fork has been offered, a ladder career always has the red button: it reopens the choice (the card at the top
+ * The bet's button, hidden while `FORK_OFFERED` is off (nothing mounts it). Once the fork has been offered, a ladder career always has the red button: it reopens the choice (the card at the top
  * of the Company tab) and never quits in one click. A founder gets a chip with the runway instead, which opens the Company tab.
  */
 export function FullTimeCell() {
