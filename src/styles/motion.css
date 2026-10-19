@@ -11,21 +11,28 @@
  */
 
 /*
- * Click fountain: tossed up from just above the pointer, over a short arc, and down to one side.
- * The height is y(t) = --rise × ((t/0.3)² − 2t/0.3): the peak is one --rise up at 30%, the landing 4.44 rises below.
+ * Click fountain: tossed up from just above the pointer, over a short arc, then down past the viewport bottom.
+ * Rise (0-25%): y = -rise x (2u - u^2) with u = t/25%, easing to a stop at the peak, one --rise up.
+ * Fall (25-100%): y = -rise + (rise + fall) x v^2 with v = (t - 25%)/75%, speeding up like gravity and
+ * reaching --fall (set per drop to just below the viewport bottom) at 100%. Opacity stays 1: it ends off screen.
  */
 @keyframes drop-fall {
-  0% { transform: translate(calc(var(--dx) * 0), calc(var(--rise) * 0)) rotate(calc(var(--rot) * 0)) scale(0.85); opacity: 1; }
-  10% { transform: translate(calc(var(--dx) * 0.1), calc(var(--rise) * -0.556)) rotate(calc(var(--rot) * 0.1)) scale(1); opacity: 1; }
-  20% { transform: translate(calc(var(--dx) * 0.2), calc(var(--rise) * -0.889)) rotate(calc(var(--rot) * 0.2)) scale(1); opacity: 1; }
-  30% { transform: translate(calc(var(--dx) * 0.3), calc(var(--rise) * -1)) rotate(calc(var(--rot) * 0.3)) scale(1); opacity: 1; }
-  40% { transform: translate(calc(var(--dx) * 0.4), calc(var(--rise) * -0.889)) rotate(calc(var(--rot) * 0.4)) scale(1); opacity: 1; }
-  50% { transform: translate(calc(var(--dx) * 0.5), calc(var(--rise) * -0.556)) rotate(calc(var(--rot) * 0.5)) scale(1); opacity: 1; }
-  60% { transform: translate(calc(var(--dx) * 0.6), calc(var(--rise) * 0)) rotate(calc(var(--rot) * 0.6)) scale(1); opacity: 0.95; }
-  70% { transform: translate(calc(var(--dx) * 0.7), calc(var(--rise) * 0.778)) rotate(calc(var(--rot) * 0.7)) scale(0.92); opacity: 0.85; }
-  80% { transform: translate(calc(var(--dx) * 0.8), calc(var(--rise) * 1.778)) rotate(calc(var(--rot) * 0.8)) scale(0.92); opacity: 0.65; }
-  90% { transform: translate(calc(var(--dx) * 0.9), calc(var(--rise) * 3)) rotate(calc(var(--rot) * 0.9)) scale(0.92); opacity: 0.35; }
-  100% { transform: translate(calc(var(--dx) * 1), calc(var(--rise) * 4.444)) rotate(calc(var(--rot) * 1)) scale(0.92); opacity: 0; }
+  0% { transform: translate(0, 0) rotate(calc(var(--rot) * 0.000)) scale(0.85); opacity: 1; }
+  5% { transform: translate(calc(var(--dx) * 0.050), calc(var(--rise) * -0.36)) rotate(calc(var(--rot) * 0.050)) scale(0.95); opacity: 1; }
+  10% { transform: translate(calc(var(--dx) * 0.100), calc(var(--rise) * -0.64)) rotate(calc(var(--rot) * 0.100)) scale(1); opacity: 1; }
+  15% { transform: translate(calc(var(--dx) * 0.150), calc(var(--rise) * -0.84)) rotate(calc(var(--rot) * 0.150)) scale(1); opacity: 1; }
+  20% { transform: translate(calc(var(--dx) * 0.200), calc(var(--rise) * -0.96)) rotate(calc(var(--rot) * 0.200)) scale(1); opacity: 1; }
+  25% { transform: translate(calc(var(--dx) * 0.250), calc(var(--rise) * -1)) rotate(calc(var(--rot) * 0.250)) scale(1); opacity: 1; }
+  32.5% { transform: translate(calc(var(--dx) * 0.325), calc(var(--fall) * 0.01 + var(--rise) * -0.99)) rotate(calc(var(--rot) * 0.325)) scale(1); opacity: 1; }
+  40% { transform: translate(calc(var(--dx) * 0.400), calc(var(--fall) * 0.04 + var(--rise) * -0.96)) rotate(calc(var(--rot) * 0.400)) scale(1); opacity: 1; }
+  47.5% { transform: translate(calc(var(--dx) * 0.475), calc(var(--fall) * 0.09 + var(--rise) * -0.91)) rotate(calc(var(--rot) * 0.475)) scale(1); opacity: 1; }
+  55% { transform: translate(calc(var(--dx) * 0.550), calc(var(--fall) * 0.16 + var(--rise) * -0.84)) rotate(calc(var(--rot) * 0.550)) scale(1); opacity: 1; }
+  62.5% { transform: translate(calc(var(--dx) * 0.625), calc(var(--fall) * 0.25 + var(--rise) * -0.75)) rotate(calc(var(--rot) * 0.625)) scale(1); opacity: 1; }
+  70% { transform: translate(calc(var(--dx) * 0.700), calc(var(--fall) * 0.36 + var(--rise) * -0.64)) rotate(calc(var(--rot) * 0.700)) scale(1); opacity: 1; }
+  77.5% { transform: translate(calc(var(--dx) * 0.775), calc(var(--fall) * 0.49 + var(--rise) * -0.51)) rotate(calc(var(--rot) * 0.775)) scale(1); opacity: 1; }
+  85% { transform: translate(calc(var(--dx) * 0.850), calc(var(--fall) * 0.64 + var(--rise) * -0.36)) rotate(calc(var(--rot) * 0.850)) scale(1); opacity: 1; }
+  92.5% { transform: translate(calc(var(--dx) * 0.925), calc(var(--fall) * 0.81 + var(--rise) * -0.19)) rotate(calc(var(--rot) * 0.925)) scale(1); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.000), calc(var(--fall) * 1.00 + var(--rise) * -0.00)) rotate(calc(var(--rot) * 1.000)) scale(1); opacity: 1; }
 }
 
 /* Payout text rides the same arc, centred on its point. */
