@@ -21,6 +21,15 @@ describe("the notification history", () => {
     expect(notificationsOf(entries, false).map((n) => n.id)).toEqual(["boardCapital", "boardJobs", "boardGigs"])
   })
 
+  it("lists balance milestones and the win, which chime too, but not other world steps", () => {
+    const entries = journal([
+      { type: "milestone", ref: "milestone:money-1337" },
+      { type: "world", ref: "world:won" },
+      { type: "world", ref: "world:users-1000000" },
+    ])
+    expect(notificationsOf(entries, false).map((n) => n.id)).toEqual(["world:won", "milestone:money-1337"])
+  })
+
   it("leaves out rows from before the log", () => {
     const entries = journal([{ type: "unlock", ref: "careerLog", data: { backfill: true } }])
     expect(notificationsOf(entries, false)).toEqual([])
