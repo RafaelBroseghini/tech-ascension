@@ -38,7 +38,7 @@ import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
 import { useNarrow } from "./useNarrow.ts"
-import { useTwoRows } from "./useTwoRows.ts"
+import { useShopRows } from "./useShopRows.ts"
 import { ShopGrip } from "./ShopGrip.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
@@ -318,8 +318,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const rowCount =
     tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
-  useTwoRows(listRef, narrow && tab !== "W", rowScope)
-  // The phone sheet's expanded height in px, or null at two rows. Another tab, a dock or a new screen size starts over at two rows.
+  useShopRows(listRef, narrow && tab !== "W", rowScope)
+  // The phone sheet's expanded height in px, or null at three rows. Another tab, a dock or a new screen size starts over at three rows.
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sheetKey, setSheetKey] = useState(`${tab}:${docked}`)
   if (sheetKey !== `${tab}:${docked}`) {

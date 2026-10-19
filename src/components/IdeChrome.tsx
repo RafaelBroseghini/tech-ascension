@@ -1,7 +1,6 @@
 import { Crown, GitBranch, Globe } from "lucide-react"
 import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
-import { BuyMultiplier } from "./BuyMultiplier.tsx"
 import { CareerLog } from "./CareerLog.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
@@ -126,7 +125,6 @@ export const IdeChrome = memo(function IdeChrome() {
         {/* Last in the scrolling list, so a short phone still shows Owned without scrolling the bar. */}
         <NotificationsButton />
         <div className="ide-activity-foot">
-          <BuyMultiplier />
           <GitHugStar />
           {/* The bare desk hides this bar, so settings wait in the stage's corner until the company opens it. */}
           {studioOpen ? <EditorSettings /> : null}

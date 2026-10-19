@@ -56,29 +56,29 @@ describe("shop sheet expansion", () => {
     expect(sheetHeight(drag({ dy: -5000 }))).toBe(maxHeight)
   })
 
-  it("still docks live from the two rows when dragged down, and stops at the bar", () => {
+  it("still docks live from the three rows when dragged down, and stops at the bar", () => {
     expect(sheetHeight(drag({ dy: 60 }))).toBe(rowsHeight - 60)
     expect(sheetHeight(drag({ dy: 5000 }))).toBe(dockHeight)
   })
 
-  it("keeps an upward drag from the two rows expanded at that height", () => {
+  it("keeps an upward drag from the three rows expanded at that height", () => {
     expect(settleSheet(drag({ dy: -150 }))).toEqual({ mode: "expanded", height: rowsHeight + 150 })
     expect(settleSheet(drag({ dy: -5000, ms: 4000 }))).toEqual({ mode: "expanded", height: maxHeight })
   })
 
-  it("springs back to two rows from a drag up that barely moved", () => {
+  it("springs back to three rows from a drag up that barely moved", () => {
     expect(settleSheet(drag({ dy: -(EXPAND_MIN - 1), ms: 800 }))).toEqual({ mode: "rows" })
     expect(settleSheet(drag({ dy: -2 }))).toEqual({ mode: "rows" })
   })
 
-  it("docks from the two rows exactly as before", () => {
+  it("docks from the three rows exactly as before", () => {
     const travel = rowsHeight - dockHeight
     const dy = Math.ceil(travel * DOCK_SETTLE_SHARE) + 1
     expect(settleSheet(drag({ dy, ms: slow(dy) }))).toEqual({ mode: "docked" })
     expect(settleSheet(drag({ dy: 10, ms: slow(10) }))).toEqual({ mode: "rows" })
   })
 
-  it("opens a docked bar to two rows, never past them", () => {
+  it("opens a docked bar to three rows, never past them", () => {
     expect(settleSheet(drag({ mode: "docked", height: dockHeight, dy: -200, ms: 800 }))).toEqual({ mode: "rows" })
     expect(settleSheet(drag({ mode: "docked", height: dockHeight, dy: -5, ms: 800 }))).toEqual({ mode: "docked" })
     expect(sheetHeight(drag({ mode: "docked", height: dockHeight, dy: -5000 }))).toBe(rowsHeight)
@@ -94,12 +94,12 @@ describe("shop sheet expansion", () => {
     expect(settleSheet(expanded(450, { dy: 1 }))).toEqual({ mode: "expanded", height: 450 })
   })
 
-  it("snaps an expanded sheet released near or below the two rows back to two rows", () => {
+  it("snaps an expanded sheet released near or below the three rows back to three rows", () => {
     expect(settleSheet(expanded(450, { dy: 450 - rowsHeight + 10, ms: 2000 }))).toEqual({ mode: "rows" })
     expect(settleSheet(expanded(450, { dy: 450 - rowsHeight * EXPAND_FLOOR_SHARE + 80, ms: 2000 }))).toEqual({ mode: "rows" })
   })
 
-  it("never docks from expanded, even on a hard flick or a pull far below the two rows", () => {
+  it("never docks from expanded, even on a hard flick or a pull far below the three rows", () => {
     expect(settleSheet(expanded(450, { dy: 80, ms: Math.floor(80 / DOCK_FLICK_SPEED) - 1 }))).toEqual({ mode: "rows" })
     expect(settleSheet(expanded(450, { dy: 5000, ms: 20000 }))).toEqual({ mode: "rows" })
   })
@@ -108,7 +108,7 @@ describe("shop sheet expansion", () => {
     expect(sheetHeight(expanded(450, { dy: 5000 }))).toBe(rowsHeight * EXPAND_FLOOR_SHARE)
   })
 
-  it("clamps a stored height to the new room, and never below the two rows", () => {
+  it("clamps a stored height to the new room, and never below the three rows", () => {
     expect(clampExpanded(700, rowsHeight, 500)).toBe(500)
     expect(clampExpanded(200, rowsHeight, 500)).toBe(rowsHeight)
     expect(clampExpanded(400, rowsHeight, 250)).toBe(rowsHeight)

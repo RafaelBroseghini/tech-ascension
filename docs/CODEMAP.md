@@ -12,7 +12,7 @@
 | The desk band for each stage art id, named in the status bar | `src/data/idePacks.ts` |
 | The desk band and the shop-era preview that snaps back | `src/game/ide.ts` |
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
-| The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
+| The desk chrome (window bar, activity bar, career log sidebar, status bar) | `src/components/TitleBar.tsx`, `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
 | Gif parade: every unlocked gif (found cats, and the idle and click art of rows held) moving round the stage's editor area together (cap 30-50 by stage size, one swap every 1-2 s; the `parade` switch and the `paradeSource` and `paradeStyle` picks in the desk prefs). The style and category tables are drop-ins; each style's path is one case of `paradeAt` | `src/data/paradeStyles.ts`, `src/game/gifParade.ts`, `src/game/paradePool.ts`, `src/components/GifParade.tsx`, `ParadeSourceList` and `ParadeStyleList` in `src/components/deskSettingsPanels.tsx` |
 | Click fountain (owned developer-icons, toss, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
@@ -53,7 +53,7 @@
 | The world pane: users against the target, regions, resistance and the incidents to Respond to | `src/components/globe/WorldPanel.tsx` |
 | Globe tooltip: the city rows, the trip time and the tally of a burst | `src/game/globe/tip.ts` |
 | Timeline styles | `src/styles/unlocks.css` |
-| Small screens (860px and below): stacked stage and shop (a shop tab shows two rows and scrolls; on a portrait phone the grip drags the shop down to dock it to a bar, and a tap or a drag up opens it, the same `shopPanel` pref that hides it on desktop; dragging the grip up from two rows expands the sheet to any height up to the top of the screen, and a tap on the grip returns it to two rows), no top bar at any width, the Owned modal button in the activity bar (the bar scrolls with its foot pinned) | `src/styles/mobile.css`, `src/components/ShopGrip.tsx`, `src/game/shopDock.ts`, `src/components/OwnedModal.tsx`, `src/game/mobileViewport.ts` |
+| Small screens (860px and below): stacked stage and shop (a shop tab shows three rows and scrolls; on a portrait phone the grip drags the shop down to dock it to a bar, and a tap or a drag up opens it, the same `shopPanel` pref that hides it on desktop; dragging the grip up from three rows expands the sheet to any height up to the top of the screen, and a tap on the grip returns it to three rows), the window bar (`TitleBar`) at every width, the Owned modal button in the activity bar (the bar scrolls with its foot pinned) | `src/styles/mobile.css`, `src/components/ShopGrip.tsx`, `src/game/shopDock.ts`, `src/components/OwnedModal.tsx`, `src/game/mobileViewport.ts` |
 | Mobile layout check: plays six viewports and fails on layout problems (`npm run check:mobile`) | `scripts/mobile-check.mjs`, `.agents/skills/mobile-check/SKILL.md` |
 | The icon each timeline row wears (shop badges) | `src/components/featureIcons.ts` |
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
