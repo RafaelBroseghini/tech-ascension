@@ -11,6 +11,9 @@ import { useGame } from "../game/store.ts"
 import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
 import { CatRosterButton } from "./CatRosterButton.tsx"
+import { GitHugButton, ResumeButton } from "./CornerActions.tsx"
+import { EditorSettings } from "./EditorSettings.tsx"
+import { MetricsButton } from "./MetricsButton.tsx"
 import { OwnedButton } from "./OwnedModal.tsx"
 import { useExitVisible } from "./useExit.ts"
 import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
@@ -100,6 +103,9 @@ export const IdeChrome = memo(function IdeChrome() {
             <GitBranch className="ide-activity-icon ide-activity-icon-git" {...UI_ICON} aria-hidden />
           </FeatureGhost>
         )}
+        <GitHugButton />
+        <ResumeButton />
+        <MetricsButton />
         <OwnedButton />
         <CatRosterButton place="activity" />
         {prestigeVisible ? (
@@ -117,6 +123,8 @@ export const IdeChrome = memo(function IdeChrome() {
         ) : null}
         <div className="ide-activity-foot">
           <BuyMultiplier />
+          {/* The bare desk hides this bar, so settings wait in the top bar until the company opens it. */}
+          {studioOpen ? <EditorSettings place="activity" /> : null}
         </div>
       </nav>
       {prestigeVisible && prestigeOpen ? <PrestigePanel onClose={closePrestige} /> : null}

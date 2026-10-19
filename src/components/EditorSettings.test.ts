@@ -173,3 +173,29 @@ describe("how to play", () => {
     expect(document.querySelector("[data-testid='howto-panel']")).toBeNull()
   })
 })
+
+describe("settings in the activity bar", () => {
+  afterEach(() => {
+    flushSync(() => {
+      for (const root of roots.splice(0)) root.unmount()
+    })
+    document.body.replaceChildren()
+  })
+
+  it("opens beside the bar, outside its host, and stays open while it is used", () => {
+    const host = document.createElement("div")
+    document.body.append(host)
+    const root = createRoot(host)
+    roots.push(root)
+    flushSync(() => root.render(createElement(EditorSettings, { place: "activity" })))
+    openSettings(host)
+    const menu = document.querySelector<HTMLElement>(".ide-settings-portal[role='dialog']")
+    expect(menu).not.toBeNull()
+    expect(host.contains(menu)).toBe(false)
+
+    flushSync(() => menu!.querySelector("button")!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })))
+    expect(document.querySelector(".ide-settings-portal")).not.toBeNull()
+    flushSync(() => document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })))
+    expect(document.querySelector(".ide-settings-portal")).toBeNull()
+  })
+})

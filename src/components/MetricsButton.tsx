@@ -5,12 +5,10 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { MetricsModal } from "./MetricsModal.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
-import { useNarrow } from "./useNarrow.ts"
 
-/** Career telemetry. It arrives with the first job, when someone starts tracking the numbers. */
+/** Career telemetry, an activity-bar button. It arrives with the first job, when someone starts tracking the numbers. */
 export function MetricsButton() {
   const [open, setOpen] = useState(false)
-  const narrow = useNarrow()
   const unlocked = useFeatureOpen("metrics")
   const seeFeature = useGame((state) => state.seeFeature)
   const show = () => {
@@ -21,8 +19,8 @@ export function MetricsButton() {
 
   if (!unlocked) {
     return (
-      <FeatureGhost id="metrics" place="below" className="ide-settings desktop-only">
-        <ChartLine {...UI_ICON} aria-hidden />
+      <FeatureGhost id="metrics" className="ide-activity-btn">
+        <ChartLine className="ide-activity-icon" {...UI_ICON} aria-hidden />
       </FeatureGhost>
     )
   }
@@ -31,15 +29,16 @@ export function MetricsButton() {
     <>
       <button
         type="button"
-        className="ide-settings desktop-only"
+        className="ide-activity-btn"
         data-testid="metrics-button"
-        data-feature-anchor={narrow ? undefined : "metrics"}
-        aria-label="Metrics"
+        data-feature-anchor="metrics"
+        aria-label="Stats"
+        title="Stats"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={show}
       >
-        <ChartLine {...UI_ICON} aria-hidden />
+        <ChartLine className="ide-activity-icon" {...UI_ICON} aria-hidden />
         <NewMark id="metrics" />
       </button>
       {open ? <MetricsModal onClose={() => setOpen(false)} /> : null}
