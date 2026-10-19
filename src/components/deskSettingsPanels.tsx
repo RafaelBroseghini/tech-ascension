@@ -1,4 +1,4 @@
-import { MousePointer2, MousePointerClick, Music, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Sparkles, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useEffect } from "react"
 import type { CSSProperties, ReactNode } from "react"
@@ -17,7 +17,7 @@ import { NewMark } from "./FeatureMarks.tsx"
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-export type DeskToggleKey = "music" | "sounds" | "clicks" | "cat" | "hoverClick"
+export type DeskToggleKey = "music" | "sounds" | "clicks" | "cat" | "parade" | "hoverClick"
 
 export const DESK_TOGGLES: readonly {
   key: DeskToggleKey
@@ -39,6 +39,7 @@ export const DESK_TOGGLES: readonly {
     title: "Hover or hold the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI },
+  { key: "parade", label: "Cat parade", Icon: Sparkles, title: "Found cat gifs drift across the screen" },
 ]
 
 const THEME_GROUPS = [

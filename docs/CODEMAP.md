@@ -14,6 +14,7 @@
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
+| Cat parade: found roster gifs bouncing round the screen (cap 30-50 by viewport, one swap every 1-2 s, the `parade` desk switch) | `src/game/catParade.ts`, `src/components/CatParade.tsx` |
 | Click fountain (owned developer-icons, toss, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
 | UI font pick (five self-hosted faces, a per-face size scale, lazy CSS, a pref beside the theme) | `src/data/uiFonts.ts`, `src/game/uiFont.ts`, `UiFontList` in `src/components/deskSettingsPanels.tsx` |

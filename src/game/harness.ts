@@ -28,6 +28,8 @@ import { FRESH_FOUNDER } from "./globe/track.ts"
 import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
 import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
+import { isGif } from "./catParade.ts"
+import { CAT_ROSTER } from "./catRoster.ts"
 import { readCareerText } from "./ledger.ts"
 import { isUiFontId } from "../data/uiFonts.ts"
 import { setUiFont } from "./uiFont.ts"
@@ -291,6 +293,8 @@ export type GameHarness = {
   tick: (ms: number) => void
   setMoney: (n: number) => void
   forceBoost: (mult: number, ms: number) => void
+  /** Find the first `count` roster gifs, as if the desk cat had turned into each. Returns how many cats are found now. */
+  forceCats: (count: number) => number
   advanceOffline: (ms: number) => OfflineCatchup
   /** Open this event now, without applying it. False for an unknown id. Replaces an open event. */
   forceEvent: (eventId: number) => boolean
@@ -602,6 +606,12 @@ export function installGameHarness(): GameHarness {
     },
 
     setMoney: setMoneyDirect,
+
+    forceCats: (count) => {
+      const gifs = CAT_ROSTER.filter((cat) => isGif(cat.url)).slice(0, Math.max(0, Math.floor(count)))
+      for (const cat of gifs) useGame.getState().discoverCat(cat.url)
+      return useGame.getState().stats.catsFound.length
+    },
 
     forceBoost: (mult, ms) => {
       if (!(mult > 0) || !(ms > 0) || !Number.isFinite(mult) || !Number.isFinite(ms)) return

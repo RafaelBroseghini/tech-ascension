@@ -19,6 +19,8 @@ export type DeskPrefs = {
   cat: boolean
   /** Roster cat picked to sit on the desk instead of the sleeping one. Null is the default cat. */
   catArt: string | null
+  /** The found cat gifs drifting across the screen. */
+  parade: boolean
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
@@ -34,6 +36,7 @@ const DEFAULTS: DeskPrefs = {
   clickKit: "thock",
   cat: true,
   catArt: null,
+  parade: true,
   hoverClick: false,
   heroOffsetX: 0,
   heroOffsetY: 0,
@@ -63,7 +66,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
     }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ...DEFAULTS }
-  for (const key of ["music", "sounds", "clicks", "cat", "hoverClick"] as const) {
+  for (const key of ["music", "sounds", "clicks", "cat", "parade", "hoverClick"] as const) {
     const value = (body as Record<string, unknown>)[key]
     if (typeof value === "boolean") next[key] = value
   }

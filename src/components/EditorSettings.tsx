@@ -1,4 +1,4 @@
-import { MousePointer2, MousePointerClick, Music, Settings, Trash2, Volume2 } from "lucide-react"
+import { MousePointer2, MousePointerClick, Music, Settings, Sparkles, Trash2, Volume2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
@@ -15,6 +15,7 @@ import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, s
 import { clearUiFontPreview, getSavedUiFont, subscribeUiFont } from "../game/uiFont.ts"
 import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
+import { isGif } from "../game/catParade.ts"
 import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
@@ -32,7 +33,7 @@ const GROUPS = [
 
 const DESK_CAT_EMOJI = deskCatEmojiUrl()
 
-type ToggleKey = "music" | "sounds" | "clicks" | "cat" | "hoverClick"
+type ToggleKey = "music" | "sounds" | "clicks" | "cat" | "parade" | "hoverClick"
 
 const TOGGLES: readonly {
   key: ToggleKey
@@ -57,6 +58,7 @@ const TOGGLES: readonly {
     title: "Hover or hold the emoji to click automatically",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI, feature: "cat" },
+  { key: "parade", label: "Cat parade", Icon: Sparkles, feature: "cat", title: "Found cat gifs drift across the screen" },
 ]
 
 /** Rows in the settings menu that can carry a NEW mark: the career rows above, and the recurring picks under them. */
@@ -165,6 +167,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
   // styles, kits and themes earned so far (plus whichever one is in use).
   const music = useFeatureOpen("music")
   const cat = useFeatureOpen("cat")
+  const gifsFound = useGame((state) => state.stats.catsFound.some(isGif))
   const kits = useFeatureOpen("clickKits")
   const unlocked = useUnlockedSet()
   const styles = musicChoices(unlocked)
@@ -174,6 +177,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
     if (toggle.complete && hoverPerSec <= 0) return false
     if (toggle.key === "music" && !music) return false
     if (toggle.key === "cat" && !cat) return false
+    if (toggle.key === "parade" && !(cat && gifsFound)) return false
     return true
   })
 
