@@ -182,8 +182,8 @@ export type IconName = keyof typeof CLICK_ICONS
 /** Skill id → logos. Soft/habit skills omitted on purpose. */
 export const SKILL_ICONS: Readonly<Record<number, readonly IconName[]>> = {
   4: ["YouTube"],
+  5: ["Git", "GitHubLight"],
   8: ["Linux"],
-  10: ["Git", "GitHubLight"],
   12: ["Bash"],
   13: ["HTML5", "CSS3"],
   14: ["JavaScript"],
