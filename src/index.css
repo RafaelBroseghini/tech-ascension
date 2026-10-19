@@ -886,8 +886,8 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .pop-boosted { color: var(--text); font-size: clamp(2.4rem, 1.6rem + 2.2vw, 3.2rem); }
 
-/* Cat parade: found roster gifs moving round the stage's editor area, inside the tab strip, rail and status bar. */
-.cat-parade {
+/* Gif parade: unlocked gifs moving round the stage's editor area, inside the tab strip, rail and status bar. */
+.gif-parade {
   position: absolute;
   inset: var(--ide-tabs) 0 var(--ide-status) var(--ide-rail);
   z-index: 3;
@@ -899,13 +899,20 @@ img { -webkit-user-drag: none; user-select: none; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.parade-count {
+  margin-left: auto;
+  color: var(--text-dim, currentColor);
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
 .parade-styles .ide-theme-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.cat-parade img {
+.gif-parade img {
   position: absolute;
   top: 0;
   left: 0;

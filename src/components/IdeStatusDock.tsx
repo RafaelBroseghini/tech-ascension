@@ -11,7 +11,6 @@ import { hoverRate } from "../game/gold.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { openRosters, ROSTER_KINDS, ROSTER_LABEL, rosterEntries, type RosterKind } from "../game/rosters.ts"
 import { getOpenRoster, setOpenRoster, subscribeOpenRoster } from "../game/rosterModal.ts"
-import { isGif } from "../game/catParade.ts"
 import { useGame } from "../game/store.ts"
 import {
   ClickKitList,
@@ -19,7 +18,6 @@ import {
   EditorThemeList,
   UiFontList,
   MusicStyleList,
-  ParadeStyleList,
   SettingsSection,
   clearEditorThemePreview,
 } from "./deskSettingsPanels.tsx"
@@ -213,7 +211,6 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
   const savedFont = useSyncExternalStore(subscribeUiFont, getSavedUiFont, getSavedUiFont)
   const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const catsFound = useGame((state) => state.stats.catsFound.length)
-  const gifsFound = useGame((state) => state.stats.catsFound.some(isGif))
   const seeFeature = useGame((state) => state.seeFeature)
   const [openChip, setOpenChip] = useState<ChipId | null>(null)
   const roster = useSyncExternalStore(subscribeOpenRoster, getOpenRoster, getOpenRoster)
@@ -336,9 +333,8 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
           onClose={closeChip}
           icon={<ChipIcon src={desk.catArt ?? DESK_CAT_EMOJI} />}
           panel={
-            <>
             <SettingsSection heading="Cat">
-              <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={gifsFound ? ["cat", "parade"] : ["cat"]} />
+              <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["cat"]} />
               {catsFound > 0 ? (
                 <button
                   type="button"
@@ -354,12 +350,6 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
                 </button>
               ) : null}
             </SettingsSection>
-              {gifsFound && desk.parade ? (
-                <SettingsSection heading="Cat parade">
-                  <ParadeStyleList desk={desk} />
-                </SettingsSection>
-              ) : null}
-            </>
           }
         />
       ) : null}

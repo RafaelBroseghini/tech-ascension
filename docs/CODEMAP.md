@@ -14,7 +14,7 @@
 | Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (activity bar, career log sidebar, status bar) | `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
-| Cat parade: found roster gifs moving round the stage's editor area (cap 30-50 by stage size, one swap every 1-2 s, the `parade` switch and `paradeStyle` pick in the desk prefs). The style table is a drop-in; each style's path is one case of `paradeAt` | `src/data/paradeStyles.ts`, `src/game/catParade.ts`, `src/components/CatParade.tsx`, `ParadeStyleList` in `src/components/deskSettingsPanels.tsx` |
+| Gif parade: every unlocked gif (found cats, and the idle and click art of rows held) moving round the stage's editor area together (cap 30-50 by stage size, one swap every 1-2 s; the `parade` switch and the `paradeSource` and `paradeStyle` picks in the desk prefs). The style and category tables are drop-ins; each style's path is one case of `paradeAt` | `src/data/paradeStyles.ts`, `src/game/gifParade.ts`, `src/game/paradePool.ts`, `src/components/GifParade.tsx`, `ParadeSourceList` and `ParadeStyleList` in `src/components/deskSettingsPanels.tsx` |
 | Click fountain (owned developer-icons, toss, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
 | UI font pick (five self-hosted faces, a per-face size scale, lazy CSS, a pref beside the theme) | `src/data/uiFonts.ts`, `src/game/uiFont.ts`, `UiFontList` in `src/components/deskSettingsPanels.tsx` |

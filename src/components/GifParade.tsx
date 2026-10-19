@@ -10,29 +10,29 @@ import {
   paradeAt,
   paradeCap,
   paradeCount,
-  paradeGifs,
   pickCat,
   spawnCat,
   type ParadeBox,
-  type ParadeCat,
-} from "../game/catParade.ts"
+  type ParadeGif,
+} from "../game/gifParade.ts"
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
-import { useGame } from "../game/store.ts"
-import { useFeatureOpen } from "./useFeature.ts"
+import { paradePool } from "../game/paradePool.ts"
+import { useParadeProgress } from "./useParadeProgress.ts"
 
-/** On the first fill the cats come in one after another rather than all in the same frame. */
+/** On the first fill the gifs come in one after another rather than all in the same frame. */
 const ARRIVE_GAP_MS = 80
 
 const paradePref = () => getDeskPrefs().parade
+const sourcePref = () => getDeskPrefs().paradeSource
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 
-/** The roster gifs found this run, moving round the stage. Desk switches next to the cat turn it off and pick the path. */
-export function CatParade() {
+/** Every gif unlocked this run (or one category of them), moving round the stage. The settings menu turns it off and picks the gifs and the path. */
+export function GifParade() {
   const on = useSyncExternalStore(subscribeDeskPrefs, paradePref, paradePref)
-  const cat = useFeatureOpen("cat")
-  const found = useGame((state) => state.stats.catsFound)
-  const gifs = useMemo(() => paradeGifs(found), [found])
-  if (!on || !cat || gifs.length === 0) return null
+  const source = useSyncExternalStore(subscribeDeskPrefs, sourcePref, sourcePref)
+  const progress = useParadeProgress()
+  const gifs = useMemo(() => paradePool(source, progress), [source, progress])
+  if (!on || gifs.length === 0) return null
   return <ParadeLayer gifs={gifs} />
 }
 
@@ -69,7 +69,7 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
   useEffect(() => {
     if (typeof requestAnimationFrame !== "function") return
     const still = prefersReducedMotion()
-    let cats: ParadeCat[] = []
+    let cats: ParadeGif[] = []
     let last: number | null = null
     let clock = 0
     let swapAt = nextSwapDelay()
@@ -122,7 +122,7 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
   }, [])
 
   return (
-    <div ref={layerRef} className="cat-parade" aria-hidden data-testid="cat-parade">
+    <div ref={layerRef} className="gif-parade" aria-hidden data-testid="gif-parade">
       {Array.from({ length: count }, (_, i) => (
         <img
           key={i}

@@ -98,7 +98,7 @@ setFont(id: string): boolean         // set the UI font like a click on its sett
 tick(ms: number): void
 setMoney(n: number): void
 forceBoost(mult: number, ms: number): void
-forceCats(count: number): number     // finds the first `count` roster gifs (the cat parade's pool); returns cats found
+forceCats(count: number): number     // finds the first `count` roster gifs (cats for the gif parade); returns cats found
 advanceOffline(ms: number): { credited: number; creditedXp: number; toast: string | null }
 forceEvent(eventId: number): boolean
 acceptEvent(): boolean

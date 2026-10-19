@@ -17,15 +17,15 @@ import {
   paradeAt,
   paradeCap,
   paradeCount,
-  paradeGifs,
+  catGifs,
   pickCat,
   spawnCat,
   SWAP_MIN_MS,
   SWAP_SPAN_MS,
-  type ParadeCat,
-} from "./catParade.ts"
+  type ParadeGif,
+} from "./gifParade.ts"
 
-const cat = (over: Partial<ParadeCat> = {}): ParadeCat => ({ url: "a.gif", seed: [0, 0, 0, 0], bornAt: 0, leavingAt: null, ...over })
+const cat = (over: Partial<ParadeGif> = {}): ParadeGif => ({ url: "a.gif", seed: [0, 0, 0, 0], bornAt: 0, leavingAt: null, ...over })
 const BOX = { width: 800, height: 600 }
 const W = BOX.width - PARADE_SIZE
 const H = BOX.height - PARADE_SIZE
@@ -40,12 +40,12 @@ function seeded(n: number): () => number {
   }
 }
 
-describe("cat parade", () => {
+describe("gif parade", () => {
   it("parades the found gifs only, in discovery order", () => {
     const gifs = CAT_ROSTER.filter((row) => isGif(row.url)).map((row) => row.url)
     const pngs = CAT_ROSTER.filter((row) => !isGif(row.url)).map((row) => row.url)
     expect(gifs.length).toBeGreaterThan(0)
-    expect(paradeGifs([pngs[0]!, gifs[1]!, gifs[0]!])).toEqual([gifs[1], gifs[0]])
+    expect(catGifs([pngs[0]!, gifs[1]!, gifs[0]!])).toEqual([gifs[1], gifs[0]])
   })
 
   it("caps the stage between the phone and desktop counts, and never above the gifs found", () => {

@@ -1,4 +1,4 @@
-/** How the cat parade moves. The paths themselves are in `src/game/catParade.ts`. */
+/** How the gif parade moves, and which gifs it shows. The paths themselves are in `src/game/gifParade.ts`. */
 
 export type ParadeStyleId =
   | "bounce"
@@ -41,4 +41,23 @@ const IDS = new Set<string>(PARADE_STYLES.map((style) => style.id))
 
 export function parseParadeStyleId(value: unknown): ParadeStyleId {
   return typeof value === "string" && IDS.has(value) ? (value as ParadeStyleId) : DEFAULT_PARADE_STYLE
+}
+
+/** Which unlocked gifs join the parade: every one, or a single category. */
+export type ParadeSourceId = "all" | "cats" | "skills" | "gigs" | "jobs" | "gear" | "capital"
+
+export const PARADE_SOURCES: readonly { id: ParadeSourceId; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "cats", label: "Cats" },
+  { id: "skills", label: "Skills" },
+  { id: "gigs", label: "Gigs" },
+  { id: "jobs", label: "Jobs" },
+  { id: "gear", label: "Gear" },
+  { id: "capital", label: "Capital" },
+]
+
+const SOURCE_IDS = new Set<string>(PARADE_SOURCES.map((source) => source.id))
+
+export function parseParadeSourceId(value: unknown): ParadeSourceId {
+  return typeof value === "string" && SOURCE_IDS.has(value) ? (value as ParadeSourceId) : "all"
 }
