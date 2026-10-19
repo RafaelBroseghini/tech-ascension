@@ -16,6 +16,11 @@ describe("the notification history", () => {
     expect(notificationsOf(entries, false).map((n) => n.id)).toEqual(["githug", "careerLog"])
   })
 
+  it("lists the boards, which the journal writes as phase entries", () => {
+    const entries = journal([{ type: "phase", ref: "phase:B" }, { type: "phase", ref: "phase:C" }, { type: "phase", ref: "phase:D" }, { type: "phase", ref: "phase:A" }])
+    expect(notificationsOf(entries, false).map((n) => n.id)).toEqual(["boardCapital", "boardJobs", "boardGigs"])
+  })
+
   it("leaves out rows from before the log", () => {
     const entries = journal([{ type: "unlock", ref: "careerLog", data: { backfill: true } }])
     expect(notificationsOf(entries, false)).toEqual([])
