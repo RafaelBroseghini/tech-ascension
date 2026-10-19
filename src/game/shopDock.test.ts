@@ -51,7 +51,7 @@ describe("shop sheet expansion", () => {
   const drag = (over: Partial<SheetDrag>): SheetDrag => ({ mode: "rows", height: rowsHeight, dy: 0, ms: 800, rowsHeight, maxHeight, dockHeight, ...over })
   const expanded = (height: number, over: Partial<SheetDrag> = {}) => drag({ mode: "expanded", height, ...over })
 
-  it("grows live under a finger dragged up, never past the top bar", () => {
+  it("grows live under a finger dragged up, never past the top of the screen", () => {
     expect(sheetHeight(drag({ dy: -100 }))).toBe(rowsHeight + 100)
     expect(sheetHeight(drag({ dy: -5000 }))).toBe(maxHeight)
   })

@@ -2,7 +2,6 @@ import { ChevronLeft } from "lucide-react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { EventModal } from "./components/EventModal.tsx"
 import { ReviewModal } from "./components/ReviewModal.tsx"
-import { MetricsBar } from "./components/MetricsBar.tsx"
 import { Shop } from "./components/Shop.tsx"
 import { Stage } from "./components/Stage.tsx"
 import { Toast } from "./components/Toast.tsx"
@@ -43,7 +42,7 @@ export default function App() {
   return (
     <>
       <div className={shifting ? "app era-shift" : "app"} data-era={era}>
-        <MetricsBar />
+        <h1 className="sr-only">Tech Ascension</h1>
         <main className={shopOpen ? "layout" : "layout is-shop-collapsed"}>
           <Stage />
           {shopOpen ? <Shop onCollapse={() => writeShopPanelOpen(false)} docked={shopDocked} onDock={(docked) => writeShopPanelOpen(!docked)} /> : null}

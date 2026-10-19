@@ -2,7 +2,8 @@ import { MousePointerClick } from "lucide-react"
 import { useEffect, useRef, useState, type RefObject } from "react"
 import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { production } from "../game/economy.ts"
-import { modsOf } from "../game/mods.ts"
+import { modsOf, TEMP_TARGETS } from "../game/mods.ts"
+import { formatMult, TARGET_LABEL } from "../game/events.ts"
 import { formatFullNumber, formatMultiplier, formatNumber, RAW_DIGITS_BELOW } from "../game/format.ts"
 import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
@@ -69,6 +70,32 @@ function BoostFoot({ mult }: { mult: number }) {
   )
 }
 
+/** Event multipliers, for good and for a while, under the balance. The timed ones count down. */
+function HeroMods() {
+  const now = useGame((state) => state.now)
+  const foreverMult = useGame((state) => state.foreverMult)
+  const tempMults = useGame((state) => state.tempMults)
+  const live = TEMP_TARGETS.filter((target) => (tempMults[target]?.endsAt ?? 0) > now)
+  if (foreverMult === 1 && live.length === 0) return null
+  return (
+    <span className="hero-mods">
+      {foreverMult !== 1 ? (
+        <span className="hero-mod" title="Event bonus, for good">
+          Event bonus <b data-testid="forever-mult">×{formatMult(foreverMult)}</b>
+        </span>
+      ) : null}
+      {live.map((target) => {
+        const entry = tempMults[target]!
+        return (
+          <span key={target} className="hero-mod is-timed" data-testid={`temp-${target}`}>
+            {TARGET_LABEL[target]} <b>×{formatMult(entry.mult)}</b> · {Math.ceil((entry.endsAt - now) / 1000)}s
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
 export function HeroMoney({ stagePanelRef }: HeroMoneyProps) {
   const drag = useDeskMoneyHeroDrag(stagePanelRef)
   // Derived so an idle tick does not re-render the card: only the boost starting or ending does.
@@ -93,6 +120,7 @@ export function HeroMoney({ stagePanelRef }: HeroMoneyProps) {
       onPointerCancel={drag.onPointerCancel}
     >
       <HeroMoneyBody />
+      <HeroMods />
       {boosted ? <BoostFoot mult={mult} /> : null}
     </div>
   )

@@ -3,8 +3,6 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { useEffect, useMemo, useState } from "react"
 import { resumeDocument } from "../game/resumeDoc.ts"
 import { useGame } from "../game/store.ts"
-import { CatRosterButton } from "./CatRosterButton.tsx"
-import { EditorSettings } from "./EditorSettings.tsx"
 import { ResumeModal } from "./ResumeModal.tsx"
 import { GitHugModal, REPO } from "./GitHugModal.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
@@ -86,23 +84,17 @@ function useRepoStars(enabled: boolean): number | null {
   return stars
 }
 
-/** The star for the real repo, in the top bar once Git + GitHug hygiene unlocks the GitHug profile. */
+/** The star for the real repo, at the activity bar's foot once Git + GitHug hygiene unlocks the GitHug profile. */
 export function GitHugStar() {
   const unlocked = useFeatureOpen("githug")
   const stars = useRepoStars(unlocked)
   if (!unlocked) return null
+  const label = stars === null ? "Star Tech Ascension on GitHub" : `Star Tech Ascension on GitHub (${formatStars(stars)} stars)`
   return (
-    <span className="gh-star">
-      <a className="gh-star-main" href={REPO} target="_blank" rel="noreferrer" data-testid="github-star">
-        <Star {...UI_ICON} aria-hidden />
-        Star
-      </a>
-      {stars !== null ? (
-        <a className="gh-star-count" href={`${REPO}/stargazers`} target="_blank" rel="noreferrer">
-          {formatStars(stars)}
-        </a>
-      ) : null}
-    </span>
+    <a className="ide-activity-btn gh-star" href={REPO} target="_blank" rel="noreferrer" data-testid="github-star" aria-label={label} title={label}>
+      <Star className="ide-activity-icon" {...UI_ICON} aria-hidden />
+      {stars !== null ? <span className="gh-star-count">{formatStars(stars)}</span> : null}
+    </a>
   )
 }
 
@@ -146,17 +138,5 @@ export function GitHugButton() {
       </button>
       {open ? <GitHugModal stars={stars} onClose={() => setOpen(false)} /> : null}
     </>
-  )
-}
-
-/** The top bar's corner. Settings sit here only on the bare desk; once the activity bar shows, they move to its foot. */
-export function CornerActions() {
-  const bare = !useFeatureOpen("studio")
-  return (
-    <div className="top-actions">
-      <GitHugStar />
-      <CatRosterButton />
-      {bare ? <EditorSettings /> : null}
-    </div>
   )
 }

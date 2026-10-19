@@ -5,7 +5,7 @@ import { productRevenueOf } from "../game/globe/track.ts"
 import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
-/** What the career earns right now: money a second (the product's revenue in) and a click, XP a click and a second. The top bar and the metrics modal both read it. */
+/** What the career earns right now: money a second (the product's revenue in) and a click, XP a click and a second. The status bar and the metrics modal both read it. */
 export function useLiveRates() {
   const skills = useGame((state) => state.skills)
   const equipment = useGame((state) => state.equipment)

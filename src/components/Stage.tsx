@@ -1,3 +1,4 @@
+import { EditorSettings } from "./EditorSettings.tsx"
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
@@ -381,6 +382,11 @@ export function Stage() {
       aria-label="Click stage"
     >
       <IdeChrome />
+      {studioOpen ? null : (
+        <div className="stage-corner">
+          <EditorSettings place="corner" />
+        </div>
+      )}
       <StickyNoteMemo />
       <DeskCatMemo />
       <MiniGlobe />

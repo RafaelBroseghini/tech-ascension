@@ -120,7 +120,7 @@ describe("cat roster", () => {
     setDeskPref("music", false)
   })
 
-  it("shows the top bar button once the first cat is found", () => {
+  it("shows the activity bar button once the first cat is found", () => {
     mount(createElement(CatRosterButton))
     expect($("[data-testid='cat-roster-button']")).toBeNull()
     act(() => {

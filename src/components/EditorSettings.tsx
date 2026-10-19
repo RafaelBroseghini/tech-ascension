@@ -144,10 +144,10 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
 }
 
 /**
- * The gear and its menu. It sits in the top bar on the bare desk and at the foot of the activity bar after; there the
- * menu is portaled beside the bar and opens upward, since the desk shell sits under the stage and clips it.
+ * The gear and its menu. It sits in the stage's corner on the bare desk and at the foot of the activity bar after. The
+ * menu is portaled, since the stage clips it: beside the bar it opens upward, from the corner it drops down.
  */
-export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }) {
+export function EditorSettings({ place = "activity" }: { place?: "activity" | "corner" }) {
   const saved = useSyncExternalStore(subscribeIdeTheme, getSavedIdeTheme, getSavedIdeTheme)
   const savedFont = useSyncExternalStore(subscribeUiFont, getSavedUiFont, getSavedUiFont)
   const desk = useSyncExternalStore(subscribeDeskPrefs, getDeskPrefs, getDeskPrefs)
@@ -155,7 +155,7 @@ export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const [anchor, setAnchor] = useState<{ left: number; bottom: number; maxHeight: number } | null>(null)
+  const [anchor, setAnchor] = useState<CSSProperties | null>(null)
   const menuId = useId()
   const narrow = useNarrow()
   const seeFeature = useGame((state) => state.seeFeature)
@@ -218,12 +218,17 @@ export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }
   }, [open])
 
   useLayoutEffect(() => {
-    if (!open || place !== "activity") return
+    if (!open) return
     const placeMenu = () => {
       const rect = wrapRef.current?.getBoundingClientRect()
       if (!rect) return
+      // Never taller than the room the menu opens into, so a short screen scrolls it instead of cutting it off.
+      if (place === "corner") {
+        const top = rect.bottom + 6
+        setAnchor({ top, right: Math.max(6, window.innerWidth - rect.right), maxHeight: Math.min(560, window.innerHeight - top - 6) })
+        return
+      }
       const bottom = Math.max(6, window.innerHeight - rect.bottom)
-      // Never taller than the room above the gear's foot, so a short screen scrolls the menu instead of cutting its top.
       setAnchor({ left: rect.right + 6, bottom, maxHeight: Math.min(560, window.innerHeight - bottom - 6) })
     }
     placeMenu()
@@ -234,8 +239,8 @@ export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }
   }, [open, place])
 
   const activity = place === "activity"
-  // Beside the activity bar the menu waits for its anchor; in the top bar it drops down in place.
-  const portal = (menu: ReactNode) => (activity ? (anchor ? createPortal(menu, document.body) : null) : menu)
+  // The menu waits for its anchor, measured from the gear.
+  const portal = (menu: ReactNode) => (anchor ? createPortal(menu, document.body) : null)
 
   return (
     <div className="ide-settings-wrap" ref={wrapRef}>
@@ -245,7 +250,7 @@ export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }
         className={activity ? "ide-activity-btn" : "ide-settings"}
         data-testid="editor-settings"
         aria-label="Settings"
-        title={activity ? "Settings" : undefined}
+        title="Settings"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={menuId}
@@ -258,12 +263,12 @@ export function EditorSettings({ place = "top" }: { place?: "top" | "activity" }
       {open ? portal(
         <div
           ref={menuRef}
-          className={activity ? "ide-theme-menu ide-settings-portal" : "ide-theme-menu"}
+          className="ide-theme-menu ide-settings-portal"
           id={menuId}
           role="dialog"
           aria-label="Settings"
-          tabIndex={activity ? -1 : undefined}
-          style={activity && anchor ? anchor : undefined}
+          tabIndex={-1}
+          style={anchor ?? undefined}
           onPointerLeave={() => {
           clearIdeThemePreview()
           clearUiFontPreview()

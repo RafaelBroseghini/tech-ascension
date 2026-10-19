@@ -1,6 +1,6 @@
 ---
 name: mobile-check
-description: Verify that Tech Ascension plays well on a phone. Use after any change to layout, CSS, the top bar, the shop, the stage, modals or reveal cards, or when asked to check mobile or narrow screens. Runs a harness that plays the game at six viewports and fails on layout problems, then tells you how to read the screenshots.
+description: Verify that Tech Ascension plays well on a phone. Use after any change to layout, CSS, the activity bar, the shop, the stage, modals or reveal cards, or when asked to check mobile or narrow screens. Runs a harness that plays the game at six viewports and fails on layout problems, then tells you how to read the screenshots.
 ---
 
 # Mobile check
@@ -20,10 +20,10 @@ Per viewport and per state (start card, phases A to C, mid D, the Company tab, a
 
 - Shop tabs (and their sub tabs) show whole rows at the top, middle and end of the scroll, on narrow screens.
 - No sideways scroll, no vertical page scroll, and no control off the screen (controls inside a horizontally scrolling row are fine).
-- Portrait phones: the shop is below the stage, each takes at least a third of the screen, and the top bar takes at most 18%.
+- Portrait phones: the shop is below the stage and each takes at least a third of the screen.
 - Desktop keeps its side-by-side stage and shop.
 - The click target is on screen and nothing covers it (skipped while a modal is open).
-- At 860px and below: shop tabs, shop buttons and top bar controls are at least 44px.
+- At 860px and below: shop tabs, shop buttons and activity bar controls are at least 44px.
 - Dialogs fit the screen, and their buttons are on screen unless they sit in a list that scrolls inside the card.
 - No page errors.
 

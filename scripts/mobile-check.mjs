@@ -78,7 +78,7 @@ const MEASURE = `(async () => {
   const offscreen = interactive.filter((el) => { const r = el.getBoundingClientRect(); return (r.right > vw + 1 || r.left < -1) && !inScroller(el) }).map(name)
   const tabs = [...document.querySelectorAll("[role=tab]")].filter(visible)
   const buys = [...document.querySelectorAll(".shop-list button")].filter(visible)
-  const bar = [...document.querySelectorAll(".topbar button, .topbar [role=button]")].filter(visible)
+  const bar = [...document.querySelectorAll(".ide-activity button, .ide-activity a, .stage-corner button")].filter(visible)
   const small = (list) => list.filter((el) => { const r = el.getBoundingClientRect(); return r.width < 44 || r.height < 44 }).map((el) => name(el) + " " + Math.round(el.getBoundingClientRect().width) + "x" + Math.round(el.getBoundingClientRect().height))
   const hit = document.querySelector(".hitbox")
   let hitOk = null, hitCover = null
@@ -96,7 +96,6 @@ const MEASURE = `(async () => {
     const btn = [...d.querySelectorAll("button")].filter(visible).filter((b) => !scrolls(b)).map((b) => b.getBoundingClientRect())
     return { label: name(d), fits: r.left >= -1 && r.right <= vw + 1 && r.top >= -1 && r.bottom <= vh + 1, buttonsInside: btn.length > 0 && btn.every((b) => b.bottom <= vh + 1 && b.right <= vw + 1 && b.top >= -1) }
   })
-  const topbar = rect(document.querySelector(".topbar"))
   return {
     vw, vh,
     scrollW: document.documentElement.scrollWidth,
@@ -106,7 +105,7 @@ const MEASURE = `(async () => {
     docked: !!document.querySelector(".shop.is-docked"),
     expanded: !!document.querySelector(".shop.is-expanded"),
     grip: rect(document.querySelector("[data-testid=shop-grip]")),
-    topbar, hit: rect(hit), hitOk, hitCover,
+    hit: rect(hit), hitOk, hitCover,
     offscreen,
     smallTabs: small(tabs), smallBuys: small(buys), smallBar: small(bar),
     dialogs,
@@ -161,7 +160,7 @@ function check(vp, state, m) {
 
   if (m.stage && m.shop) {
     if (portraitPhone) {
-      // Expanded, the sheet is meant to take the stage's room, up to the foot of the top bar.
+      // Expanded, the sheet is meant to take the stage's room, up to the top of the screen.
       if (state !== "expanded" && m.shop.top < m.stage.top + m.stage.height * 0.5) fail(`shop is not below the stage (shop top ${Math.round(m.shop.top)}, stage ${Math.round(m.stage.top)}-${Math.round(m.stage.bottom)})`)
       if (state === "docked") {
         if (!m.docked) fail("dragging the grip down did not dock the shop")
@@ -169,12 +168,11 @@ function check(vp, state, m) {
         if (!m.grip || m.grip.height < 44) fail(`the docked bar is under 44px (${m.grip ? Math.round(m.grip.height) : "-"}px)`)
       } else if (state === "expanded") {
         if (!m.expanded) fail("dragging the grip up did not expand the shop")
-        if (m.topbar && m.shop.top < m.topbar.bottom - 1) fail(`the expanded shop covers the top bar (shop top ${Math.round(m.shop.top)}, bar bottom ${Math.round(m.topbar.bottom)})`)
+        if (m.shop.top < -1) fail(`the expanded shop runs off the top of the screen (shop top ${Math.round(m.shop.top)})`)
       } else if (m.docked) fail("the shop is docked")
       else if (m.expanded) fail("the shop is still expanded")
       else if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
       if (state !== "expanded" && m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
-      if (m.topbar && m.topbar.height > vp.h * 0.18) fail(`top bar takes ${Math.round((m.topbar.height / vp.h) * 100)}% of the screen`)
     }
     if (desktop && m.shop.left < m.stage.left + vp.w * 0.4) fail("desktop lost its side-by-side stage and shop")
   } else if (state !== "start-card") {
@@ -193,9 +191,9 @@ function check(vp, state, m) {
   if (vp.w <= 860) {
     if (m.smallTabs.length) fail(`shop tabs under 44px: ${m.smallTabs.slice(0, 4).join(", ")}`)
     if (m.smallBuys.length) fail(`shop buttons under 44px: ${m.smallBuys.slice(0, 4).join(", ")}`)
-    if (m.smallBar.length) fail(`top bar controls under 44px: ${m.smallBar.slice(0, 4).join(", ")}`)
+    if (m.smallBar.length) fail(`activity bar controls under 44px: ${m.smallBar.slice(0, 4).join(", ")}`)
   }
-  rows.push(`${where.padEnd(34)} stage ${m.stage ? Math.round((m.stage.height / vp.h) * 100) : "-"}%  shop ${m.shop ? Math.round((m.shop.height / vp.h) * 100) : "-"}%  topbar ${m.topbar ? Math.round(m.topbar.height) : "-"}px  tabs ${m.tabCount}  click ${m.hitOk === null ? "-" : m.hitOk ? "ok" : "covered"}`)
+  rows.push(`${where.padEnd(34)} stage ${m.stage ? Math.round((m.stage.height / vp.h) * 100) : "-"}%  shop ${m.shop ? Math.round((m.shop.height / vp.h) * 100) : "-"}%  tabs ${m.tabCount}  click ${m.hitOk === null ? "-" : m.hitOk ? "ok" : "covered"}`)
   void landscapePhone
   void warn
 }
@@ -293,7 +291,7 @@ async function runViewports() {
       shot(vp, state)
     }
 
-    // A portrait phone's shop sheet: drag the grip up to expand it (never over the top bar), tap to return to two rows,
+    // A portrait phone's shop sheet: drag the grip up to expand it (never off the top of the screen), tap to return to two rows,
     // drag it down to a bar, then tap the bar to open it again.
     if (vp.w <= 860 && vp.h > vp.w) {
       game(STATES["mid-d"])

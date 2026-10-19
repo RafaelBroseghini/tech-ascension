@@ -4,9 +4,6 @@
  * its half. Loaded after index.css so it wins at equal weight.
  */
 
-/* The live money and XP rates in the metrics modal stand in for the top bar's slots, which only a phone hides. */
-.stats-rates { display: none; }
-
 /* The inventory button only exists to replace the list that no longer fits under the art. */
 .owned-open { display: none; }
 
@@ -15,45 +12,10 @@
   button, [role="tab"], a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   .app { --ide-tabs: 4px; }
 
-  /* Top bar: logo and corner buttons on one row, the numbers that matter on a second. */
-  .topbar {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: "brand actions" "metrics metrics";
-    gap: 0;
-    padding: 0 var(--sp-2);
-    box-shadow: 0 2px 0 var(--accent-lo);
-  }
-  .brand { grid-area: brand; padding: 2px 0; }
-  .top-actions { grid-area: actions; justify-content: flex-end; margin-left: 0; padding: 2px 0; }
-  .top-actions button, .top-actions a { min-width: 44px; min-height: 44px; }
-  .gh-star { display: none; }
-  .metrics {
-    grid-area: metrics;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    border-top: var(--stroke) solid var(--surface-2);
-    scrollbar-width: none;
-  }
-  .metrics > div { flex: 0 0 auto; padding: 2px var(--sp-3); }
-  .metrics > div:first-child { border-left: 0; }
-  .metrics dd { font-size: var(--fs-md); }
-  /* On a phone the phase name, and the money and XP rates, are in the metrics modal; the bar keeps the world and boosts. */
-  .metrics .m-phase, .metrics .m-money, .metrics .m-xp { display: none; }
-  .stats-rates { display: grid; padding-bottom: 0; }
   /* No status bar on a phone: the band name was noise there, and emoji.gg's credit is in the settings menu. */
   .app { --ide-status: 0px; }
   .ide-status { display: none; }
-  /* Each currency slot is one line on a phone: the label over its rates, side by side. */
-  .metrics .m-slot { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--sp-3); row-gap: 2px; }
-  .metrics .m-slot > dt { flex-basis: 100%; }
-  .metrics .m-line { font-size: var(--fs-xs); }
-  /* The name sits on top of the button that opens the details, so the cell stays one tap target tall. */
-  .metrics .m-world { position: relative; flex: 1 0 140px; }
-  .metrics .m-world.is-hot { flex-basis: 220px; }
-  .m-world dt { position: absolute; top: 4px; left: var(--sp-3); line-height: 1; }
-  .m-world-open { min-height: 44px; min-width: 96px; padding: 14px var(--sp-2) 0; }
-  .m-world-bar { position: absolute; left: var(--sp-2); right: var(--sp-2); bottom: 5px; min-width: 0; margin-top: 0; }
+  .stage-corner .ide-settings { width: 44px; height: 44px; }
   .founder-chip { min-height: 44px; }
   .nuke-ring { width: 44px; height: 44px; }
   .nuke-cap { width: 28px; height: 28px; }
@@ -119,8 +81,8 @@
   .ul-card::before { display: none; }
   .ul-card button { min-height: 44px; }
 
-  /* Toasts sit under the top bar: at the foot of the screen they cover the shop buttons. */
-  .toast { top: calc(var(--sp-2) + 100px); bottom: auto; }
+  /* Toasts sit at the top of the stage: at the foot of the screen they cover the shop buttons. */
+  .toast { top: var(--sp-2); bottom: auto; }
 
   /* Cards and dialogs never outgrow the screen; long ones scroll inside themselves. */
   [role="dialog"] { max-width: calc(100vw - var(--sp-3)); max-height: calc(100dvh - var(--sp-3)); overflow-y: auto; }
@@ -141,7 +103,7 @@
   .shop:not([data-phase="W"]) { --shop-cap-extra: var(--shop-grip-h); }
   .shop.is-dragging { transition: none; }
   /* Expanded: dragged up from the two rows, it keeps the height it was left at (`--shop-expanded-h`, set by Shop.tsx, never past
-     the top bar). The list fills the sheet instead of holding its two-row cap; it still scrolls and snaps to a row. */
+     the top of the screen). The list fills the sheet instead of holding its two-row cap; it still scrolls and snaps to a row. */
   .shop.is-expanded { height: var(--shop-expanded-h); max-height: var(--shop-expanded-h); }
   .shop.is-expanded .shop-list-wrap.is-capped,
   .shop.is-expanding .shop-list-wrap.is-capped { flex: 1 1 0; max-height: none; }
@@ -187,11 +149,9 @@
   .shop { transition: none; }
 }
 
-/* A phone on its side has no room to stack: stage and shop go side by side, and the top bar is one row. */
+/* A phone on its side has no room to stack: stage and shop go side by side. */
 @media (max-width: 860px) and (orientation: landscape) {
-  .topbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand metrics actions"; }
-  .toast { top: calc(var(--sp-2) + 52px); }
-  .metrics { border-top: 0; }
+  .toast { top: var(--sp-2); }
   .layout,
   .layout.is-shop-collapsed {
     grid-template-columns: minmax(0, 1fr) minmax(300px, 46%);
@@ -204,16 +164,12 @@
   .ul-card { left: auto !important; width: min(290px, 44vw); }
 }
 
-/* The cat roster's activity-bar button only exists on a phone; the top bar holds it on wide screens. */
-.cat-roster-open { display: none; }
-@media (max-width: 860px) {
-  .cat-roster-open { display: grid; }
-  /* The top bar has no room on a phone; the cat roster moves to the activity bar. */
-  .top-actions .desktop-only { display: none; }
-}
-
 /* With every button unlocked the bar outgrows a phone's stage, so it scrolls and the foot (settings) stays pinned. */
 @media (max-width: 860px) {
   .ide-activity { overflow-y: auto; scrollbar-width: none; }
+  .ide-activity > * { flex-shrink: 0; }
+  /* The buttons are 44px tall here, so they need no gap of their own; the repo's star is the one that can go. */
+  .ide-activity, .ide-activity-foot { gap: 2px; }
+  .ide-activity-btn.gh-star { display: none; }
   .ide-activity-foot { position: sticky; bottom: 0; background: var(--ide-crust); }
 }
