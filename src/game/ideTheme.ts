@@ -58,7 +58,8 @@ function paint(theme: IdeTheme): void {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme.colors.mantle)
 }
 
-type FadingDocument = Document & { startViewTransition?: (update: () => void) => unknown }
+type FadingTransition = { ready: Promise<void>; finished: Promise<void>; updateCallbackDone: Promise<void> }
+type FadingDocument = Document & { startViewTransition?: (update: () => void) => FadingTransition }
 
 /** Whether a palette change can cross-fade: the View Transitions API is there and the player has not asked for less motion. */
 function canFade(): boolean {
@@ -71,8 +72,16 @@ function canFade(): boolean {
 function show(theme: IdeTheme, smooth: boolean): void {
   if (painted === theme.id) return
   painted = theme.id
-  if (smooth && canFade()) (document as FadingDocument).startViewTransition!(() => paint(theme))
-  else paint(theme)
+  if (!smooth || !canFade()) {
+    paint(theme)
+    return
+  }
+  const transition = (document as FadingDocument).startViewTransition!(() => paint(theme))
+  // A newer fade (a quick hover across rows) skips this one; the paint still runs. The spec marks `ready` handled, but Firefox reports the AbortError as uncaught.
+  const ignore = () => {}
+  transition.ready.catch(ignore)
+  transition.finished.catch(ignore)
+  transition.updateCallbackDone.catch(ignore)
 }
 
 /** Shows what `getIdeTheme` says, after `delay` (a hover at rest) or now. A newer call replaces a waiting one. */
