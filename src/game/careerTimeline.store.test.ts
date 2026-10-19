@@ -96,7 +96,7 @@ describe("career timeline", () => {
     expect(state.reveals).toEqual(["kit:felt"])
   })
 
-  it("coming back after a break brings the cat and logs the return", () => {
+  it("a break logs the return but does not bring the cat", () => {
     learn(1)
     useGame.getState().clearReveals()
     useGame.getState().noteReturn(5 * 60 * 1000)
@@ -104,23 +104,18 @@ describe("career timeline", () => {
     useGame.getState().noteReturn(30 * 60 * 1000)
     const state = useGame.getState()
     expect(state.returns).toBe(1)
-    expect(state.unlocked).toContain("cat")
-    expect(state.reveals).toEqual(["cat"])
+    expect(state.unlocked).not.toContain("cat")
+    expect(state.reveals).toEqual([])
     const back = state.journal.entries.find((entry) => entry.type === "return")
     expect(back?.data?.awayMs).toBe(30 * 60 * 1000)
   })
 
-  it("a quarter of an hour at the desk brings the cat without ever leaving", () => {
+  it("time at the desk alone does not bring the cat", () => {
     learn(1)
     useGame.getState().clearReveals()
     const start = useGame.getState().now
-    useGame.getState().tick(start + 14 * 60 * 1000)
+    useGame.getState().tick(start + 60 * 60 * 1000)
     expect(useGame.getState().unlocked).not.toContain("cat")
-    useGame.getState().tick(start + 15 * 60 * 1000)
-    const state = useGame.getState()
-    expect(state.returns).toBe(0)
-    expect(state.unlocked).toContain("cat")
-    expect(state.reveals).toEqual(["cat"])
   })
 
   it("draws a handle for each new career, rerolls it until kept, and saves it", () => {

@@ -81,12 +81,13 @@ describe("booting the timeline", () => {
     const save = {
       ...freshSave(now),
       skills: { "1": 1, "15": 1 },
+      jobs: [1],
       career: { ...freshCareer(now), unlocked: ["studio"], returns: 1 },
     }
     const career = bootCareer(save, now)
-    expect(career.unlocked).toEqual(["studio", "linkedout", "cat"])
+    expect(career.unlocked).toEqual(["studio", "linkedout", "money", "boardJobs", "metrics", "cat"])
     expect(career.reveals).toEqual(["cat"])
-    expect(career.awayUnlocks).toEqual(["LinkedOut profile", "Desk cat"])
+    expect(career.awayUnlocks).toEqual(["LinkedOut profile", "Dollars", "Metrics", "Desk cat"])
     expect(career.whatsNew).toBe(false)
   })
 

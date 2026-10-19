@@ -28,8 +28,6 @@ export type FeatureTrigger =
   | { kind: "art"; tier: number }
   /** The first capital row of an era. */
   | { kind: "era"; era: Era }
-  /** A quarter of an hour at the desk (`CAT_DESK_MS`, tab open counts, in front or behind), or coming back after a break, whichever is first. */
-  | { kind: "settled" }
   /** The Exit (prestige): it would pay at least 1 Prestige (a win included), or this is a later career. */
   | { kind: "exit" }
 
@@ -216,7 +214,7 @@ export const FEATURES: readonly FeatureRow[] = [
     name: "Desk cat",
     blurb: "A cat wandered onto your desk and decided to stay. Tap it to meet another.",
     size: "big",
-    trigger: { kind: "settled" },
+    trigger: { kind: "firstJob" },
     ghost: false,
   },
   {
@@ -253,9 +251,3 @@ export const BASE_THEMES: readonly string[] = ["mocha", "latte"]
 
 /** The click sound every career starts with. */
 export const BASE_CLICK_KIT = "thock"
-
-/**
- * The cat moves in after this long at the desk: clicking, idling, or with the tab left open in the background. A
- * break of 10 minutes or more (`RETURN_BREAK_MS`) brings it sooner, waiting on the desk when you come back.
- */
-export const CAT_DESK_MS = 15 * 60 * 1000
