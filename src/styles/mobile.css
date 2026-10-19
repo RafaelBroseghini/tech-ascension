@@ -164,12 +164,9 @@
   .ul-card { left: auto !important; width: min(290px, 44vw); }
 }
 
-/* With every button unlocked the bar outgrows a phone's stage, so it scrolls and the foot (settings) stays pinned. */
+/* A phone's activity bar is the tightest; its 44px buttons sit close. */
 @media (max-width: 860px) {
-  .ide-activity { overflow-y: auto; scrollbar-width: none; }
-  .ide-activity > * { flex-shrink: 0; }
   /* The buttons are 44px tall here, so they need no gap of their own; the repo's star is the one that can go. */
   .ide-activity, .ide-activity-foot { gap: 2px; }
   .ide-activity-btn.gh-star { display: none; }
-  .ide-activity-foot { position: sticky; bottom: 0; background: var(--ide-crust); }
 }
