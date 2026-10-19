@@ -1,7 +1,7 @@
 import { ArrowDown, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import { ERA_ACCENT } from "../data/eraAccent.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
@@ -319,6 +319,18 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   useTwoRows(listRef, narrow && tab !== "W", rowScope)
+  // The phone sheet's expanded height in px, or null at two rows. Another tab, a dock or a new screen size starts over at two rows.
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [sheetKey, setSheetKey] = useState(`${tab}:${docked}`)
+  if (sheetKey !== `${tab}:${docked}`) {
+    setSheetKey(`${tab}:${docked}`)
+    setExpanded(null)
+  }
+  useEffect(() => {
+    const reset = () => setExpanded(null)
+    window.addEventListener("resize", reset)
+    return () => window.removeEventListener("resize", reset)
+  }, [])
   const [listOverflows, setListOverflows] = useState(false)
   const showJumpEnd = tab !== "W" && unlocked[tab] && listOverflows
 
@@ -413,8 +425,14 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   }, [tab, setPickedEra])
 
   return (
-    <aside className={docked ? "shop is-docked" : "shop"} data-testid="shop" data-phase={tab} onPointerMove={holdPreview}>
-      <ShopGrip docked={docked} label={PHASE_TAB[tab].label} fresh={SHOP_TABS.some((id) => unlocked[id] && tabHasNew(id))} onDock={onDock} />
+    <aside
+      className={docked ? "shop is-docked" : expanded !== null ? "shop is-expanded" : "shop"}
+      style={expanded !== null ? ({ "--shop-expanded-h": `${expanded}px` } as CSSProperties) : undefined}
+      data-testid="shop"
+      data-phase={tab}
+      onPointerMove={holdPreview}
+    >
+      <ShopGrip docked={docked} expanded={expanded} onExpand={setExpanded} label={PHASE_TAB[tab].label} fresh={SHOP_TABS.some((id) => unlocked[id] && tabHasNew(id))} onDock={onDock} />
       <div className="shop-head">
         <div className="shop-head-top">
           <p className="eyebrow">

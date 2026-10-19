@@ -104,6 +104,7 @@ const MEASURE = `(async () => {
     stage: rect(document.querySelector(".stage-panel")),
     shop: rect(document.querySelector(".shop")),
     docked: !!document.querySelector(".shop.is-docked"),
+    expanded: !!document.querySelector(".shop.is-expanded"),
     grip: rect(document.querySelector("[data-testid=shop-grip]")),
     topbar, hit: rect(hit), hitOk, hitCover,
     offscreen,
@@ -160,14 +161,19 @@ function check(vp, state, m) {
 
   if (m.stage && m.shop) {
     if (portraitPhone) {
-      if (m.shop.top < m.stage.top + m.stage.height * 0.5) fail(`shop is not below the stage (shop top ${Math.round(m.shop.top)}, stage ${Math.round(m.stage.top)}-${Math.round(m.stage.bottom)})`)
+      // Expanded, the sheet is meant to take the stage's room, up to the foot of the top bar.
+      if (state !== "expanded" && m.shop.top < m.stage.top + m.stage.height * 0.5) fail(`shop is not below the stage (shop top ${Math.round(m.shop.top)}, stage ${Math.round(m.stage.top)}-${Math.round(m.stage.bottom)})`)
       if (state === "docked") {
         if (!m.docked) fail("dragging the grip down did not dock the shop")
         if (m.shop.height > 64) fail(`the docked shop is ${Math.round(m.shop.height)}px tall`)
         if (!m.grip || m.grip.height < 44) fail(`the docked bar is under 44px (${m.grip ? Math.round(m.grip.height) : "-"}px)`)
+      } else if (state === "expanded") {
+        if (!m.expanded) fail("dragging the grip up did not expand the shop")
+        if (m.topbar && m.shop.top < m.topbar.bottom - 1) fail(`the expanded shop covers the top bar (shop top ${Math.round(m.shop.top)}, bar bottom ${Math.round(m.topbar.bottom)})`)
       } else if (m.docked) fail("the shop is docked")
+      else if (m.expanded) fail("the shop is still expanded")
       else if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
-      if (m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
+      if (state !== "expanded" && m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
       if (m.topbar && m.topbar.height > vp.h * 0.18) fail(`top bar takes ${Math.round((m.topbar.height / vp.h) * 100)}% of the screen`)
     }
     if (desktop && m.shop.left < m.stage.left + vp.w * 0.4) fail("desktop lost its side-by-side stage and shop")
@@ -176,7 +182,7 @@ function check(vp, state, m) {
   }
 
   const modalOpen = m.dialogs.length > 0
-  if (m.hitOk === false && !modalOpen) fail(`the click target is covered by ${m.hitCover}`)
+  if (m.hitOk === false && !modalOpen && state !== "expanded") fail(`the click target is covered by ${m.hitCover}`)
   if (m.hitOk === null && state !== "start-card" && !modalOpen) fail("no click target on screen")
 
   for (const d of m.dialogs) {
@@ -287,10 +293,33 @@ async function runViewports() {
       shot(vp, state)
     }
 
-    // A portrait phone docks the shop: drag the grip down to a bar, then tap the bar to open it again.
+    // A portrait phone's shop sheet: drag the grip up to expand it (never over the top bar), tap to return to two rows,
+    // drag it down to a bar, then tap the bar to open it again.
     if (vp.w <= 860 && vp.h > vp.w) {
       game(STATES["mid-d"])
       await settle()
+      const rowsH = measure().shop.height
+      dragGrip(-Math.round(vp.h * 0.5))
+      await settle()
+      const grown = measure()
+      check(vp, "expanded", grown)
+      shot(vp, "expanded")
+      if (grown.shop.height < rowsH + 40) failures.push(`${vp.name} expanded: the sheet did not grow (${Math.round(rowsH)}px -> ${Math.round(grown.shop.height)}px)`)
+      // A little down again keeps it expanded, shorter.
+      dragGrip(Math.round((grown.shop.height - rowsH) * 0.3))
+      await settle()
+      const less = measure()
+      if (!less.expanded || less.shop.height >= grown.shop.height) failures.push(`${vp.name} expanded: dragging down did not shorten the sheet (${Math.round(grown.shop.height)}px -> ${Math.round(less.shop.height)}px, expanded ${less.expanded})`)
+      // A tap on the expanded grip returns to two rows.
+      const [ex, ey] = gripCenter()
+      ab("mouse", "move", String(ex), String(ey))
+      ab("mouse", "down")
+      ab("mouse", "up")
+      await settle()
+      const back = measure()
+      check(vp, "rows-again", back)
+      if (Math.abs(back.shop.height - rowsH) > 2) failures.push(`${vp.name} rows-again: tapping the grip left the sheet at ${Math.round(back.shop.height)}px, not two rows (${Math.round(rowsH)}px)`)
+      // From the two rows, down docks and a tap opens it, as before.
       dragGrip(Math.round(vp.h * 0.3))
       await settle()
       check(vp, "docked", measure())

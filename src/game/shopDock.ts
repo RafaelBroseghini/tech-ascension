@@ -1,6 +1,8 @@
 /**
- * The phone shop's bottom sheet: drag the grip down to dock it to a bar, tap or drag up to bring it back. Pure, so the
- * drag rules run under the node tests; `ShopGrip.tsx` feeds it the pointer and commits the answer.
+ * The phone shop's bottom sheet has three resting heights: docked to a bar, two whole rows, and expanded (any height
+ * from just above the two rows up to the bottom of the top bar). Drag the grip down from the two rows to dock, up to
+ * expand; tap a docked bar to open it, tap an expanded grip to return to two rows. Pure, so the drag rules run under
+ * the node tests; `ShopGrip.tsx` feeds it the pointer and commits the answer.
  */
 
 /** Under this many pixels a press is a tap, not a drag. */
@@ -39,4 +41,62 @@ export function settleDock({ docked, dy, ms, travel }: DockDrag): boolean {
   if (Math.abs(speed) >= DOCK_FLICK_SPEED) return speed > 0
   const moved = dockOffset(docked, dy, travel)
   return moved >= Math.max(travel, 0) * DOCK_SETTLE_SHARE ? !docked : docked
+}
+
+export type SheetMode = "docked" | "rows" | "expanded"
+
+/** A sheet dragged up by less than this many px beyond the two rows is not an expansion; it springs back. */
+export const EXPAND_MIN = 24
+/** While expanded, the finger can pull the sheet down to this share of the two rows before it is clamped; release there snaps to two rows. */
+export const EXPAND_FLOOR_SHARE = 0.7
+
+export interface SheetDrag {
+  /** Where the sheet started. */
+  readonly mode: SheetMode
+  /** The sheet's height at the press, in px. */
+  readonly height: number
+  /** Finger travel since the press; positive is down. */
+  readonly dy: number
+  /** Time since the press, in ms. */
+  readonly ms: number
+  /** Height of the sheet at two whole rows. */
+  readonly rowsHeight: number
+  /** The tallest the sheet may be: the room under the top bar. */
+  readonly maxHeight: number
+  /** Height of the docked bar. */
+  readonly dockHeight: number
+}
+
+export interface SheetSettle {
+  readonly mode: SheetMode
+  /** The resting height, only for `expanded`. */
+  readonly height?: number
+}
+
+/** The tallest sheet that fits, never below the two rows (a tiny screen keeps its two rows). */
+export const clampExpanded = (height: number, rowsHeight: number, maxHeight: number): number =>
+  Math.min(Math.max(height, rowsHeight), Math.max(maxHeight, rowsHeight))
+
+/** The sheet's height under the finger, in px, while dragging. */
+export function sheetHeight(d: SheetDrag): number {
+  const travel = Math.max(d.rowsHeight - d.dockHeight, 0)
+  if (d.mode === "docked") return d.dockHeight + dockOffset(true, d.dy, travel)
+  if (d.mode === "rows" && d.dy > 0) return d.rowsHeight - dockOffset(false, d.dy, travel)
+  const top = Math.max(d.maxHeight, d.rowsHeight)
+  const floor = d.rowsHeight * EXPAND_FLOOR_SHARE
+  return Math.min(Math.max(d.height - d.dy, floor), top)
+}
+
+/**
+ * Where the sheet rests once the finger lifts. Docking only happens from the two rows (or stays docked); from expanded a
+ * pull down below the two rows, or a downward flick, returns to two rows rather than docking.
+ */
+export function settleSheet(d: SheetDrag): SheetSettle {
+  const travel = Math.max(d.rowsHeight - d.dockHeight, 0)
+  if (d.mode === "docked") return { mode: settleDock({ docked: true, dy: d.dy, ms: d.ms, travel }) ? "docked" : "rows" }
+  if (isDockTap(d.dy)) return d.mode === "expanded" ? { mode: "expanded", height: clampExpanded(d.height, d.rowsHeight, d.maxHeight) } : { mode: "rows" }
+  if (d.mode === "rows" && d.dy > 0) return { mode: settleDock({ docked: false, dy: d.dy, ms: d.ms, travel }) ? "docked" : "rows" }
+  if (d.mode === "expanded" && d.dy / Math.max(d.ms, 1) >= DOCK_FLICK_SPEED) return { mode: "rows" }
+  const height = clampExpanded(sheetHeight(d), d.rowsHeight, d.maxHeight)
+  return height - d.rowsHeight < EXPAND_MIN ? { mode: "rows" } : { mode: "expanded", height }
 }
