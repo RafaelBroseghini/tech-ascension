@@ -32,7 +32,11 @@
   padding-top: var(--sp-4);
   background: var(--ide-crust);
   pointer-events: auto;
+  /* With every button unlocked the bar can outgrow a short stage: it scrolls, and the foot (settings) stays pinned. */
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+.ide-activity > * { flex-shrink: 0; }
 
 .ide-activity-btn {
   display: flex;
@@ -83,8 +87,11 @@
   flex-direction: column;
   align-items: center;
   gap: var(--sp-4);
+  position: sticky;
+  bottom: 0;
   margin-top: auto;
   padding-bottom: var(--sp-4);
+  background: var(--ide-crust);
 }
 .ide-activity-foot .ide-activity-btn { position: relative; }
 .ide-buy-amount,
