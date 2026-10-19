@@ -26,13 +26,13 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
   }
-  /* A shop tab shows two whole rows and scrolls for the rest, so the stage gets the room. `--rows-h` is the two rows at the top, measured in
-     `useTwoRows` (rows wrap to different heights); scrolling snaps to a row so none is cut in half.
+  /* A shop tab shows three whole rows and scrolls for the rest, so the stage gets the room. `--rows-h` is the three rows at the top, measured in
+     `useShopRows` (rows wrap to different heights); scrolling snaps to a row so none is cut in half.
      The Company tab is not a list of rows and keeps the shop's share of the screen. */
   .shop { max-height: calc(56dvh + var(--shop-cap-extra, 0px)); }
   .shop-list-wrap.is-capped .shop-list { scroll-snap-type: y mandatory; }
   .shop-list-wrap.is-capped .offer { scroll-snap-align: start; }
-  .shop-list-wrap.is-capped { flex: 0 1 auto; max-height: var(--rows-h, 192px); }
+  .shop-list-wrap.is-capped { flex: 0 1 auto; max-height: var(--rows-h, 288px); }
   .shop { border-left: 0; border-top: var(--stroke) solid var(--ink); box-shadow: inset 0 3px 0 var(--surface-2); animation: none; }
   .shop-panel-hide, .shop-panel-show, .shop-head .eyebrow, .shop-head-row { display: none; }
   .shop-head, .shop-head-top { display: contents; }
@@ -94,16 +94,16 @@
   .shop { max-height: calc(50dvh + var(--shop-cap-extra, 0px)); }
 }
 
-/* The shop's grip: a bottom sheet you drag down to dock to a bar, tap or drag up to open, and drag up from two rows to expand (ShopGrip.tsx). Only a
+/* The shop's grip: a bottom sheet you drag down to dock to a bar, tap or drag up to open, and drag up from three rows to expand (ShopGrip.tsx). Only a
    portrait phone stacks the shop under the stage, so only there does it dock; on its side the shop is a column again. */
 .shop-grip { display: none; }
 @media (max-width: 860px) and (orientation: portrait) {
   .shop { --shop-grip-h: 24px; --shop-dock-h: 46px; transition: max-height var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out); }
-  /* The grip adds to the cap rather than taking from a tab's two rows; the Company tab scrolls and keeps its share. */
+  /* The grip adds to the cap rather than taking from a tab's three rows; the Company tab scrolls and keeps its share. */
   .shop:not([data-phase="W"]) { --shop-cap-extra: var(--shop-grip-h); }
   .shop.is-dragging { transition: none; }
-  /* Expanded: dragged up from the two rows, it keeps the height it was left at (`--shop-expanded-h`, set by Shop.tsx, never past
-     the top of the screen). The list fills the sheet instead of holding its two-row cap; it still scrolls and snaps to a row. */
+  /* Expanded: dragged up from the three rows, it keeps the height it was left at (`--shop-expanded-h`, set by Shop.tsx, never past
+     the top of the screen). The list fills the sheet instead of holding its three-row cap; it still scrolls and snaps to a row. */
   .shop.is-expanded { height: var(--shop-expanded-h); max-height: var(--shop-expanded-h); }
   .shop.is-expanded .shop-list-wrap.is-capped,
   .shop.is-expanding .shop-list-wrap.is-capped { flex: 1 1 0; max-height: none; }

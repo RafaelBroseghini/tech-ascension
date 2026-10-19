@@ -4,6 +4,7 @@ import { EventModal } from "./components/EventModal.tsx"
 import { ReviewModal } from "./components/ReviewModal.tsx"
 import { Shop } from "./components/Shop.tsx"
 import { Stage } from "./components/Stage.tsx"
+import { TitleBar } from "./components/TitleBar.tsx"
 import { Toast } from "./components/Toast.tsx"
 import { UnlockReveals } from "./components/UnlockReveals.tsx"
 import { ExitHeadline } from "./components/ExitPanel.tsx"
@@ -43,6 +44,7 @@ export default function App() {
     <>
       <div className={shifting ? "app era-shift" : "app"} data-era={era}>
         <h1 className="sr-only">Tech Ascension</h1>
+        <TitleBar />
         <main className={shopOpen ? "layout" : "layout is-shop-collapsed"}>
           <Stage />
           {shopOpen ? <Shop onCollapse={() => writeShopPanelOpen(false)} docked={shopDocked} onDock={(docked) => writeShopPanelOpen(!docked)} /> : null}

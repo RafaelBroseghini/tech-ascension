@@ -138,15 +138,15 @@ describe("the career log", () => {
 describe("the shop teases what is next", () => {
   it("hides closed boards except the next one, and names what a row unlocks", () => {
     writeSavedShopTab("A")
-    useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 9).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
+    useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 4).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
     render(Shop, { onCollapse: () => {}, docked: false, onDock: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
     // Skill 1 opened the studio, so the Company tab is there too.
     expect(tabs).toEqual(["A", "G", "W"])
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
-    expect($$("[data-row='skill:10'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
+    expect($$("[data-row='skill:5'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
     // A row wears the feature's icon and keeps the name for the tooltip and screen readers.
-    const badge = $("[data-row='skill:10'] [data-testid='unlock-chip']")!
+    const badge = $("[data-row='skill:5'] [data-testid='unlock-chip']")!
     expect(badge.dataset.feature).toBe("careerLog")
     expect(badge.querySelector("svg")).not.toBeNull()
     expect(badge.querySelector(".ul-chip-name")).toBeNull()
@@ -167,7 +167,7 @@ describe("the GitHug corner", () => {
   })
 
   it("opens a profile with this career's contribution graph and pinned repos", () => {
-    useGame.setState({ skills: { "1": 1, "5": 1 }, unlocked: ["studio", "careerLog", "githug"], fresh: ["githug"] })
+    useGame.setState({ skills: { "1": 1, "5": 1, "10": 1 }, unlocked: ["studio", "careerLog", "githug"], fresh: ["githug"] })
     render(GitHugCorner)
     expect($("[data-testid='github-star']")).not.toBeNull()
     click($("[data-testid='view-githug']"))

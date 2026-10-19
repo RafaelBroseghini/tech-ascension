@@ -18,9 +18,9 @@ interface Press {
 }
 
 /**
- * The handle on top of the phone shop (portrait only; mobile.css hides it elsewhere). From two rows, drag it down to
+ * The handle on top of the phone shop (portrait only; mobile.css hides it elsewhere). From three rows, drag it down to
  * dock the shop to a bar, or up to expand the sheet (as high as the top of the screen; it stays there). Tap the bar
- * to open it; tap the grip of an expanded sheet to return to two rows. From the keyboard it steps expanded, two rows,
+ * to open it; tap the grip of an expanded sheet to return to three rows. From the keyboard it steps expanded, three rows,
  * docked. While the finger is down the sheet follows it through inline heights, so the stage grows and shrinks live; on
  * release the classes take over and the CSS transition settles it.
  */
@@ -40,7 +40,7 @@ export function ShopGrip({
   onExpand: (height: number | null) => void
 }) {
   const press = useRef<Press | null>(null)
-  // The two-row height, seen the last time the sheet rested there, so a drag from the bar or from expanded has somewhere to go.
+  // The three-row height, seen the last time the sheet rested there, so a drag from the bar or from expanded has somewhere to go.
   const rowsHeight = useRef(0)
   // A drag ends in a click on the same button; that click must not flip the sheet back.
   const swallowClick = useRef(false)
@@ -83,7 +83,7 @@ export function ShopGrip({
     sheet.classList.add("is-dragging")
     const height = sheetHeight(dragOf(p, dy))
     sheet.style.maxHeight = `${height}px`
-    // Above two rows the list fills the sheet, so it must not hold its two-row cap.
+    // Above three rows the list fills the sheet, so it must not hold its three-row cap.
     const growing = p.mode === "expanded" || (p.mode === "rows" && dy < 0)
     sheet.classList.toggle("is-expanding", growing)
     if (growing) sheet.style.height = `${height}px`
@@ -120,7 +120,7 @@ export function ShopGrip({
       className="shop-grip"
       data-testid="shop-grip"
       aria-expanded={!docked}
-      aria-label={docked ? `Open shop: ${label}` : expanded !== null ? "Shrink shop to two rows" : "Dock shop"}
+      aria-label={docked ? `Open shop: ${label}` : expanded !== null ? "Shrink shop to three rows" : "Dock shop"}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -134,12 +134,12 @@ export function ShopGrip({
           onDock(false)
           return
         }
-        // A tap on an expanded grip returns to two rows.
+        // A tap on an expanded grip returns to three rows.
         if (expanded !== null) {
           onExpand(null)
           return
         }
-        // A tap on the two-row grip is too easily a tab tap that landed high; docking is a drag, or the keyboard.
+        // A tap on the three-row grip is too easily a tab tap that landed high; docking is a drag, or the keyboard.
         if (event.detail !== 0) return
         rowsHeight.current = sheetOf(event.currentTarget)?.getBoundingClientRect().height ?? 0
         onDock(true)

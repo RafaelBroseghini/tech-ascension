@@ -293,7 +293,7 @@ export function nextGhost(p: FeatureProgress, open: ReadonlySet<string>): Featur
   return null
 }
 
-/** The shop rows that open something: `skill:10` -> Career log and GitHug profile. A row can open a feature and a cosmetic at once. */
+/** The shop rows that open something: `skill:5` -> Career log and GitHug profile. A row can open a feature and a cosmetic at once. */
 export function rowUnlocks(rowKey: string): FeatureRow[] {
   const [kind, raw] = rowKey.split(":")
   const id = Number(raw)
