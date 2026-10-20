@@ -221,7 +221,8 @@ function measure() {
 function gripCenter() {
   const out = ab("eval", `(() => { const r = document.querySelector("[data-testid=shop-grip]").getBoundingClientRect(); return JSON.stringify([r.left + r.width / 2, r.top + r.height / 2]) })()`)
   const [x, y] = JSON.parse(JSON.parse(out.slice(out.indexOf('"'))))
-  return [x, y]
+  // agent-browser rejects fractional coordinates.
+  return [Math.round(x), Math.round(y)]
 }
 
 // A slow drag on the grip, with the mouse, so it goes through the same pointer handlers as a finger.
@@ -229,7 +230,8 @@ function dragGrip(dy) {
   const [x, y] = gripCenter()
   ab("mouse", "move", String(x), String(y))
   ab("mouse", "down")
-  ab("mouse", "move", String(x), String(y + dy), "--steps", "12", "--duration", "600")
+  // `mouse move` takes no step flags, so walk the drag in small moves.
+  for (let i = 1; i <= 12; i++) ab("mouse", "move", String(x), String(y + Math.round((dy * i) / 12)))
   ab("mouse", "up")
 }
 
