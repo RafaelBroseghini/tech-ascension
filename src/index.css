@@ -2120,6 +2120,11 @@ img { -webkit-user-drag: none; user-select: none; }
   font-size: clamp(1.85rem, 0.9rem + 2.8vw, 3.1rem);
 }
 
+/* From 10 million the full figure takes the big number's place (the compact one would only repeat it), in a size that fits the card. */
+.hero-money-value.is-full {
+  font-size: clamp(1.25rem, 0.9rem + 2vw, 1.75rem);
+}
+
 .hero-money-full {
   max-width: min(100%, 30rem);
   overflow: hidden;

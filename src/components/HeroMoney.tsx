@@ -197,12 +197,12 @@ function HeroMoneyBody() {
   }, [pop])
 
   if (!moneyOpen) {
+    const xpWide = shownXp >= RAW_DIGITS_BELOW
     return (
       <>
-        <span className="hero-money-value hero-xp-value" data-testid="hero-xp">
-          {formatNumber(shownXp)} XP
+        <span className={["hero-money-value", "hero-xp-value", xpWide ? "is-full" : ""].filter(Boolean).join(" ")} data-testid="hero-xp">
+          {xpWide ? fullXp : formatNumber(shownXp)} XP
         </span>
-        {shownXp >= RAW_DIGITS_BELOW ? <span className="hero-money-full hero-money-full-xp">{fullXp} XP</span> : null}
         <span className="hero-money-sub">
           <MousePointerClick className="hero-money-click-icon" {...UI_ICON} aria-hidden />+{formatNumber(rates.xpClick * rates.mult)} XP per click
         </span>
@@ -217,17 +217,12 @@ function HeroMoneyBody() {
         ref={valueRef}
         data-testid="money"
         data-feature-anchor="money"
-        className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", moneyText.length > 11 ? "is-long" : ""]
+        className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", moneyText.length > 11 ? "is-long" : "", showFullMoney ? "is-full" : ""]
           .filter(Boolean)
           .join(" ")}
       >
-        ${moneyText}
+        ${showFullMoney ? fullMoney : moneyText}
       </span>
-      {showFullMoney ? (
-        <span className="hero-money-full" data-testid="money-full">
-          ${fullMoney}
-        </span>
-      ) : null}
       <span className="hero-money-full hero-money-full-xp" data-testid="xp-full">
         {fullXp} XP
       </span>
