@@ -76,7 +76,7 @@ describe("hover click setting", () => {
     renderSettings()
     openSettings()
     const toggle = document.querySelector<HTMLButtonElement>("[data-testid='desk-hoverClick']")
-    expect(toggle?.textContent).toContain("Hover or hold click")
+    expect(toggle?.textContent).toContain("Auto-click")
     expect(toggle?.getAttribute("aria-pressed")).toBe("false")
     expect(toggle?.title).toContain("20/s")
     flushSync(() => {

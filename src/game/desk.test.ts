@@ -12,6 +12,12 @@ describe("desk", () => {
     setDeskPref("hoverClick", false)
   })
 
+  it("keeps a known auto-click input and falls back to auto for anything else", () => {
+    expect(parseDeskPrefs({ hoverMode: "hold" }).hoverMode).toBe("hold")
+    expect(parseDeskPrefs({ hoverMode: "touch" }).hoverMode).toBe("auto")
+    expect(parseDeskPrefs(null).hoverMode).toBe("auto")
+  })
+
   it("starts with music off, desk sounds on, and the cat out", () => {
     expect(parseDeskPrefs(null)).toEqual({
       music: false,
@@ -25,6 +31,7 @@ describe("desk", () => {
       paradeStyle: "bounce",
       paradeSource: "all",
       hoverClick: false,
+      hoverMode: "auto",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
@@ -40,6 +47,7 @@ describe("desk", () => {
       paradeStyle: "bounce",
       paradeSource: "all",
       hoverClick: false,
+      hoverMode: "auto",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
@@ -55,6 +63,7 @@ describe("desk", () => {
       paradeStyle: "bounce",
       paradeSource: "all",
       hoverClick: false,
+      hoverMode: "auto",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
@@ -125,6 +134,7 @@ describe("desk", () => {
       paradeStyle: "bounce",
       paradeSource: "all",
       hoverClick: false,
+      hoverMode: "auto",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
