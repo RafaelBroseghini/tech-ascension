@@ -6,7 +6,6 @@ import { GIGS, JOB_TIERS } from "../data/phases.ts"
 import { FRESH_COMPANY } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
-import { FRESH_FOUNDER } from "./globe/track.ts"
 import { installGameHarness } from "./harness.ts"
 import { prestigeMult } from "./mods.ts"
 import { readCareerText } from "./ledger.ts"
@@ -21,7 +20,7 @@ function earn(earned = PRESTIGE_EARN_SCALE * 3) {
 }
 
 /** A career that has won the world with `ending`, users and all. */
-function winWith(ending: "founder" | "nightOwl" | "sponsor") {
+function winWith(ending: "nightOwl" | "sponsor") {
   const company: CompanyState = { ...FRESH_COMPANY, users: { "americas-east": 8e9 }, won: true, ending, hiredUsers: 1 }
   useGame.setState({ company })
 }
@@ -104,8 +103,7 @@ describe("the Exit", () => {
         day: 12,
       },
       footprint: { regions: ["americas-east", "europe"], pops: ["ashburn", "london"], off: ["london"], dark: [] },
-      founder: { track: "founder", offered: true, bridges: 2, equityCut: 0.2, requitAt: null, broke: true, hires: { outsourced: 40, senior: 2 } },
-      forkModal: true,
+      hires: { outsourced: 40, senior: 2 },
       foreverMult: 3,
     })
     earn()
@@ -113,13 +111,11 @@ describe("the Exit", () => {
     const s = useGame.getState()
     expect(s.company).toEqual(FRESH_COMPANY)
     expect(s.footprint).toEqual(FRESH_FOOTPRINT)
-    expect(s.founder).toEqual(FRESH_FOUNDER)
-    expect(s.forkModal).toBe(false)
+    expect(s.hires).toEqual({})
     expect(s.foreverMult).toBe(1)
     const world = game.getState()
-    expect(world).toMatchObject({ track: "ladder", hires: {}, headcount: 0, ending: null })
+    expect(world).toMatchObject({ hires: {}, headcount: 0, ending: null })
     expect(world.world).toMatchObject({ users: 0, regionUsers: {}, resistance: 0, incidents: [], won: false })
-    expect(world.founder).toMatchObject({ bridges: 0, equityCut: 0, broke: false })
   })
 
   it("draws a new product, keeps the handle, and opens the start card again", () => {
@@ -163,19 +159,19 @@ describe("the Hall of Fame", () => {
 
   it("pays the ending bonus on top of the earnings, once per ending", () => {
     earn(PRESTIGE_EARN_SCALE * 8)
-    winWith("founder")
+    winWith("nightOwl")
     expect(game.getState().legacy.prestigeOnExit).toBe(2 + ENDING_BONUS)
     expect(game.exit()).toBe(2 + ENDING_BONUS)
-    expect(game.getState().legacy.endings).toEqual(["founder"])
-    expect(useGame.getState().exitCard).toMatchObject({ newEnding: "founder", endingBonus: ENDING_BONUS })
+    expect(game.getState().legacy.endings).toEqual(["nightOwl"])
+    expect(useGame.getState().exitCard).toMatchObject({ newEnding: "nightOwl", endingBonus: ENDING_BONUS })
 
     // The same ending again pays only earnings.
     game.keepProfile()
     earn(PRESTIGE_EARN_SCALE * 64)
-    winWith("founder")
+    winWith("nightOwl")
     const second = game.exit()
     expect(second).toBe(2)
-    expect(game.getState().legacy.endings).toEqual(["founder"])
+    expect(game.getState().legacy.endings).toEqual(["nightOwl"])
     expect(useGame.getState().exitCard?.newEnding).toBeNull()
 
     // A different ending pays its bonus, and the bonus does not eat the earnings ladder: 4 from 64 scales so far, 5 more at 125.
@@ -184,7 +180,7 @@ describe("the Hall of Fame", () => {
     winWith("sponsor")
     const third = game.exit()
     expect(third).toBe(1 + ENDING_BONUS)
-    expect(game.getState().legacy.endings).toEqual(["founder", "sponsor"])
+    expect(game.getState().legacy.endings).toEqual(["nightOwl", "sponsor"])
     expect(game.getState().legacy.prestigeTotal).toBe(5 + 2 * ENDING_BONUS)
   })
 
@@ -227,7 +223,7 @@ describe("Legacy perks", () => {
     game.setPrestige(100)
     expect(game.buyLegacy("network.gigBoard")).toBe(true)
     expect(game.buyLegacy("network.seed")).toBe(false)
-    expect(game.buyLegacy("founder.burn")).toBe(false)
+    expect(game.buyLegacy("founder.growth")).toBe(false)
     expect(game.buyLegacy("founder.users")).toBe(true)
     expect(game.buyLegacy("capital.offline")).toBe(true)
     expect(game.buyLegacy("capital.offline")).toBe(false)
@@ -318,33 +314,10 @@ describe("Legacy perks", () => {
     const base = game.getState().world.revenuePerSec
     expect(base).toBeGreaterThan(0)
     game.setPrestige(100)
-    for (const id of ["founder.users", "founder.burn", "founder.bridge", "founder.growth"]) game.buyLegacy(id)
+    for (const id of ["founder.users", "founder.growth"]) game.buyLegacy(id)
     expect(game.getState().world.revenuePerSec).toBeCloseTo(base)
     expect(game.buyLegacy("founder.revenue")).toBe(true)
     expect(game.getState().world.revenuePerSec).toBeCloseTo(base * PERK.revenue)
-  })
-
-  it("Lean team cuts the founder's burn and Friendly investors make the first bridge free", () => {
-    game.setUsers("americas-east", 1000)
-    for (const gig of GIGS.slice(0, 6)) game.forceGig(gig.id)
-    game.setXp(300_000)
-    game.buyJob(1)
-    expect(game.goFullTime()).toBe(true)
-    const burn = game.getState().founder.burnPerSec
-    expect(burn).toBeGreaterThan(0)
-    game.setPrestige(100)
-    for (const id of ["founder.users", "founder.burn"]) game.buyLegacy(id)
-    expect(game.getState().founder.burnPerSec).toBeCloseTo(burn * (1 - PERK.burnCut), 5)
-    expect(game.buyLegacy("founder.bridge")).toBe(true)
-    game.setMoney(0)
-    game.tick(10_000)
-    expect(game.getState().founder.broke).toBe(true)
-    expect(game.raiseBridge()).toBe(true)
-    expect(game.getState().founder).toMatchObject({ bridges: 1, equityCut: 0 })
-    game.setMoney(0)
-    game.tick(10_000)
-    expect(game.raiseBridge()).toBe(true)
-    expect(game.getState().founder.equityCut).toBeCloseTo(0.1)
   })
 })
 

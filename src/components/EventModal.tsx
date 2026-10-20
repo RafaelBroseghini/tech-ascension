@@ -27,7 +27,6 @@ function EventDialog({ event }: { event: ActiveEvent }) {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
-  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
@@ -39,7 +38,7 @@ function EventDialog({ event }: { event: ActiveEvent }) {
     const def = eventById(event.eventId)
     if (!def) return null
     const at = Math.max(Date.now(), now)
-    const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, at, modsOf({ foreverMult, tempMults, legacy }))
+    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, at, modsOf({ foreverMult, tempMults, legacy }))
     return {
       name: def.name,
       flavor: def.flavor,
@@ -56,7 +55,7 @@ function EventDialog({ event }: { event: ActiveEvent }) {
         xp,
       ),
     }
-  }, [event, money, xp, skills, equipment, owned, jobs, gigs, founder, activeBoost, foreverMult, tempMults, legacy, now])
+  }, [event, money, xp, skills, equipment, owned, jobs, gigs, activeBoost, foreverMult, tempMults, legacy, now])
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
   const eventId = event.id

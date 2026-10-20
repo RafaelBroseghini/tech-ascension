@@ -18,9 +18,8 @@ export function OwnedStrip() {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
-  const founder = useGame((state) => state.founder)
   const legacy = useGame((state) => state.legacy)
-  const rows = useMemo(() => ownedSources({ skills, equipment, owned, jobs, gigs, founder, legacy }), [skills, equipment, owned, jobs, gigs, founder, legacy])
+  const rows = useMemo(() => ownedSources({ skills, equipment, owned, jobs, gigs, legacy }), [skills, equipment, owned, jobs, gigs, legacy])
 
   if (rows.length === 0) return null
 

@@ -38,3 +38,32 @@ describe("save: the company's users", () => {
     expect(again.toast ?? "").not.toContain("Eight billion users")
   })
 })
+
+describe("save: from before the fork was removed", () => {
+  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "oo", day: 3 }
+  const founder = { track: "founder", offered: true, bridges: 2, equityCut: 0.2, requitAt: 4000, broke: true, hires: { outsourced: 4, ghost: 2 } }
+  const old = () => ({ ...freshSave(0), money: 1_000_000, gigs: [1, 2, 3], company, founder })
+
+  it("loads a founder-track save as a normal career, keeping the users and the hires", () => {
+    const kept = parseSave(JSON.parse(JSON.stringify(old())))
+    expect(kept).not.toBeNull()
+    expect(kept).not.toHaveProperty("founder")
+    expect(kept?.hires).toEqual({ outsourced: 4 })
+    expect(kept?.company).toEqual(company)
+  })
+
+  it("walks the company while away with no burn and no run-out choice", () => {
+    const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
+    const back = hydrate(JSON.stringify(old()), 600_000)
+    calmRolls.mockRestore()
+    expect(back.reset).toBe(false)
+    expect(back.save).not.toHaveProperty("founder")
+    expect(back.save.hires).toEqual({ outsourced: 4 })
+    expect(back.save.company?.users["europe"]).toBeGreaterThan(0)
+    expect(back.save.money).toBeGreaterThan(0)
+  })
+
+  it("reads a save that kept its hires at the top level as before", () => {
+    expect(parseSave(JSON.parse(JSON.stringify({ ...freshSave(0), hires: { senior: 3 } })))?.hires).toEqual({ senior: 3 })
+  })
+})

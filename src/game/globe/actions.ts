@@ -3,7 +3,7 @@ import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, setPop, setRegion 
 import type { Footprint } from "./footprint.ts"
 import type { CompanyState } from "./growth.ts"
 import { fire as fireSome, hire as hireOne } from "./hires.ts"
-import type { FounderState } from "./track.ts"
+import type { Hires } from "./hires.ts"
 import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, totalUsers } from "./world.ts"
 import type { IncidentKind } from "./world.ts"
 
@@ -12,7 +12,7 @@ export interface CompanySlice {
   readonly money: number
   readonly footprint: Footprint
   readonly company: CompanyState
-  readonly founder: FounderState
+  readonly hires: Hires
 }
 
 /** What an action changes, or null when it is refused and nothing changes. */
@@ -38,12 +38,12 @@ export function setRegionActive(s: CompanySlice, regionId: string, on: boolean):
   return canSetRegion(s.footprint, regionId, on) ? { footprint: setRegion(s.footprint, regionId, on) } : null
 }
 
-/** Hires one of a kind on the ladder. Refused as a founder, in a closed row, or short of the price. */
+/** Hires one of a kind. Refused in a closed row or short of the price. */
 export function hire(s: CompanySlice, id: string): CompanyPatch {
   return hireOne(s, id)
 }
 
-/** Lets go of one of a kind, on either track. Refused when nobody of that kind is on the payroll. */
+/** Lets go of one of a kind. Refused when nobody of that kind is on the payroll. */
 export function fire(s: CompanySlice, id: string): CompanyPatch {
   return fireSome(s, id)
 }

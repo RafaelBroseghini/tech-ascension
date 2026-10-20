@@ -221,7 +221,7 @@ describe("saved company", () => {
 })
 
 describe("settleGrowth", () => {
-  const grown = (won: boolean, lost: number, earned = 0) => ({ state: { ...FRESH_COMPANY, won }, earned, lost, burned: 0, burnPerSec: 0, notes: [] })
+  const grown = (won: boolean, lost: number, earned = 0) => ({ state: { ...FRESH_COMPANY, won }, earned, lost, payroll: 0, notes: [] })
 
   it("charges the drops, never below zero", () => {
     expect(settleGrowth(100, 1, false, grown(false, 30)).money).toBe(70)

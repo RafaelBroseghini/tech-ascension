@@ -15,9 +15,8 @@ export const PRESTIGE_MULT_PER = 0.03
 /** Prestige paid, once per ending ever, on the Exit of a career that won the world with it. */
 export const ENDING_BONUS = 5
 
-/** The three ways to win the world (`Ending` in src/game/globe/hires.ts), in the Hall of Fame's order. */
+/** The two ways to win the world (`Ending` in src/game/globe/hires.ts), in the Hall of Fame's order. */
 export const HALL_OF_FAME = [
-  { id: "founder", name: "Founder", blurb: "You built it, full-time." },
   { id: "nightOwl", name: "Night owl", blurb: "Nights and weekends, mostly your own growth." },
   { id: "sponsor", name: "Executive sponsor", blurb: "Mostly the growth your hires added." },
 ] as const
@@ -39,7 +38,7 @@ export type LegacyPerk = {
 
 export const TRACKS: readonly { id: LegacyTrack; name: string; line: string }[] = [
   { id: "network", name: "Network", line: "A head start in the early game" },
-  { id: "founder", name: "Founder", line: "The product and the fork" },
+  { id: "founder", name: "Founder", line: "The product" },
   { id: "capital", name: "Capital", line: "Idle income" },
 ]
 
@@ -51,7 +50,6 @@ export const PERK = {
   gigsCleared: 6,
   seedMoney: 1_000_000,
   startUsers: 1000,
-  burnCut: 0.25,
   growth: 1.5,
   revenue: 1.5,
   offlineHours: 4,
@@ -68,10 +66,8 @@ export const LEGACY_PERKS: readonly LegacyPerk[] = [
   { id: "network.internship", track: "network", name: "Return offer", blurb: `${NOW}the internship held.`, cost: 7 },
   { id: "network.seed", track: "network", name: "Seed money", blurb: `${NOW}$1,000,000 held, so capital is open at once.`, cost: 12 },
 
-  { id: "founder.users", track: "founder", name: "Early adopters", blurb: `${NOW}${PERK.startUsers.toLocaleString("en-US")} users on the product, so the fork can open with the first job.`, cost: 2 },
-  { id: "founder.burn", track: "founder", name: "Lean team", blurb: `${NOW}the founder's burn is ${Math.round(PERK.burnCut * 100)}% lower.`, cost: 4 },
-  { id: "founder.bridge", track: "founder", name: "Friendly investors", blurb: `${NOW}the first bridge of each career costs no equity.`, cost: 7 },
-  { id: "founder.growth", track: "founder", name: "Viral loop", blurb: `${NOW}product growth ×${PERK.growth}, on both tracks.`, cost: 11 },
+  { id: "founder.users", track: "founder", name: "Early adopters", blurb: `${NOW}${PERK.startUsers.toLocaleString("en-US")} users on the product, so it has a crowd on day one.`, cost: 2 },
+  { id: "founder.growth", track: "founder", name: "Viral loop", blurb: `${NOW}product growth ×${PERK.growth}.`, cost: 11 },
   { id: "founder.revenue", track: "founder", name: "Platform", blurb: `${NOW}product revenue ×${PERK.revenue}.`, cost: 16 },
 
   { id: "capital.offline", track: "capital", name: "Long weekend", blurb: `${NOW}time away pays ${PERK.offlineHours} hours longer, on top of Time away.`, cost: 2 },

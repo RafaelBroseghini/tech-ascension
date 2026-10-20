@@ -84,9 +84,8 @@ describe("the Prestige button on the activity bar", () => {
     expect(panel).not.toBeNull()
     expect($("[data-testid='exit-button']")?.textContent).toContain("Sell")
     expect($("[data-testid='prestige-summary']")?.textContent).toBe("5 Prestige to spend · bonus ×1.3 from 10 earned")
-    expect(["network", "founder", "capital"].map((id) => $(`[data-testid='legacy-track-${id}']`)?.querySelectorAll("[data-testid^='legacy-']").length)).toEqual([5, 5, 5])
+    expect(["network", "founder", "capital"].map((id) => $(`[data-testid='legacy-track-${id}']`)?.querySelectorAll("[data-testid^='legacy-']").length)).toEqual([5, 3, 5])
     expect($("[data-testid='hall-sponsor'] strong")?.textContent).toBe("Executive sponsor")
-    expect($("[data-testid='hall-founder'] strong")?.textContent).toBe("???")
     expect($("[data-testid='hall-nightOwl'] strong")?.textContent).toBe("???")
     press("Escape")
     expect($("[data-testid='prestige-panel']")).toBeNull()
@@ -151,7 +150,7 @@ describe("the Sell button", () => {
   })
 
   it("names the Hall of Fame entry on the headline after a win", () => {
-    useGame.setState({ company: { ...FRESH_COMPANY, users: { "americas-east": 8e9 }, won: true, ending: "founder" } })
+    useGame.setState({ company: { ...FRESH_COMPANY, users: { "americas-east": 8e9 }, won: true, ending: "nightOwl" } })
     render(CompanyTab)
     render(ExitHeadline)
     flushSync(() => setMoneyDirect(PRESTIGE_EARN_SCALE * 8))
@@ -159,7 +158,7 @@ describe("the Sell button", () => {
     click($("[data-testid='exit-yes']"))
     click($("[data-testid='exit-yes']"))
     expect($("[data-testid='exit-headline']")?.textContent).toContain("sells")
-    expect($("[data-testid='exit-hall-of-fame']")?.textContent).toBe("New in the Hall of Fame: Founder (+5 Prestige)")
+    expect($("[data-testid='exit-hall-of-fame']")?.textContent).toBe("New in the Hall of Fame: Night owl (+5 Prestige)")
   })
 
   it("Escape on the confirmation card closes only the card, not the panel behind it", () => {

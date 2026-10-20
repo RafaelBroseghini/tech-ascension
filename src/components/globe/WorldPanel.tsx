@@ -2,11 +2,9 @@ import { memo } from "react"
 import { REGIONS } from "../../data/regions.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
-import { ceilingOf, incidentCost, INCIDENTS, regionName, WORLD_TARGET } from "../../game/globe/world.ts"
+import { ceilingOf, incidentCost, INCIDENTS, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
 import { canHire, creditOf, headcountOf, hireCost, hireGrowthStep, hirePayrollOf, openHires, winNote } from "../../game/globe/hires.ts"
 import type { Hires } from "../../game/globe/hires.ts"
-import { winMultOf } from "../../game/globe/track.ts"
-import { founderOutlook } from "../../game/founderOutlook.ts"
 import { earnedPerSec, useGame } from "../../game/store.ts"
 import { nextStep } from "./nextStep.ts"
 
@@ -21,14 +19,12 @@ const users = (n: number) => formatNumber(Math.round(n))
 /** The people on the payroll, a row for each kind that is open, and how much of the crowd they brought. */
 function Team({
   hires,
-  ladder,
   cash,
   share,
   onHire,
   onFire,
 }: {
   hires: Hires
-  ladder: boolean
   cash: number
   share: number
   onHire: (id: string) => boolean
@@ -50,7 +46,7 @@ function Team({
                 <small>{`each: −${money(row.salary)}/s · +${growth(hireGrowthStep(row, held))}% growth`}</small>
               </span>
               <div className="world-hire-actions">
-                <button type="button" disabled={!ladder || !canHire("ladder", hires, cash, row.id)} title={ladder ? row.line : "A founder hires no more."} onClick={() => onHire(row.id)}>
+                <button type="button" disabled={!canHire(hires, cash, row.id)} title={row.line} onClick={() => onHire(row.id)}>
                   {`Hire · ${money(cost)}`}
                 </button>
                 {held > 0 ? (
@@ -80,21 +76,11 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const perSec = useGame((state) => earnedPerSec(state, state.now))
   const respond = useGame((state) => state.respondIncident)
   const bar = Math.min(100, company.share * 100)
-  const equipment = useGame((state) => state.equipment)
-  const owned = useGame((state) => state.owned)
-  const jobs = useGame((state) => state.jobs)
-  const gigs = useGame((state) => state.gigs)
-  const founder = useGame((state) => state.founder)
+  const hires = useGame((state) => state.hires)
   const raw = useGame((state) => state.company)
-  const foreverMult = useGame((state) => state.foreverMult)
-  const tempMults = useGame((state) => state.tempMults)
-  const legacy = useGame((state) => state.legacy)
-  const now = useGame((state) => state.now)
-  const product = useGame((state) => state.profile.product)
   const hire = useGame((state) => state.hire)
   const fire = useGame((state) => state.fire)
-  const outlook = founderOutlook({ money: cash, equipment, owned, jobs, gigs, founder, company: raw, foreverMult, tempMults, legacy }, now)
-  const next = nextStep(company, founder.track === "founder" && !founder.broke ? { net: outlook.net, runwaySec: outlook.runwaySec } : undefined)
+  const next = nextStep(company)
   return (
     <section className="world" data-testid="company-world" aria-label="The world">
       <p className={`world-next is-${next.tone}`} data-testid="world-next">
@@ -117,7 +103,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
       </div>
       {company.won ? (
         <p className="world-won" data-testid="world-won">
-          {winNote(raw.ending, product, winMultOf(founder.track))}
+          {winNote(raw.ending, WIN_MULT)}
         </p>
       ) : null}
       <ul className="world-regions" data-testid="world-regions">
@@ -133,7 +119,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
           )
         })}
       </ul>
-      <Team hires={founder.hires} ladder={founder.track === "ladder"} cash={cash} share={creditOf(raw).hiredShare} onHire={hire} onFire={fire} />
+      <Team hires={hires} cash={cash} share={creditOf(raw).hiredShare} onHire={hire} onFire={fire} />
       {company.incidents.length > 0 ? (
         <ul className="world-incidents" data-testid="world-incidents">
           {company.incidents.map((incident) => {

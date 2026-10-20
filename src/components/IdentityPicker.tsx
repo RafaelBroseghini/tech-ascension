@@ -96,8 +96,7 @@ function IdentityCard() {
               The bet
             </h2>
             <p className="event-flavor identity-bet">
-              One day you can quit and go full-time on {profile.product}: bigger upside, real risk. Or keep climbing the ladder and build
-              it on nights and weekends.
+              Keep climbing the ladder and build {profile.product} on nights and weekends, with the day job paying the bills.
             </p>
           </>
         ) : null}

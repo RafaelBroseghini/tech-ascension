@@ -212,7 +212,7 @@ describe("the start card", () => {
     expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${third.handle}`)
     click($("[data-testid='identity-next']"))
     click($("[data-testid='identity-next']"))
-    expect($("[data-testid='identity-picker']")?.textContent).toContain(`go full-time on ${third.product}`)
+    expect($("[data-testid='identity-picker']")?.textContent).toContain(`build ${third.product} on nights and weekends`)
     expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${third.handle}`)
     click($("[data-testid='identity-keep']"))
     expect(useGame.getState().profile).toEqual({ ...third, chosen: true })

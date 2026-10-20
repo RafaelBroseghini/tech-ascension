@@ -15,10 +15,6 @@ export type PerkEffects = {
   salaries: number
   /** Multiplier on what capital rows earn. */
   capitalIncome: number
-  /** Multiplier on the founder's burn (the team and office, not the hires' salaries). */
-  burn: number
-  /** The first bridge of a career costs no equity. */
-  freeBridge: boolean
   /** Multiplier on product growth. */
   growth: number
   /** Multiplier on product revenue. */
@@ -33,8 +29,6 @@ export const NO_PERKS: PerkEffects = {
   gearCost: 1,
   salaries: 1,
   capitalIncome: 1,
-  burn: 1,
-  freeBridge: false,
   growth: 1,
   revenue: 1,
   startUsers: 0,
@@ -56,8 +50,6 @@ export function perkEffects(perks: readonly string[] | undefined): PerkEffects {
     gearCost: has("capital.gearCost") ? PERK.gearCost : 1,
     salaries: has("capital.salaries") ? PERK.salaries : 1,
     capitalIncome: has("capital.capitalIncome") ? PERK.capitalIncome : 1,
-    burn: has("founder.burn") ? 1 - PERK.burnCut : 1,
-    freeBridge: has("founder.bridge"),
     growth: has("founder.growth") ? PERK.growth : 1,
     revenue: has("founder.revenue") ? PERK.revenue : 1,
     startUsers: has("founder.users") ? PERK.startUsers : 0,
