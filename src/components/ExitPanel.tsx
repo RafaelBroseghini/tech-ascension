@@ -221,7 +221,7 @@ function PerkList() {
   )
 }
 
-/** The three endings, each shown once a career has won the world with it, `???` until then. */
+/** The two endings, each shown once a career has won the world with it, `???` until then. */
 function HallOfFame() {
   const endings = useGame((state) => state.legacy.endings)
   return (

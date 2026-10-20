@@ -68,7 +68,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 ## Where things are
 
 - `docs/CODEMAP.md`: what to edit for a given change. Start here when you do not know where code lives.
-- `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, the company and world, the fork, prestige, events and 1:1s, offline credit, the career timeline, identity).
+- `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, the company and world, prestige, events and 1:1s, offline credit, the career timeline, identity).
 - `docs/AGENT_PLAY.md`: smoke scenarios, free play, browser checks, example sequences.
 - `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/COMPANY_ARC.md`: the company and world design. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art and desk chrome.
 - Skills: `.agents/skills/mobile-check` (layout), `.agents/skills/emoji-gg` (emoji manifest).
