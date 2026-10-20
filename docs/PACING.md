@@ -25,31 +25,39 @@ pace = idleShare + clicksPerWallSecond × s
 
   | Player | K | Who they are |
   | --- | --- | --- |
-  | Collector | 9 | Buys what the shop lists and a second copy only when it earns itself back within an hour, which is almost never |
-  | Reinvestor | 4 | Also re-buys anything that earns itself back within two days |
+  | Collector | 0.8 | Buys what the shop lists and a second copy only when it earns itself back within an hour, which is almost never |
+  | Reinvestor | 0.9 | Also re-buys anything that earns itself back within two days |
 
-Worked example, three visits a day of 15 minutes, clicking twice a second. The cycle is 8 hours, so you are away 7.75 hours, under the cap, and `idleShare` is 1. You click 2 × 900 s × 3 visits = 5,400 times a day, which is 0.0625 clicks per wall-clock second. `pace = 1 + 0.0625 × 0.68 = 1.04`, so a reinvestor needs about 4 / 1.04 = 3.8 days and a collector about 9 / 1.04 = 8.7 days.
+  Both are under a day because a career is about a day long now (the capital tail was cut, see "Changing the pace"), and the two are close because there is no longer time for a second copy to repay itself: the lifetime XP that the last skill waits on, a day in, sets the floor for both. The old constants were 9 and 4, when the last capital row took days.
 
-Once a day for 30 minutes: you are away 23.5 hours but only 8 count, so `idleShare = (0.5 + 8) / 24 = 0.35`. Clicking adds `2 × 0.5 / 24 × 0.68 = 0.03`. `pace = 0.38`, which is 11 days for a reinvestor and 24 for a collector.
+Worked example, three visits a day of 15 minutes, clicking twice a second. The cycle is 8 hours, so you are away 7.75 hours, under the cap, and `idleShare` is 1. You click 2 × 900 s × 3 visits = 5,400 times a day, which is 0.0625 clicks per wall-clock second. `pace = 1 + 0.0625 × 0.68 = 1.04`, so a reinvestor needs about 0.9 / 1.04 = 0.9 days and a collector about 0.8 / 1.04 = 0.8 days.
+
+Once a day for 30 minutes: you are away 23.5 hours but only 8 count, so `idleShare = (0.5 + 8) / 24 = 0.35`. Clicking adds `2 × 0.5 / 24 × 0.68 = 0.03`. `pace = 0.38`, which is 2.4 days for a reinvestor and 2.1 for a collector.
 
 ## What it gives
 
 Days of real time, from the model (`src/game/pace.ts`) and from the formula. "Hands-on" is the time actually spent at the game, visits × minutes, until it finishes. Regenerate with `npm run pace`.
 
-| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Reinvestor: model / formula | Collector: model / formula | Hands-on (reinvestor / collector) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.34 | 2.7 / 3.0 days | 6.2 / 6.7 days | 16 h / 37 h |
-| Hardcore | 6/day | 20 | 3 | 1.00 | 1.17 | 3.2 / 3.4 days | 7.5 / 7.7 days | 6 h / 15 h |
-| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 4.3 / 3.8 days | 9.0 / 8.6 days | 3 h / 7 h |
-| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 6.5 / 5.7 days | 14.0 / 12.9 days | 2 h / 5 h |
-| Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 11.0 / 10.5 days | 25.0 / 23.5 days | 6 h / 13 h |
-| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 12.0 / 11.4 days | 28.0 / 25.7 days | 2 h / 5 h |
-| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 22.0 / n/a days | 50.0 / 47.1 days | 6 h / 13 h |
-| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 168 / n/a days | 182 / 165 days | 12 h / 13 h |
+| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Reinvestor: model / formula | Collector: model / formula | Hands-on (reinvestor / collector) | Longest wait, visits (reinvestor / collector) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.34 | 0.6 / 0.7 days | 0.5 / 0.6 days | 4 h / 3 h | 1 / 1 |
+| Hardcore | 6/day | 20 | 3 | 1.00 | 1.17 | 0.8 / 0.8 days | 0.7 / 0.7 days | 2 h / 1 h | 0 / 0 |
+| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.0 / 0.9 days | 0.7 / 0.8 days | 1 h / 1 h | 0 / 0 |
+| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 1.5 / 1.3 days | 1.5 / 1.1 days | 1 h / 1 h | 0 / 0 |
+| Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 2.0 / 2.4 days | 3.0 / 2.1 days | 1 h / 2 h | 0 / 0 |
+| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 3.0 / 2.6 days | 3.0 / 2.3 days | 1 h / 1 h | 0 / 0 |
+| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.0 / n/a days | 6.0 / 4.2 days | 2 h / 2 h | 0 / 0 |
+| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 21.0 / n/a days | 35.0 / 14.6 days | 2 h / 3 h | 0 / 0 |
+
+The finish is a whole number of visits, so a schedule with a long gap between visits reads in steps and the formula is only close, within about a third (the test allows 35%).
+
+**Longest wait** is the most visits in a row that bought no first copy of anything (a skill, gig, job, gear or capital row) before the career owned everything. The model only buys at visits, so a wait is counted in visits. A career that ends in a day should never come back to nothing new: for the target player (4 visits a day of 5 minutes, 2 clicks a second) both players wait 0 visits and own everything on day 1.00, and `pace.test.ts` pins at most 1.
 
 To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
 
 ## Over several careers (the Exit)
+
+**Stale after the capital tail cut.** The Exit constants and the targets below were tuned for careers that took days; careers now take about a day, so the first Exit pays over a hundred Prestige and the targets and sweep below no longer hold (the Exit is admin-only and was left alone). The first career table and the `falling` and Long weekend figures are regenerated; the sweep table and the one-of-each narrative are the old numbers.
 
 `simulateExits` in `src/game/pace.ts` plays the same player through the Exit (`docs/PRESTIGE.md`): the first career leaves once the Exit would raise the Prestige bonus enough, every career after that can leave at any visit. After each Exit it spends the Prestige on the cheapest perk it can pay for across the Network, Founder and Capital tracks (Network first on ties), applies the Prestige multiplier to every income and XP rate, and stops when a career owns everything **and** has won the world. `npm run pace` prints it for the Regular player after the table; `npm run pace -- exit [visits minutes clicks] [falling]` prints it for any profile.
 
@@ -60,7 +68,7 @@ To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visi
 
 Product revenue is not in the single-run table, so that table reads the same whether or not a career has a product. In `simulateExits`, the product changes when the world is won: the one-of-each player does not win within 60 days of a career with no Prestige.
 
-The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product it leaves late (day 4.0 for the one-of-each player, who finishes in career 3, day 11.7) or never (the stacker owns everything and wins in career 1, day 5.3), so it would not test the replay.
+The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product it leaves a visit or two after the Regular player does (day 1.33 for the one-of-each player and 1.67 for the stacker, against day 1.00) and both finish in career 2 on day 2.3, so it does not test the replay either.
 
 Tuned constants (`src/data/legacy.ts`), kept at their original values because they still land: `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second). The first row is measured at the 8B target; the other rows were swept at the old 7B target and are kept for their direction:
 
@@ -79,18 +87,18 @@ The stacker, career by career (users at the Exit, Prestige paid, the bonus after
 
 | Career | Day in | Day out | Row 6 after (days) | Matched last career's earnings after (days) | Users | Perks held | Prestige paid | Prestige total | Bonus |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 0.00 | 1.67 | 0.67 | - | 343M | 0 | 5 | 5 | ×1.15 |
-| 2 | 1.67 | 3.67 | 0.34 | 1.67 | 620M | 3 | 7 | 12 | ×1.36 |
-| 3 | 3.67 | 6.00 | 0.34 | 2.00 | 2.0B | 5 | 14 | 26 | ×1.78 |
-| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.9B | 8 | 18 | 44 | ×2.32 |
-| 5 | 8.33 | 10.67 | 0.33 | 2.00 | 7.6B | 10 | 22 | 66 | ×2.98 |
-| 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 8.2B | 12 | - | 66 | ×2.98 |
+| 1 | 0.00 | 1.00 | 0.67 | - | 327M | 0 | 110 | 110 | x4.30 |
+| 2 | 1.00 | 1.67 | 0.01 | 0.67 | 6.8B | 15 | 137 | 247 | x8.41 |
+| 3 | 1.67 | 2.00 | 0.00 | 0.33 | 6.5B | 15 | 85 | 332 | x10.96 |
+| 4 | 2.00 | 2.33 | 0.00 | 0.33 | 8.0B | 15 | 100 (5 for the ending) | 432 | x13.96 |
+| 5 | 2.33 | 2.67 | 0.00 | 0.33 | 8.2B | 15 | 86 | 518 | x16.54 |
+| 6 | 2.67 | 3.33 (done) | 0.00 | 0.33 | 8.2B | 15 | - | 518 | x16.54 |
 
-Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 4th career on day 20 while the one-of-each player takes 7 careers and 48 days.
+Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 2nd career on day 5.0 and the one-of-each player in the 3rd, also on day 5.0.
 
-The one-of-each player's run is the same shape, one career longer: Exits on days 2.0, 4.3, 7.0, 10.0, 13.3, 16.3, done on day 19.3 in career 7, the world first won in career 6 (+5 Prestige for the night owl ending). At the old 7B target it was done on day 16.3 in career 6; the extra billion users is the seventh career.
+The one-of-each player's run is the same shape, two careers shorter: Exits on days 1.0, 1.67 and 2.0, done on day 2.33 in career 4, the world won in career 4 (so no night owl ending bonus is paid).
 
-Against the targets for the Regular player:
+Against the targets for the Regular player (all stale after the tail cut; the old results are kept for the record, and `pace.test.ts` now pins the model's own output):
 
 - **First Exit around day 1.5 to 2:** met (1.67 and 2.00).
 - **Career 2 reaches the point where career 1 exited in under half the time:** met for the **capital row**: row 6 comes 0.34 days in against 0.67 (one visit; the model cannot see faster than the 8 hours between visits). **Not met for earnings:** career 2 earns what career 1 earned in all after 1.67 days, for both players, against career 1's 1.67 days (stacker) and 2.00 (one-of-each). Income grows exponentially through the second day, so a head start of a few hours saves a few hours, and no value of the three knobs fixes it in the sweep above (the best case, 0.06 per Prestige, takes 0.80 of the first career's time and finishes in 8 to 9 careers). The perks are for the player who plays the early game by hand.
@@ -101,9 +109,9 @@ Against the targets for the Regular player:
 
 - **Leaving is free up to 8 hours.** While your visits are no more than 8 hours apart, `idleShare` is 1 and nothing is wasted. Past that, every extra hour away earns nothing. A night's sleep is fine; a long work day on top of it loses the hours past 8.
 - **Visits matter more than clicks.** Below three visits a day, one more visit adds up to 8 hours of income. A whole visit of clicking adds a few percent: 15 minutes at 2 clicks a second, three times a day, is +4%.
-- **Almost all of the time is the last capital row.** A collector with the Regular schedule has every skill, gear row and job within about 2 days and then waits for the last capital row, Mars megacampus Holdings (about $4.3e16 after the purchase scale). With every other row owned and nothing re-bought, its price alone is 6.6 days of full income. `K = 9` for a collector is that 6.6 plus about 2.4 days of getting to that income. The script prints the first number from the tables.
-- **Reinvesting is worth about 2.2×.** Re-buying second copies raises income past what first copies give, so a reinvestor finishes in well under the days that the last row alone costs a collector. Past about two days of payback it stops helping and starts to waste money: in the model, a player who re-buys everything takes months.
-- **Total hands-on time is modest.** A Regular reinvestor spends about 6 hours at the game over a week and a bit; a Daily collector about 28 hours over eight weeks. The wall-clock numbers are long because most of that time the game is waiting for money.
+- **The capital tail no longer sets the time.** It used to: the last capital row, Mars megacampus Holdings, was $4.3e16 after the purchase scale, 6.6 days of full income on its own, and a Regular career took four to nine days. Rows 12 to 25 are now priced at the square root of their old price over the price of row 11 (see "Changing the pace"), so the last row is $6.0e12 and its price alone is about a minute of full income (the script prints the number). What is left is the lifetime XP the last skill waits on, a day in, and the visits it takes to spend the money.
+- **Reinvesting no longer helps.** Re-buying second copies used to raise income past what first copies give. With a career of about a day, a two-day payback buys copies that nothing repays: a Regular reinvestor now finishes about a visit after the collector. The collector's constant is the one to use for planning.
+- **Total hands-on time is small.** The target player (4 visits of 5 minutes) is at the game for about 20 minutes to own everything, over one day. The Regular player is there 1 hour. The wall-clock numbers are long only for schedules with long gaps.
 
 ## What the model assumes
 
@@ -117,16 +125,16 @@ Against the targets for the Regular player:
 
 ## How far to trust it
 
-- **Collector: within about 10% of the model** at every schedule in the table. **Reinvestor: within about 20%**, and only when you visit at least daily (Left open reads 11% long; Regular, Commuter and Daily short read about 12% short). The reinvestor constant does not hold for visits further apart than a day, because a two day payback is out of reach when you only shop every other day. The table shows `n/a` there. Use the collector's constant.
-- **The two players are the honest uncertainty.** A real player sits between them, so the answer is a range with a factor of about 2.2 across it, not a single number.
+- **Both players: within about a third of the model**, for schedules that visit at least daily. A career is about a day now, so the finish is a whole number of visits and the lifetime XP gate on the last skill sets a floor; a formula in days cannot follow steps that coarse more closely than that. The reinvestor constant does not hold for visits further apart than a day, because a two day payback is out of reach when you only shop every other day. The table shows `n/a` there. Use the collector's constant.
+- **The two players are close.** With the tail cut they finish within about one visit of each other, so the answer is a single number, not a range.
 - **The player is simple.** Clicking is a steady rate for the whole visit, shopping takes no time, and the shopper never plans ahead. A real player clicks in bursts and sometimes saves for a big row. The model only needed to be right about the shape.
-- **It is only as good as the tables.** `src/game/pace.test.ts` checks the formula against the model for four schedules and fails if the constants drift past 12% (collector) or 20% (reinvestor). When it does, rerun `npm run pace`, refit `PACE_K` in `src/game/pace.ts`, and update this page.
+- **It is only as good as the tables.** `src/game/pace.test.ts` checks the formula against the model for four schedules and fails if the constants drift past 35%. When it does, rerun `npm run pace`, refit `PACE_K` in `src/game/pace.ts`, and update this page.
 
 ## Changing the pace
 
 Each is the formula's answer, with the first one checked against the model.
 
-- **Price of the last capital row.** It is most of a collector's time. A reinvestor barely notices a cut, because their time is set by how fast income grows, not by the last price.
+- **Price of the late capital rows.** The tail was most of a collector's time. Rows 12 to 25 (era q3 and end) are repriced as `P × (old / P)^0.5` with `P` the price of row 11 ($1e9 before the purchase scale), so each row still costs more than the one before it and the ramp keeps its shape on a log scale, just flatter. Gear is unchanged: once the capital tail was cut, the stacker's gear finished the same day. An exponent of 0.55 or lower reaches day 1.00 for the 4 visits of 5 minutes target (the lifetime XP gate is a day in, so a deeper cut buys nothing); 0.6 leaves the stacker's gear a visit late. The rule uses 0.5. Do not change `PURCHASE_COST_SCALE` for this: it moves the early game too.
 - **The 8 hour offline cap** (`OFFLINE_CAP_MS` in `src/game/save.ts`). It is the main limit on a once-a-day player. At 12 hours, the Daily player's `idleShare` goes from 0.35 to 0.52, and pace from 0.38 to 0.55, about 45% faster. It changes nothing for anyone who already visits every 8 hours. If you change the cap, change `OFFLINE_CAP_SECONDS` in `src/game/pace.ts` too; a test checks they match.
 - **Job click share.** `s` is the sum of the jobs' `clickPct`. It only matters to someone who clicks a lot.
 

@@ -69,7 +69,7 @@ The 66 drawings stay in use: skills, gigs, jobs and gear borrow them through `sr
 
 ## Numbers
 
-Money and costs are JavaScript numbers (IEEE-754 doubles). `Math.floor` is exact only through `Number.MAX_SAFE_INTEGER` (~9.01e15). The late capital prices (the last row, Mars megacampus Holdings, is about 4e16 after the purchase scale) are still well inside that range, but dollars past 1e15 are approximate. Switch `src/game/economy.ts` to `decimal.js` or `break_infinity.js` when exact integers past ~1e15 matter. Display keeps raw digits below 10 million, then M / B / T / Qa / Qi / Sx / Sp / Oc / No / Dc, then scientific notation past 1e36.
+Money and costs are JavaScript numbers (IEEE-754 doubles). `Math.floor` is exact only through `Number.MAX_SAFE_INTEGER` (~9.01e15). The late capital prices (the last row, Mars megacampus Holdings, is about 6e12 after the purchase scale) are well inside that range, but the dollars a career earns can pass 1e15 and are approximate there. Switch `src/game/economy.ts` to `decimal.js` or `break_infinity.js` when exact integers past ~1e15 matter. Display keeps raw digits below 10 million, then M / B / T / Qa / Qi / Sx / Sp / Oc / No / Dc, then scientific notation past 1e36.
 
 ## GitHub Pages
 

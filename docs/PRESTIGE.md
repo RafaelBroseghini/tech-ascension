@@ -4,7 +4,7 @@ Status: built, behind admin mode (see "Built" at the end). Part of the company a
 
 ## Why
 
-A career ends at "own everything", or at the 8B win, and then there is nothing left to do. The pace model shows the run is front-loaded: jobs and gigs are done on the second visit, and most of the remaining days wait on the last capital rows. The Exit turns that wait into a decision and the finished career into a faster next one.
+A career ends at "own everything", or at the 8B win, and then there is nothing left to do. The pace model shows the run is front-loaded: jobs and gigs are done on the second visit, and the whole career takes about a day for the target player. The Exit turns that wait into a decision and the finished career into a faster next one.
 
 ## The loop
 
@@ -116,7 +116,7 @@ setPrestige(n: number): void    // tests only: spendable to n, total raised to a
 
 `simulateExits` in `src/game/pace.ts` models the Exit over several careers. It exits when an Exit would raise the bonus by 15% or more, buys the cheapest affordable perk after each Exit (Network first on ties), and plays the next career. It includes product users, revenue, growth and the win, and it models only the night owl ending. Details and results are in `docs/PACING.md`.
 
-Targets for the Regular player (3 visits a day of 15 minutes, 2 clicks/s), and where they stand:
+Targets for the Regular player (3 visits a day of 15 minutes, 2 clicks/s), and where they stood before the capital tail was cut (careers now take about a day, so these targets are stale and `pace.test.ts` pins the model's own output instead):
 
 - first Exit around day 1.5 to 2: met (day 1.67 and 2.00);
 - career 2 reaches the point where career 1 exited in under half the time: not met for earnings, met for capital row 6;
