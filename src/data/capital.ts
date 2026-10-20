@@ -22,6 +22,8 @@ export type Capital = {
   clickBonus: number
 }
 
+// Rows 12-25 are priced at the square root of their old price over row 11's (P * (old / P) ** 0.5, two significant digits):
+// the old tail made a career last days for a player who visits four times a day (docs/PACING.md).
 const CAPITAL_ROWS: readonly Capital[] = [
   { id: 1, era: "mid", artId: 25, name: "Angel syndicate seat", baseCost: 100000, cps: 50, clickBonus: 0 },
   { id: 2, era: "mid", artId: 27, name: "Seed fund SPV", baseCost: 500000, cps: 200, clickBonus: 0 },
@@ -34,20 +36,20 @@ const CAPITAL_ROWS: readonly Capital[] = [
   { id: 9, era: "upper", artId: 38, name: "Launch AI product line", baseCost: 80000000, cps: 25000, clickBonus: 40 },
   { id: 10, era: "upper", artId: 40, name: "Own inference API market share", baseCost: 400000000, cps: 150000, clickBonus: 0 },
   { id: 11, era: "upper", artId: 44, name: "Acquire chip design house", baseCost: 1000000000, cps: 300000, clickBonus: 50 },
-  { id: 12, era: "q3", artId: 46, name: "Fab capacity offtake", baseCost: 5000000000, cps: 1000000, clickBonus: 0 },
-  { id: 13, era: "q3", artId: 52, name: "Custom accelerator IP", baseCost: 8000000000, cps: 1500000, clickBonus: 100 },
-  { id: 14, era: "q3", artId: 53, name: "Foundry JV", baseCost: 20000000000, cps: 4000000, clickBonus: 0 },
-  { id: 15, era: "end", artId: 54, name: "Regional AI data campus", baseCost: 50000000000, cps: 10000000, clickBonus: 75 },
-  { id: 16, era: "end", artId: 56, name: "Hyperscale training campus", baseCost: 200000000000, cps: 40000000, clickBonus: 0 },
-  { id: 17, era: "end", artId: 57, name: "Global edge network", baseCost: 500000000000, cps: 80000000, clickBonus: 0 },
-  { id: 18, era: "end", artId: 58, name: "Undersea cable consortium", baseCost: 800000000000, cps: 100000000, clickBonus: 100 },
-  { id: 19, era: "end", artId: 60, name: "Orbital compute company", baseCost: 2000000000000, cps: 300000000, clickBonus: 0 },
-  { id: 20, era: "end", artId: 61, name: "LEO inference constellation Co", baseCost: 8000000000000, cps: 900000000, clickBonus: 0 },
-  { id: 21, era: "end", artId: 62, name: "Lunar relay LLC", baseCost: 20000000000000, cps: 2000000000, clickBonus: 150 },
-  { id: 22, era: "end", artId: 63, name: "Mars precursor ops Co", baseCost: 80000000000000, cps: 6000000000, clickBonus: 0 },
-  { id: 23, era: "end", artId: 64, name: "Mars power utility", baseCost: 250000000000000, cps: 15000000000, clickBonus: 0 },
-  { id: 24, era: "end", artId: 65, name: "Mars data center REIT", baseCost: 1000000000000000, cps: 50000000000, clickBonus: 200 },
-  { id: 25, era: "end", artId: 66, name: "Mars megacampus Holdings", baseCost: 50000000000000000, cps: 500000000000, clickBonus: 0 },
+  { id: 12, era: "q3", artId: 46, name: "Fab capacity offtake", baseCost: 2200000000, cps: 1000000, clickBonus: 0 },
+  { id: 13, era: "q3", artId: 52, name: "Custom accelerator IP", baseCost: 2800000000, cps: 1500000, clickBonus: 100 },
+  { id: 14, era: "q3", artId: 53, name: "Foundry JV", baseCost: 4500000000, cps: 4000000, clickBonus: 0 },
+  { id: 15, era: "end", artId: 54, name: "Regional AI data campus", baseCost: 7100000000, cps: 10000000, clickBonus: 75 },
+  { id: 16, era: "end", artId: 56, name: "Hyperscale training campus", baseCost: 14000000000, cps: 40000000, clickBonus: 0 },
+  { id: 17, era: "end", artId: 57, name: "Global edge network", baseCost: 22000000000, cps: 80000000, clickBonus: 0 },
+  { id: 18, era: "end", artId: 58, name: "Undersea cable consortium", baseCost: 28000000000, cps: 100000000, clickBonus: 100 },
+  { id: 19, era: "end", artId: 60, name: "Orbital compute company", baseCost: 45000000000, cps: 300000000, clickBonus: 0 },
+  { id: 20, era: "end", artId: 61, name: "LEO inference constellation Co", baseCost: 89000000000, cps: 900000000, clickBonus: 0 },
+  { id: 21, era: "end", artId: 62, name: "Lunar relay LLC", baseCost: 140000000000, cps: 2000000000, clickBonus: 150 },
+  { id: 22, era: "end", artId: 63, name: "Mars precursor ops Co", baseCost: 280000000000, cps: 6000000000, clickBonus: 0 },
+  { id: 23, era: "end", artId: 64, name: "Mars power utility", baseCost: 500000000000, cps: 15000000000, clickBonus: 0 },
+  { id: 24, era: "end", artId: 65, name: "Mars data center REIT", baseCost: 1000000000000, cps: 50000000000, clickBonus: 200 },
+  { id: 25, era: "end", artId: 66, name: "Mars megacampus Holdings", baseCost: 7100000000000, cps: 500000000000, clickBonus: 0 },
 ] as const
 
 export const CAPITAL: readonly Capital[] = CAPITAL_ROWS.map((row) => ({
