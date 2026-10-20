@@ -30,7 +30,8 @@ The endgame is also a wait. Most of a career is the last capital row (6.6 days o
 - **Three save slots, opened by the first finished career.** Each slot is a career with its own build. Unless changed, cosmetics, settings and the kitchen log are shared and everything else is per slot.
 - **Click builds stay.** Some specializations earn by clicking, some by idle.
 - **A career takes half a day to a day of real time and 30 to 90 minutes at the game**, not four to nine days.
-- **Visits are short.** Once idle takes over, a player stays about 5 minutes.
+- **Visits are short.** The first session runs 20 to 30 minutes; once idle takes over, a player stays about 5 minutes.
+- **Two career gates read users:** the specialization pick needs 10,000 users and Senior needs 1,000,000.
 - **The endgame wait is fixed first**, on its own, before the tree.
 - **Jokes are clean**: tech humor, 2026 tech humor and programming lore. No obscenity, no swearing.
 
@@ -72,7 +73,7 @@ The career and the product become one loop, so the globe shows the build and the
 - **Leadership is the ending** (section 2): IC grows it yourself, Manager hires. Hires leave the Company tab.
 - **The specialization sets how the product grows** (the table above), so two builds look different on the globe.
 - **Capital rows become company moves that open regions** ("Raise a seed round" opens a region, "Acquire a rival" brings its users). The Company tab's region shop folds into the catalog. This was step 5 of `docs/COMPANY_ARC.md`, never built.
-- **A few career gates read users**, for example the specialization pick or Senior. Then the product cannot be ignored.
+- **Two career gates read users:** the specialization pick (10,000 users) and Senior (1,000,000). Then the product cannot be ignored.
 - **One finish: the 8B win.** Today a career has two (`ownsEverything` and the win). The catalogs become the way to the win.
 - **Later, on screen:** the globe answers every purchase. A gig, job or gear buy pulses the region it touched.
 
@@ -164,5 +165,4 @@ Each step ships and checks on its own.
 
 - What the one switch keeps and costs. Default unless changed: keep money, gear and the trunk jobs, lose the old specialization's jobs, start at the new track's first row.
 - The click build's multiple (default: 5 minutes of clicking on a click build is worth about 2 hours of idle), and whether a return burst comes too.
-- Which career gates read users, and how many.
 - What replaces the Founder Legacy perks (admin only, so not urgent).
