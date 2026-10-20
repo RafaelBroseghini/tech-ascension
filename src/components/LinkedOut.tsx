@@ -85,7 +85,7 @@ function Project({ project }: { project: SideProject }) {
   )
 }
 
-/** The product on the résumé: what the win made of the player, or the founder's job while the company is theirs. */
+/** The product on the résumé: what the win made of the player. */
 function ProductRole({ role, product, meta }: { role: string; product: string; meta: string }) {
   return (
     <li className="lo-stint" data-kind="product">
@@ -116,7 +116,6 @@ export function LinkedOut() {
   const handle = useGame((state) => state.profile.handle)
   const product = useGame((state) => state.profile.product)
   const ending = useGame((state) => state.company.ending ?? null)
-  const isFounder = useGame((state) => state.founder.track === "founder")
   const entries = useGame((state) => state.journal.entries)
   const past = useMemo(() => pastProductsOf(entries), [entries])
   const [experienceOpen, setExperienceOpen] = useState(false)
@@ -158,7 +157,7 @@ export function LinkedOut() {
         <section className="lo-block" aria-label="Experience">
           <h4>Experience</h4>
           <ol className="lo-timeline">
-            {ending || isFounder ? <ProductRole role={productRole(ending, product)} product={product} meta={ending !== null ? "Eight billion users" : "Present"} /> : null}
+            {ending ? <ProductRole role={productRole(ending, product)} product={product} meta="Eight billion users" /> : null}
             {past.map((entry, index) => (
               <ProductRole key={`${entry.product}-${index}`} role={entry.role} product={entry.product} meta={entry.meta} />
             ))}

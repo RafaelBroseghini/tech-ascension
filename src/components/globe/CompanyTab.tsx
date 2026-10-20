@@ -8,7 +8,6 @@ import { STATUS_DAYS } from "../../game/globe/growth.ts"
 import { HEALTH_LABEL, statusOf } from "../../game/globe/status.ts"
 import { useGame } from "../../game/store.ts"
 import { GlobePane } from "./GlobePane.tsx"
-import { ForkCard } from "./ForkCard.tsx"
 import { FootprintPanel } from "./FootprintPanel.tsx"
 import { useCompany } from "./useCompany.ts"
 import { SellButton } from "../ExitPanel.tsx"
@@ -46,7 +45,6 @@ export function CompanyTab() {
   return (
     <div className="company-tab" data-testid="company-tab" aria-label={product}>
       <SellButton />
-      <ForkCard />
       <section className="status-page" data-testid="company-status" aria-label="Status">
         <div className={`status-banner is-${board.health}`} data-testid="status-banner">
           <span aria-hidden>{board.health === "operational" ? "✓" : "!"}</span>

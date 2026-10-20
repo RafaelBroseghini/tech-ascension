@@ -5,8 +5,7 @@ import { GIG_BOARD_UNLOCK, GIGS, JOB_TIERS } from "../data/phases.ts"
 import { capitalBase, gearBase, idlePerSec } from "./economy.ts"
 import { GEAR } from "../data/gear.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
-import { BRIDGE_CUT, burnOf, FRESH_FOUNDER, productRevenueOf, raiseBridge, trackFactsOf } from "./globe/track.ts"
-import type { FounderState } from "./globe/track.ts"
+import { productFactsOf, productRevenueOf } from "./globe/product.ts"
 import { gigBoardUnlocked } from "./phase.ts"
 import { offlineCapMs } from "./gold.ts"
 import { perkEffects, NO_PERKS } from "./perks.ts"
@@ -65,28 +64,28 @@ describe("Prestige formula", () => {
 })
 
 describe("the ending bonus", () => {
-  const won = (ending: "founder" | "nightOwl" | "sponsor") => ({ won: true, ending })
+  const won = (ending: "nightOwl" | "sponsor") => ({ won: true, ending })
 
   it("is paid on top of the earnings, once per ending", () => {
     const legacy = freshLegacy()
-    expect(endingBonus(legacy, won("founder"))).toBe(ENDING_BONUS)
-    expect(endingBonus({ ...legacy, endings: ["founder"] }, won("founder"))).toBe(0)
-    expect(endingBonus({ ...legacy, endings: ["founder"] }, won("sponsor"))).toBe(ENDING_BONUS)
+    expect(endingBonus(legacy, won("nightOwl"))).toBe(ENDING_BONUS)
+    expect(endingBonus({ ...legacy, endings: ["nightOwl"] }, won("nightOwl"))).toBe(0)
+    expect(endingBonus({ ...legacy, endings: ["nightOwl"] }, won("sponsor"))).toBe(ENDING_BONUS)
     expect(endingBonus(legacy, { won: false })).toBe(0)
     expect(endingBonus(legacy, null)).toBe(0)
     expect(prestigeOnExit(legacy, PRESTIGE_EARN_SCALE * 8, won("nightOwl"))).toBe(2 + ENDING_BONUS)
   })
 
   it("does not count as a rung of the earnings ladder", () => {
-    const legacy = { ...freshLegacy(), runs: 2, prestige: 2 + ENDING_BONUS, prestigeTotal: 2 + ENDING_BONUS, earnedAllRuns: PRESTIGE_EARN_SCALE * 8, endings: ["founder" as const] }
+    const legacy = { ...freshLegacy(), runs: 2, prestige: 2 + ENDING_BONUS, prestigeTotal: 2 + ENDING_BONUS, earnedAllRuns: PRESTIGE_EARN_SCALE * 8, endings: ["nightOwl" as const] }
     expect(earningsPrestige(legacy, 0)).toBe(0)
     expect(earningsPrestige(legacy, PRESTIGE_EARN_SCALE * 27 - legacy.earnedAllRuns)).toBe(1)
   })
 
-  it("opens the first Exit on a win, and the Hall of Fame has the three endings", () => {
+  it("opens the first Exit on a win, and the Hall of Fame has the two endings", () => {
     expect(exitOpen(freshLegacy(), 0)).toBe(false)
-    expect(exitOpen(freshLegacy(), 0, won("founder"))).toBe(true)
-    expect(HALL_OF_FAME.map((entry) => entry.id)).toEqual(["founder", "nightOwl", "sponsor"])
+    expect(exitOpen(freshLegacy(), 0, won("nightOwl"))).toBe(true)
+    expect(HALL_OF_FAME.map((entry) => entry.id)).toEqual(["nightOwl", "sponsor"])
   })
 })
 
@@ -107,13 +106,13 @@ describe("the Exit gate", () => {
 })
 
 describe("Legacy perks", () => {
-  it("are the spec's three tracks and cost 106 together", () => {
+  it("are the spec's three tracks and cost 95 together", () => {
     expect(TRACKS.map((track) => track.id)).toEqual(["network", "founder", "capital"])
     const costs = (track: string) => LEGACY_PERKS.filter((perk) => perk.track === track).map((perk) => perk.cost)
     expect(costs("network")).toEqual([1, 2, 4, 7, 12])
-    expect(costs("founder")).toEqual([2, 4, 7, 11, 16])
+    expect(costs("founder")).toEqual([2, 11, 16])
     expect(costs("capital")).toEqual([2, 4, 7, 11, 16])
-    expect(LEGACY_PERKS.reduce((sum, perk) => sum + perk.cost, 0)).toBe(106)
+    expect(LEGACY_PERKS.reduce((sum, perk) => sum + perk.cost, 0)).toBe(95)
     for (const perk of LEGACY_PERKS) expect(perk.blurb.startsWith("Now, and at the start of every career: ")).toBe(true)
   })
 
@@ -122,7 +121,7 @@ describe("Legacy perks", () => {
     expect(canBuyPerk(rich, "network.gigBoard")).toBe(false)
     expect(canBuyPerk(rich, "network.skills")).toBe(true)
     expect(canBuyPerk(rich, "founder.users")).toBe(true)
-    expect(canBuyPerk(rich, "founder.burn")).toBe(false)
+    expect(canBuyPerk(rich, "founder.growth")).toBe(false)
     expect(canBuyPerk(rich, "capital.offline")).toBe(true)
     expect(canBuyPerk({ ...rich, prestige: 0 }, "network.skills")).toBe(false)
     expect(canBuyPerk({ ...rich, perks: ["network.skills"] }, "network.skills")).toBe(false)
@@ -163,8 +162,6 @@ describe("Legacy perks", () => {
     expect(perkEffects(["capital.gearCost"]).gearCost).toBe(PERK.gearCost)
     expect(perkEffects(["capital.salaries"]).salaries).toBe(PERK.salaries)
     expect(perkEffects(["capital.capitalIncome"]).capitalIncome).toBe(PERK.capitalIncome)
-    expect(perkEffects(["founder.burn"]).burn).toBe(1 - PERK.burnCut)
-    expect(perkEffects(["founder.bridge"]).freeBridge).toBe(true)
     expect(perkEffects(["founder.growth"]).growth).toBe(PERK.growth)
     expect(perkEffects(["founder.revenue"]).revenue).toBe(PERK.revenue)
     expect(perkEffects(["founder.users"]).startUsers).toBe(PERK.startUsers)
@@ -203,59 +200,36 @@ describe("Legacy perks", () => {
 })
 
 describe("the product under the perks", () => {
-  const founder = (over: Partial<FounderState> = {}): FounderState => ({ ...FRESH_FOUNDER, track: "founder", offered: true, ...over })
   const roomy = { "54": 5 }
   const never = () => 0.999
-  const grown = (f: FounderState, legacy?: { perks: string[]; prestigeTotal: number }) =>
-    advanceCompany({ ...FRESH_COMPANY, users: { "americas-east": 1000 } }, growthFacts([1, 2, 3], roomy, undefined, trackFactsOf(f, legacy)), 0, 60_000, never)
+  const grown = (hires: Record<string, number>, legacy?: { perks: string[]; prestigeTotal: number }) =>
+    advanceCompany({ ...FRESH_COMPANY, users: { "americas-east": 1000 } }, growthFacts([1, 2, 3], roomy, undefined, productFactsOf(hires, legacy)), 0, 60_000, never)
 
-  it("the permanent bonus multiplies product growth on both tracks, once", () => {
-    for (const f of [FRESH_FOUNDER, founder()]) {
-      const base = trackFactsOf(f)
-      const boosted = trackFactsOf(f, { perks: [], prestigeTotal: 10 })
-      expect(boosted.growthMult).toBeCloseTo(base.growthMult * prestigeMult(10))
-      const gained = (legacy?: { perks: string[]; prestigeTotal: number }) => grown(f, legacy).state.users["americas-east"]! - 1000
-      expect(gained({ perks: [], prestigeTotal: 10 }) / gained()).toBeCloseTo(prestigeMult(10), 3)
-    }
+  it("the permanent bonus multiplies product growth, once", () => {
+    const base = productFactsOf({})
+    const boosted = productFactsOf({}, { perks: [], prestigeTotal: 10 })
+    expect(boosted.growthMult).toBeCloseTo(base.growthMult * prestigeMult(10))
+    const gained = (legacy?: { perks: string[]; prestigeTotal: number }) => grown({}, legacy).state.users["americas-east"]! - 1000
+    expect(gained({ perks: [], prestigeTotal: 10 }) / gained()).toBeCloseTo(prestigeMult(10), 3)
   })
 
   it("Viral loop multiplies growth by 1.5 and stacks with the bonus", () => {
-    const base = trackFactsOf(founder())
-    expect(trackFactsOf(founder(), { perks: ["founder.growth"], prestigeTotal: 0 }).growthMult).toBeCloseTo(base.growthMult * PERK.growth)
-    expect(trackFactsOf(founder(), { perks: ["founder.growth"], prestigeTotal: 10 }).growthMult).toBeCloseTo(base.growthMult * PERK.growth * prestigeMult(10))
+    const base = productFactsOf({})
+    expect(productFactsOf({}, { perks: ["founder.growth"], prestigeTotal: 0 }).growthMult).toBeCloseTo(base.growthMult * PERK.growth)
+    expect(productFactsOf({}, { perks: ["founder.growth"], prestigeTotal: 10 }).growthMult).toBeCloseTo(base.growthMult * PERK.growth * prestigeMult(10))
   })
 
   it("keeps the hires' share of growth the same when the multiplier scales", () => {
-    const f = founder({ hires: { senior: 40 } })
-    const share = (facts: ReturnType<typeof trackFactsOf>) => facts.hireBonus / facts.growthMult
-    expect(share(trackFactsOf(f, { perks: ["founder.growth"], prestigeTotal: 20 }))).toBeCloseTo(share(trackFactsOf(f)))
+    const hires = { senior: 40 }
+    const share = (facts: ReturnType<typeof productFactsOf>) => facts.hireBonus / facts.growthMult
+    expect(share(productFactsOf(hires, { perks: ["founder.growth"], prestigeTotal: 20 }))).toBeCloseTo(share(productFactsOf(hires)))
   })
 
   it("Platform multiplies the revenue the users pay, in the model and in what is shown", () => {
-    const plain = grown(founder())
-    const platform = grown(founder(), { perks: ["founder.revenue"], prestigeTotal: 0 })
+    const plain = grown({})
+    const platform = grown({}, { perks: ["founder.revenue"], prestigeTotal: 0 })
     expect(platform.earned / plain.earned).toBeCloseTo(PERK.revenue, 4)
-    expect(productRevenueOf(100, founder(), ["founder.revenue"]) / productRevenueOf(100, founder())).toBeCloseTo(PERK.revenue)
-  })
-
-  it("Lean team cuts the burn by a quarter, not the hires' payroll", () => {
-    expect(burnOf(10_000, 1 - PERK.burnCut)).toBeCloseTo(burnOf(10_000) * 0.75)
-    const f = founder({ hires: { senior: 4 } })
-    const plain = grown(f)
-    const lean = grown(f, { perks: ["founder.burn"], prestigeTotal: 0 })
-    const payroll = 4 * 25
-    expect(plain.burnPerSec - payroll).toBeGreaterThan(0)
-    expect((lean.burnPerSec - payroll) / (plain.burnPerSec - payroll)).toBeCloseTo(0.75, 3)
-  })
-
-  it("Friendly investors make the first bridge cost no equity, then the usual cut", () => {
-    const broke = founder({ broke: true })
-    const perks = ["founder.bridge"]
-    const first = raiseBridge(broke, 1000, perks)!
-    expect(first.founder).toMatchObject({ bridges: 1, equityCut: 0 })
-    const second = raiseBridge({ ...first.founder, broke: true }, 1000, perks)!
-    expect(second.founder.equityCut).toBeCloseTo(BRIDGE_CUT)
-    expect(raiseBridge(broke, 1000)!.founder.equityCut).toBeCloseTo(BRIDGE_CUT)
+    expect(productRevenueOf(100, ["founder.revenue"]) / productRevenueOf(100)).toBeCloseTo(PERK.revenue)
   })
 })
 
@@ -267,7 +241,6 @@ describe("the headline by outcome", () => {
     expect(exitHeadline({ ...base, users: 999_999_999, won: false })).toBe("Otterly acquired; @quiet-otter stays on as 'advisor'")
     expect(exitHeadline({ ...base, users: 1_000_000_000, won: false })).toBe("Otterly sold in a blockbuster deal")
     expect(exitHeadline({ ...base, users: 6_999_999_999, won: false })).toBe("Otterly sold in a blockbuster deal")
-    expect(exitHeadline({ ...base, users: 8e9, won: true, ending: "founder" })).toBe("@quiet-otter sells Otterly, the app eight billion people use")
     expect(exitHeadline({ ...base, users: 8e9, won: true, ending: "nightOwl" })).toBe("@quiet-otter sells the side project eight billion people use. Get some sleep.")
     expect(exitHeadline({ ...base, users: 8e9, won: true, ending: "sponsor" })).toBe("Otterly sold; its team thanks their executive sponsor")
   })
@@ -280,7 +253,7 @@ describe("save: legacy", () => {
   })
 
   it("round-trips through parse and hydrate, Hall of Fame included", () => {
-    const legacy = { runs: 3, prestige: 4, prestigeTotal: 12, earnedAllRuns: 3.5e11, perks: ["network.skills", "founder.users"], endings: ["founder", "sponsor"] }
+    const legacy = { runs: 3, prestige: 4, prestigeTotal: 12, earnedAllRuns: 3.5e11, perks: ["network.skills", "founder.users"], endings: ["nightOwl", "sponsor"] }
     const text = JSON.stringify({ ...freshSave(1_000), legacy })
     expect(parseSave(JSON.parse(text))?.legacy).toEqual(legacy)
     expect(hydrate(text, 1_000).save.legacy).toEqual(legacy)
@@ -289,13 +262,19 @@ describe("save: legacy", () => {
   it("drops unknown perk ids and endings and clamps numbers", () => {
     const raw = {
       ...freshSave(1),
-      legacy: { runs: -4, prestige: 9, prestigeTotal: 2, earnedAllRuns: -1, perks: ["network.skills", "craft.nope", 7, "network.skills", "capital.offline"], endings: ["sponsor", "mogul", "sponsor", 3, "founder"] },
+      legacy: { runs: -4, prestige: 9, prestigeTotal: 2, earnedAllRuns: -1, perks: ["network.skills", "craft.nope", 7, "founder.burn", "founder.bridge", "network.skills", "capital.offline"], endings: ["sponsor", "mogul", "sponsor", 3, "founder"] },
     }
-    expect(parseSave(raw)?.legacy).toEqual({ runs: 1, prestige: 9, prestigeTotal: 9, earnedAllRuns: 0, perks: ["network.skills", "capital.offline"], endings: ["founder", "sponsor"] })
+    expect(parseSave(raw)?.legacy).toEqual({ runs: 1, prestige: 9, prestigeTotal: 9, earnedAllRuns: 0, perks: ["network.skills", "capital.offline"], endings: ["sponsor"] })
     const bad = normalizeLegacy({ runs: Number.NaN, prestige: Number.POSITIVE_INFINITY, prestigeTotal: "x", earnedAllRuns: Number.NaN, perks: "no", endings: "no" })
     expect(isFreshLegacy(bad)).toBe(true)
     expect(isFreshLegacy(normalizeLegacy(null))).toBe(true)
-    expect(isFreshLegacy({ ...freshLegacy(), endings: ["founder"] })).toBe(false)
+    expect(isFreshLegacy({ ...freshLegacy(), endings: ["nightOwl"] })).toBe(false)
+  })
+
+  it("a save holding the perks of the removed fork loads without them, and keeps the rest", () => {
+    const legacy = { runs: 2, prestige: 3, prestigeTotal: 20, earnedAllRuns: 0, perks: ["founder.users", "founder.burn", "founder.bridge", "founder.growth"], endings: [] }
+    const loaded = hydrate(JSON.stringify({ ...freshSave(1_000), legacy }), 1_000).save.legacy
+    expect(loaded?.perks).toEqual(["founder.users", "founder.growth"])
   })
 
   it("an offline credit carries the multiplier and the cap carries Long weekend", () => {
@@ -318,7 +297,7 @@ describe("past products on the résumé", () => {
       { type: "skill" },
       exit({ product: "Otterly", users: 12_345, won: false }),
       exit({ product: "Foxly", users: 8e9, won: true, ending: "sponsor" }),
-      exit({ product: "Mooly", users: 8e9, won: true, ending: "founder" }),
+      exit({ product: "Mooly", users: 8e9, won: true, ending: "nightOwl" }),
       exit({ users: 4 }),
     ])
     expect(past.map((p) => p.role)).toEqual(["Founder, Mooly", "Executive sponsor, Foxly", "Side project, Otterly"])

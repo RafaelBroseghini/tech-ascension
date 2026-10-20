@@ -1,7 +1,7 @@
 import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
 import { servingOf } from "../game/globe/load.ts"
-import { productRevenueOf } from "../game/globe/track.ts"
+import { productRevenueOf } from "../game/globe/product.ts"
 import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
@@ -12,16 +12,15 @@ export function useLiveRates() {
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
-  const founder = useGame((state) => state.founder)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
   const legacy = useGame((state) => state.legacy)
   const company = useGame((state) => state.company)
-  const rates = production({ skills, equipment, owned, jobs, gigs, founder }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
+  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
   const clickPays = clickPaysMoney({ jobs })
-  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, founder, legacy.perks)
+  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, legacy.perks)
   return {
     rates,
     /** Dollars a second: idle income plus what the product's served users pay. */

@@ -17,7 +17,6 @@ const RESETS = [
   "Money, XP, skills, gigs, jobs",
   "Gear and capital",
   "The product: users, regions, hires, the win",
-  "Your track, burn and bridges",
   "Click boost and event bonuses",
 ]
 const KEEPS = [

@@ -39,7 +39,7 @@ import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import { advanceCompany, FRESH_COMPANY } from "./globe/growth.ts"
 import type { CompanyState, GrowthFacts } from "./globe/growth.ts"
 import type { Ending } from "./globe/hires.ts"
-import { FRESH_FOUNDER, trackFactsOf } from "./globe/track.ts"
+import { productFactsOf } from "./globe/product.ts"
 import { liveRegions, reachOf, seedsOf, WIN_MULT } from "./globe/world.ts"
 import { prestigeMult } from "./mods.ts"
 import { perkEffects } from "./perks.ts"
@@ -152,7 +152,7 @@ type Sim = Omit<Progress, "jobs" | "gigs"> & {
   product?: ProductSim
 }
 
-/** What the model keeps of the company: users by region and the track's facts, no incidents, no hires, no fork, no extra regions. */
+/** What the model keeps of the company: users by region and the product's facts, no incidents, no hires, no extra regions. */
 type ProductSim = {
   company: CompanyState
   /** Legacy perks held and the Prestige total behind the permanent bonus (it multiplies growth). */
@@ -439,7 +439,7 @@ export type ExitsResult = {
   days: number
   /** The run that finished, or null. */
   finishRun: number | null
-  /** Endings in the Hall of Fame at the end. The model has no fork and no hires, so only `nightOwl` can be reached. */
+  /** Endings in the Hall of Fame at the end. The model has no hires, so only `nightOwl` can be reached. */
   endings: string[]
   runs: ExitRun[]
 }
@@ -471,8 +471,8 @@ const HOME_LIVE = liveRegions(FRESH_FOOTPRINT)
 
 /**
  * Walks the product from `fromSec` to `toSec` of the run with the real `advanceCompany`: users grow by region from the
- * clients signed, the gear the sim owns serves them, served users pay and dropped requests cost. The track is the ladder
- * with no hires, the footprint is the free home region, and `rand` never throws an incident.
+ * clients signed, the gear the sim owns serves them, served users pay and dropped requests cost. The career has
+ * no hires, the footprint is the free home region, and `rand` never throws an incident.
  */
 function stepProduct(s: Sim, fromSec: number, toSec: number) {
   const p = s.product
@@ -482,7 +482,7 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
     reach: HOME_REACH,
     live: HOME_LIVE,
     equipment: s.equipment,
-    track: trackFactsOf(FRESH_FOUNDER, { perks: p.perks, prestigeTotal: p.prestigeTotal }),
+    product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }),
   }
   const grown = advanceCompany(p.company, facts, fromSec * 1000, toSec * 1000, NEVER)
   p.company = grown.state
@@ -532,8 +532,8 @@ function buyPerks(legacy: LegacyState) {
  *
  * The product is modeled with the game's own growth and serving functions, and it is the only difference from the
  * single-run model: served users pay, the win (8B users) pays its x1.25 and its Hall of Fame bonus. Left out: incidents,
- * hires, the fork (so only the night owl ending can be won, and Early adopters, Lean team, Friendly investors and the
- * hires' share do nothing), extra regions and points of presence, and any gear bought to serve users beyond what the
+ * hires (so only the night owl ending can be won and the hires' share does nothing), extra regions and points of
+ * presence, and any gear bought to serve users beyond what the
  * model already buys. `simulatePace` is untouched and does not model the product.
  */
 export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}): ExitsResult {

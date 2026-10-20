@@ -16,9 +16,6 @@
   .app { --ide-status: 0px; }
   .ide-status { display: none; }
   .stage-corner .ide-settings { width: 44px; height: 44px; }
-  .founder-chip { min-height: 44px; }
-  .nuke-ring { width: 44px; height: 44px; }
-  .nuke-cap { width: 28px; height: 28px; }
 
   /* Stage on top, shop below. */
   .layout,

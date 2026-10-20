@@ -1,4 +1,3 @@
-import type { FounderState, Track } from "./track.ts"
 import { totalUsers } from "./world.ts"
 
 /** One kind of person the ladder can pay to grow the product while the day job takes the days. Each is hired again and again. */
@@ -81,31 +80,28 @@ export function openHires(hires: Hires): Hire[] {
   return HIRES.slice(0, Math.min(HIRES.length, last + 2))
 }
 
-/** Only the ladder hires, in an open row, with the money for at least one. */
-export function canHire(track: Track, hires: Hires, money: number, id: string): boolean {
+/** Hires go in an open row, with the money for at least one. */
+export function canHire(hires: Hires, money: number, id: string): boolean {
   const row = openHires(hires).find((h) => h.id === id)
-  return track === "ladder" && row !== undefined && maxHires(row, heldOf(hires, row), money) > 0
+  return row !== undefined && maxHires(row, heldOf(hires, row), money) > 0
 }
 
 /** What hiring changes, or null when it is refused and nothing changes. */
-export function hire(s: { readonly money: number; readonly founder: FounderState }, id: string): { money: number; founder: FounderState } | null {
-  if (!canHire(s.founder.track, s.founder.hires, s.money, id)) return null
+export function hire(s: { readonly money: number; readonly hires: Hires }, id: string): { money: number; hires: Hires } | null {
+  if (!canHire(s.hires, s.money, id)) return null
   const row = hireById(id)!
-  const held = heldOf(s.founder.hires, row)
-  return { money: s.money - hireCost(row, held, 1), founder: { ...s.founder, hires: { ...s.founder.hires, [id]: held + 1 } } }
+  const held = heldOf(s.hires, row)
+  return { money: s.money - hireCost(row, held, 1), hires: { ...s.hires, [id]: held + 1 } }
 }
 
-/**
- * What letting people go changes, or null when there is nobody of that kind. Either track can fire: the salaries stop
- * at once and the growth they added goes with them. Nothing is refunded.
- */
-export function fire(s: { readonly founder: FounderState }, id: string): { founder: FounderState } | null {
+/** What letting people go changes, or null when there is nobody of that kind. The salaries stop at once and the growth they added goes with them. Nothing is refunded. */
+export function fire(s: { readonly hires: Hires }, id: string): { hires: Hires } | null {
   const row = hireById(id)
-  const held = row ? heldOf(s.founder.hires, row) : 0
+  const held = row ? heldOf(s.hires, row) : 0
   if (!row || held === 0) return null
   const left = held - 1
-  const { [id]: _gone, ...rest } = s.founder.hires
-  return { founder: { ...s.founder, hires: left > 0 ? { ...rest, [id]: left } : rest } }
+  const { [id]: _gone, ...rest } = s.hires
+  return { hires: left > 0 ? { ...rest, [id]: left } : rest }
 }
 
 /** Saved hires, checked: unknown ids, non-integers and zeros are dropped and counts are capped. The old list format reads as nobody. */
@@ -129,21 +125,18 @@ export function creditOf(company: { readonly users: Readonly<Record<string, numb
   return { hiredShare: total > 0 ? Math.min(1, Math.max(0, company.hiredUsers) / total) : 0 }
 }
 
-/** How the career won: a founder's own work, a team's, or a ladder career built on nights and weekends. */
-export type Ending = "founder" | "sponsor" | "nightOwl"
+/** How the career won: the team's growth, or your own on nights and weekends. */
+export type Ending = "sponsor" | "nightOwl"
 
 /** Past this share of the users from hires, the credit goes to the team. At exactly this share it stays with you. */
 export const SPONSOR_SHARE = 0.5
 
-export function endingOf(track: Track, hiredShare: number): Ending {
-  if (hiredShare > SPONSOR_SHARE) return "sponsor"
-  return track === "founder" ? "founder" : "nightOwl"
+export function endingOf(hiredShare: number): Ending {
+  return hiredShare > SPONSOR_SHARE ? "sponsor" : "nightOwl"
 }
 
-export function endingLine(ending: Ending | null | undefined, product: string): string {
+export function endingLine(ending: Ending | null | undefined): string {
   switch (ending) {
-    case "founder":
-      return `Eight billion people use ${product}. You built this.`
     case "sponsor":
       return "Eight billion users. Your team was incredible. You were in a lot of their standups."
     case "nightOwl":
@@ -154,11 +147,11 @@ export function endingLine(ending: Ending | null | undefined, product: string): 
 }
 
 /** The win as a toast, a card or a note on return: the ending's line, then what the win pays. */
-export const winNote = (ending: Ending | null | undefined, product: string, mult: number): string => `${endingLine(ending, product)} Everything you earn is ×${mult} for good.`
+export const winNote = (ending: Ending | null | undefined, mult: number): string => `${endingLine(ending)} Everything you earn is ×${mult} for good.`
 
 /** The role LinkedOut lists for the product. */
 export function productRole(ending: Ending | null | undefined, product: string): string {
   return ending === "sponsor" ? `Executive sponsor, ${product}` : `Founder, ${product}`
 }
 
-export const isEnding = (value: unknown): value is Ending => value === "founder" || value === "sponsor" || value === "nightOwl"
+export const isEnding = (value: unknown): value is Ending => value === "sponsor" || value === "nightOwl"

@@ -1,6 +1,4 @@
 import { regionById, REGIONS } from "../../data/regions.ts"
-import { formatNumber } from "../../game/format.ts"
-import { runwayWords } from "../../game/founderOutlook.ts"
 import type { Company } from "../../game/globe/company.ts"
 import { INCIDENTS, regionName } from "../../game/globe/world.ts"
 
@@ -10,12 +8,6 @@ export interface NextStep {
   readonly text: string
 }
 
-/** What a founder's money picture adds to the next step: income minus burn, and the seconds it lasts. */
-export interface ForkView {
-  readonly net: number
-  readonly runwaySec: number | null
-}
-
 const hasLivePop = (company: Company, region: string): boolean =>
   company.pops.some((city) => regionById(region)?.cities.includes(city) === true)
 
@@ -23,11 +15,8 @@ const hasLivePop = (company: Company, region: string): boolean =>
  * Picks the bottleneck, most urgent first: no users, a law only a local server answers, dropped requests, other incidents,
  * a tier near its limit, then the cheapest way to grow.
  */
-export function nextStep(company: Company, fork?: ForkView): NextStep {
+export function nextStep(company: Company): NextStep {
   if (company.users < 1) return { tone: "calm", text: "Clear a gig to sign your first users. Each client brings people from their own region." }
-  if (fork?.runwaySec != null && fork.net < 0) {
-    return { tone: fork.runwaySec < 600 ? "bad" : "warn", text: `Burning $${formatNumber(-fork.net)}/s more than it earns. Runway: ${runwayWords(fork.runwaySec)}. Serving gear that pays for itself turns it around.` }
-  }
   const law = company.incidents.find((i) => INCIDENTS[i.kind].waivedByPop && !hasLivePop(company, i.region))
   if (law) {
     const where = regionName(law.region)

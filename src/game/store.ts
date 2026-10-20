@@ -41,9 +41,9 @@ import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save
 import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./globe/growth.ts"
 import * as companyActions from "./globe/actions.ts"
 import type { CompanyPatch } from "./globe/actions.ts"
-import { totalUsers } from "./globe/world.ts"
-import { canGoFullTime, FORK_OFFERED, FRESH_FOUNDER, goFullTime as startFullTime, productRevenueOf, forkOpen, raiseBridge as raiseFounderBridge, returnToLadder as returnFounderToLadder, trackFactsOf, winMultOf } from "./globe/track.ts"
-import type { FounderState } from "./globe/track.ts"
+import { totalUsers, WIN_MULT } from "./globe/world.ts"
+import { productFactsOf, productRevenueOf } from "./globe/product.ts"
+import type { Hires } from "./globe/hires.ts"
 import type { CompanyState } from "./globe/growth.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import { winNote } from "./globe/hires.ts"
@@ -172,10 +172,8 @@ type GameState = {
   company: CompanyState
   /** The regions bought and the cities with a point of presence. */
   footprint: Footprint
-  /** The fork: ladder or founder, the bridges raised, and the run-out choice. */
-  founder: FounderState
-  /** The "Go full-time?" modal is on screen. Not saved; the red button opens it again. */
-  forkModal: boolean
+  /** Heads hired of each kind (`HIRES`), by id. */
+  hires: Hires
   /** Prestige: careers started, Prestige, earnings of earlier careers, Legacy perks, the Hall of Fame. Survives an Exit; `wipe` clears it. */
   legacy: LegacyState
   /** The headline card after the latest Exit, until dismissed. Not saved. */
@@ -210,20 +208,10 @@ type GameState = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Pays to end an incident now, in minutes of what the company earns. False when the incident is gone or the money is short. */
   respondIncident: (id: number) => boolean
-  /** Quit the ladder for the product. False before the fork opens, after quitting, or while below the users a return asked for. */
-  goFullTime: () => boolean
-  /** Open the "Go full-time?" modal again from the red button. False before the fork has been offered, or as a founder. */
-  openFork: () => boolean
-  /** Close the modal and keep climbing. Does nothing while the out-of-runway choice is open. */
-  keepClimbing: () => void
-  /** Raise a bridge after running out. False with bridges used up or when not out of runway. */
-  raiseBridge: () => boolean
-  /** Hire one person of a kind on the ladder (see `HIRES`). False as a founder, in a closed row, or short of the price. */
+  /** Hire one person of a kind (see `HIRES`). False in a closed row or short of the price. */
   hire: (id: string) => boolean
-  /** Let go of one person of a kind, on either track. No refund. False with nobody of that kind. */
+  /** Let go of one person of a kind. No refund. False with nobody of that kind. */
   fire: (id: string) => boolean
-  /** Take a job again. After running out it gives up the highest job; by choice it keeps them all. False off the founder track. */
-  returnToLadder: () => boolean
   /** Switch a bought region on or off as a whole. The last region serving stays on. */
   setRegionActive: (regionId: string, on: boolean) => boolean
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
@@ -305,7 +293,7 @@ function toSave(state: GameState, now: number): SaveData {
   save.profile = state.profile
   save.company = state.company
   save.footprint = state.footprint
-  if (state.founder.offered || Object.keys(state.founder.hires).length > 0) save.founder = state.founder
+  if (Object.keys(state.hires).length > 0) save.hires = state.hires
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -452,8 +440,7 @@ export const useGame = create<GameState>((set, get) => ({
   profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
   company: booted.save.company ?? FRESH_COMPANY,
   footprint: booted.save.footprint ?? FRESH_FOOTPRINT,
-  founder: booted.save.founder ?? FRESH_FOUNDER,
-  forkModal: false,
+  hires: booted.save.hires ?? {},
   legacy: booted.save.legacy ?? freshLegacy(),
   exitCard: null,
   unlocked: booted.career.unlocked,
@@ -584,42 +571,6 @@ export const useGame = create<GameState>((set, get) => ({
   respondIncident: (id) => commitCompany(companyActions.respondIncident(get(), id, earnedPerSec(get())), true),
   setRegionActive: (regionId, on) => commitCompany(companyActions.setRegionActive(get(), regionId, on), false),
 
-  goFullTime: () => {
-    const state = get()
-    if (!canGoFullTime(state.founder, totalUsers(state.company.users), state.jobs)) return false
-    set({ founder: startFullTime(state.founder), forkModal: false, now: Date.now() })
-    persistNow()
-    return true
-  },
-
-  openFork: () => {
-    const state = get()
-    if (!state.founder.offered || state.founder.track !== "ladder") return false
-    set({ forkModal: true })
-    return true
-  },
-
-  keepClimbing: () => {
-    if (get().forkModal) set({ forkModal: false })
-  },
-
-  raiseBridge: () => {
-    const state = get()
-    const raised = raiseFounderBridge(state.founder, totalUsers(state.company.users), state.legacy.perks)
-    if (!raised) return false
-    set({ founder: raised.founder, money: state.money + raised.cash, now: Date.now() })
-    persistNow()
-    return true
-  },
-
-  returnToLadder: () => {
-    const state = get()
-    const back = returnFounderToLadder(state.founder, totalUsers(state.company.users), state.jobs, state.founder.broke)
-    if (!back) return false
-    set({ founder: back.founder, jobs: back.jobs, now: Date.now(), buyStamp: state.buyStamp + 1 })
-    persistNow()
-    return true
-  },
 
   exit: () => {
     const state = get()
@@ -669,11 +620,10 @@ export const useGame = create<GameState>((set, get) => ({
       owned: {},
       jobs: start.jobs,
       gigs: start.gigs,
-      // The product starts over: users, regions, hires, the win and its multiplier, the track, the burn and the bridges.
+      // The product starts over: users, regions, hires, the win and its multiplier.
       company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
       footprint: FRESH_FOOTPRINT,
-      founder: FRESH_FOUNDER,
-      forkModal: false,
+      hires: {},
       phase: phaseOf(fresh),
       activeBoost: null,
       nextBoostAt: null,
@@ -740,8 +690,7 @@ export const useGame = create<GameState>((set, get) => ({
   buyJob: (jobId) => {
     const job = jobById(jobId)
     const state = get()
-    // A founder draws no salary and climbs no ladder: taking a job is going back to one.
-    if (!job || state.founder.track === "founder" || !canBuyJob(state, job)) return false
+    if (!job || !canBuyJob(state, job)) return false
     set({
       // A job costs spendable XP, then a job that teaches pays its lump of XP once, on hire. Lifetime XP rises with the lump.
       xp: Math.max(0, state.xp - job.xpCost) + job.xpLump,
@@ -883,21 +832,18 @@ export const useGame = create<GameState>((set, get) => ({
       idleSince: state.idleSince,
     }
     // A boost never starts over an event, a 1:1 or a choice, and none of those open while a boost runs.
-    const prompted = state.event !== null || state.review !== null || state.forkModal || state.founder.broke
+    const prompted = state.event !== null || state.review !== null
     const advanced = advanceBoostClock(clock, era, now, Math.random, prompted)
     const boosting = advanced.clock.activeBoost !== null
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, trackFactsOf(state.founder, state.legacy)), now - dt, now, Math.random)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy)), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
     stats = creditMoney(stats, gain + grown.earned, "idle")
-    const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown, { track: state.founder.track, broke: state.founder.broke, away: false })
-    // Running out stops the burn and opens the choice. The first time the product has its users and a job is held, the fork opens too.
-    const founder: FounderState = settled.broke && !state.founder.broke ? { ...state.founder, broke: true } : state.founder
-    const offerFork = FORK_OFFERED && !founder.offered && forkOpen(totalUsers(grown.state.users), state.jobs)
+    const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown)
     const foreverMult = settled.foreverMult
     const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.
@@ -952,8 +898,6 @@ export const useGame = create<GameState>((set, get) => ({
       previewEra: state.previewEra && now >= state.previewUntil ? null : state.previewEra,
       now,
       company: grown.state,
-      founder: offerFork ? { ...founder, offered: true } : founder,
-      forkModal: offerFork || state.forkModal,
       journal: grown.notes.length > 0 ? noted(state.journal, grown.notes, balance) : state.journal,
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
@@ -982,8 +926,7 @@ export const useGame = create<GameState>((set, get) => ({
       peakMoney: 0,
       company: FRESH_COMPANY,
       footprint: FRESH_FOOTPRINT,
-      founder: FRESH_FOUNDER,
-      forkModal: false,
+      hires: {},
       stats: emptyStats(),
       skills: {},
       equipment: {},
@@ -1159,7 +1102,7 @@ useGame.subscribe((state, prev) => {
 
 /** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
 export function earnedPerSec(state: GameState, at = Date.now()): number {
-  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.founder, state.legacy.perks)
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.legacy.perks)
 }
 
 // The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).
@@ -1169,7 +1112,7 @@ useGame.subscribe((state, prev) => {
   useGame.setState({
     ...makePop(state, "unlock", 0, "Eight billion users"),
     celebrationNonce: state.celebrationNonce + 1,
-    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, state.profile.product, winMultOf(state.founder.track)) }, toastSeq }),
+    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, WIN_MULT) }, toastSeq }),
   })
 })
 

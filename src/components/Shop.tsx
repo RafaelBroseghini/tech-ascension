@@ -43,7 +43,6 @@ import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { CompanyTab } from "./globe/CompanyTab.tsx"
-import { useForkPending } from "./globe/useForkPending.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string; done: string }> = {
@@ -211,9 +210,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const buyJob = useGame((s) => s.buyJob)
   const buy = useGame((s) => s.buy)
   const clearGig = useGame((s) => s.clearGig)
-  const isFounder = useGame((s) => s.founder.track === "founder")
-  const dayJob = useGame((s) => s.returnToLadder)
-  const product = useGame((s) => s.profile.product)
 
   const [picked, setPickedState] = useState<ShopTab | null>(() => readSavedShopTab())
   const setPicked = (tab: ShopTab | null) => {
@@ -238,7 +234,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
   const companyOpen = useFeatureOpen("studio")
-  const forkPending = useForkPending()
   const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
@@ -401,7 +396,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
 
   // A marker means something new is open to buy: a row unlocked and never bought. It does not say you can afford it.
   const tabHasNew = (id: ShopTab) =>
-    (id === "W" && forkPending) ||
     (id === "A" &&
       (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
         visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
@@ -687,17 +681,9 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
         {tab === "C" ? (
           unlocked.C ? (
             <>
-              {isFounder ? (
-                <div className="fork-note" data-testid="founder-jobs">
-                  <p>{`A founder doesn't take a salary. Your jobs stay on the résumé, and ${product} pays the bills.`}</p>
-                  <button type="button" data-testid="take-day-job" onClick={() => dayJob()}>
-                    Take a day job again
-                  </button>
-                </div>
-              ) : null}
             {jobRows.map((job, index) => {
               const status = jobState(gates, job)
-              const afford = !isFounder && status === "ready" && canAfford(xp, job.xpCost)
+              const afford = status === "ready" && canAfford(xp, job.xpCost)
               const key = `job:${job.id}`
               return (
                 <Offer
