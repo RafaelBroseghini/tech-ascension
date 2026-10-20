@@ -19,7 +19,10 @@ export function useShopRows(listRef: RefObject<HTMLElement | null>, enabled: boo
       const listTop = list.getBoundingClientRect().top
       // The first row that starts at the top edge, give or take the rounding of the snap.
       const first = rows.findIndex((row) => row.getBoundingClientRect().top >= listTop - 2)
-      const shown = first < 0 ? [] : rows.slice(first, first + SHOP_ROWS)
+      // At the bottom the last rows can be taller than the three above them, so the top edge lands inside a row and
+      // fewer than three follow. Size to the last three: dropping the cap there grows the list, the snap pulls it up a
+      // row and the next measure shrinks it back, round and round.
+      const shown = first < 0 || first + SHOP_ROWS > rows.length ? rows.slice(-SHOP_ROWS) : rows.slice(first, first + SHOP_ROWS)
       if (shown.length < SHOP_ROWS) {
         wrap.style.removeProperty("--rows-h")
         return
