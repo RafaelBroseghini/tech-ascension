@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { useState } from "react"
 import { CITIES } from "../../data/geo.ts"
 import { CityFlag } from "./CityFlag.tsx"
@@ -52,7 +52,7 @@ export function FootprintPanel() {
           <div key={row.id} className={`footprint-owned${dark ? " is-dark" : ""}`} data-region={row.id} data-open={open ? "true" : "false"} data-dark={dark ? "true" : "false"}>
             <header>
               <button type="button" className="footprint-fold" aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} ${row.name}`} onClick={() => setShut({ ...shut, [row.id]: !open })}>
-                {open ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+                <ChevronRight size={14} aria-hidden />
                 <strong>{row.name}</strong>
               </button>
               <small>{dark ? "Off, traffic goes elsewhere" : `${live.length} of ${row.cities.length} live`}</small>

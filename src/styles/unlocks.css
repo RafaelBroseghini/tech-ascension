@@ -250,7 +250,7 @@
   }
 }
 .ul-card.is-leaving {
-  animation: ul-card-out 300ms var(--ease-in-out, ease-in) forwards;
+  animation: ul-card-out 200ms var(--ease-out) forwards;
 }
 @keyframes ul-card-out {
   to {

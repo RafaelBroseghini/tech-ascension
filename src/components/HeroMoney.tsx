@@ -65,7 +65,7 @@ function BoostFoot({ mult }: { mult: number }) {
   return (
     <span className="hero-boost" data-testid="hero-boost" aria-live="polite">
       <b>×{formatMultiplier(mult)}</b> click boost
-      <i className="hero-boost-bar" style={{ ["--left" as string]: `${Math.min(100, (left / BOOST_MS) * 100)}%` }} aria-hidden />
+      <i className="hero-boost-bar" style={{ transform: `scaleX(${Math.min(1, left / BOOST_MS)})` }} aria-hidden />
     </span>
   )
 }

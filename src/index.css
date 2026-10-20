@@ -137,7 +137,9 @@ img { -webkit-user-drag: none; user-select: none; }
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
+.founder-chip:active { transform: scale(0.97); }
 @media (hover: hover) {
   .founder-chip:hover { background: var(--surface-1); }
 }
@@ -656,10 +658,11 @@ img { -webkit-user-drag: none; user-select: none; }
   left: 0;
   bottom: 0;
   height: 3px;
-  width: var(--left);
+  width: 100%;
   background: currentColor;
   opacity: 0.55;
-  transition: width 120ms linear;
+  transform-origin: left;
+  transition: transform 120ms linear;
 }
 
 /* Event multipliers under the balance: one quiet line each, the timed ones with their seconds left. */
@@ -3313,8 +3316,13 @@ img { -webkit-user-drag: none; user-select: none; }
   box-shadow: var(--lift-3), inset 0 0 0 2px var(--line);
   text-align: center;
   outline: none;
-  animation: toast-in 280ms var(--ease-pop);
+  animation: modal-in 200ms var(--ease-out);
 }
+
+/* Every dialog panel grows in with its backdrop fade. toast-in is no good here: it carries the toast centring translate(-50%). */
+.stats-modal,
+.resume-modal,
+.roster { animation: modal-in 200ms var(--ease-out); }
 
 .event-kicker {
   margin: 0;
@@ -3375,7 +3383,9 @@ img { -webkit-user-drag: none; user-select: none; }
   border-radius: var(--radius);
   font-weight: 700;
   cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
+.event-choice:active:not(:disabled) { transform: scale(0.97); }
 
 .event-yes {
   background: var(--accent);
@@ -3611,7 +3621,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .review-stake .is-quiet { color: var(--text-dim); font-weight: 500; }
 
 @media (prefers-reduced-motion: reduce) {
-  .event-backdrop, .event-modal { animation: none; }
+  .event-backdrop, .event-modal, .stats-modal, .resume-modal, .roster { animation: none; }
 }
 
 /* ---------- admin settings (admin mode only) ---------- */

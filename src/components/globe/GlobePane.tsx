@@ -44,7 +44,7 @@ export const GlobePane = memo(function GlobePane({ company, fleet }: { company: 
         <Metric id="revenue" label="Revenue" value={`$${formatNumber(metrics.revenuePerSec)}/s`} sub={metrics.users > 0 ? `${formatNumber(metrics.servedShare * metrics.users, 1000)} paying` : "no users yet"} />
         <Metric id="lost" label="Revenue lost" value={metrics.lostPerSec > 0 ? `$${formatNumber(metrics.lostPerSec)}/s` : "$0/s"} sub={metrics.worst ? `slowest ${CITIES[metrics.worst.city]?.name ?? ""} ${metrics.worst.ms} ms` : "no users yet"} tone={metrics.lostPerSec > 0 ? "bad" : undefined} />
         <div className={`globe-load is-${stress}`} role="img" aria-label={`Load is ${percent(metrics.load)} of capacity`}>
-          <i style={{ width: `${Math.min(100, metrics.load * 100)}%` }} />
+          <i style={{ transform: `scaleX(${Math.min(1, metrics.load)})` }} />
         </div>
       </header>
       <WorldPanel company={company} />

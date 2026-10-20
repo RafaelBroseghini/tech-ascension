@@ -72,7 +72,8 @@
   display: block;
   height: 100%;
   background: var(--ide-green);
-  transition: width 0.4s ease;
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .globe-load.is-warn i {
@@ -222,7 +223,8 @@
   display: block;
   height: 3px;
   background: var(--ide-green);
-  transition: width 0.4s ease;
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .world-resistance.is-warm i {
@@ -242,7 +244,8 @@
   display: block;
   height: 100%;
   background: var(--ide-blue);
-  transition: width 0.4s ease;
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 /* The one thing to do next, first in the pane. */
@@ -1230,7 +1233,7 @@
   height: 10px;
   border-radius: 50%;
   background: var(--ide-overlay);
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
 .footprint .knob.is-on {
@@ -1251,6 +1254,24 @@
 .footprint-owned ul {
   grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
   gap: 4px 6px;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+
+/* A region's city list is mounted on expand; it settles in from just under the header instead of popping. */
+@starting-style {
+  .footprint-owned ul {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.footprint-fold svg {
+  flex: none;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.footprint-fold[aria-expanded="true"] svg {
+  transform: rotate(90deg);
 }
 
 .footprint-owned li {

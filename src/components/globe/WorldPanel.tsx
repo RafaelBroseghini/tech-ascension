@@ -109,11 +109,11 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
         <div className={`world-resistance${company.resistance > 66 ? " is-hot" : company.resistance > 33 ? " is-warm" : ""}`} data-testid="world-resistance">
           <small>Resistance</small>
           <b>{company.resistance < 1 ? "Calm" : `${Math.round(company.resistance)}%`}</b>
-          <i aria-hidden style={{ width: `${company.resistance}%` }} />
+          <i aria-hidden style={{ transform: `scaleX(${company.resistance / 100})` }} />
         </div>
       </header>
       <div className="world-bar" role="img" aria-label={`${bar.toFixed(1)}% of the way to ${users(WORLD_TARGET)} users`}>
-        <i style={{ width: `${bar}%` }} />
+        <i style={{ transform: `scaleX(${bar / 100})` }} />
       </div>
       {company.won ? (
         <p className="world-won" data-testid="world-won">
