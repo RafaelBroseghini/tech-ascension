@@ -84,9 +84,10 @@ export function RevealCard({
     return () => window.clearTimeout(id)
   }, [held, leaving])
 
+  // Unmounts just after ul-card-out (200ms in unlocks.css) ends.
   useEffect(() => {
     if (!leaving) return
-    const id = window.setTimeout(() => closeRef.current(leaving === "timedOut"), 320)
+    const id = window.setTimeout(() => closeRef.current(leaving === "timedOut"), 220)
     return () => window.clearTimeout(id)
   }, [leaving])
 
