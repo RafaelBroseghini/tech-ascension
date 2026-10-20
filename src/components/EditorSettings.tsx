@@ -8,7 +8,7 @@ import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
-import { getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
+import { HOVER_MODES, getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
@@ -20,7 +20,7 @@ import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
-import { ParadeSourceList, ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
+import { HoverModeList, ParadeSourceList, ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
 import { useParadeProgress } from "./useParadeProgress.ts"
 import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
@@ -52,11 +52,11 @@ const TOGGLES: readonly {
   { key: "clicks", label: "Click sound", Icon: MousePointer2, feature: "clickKits" },
   {
     key: "hoverClick",
-    label: "Hover or hold click",
+    label: "Auto-click",
     Icon: MousePointerClick,
     feature: "hoverClick",
     complete: true,
-    title: "Hover or hold the emoji to click automatically",
+    title: "Hover on PC, hold on mobile",
   },
   { key: "cat", label: "Cat", emoji: DESK_CAT_EMOJI, feature: "cat" },
   { key: "parade", label: "Gif parade", Icon: Sparkles, title: "Unlocked gifs move round the stage together" },
@@ -294,7 +294,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                       className="desk-toggle"
                       data-testid={`desk-${toggle.key}`}
                       aria-pressed={desk[toggle.key]}
-                      title={toggle.key === "hoverClick" ? `Hover or hold the emoji to click at ${hoverPerSec}/s` : toggle.title}
+                      title={toggle.key === "hoverClick" ? `Auto-click at ${hoverPerSec}/s. ${HOVER_MODES[0].blurb}` : toggle.title}
                       onClick={() => {
                         setDeskPref(toggle.key, !desk[toggle.key])
                         if (toggle.feature) seeFeature(toggle.feature)
@@ -314,6 +314,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                   </li>
                 ))}
               </ul>
+              {hoverPerSec > 0 && desk.hoverClick ? <HoverModeList desk={desk} /> : null}
             </div>
           </section>
           {paradeCounts.all > 0 && desk.parade ? (

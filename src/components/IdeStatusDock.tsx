@@ -16,6 +16,7 @@ import {
   ClickKitList,
   DeskToggleList,
   EditorThemeList,
+  HoverModeList,
   UiFontList,
   MusicStyleList,
   SettingsSection,
@@ -308,6 +309,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
               {/* Hover click is listed here once a gold hover skill or every catalog row is owned; before that the list holds the click sound alone. */}
               <SettingsSection heading="Click">
                 <DeskToggleList desk={desk} hoverPerSec={hoverPerSec} keys={["clicks", "hoverClick"]} />
+                {hoverPerSec > 0 && desk.hoverClick ? <HoverModeList desk={desk} /> : null}
               </SettingsSection>
               {desk.clicks && kits ? (
                 <SettingsSection heading="Click kit">

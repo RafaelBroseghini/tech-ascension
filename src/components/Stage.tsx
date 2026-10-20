@@ -9,7 +9,7 @@ import { ERA_ACCENT } from "../data/eraAccent.ts"
 import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
 import { hoverStepMs } from "../game/autoClick.ts"
 import { hoverRate } from "../game/gold.ts"
-import { getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
+import { HOVER_MODES, getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { eraOf, stageOf } from "../game/phase.ts"
 import type { Era } from "../data/capital.ts"
@@ -51,6 +51,7 @@ function without<T extends { id: number }>(gone: ReadonlySet<number>) {
 }
 
 const hoverClickPref = () => getDeskPrefs().hoverClick
+const hoverModePref = () => getDeskPrefs().hoverMode
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 function burstBits(era: Era): Bit[] {
@@ -162,9 +163,12 @@ export function Stage() {
   const impact = useRef<Animation | null>(null)
   const lastSide = useRef(1)
 
-  const hoverRef = useRef(false)
+  // Resting: a mouse over the stage. Pressed: any pointer holding the stage down. Auto-click runs on whichever the mode allows.
+  const restingRef = useRef(false)
+  const pressedRef = useRef(false)
   const pointRef = useRef<{ x: number; y: number } | null>(null)
   const hoverClickOn = useSyncExternalStore(subscribeDeskPrefs, hoverClickPref, hoverClickPref)
+  const hoverMode = useSyncExternalStore(subscribeDeskPrefs, hoverModePref, hoverModePref)
   const hoverPerSec = useGame((state) => hoverRate(state.gold, ownsEverything(state)))
   const autoClick = hoverClickOn && hoverPerSec > 0
 
@@ -336,7 +340,9 @@ export function Stage() {
   useEffect(() => {
     if (!autoClick) return
     const id = window.setInterval(() => {
-      if (!hoverRef.current || document.hidden) return
+      const { hoverMode: mode } = getDeskPrefs()
+      const live = mode === "hover" ? restingRef.current : mode === "hold" ? pressedRef.current : restingRef.current || pressedRef.current
+      if (!live || document.hidden) return
       const state = useGame.getState()
       if (state.event || state.review || !getDeskPrefs().hoverClick || hoverRate(state.gold, ownsEverything(state)) <= 0) return
       const point = pointRef.current
@@ -345,26 +351,30 @@ export function Stage() {
     return () => window.clearInterval(id)
   }, [autoClick, hoverPerSec])
 
-  // A mouse auto-clicks while it rests on the emoji; touch and pen have no hover, so they auto-click while pressed.
+  // touch and pen have no hover, so they only track while pressed.
   function trackHover(event: PointerEvent<HTMLButtonElement>) {
-    if (event.pointerType !== "mouse" && event.buttons === 0) return
-    hoverRef.current = true
+    const held = event.buttons > 0
+    if (event.pointerType === "mouse") restingRef.current = true
+    else if (!held) return
+    pressedRef.current = held
     pointRef.current = { x: event.clientX, y: event.clientY }
   }
 
   function clearHover() {
-    hoverRef.current = false
+    restingRef.current = false
+    pressedRef.current = false
     pointRef.current = null
   }
 
-  function clearTouchHold(event: PointerEvent<HTMLButtonElement>) {
+  function release(event: PointerEvent<HTMLButtonElement>) {
+    pressedRef.current = false
     if (event.pointerType !== "mouse") clearHover()
   }
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return
     fire(event.clientX, event.clientY, event.pointerType === "touch" || event.pointerType === "pen")
-    if (event.pointerType !== "mouse") trackHover(event)
+    trackHover(event)
   }
 
   function onClick(event: MouseEvent<HTMLButtonElement>) {
@@ -404,14 +414,14 @@ export function Stage() {
         onPointerEnter={trackHover}
         onPointerMove={trackHover}
         onPointerLeave={clearHover}
-        onPointerUp={clearTouchHold}
+        onPointerUp={release}
         onPointerCancel={clearHover}
         onPointerDown={onPointerDown}
         onClick={onClick}
         onKeyDown={onKeyDown}
         aria-label={
           autoClick
-            ? `Click to earn. Hover or hold to auto-click at ${hoverPerSec} per second. Current stage ${stageName}.`
+            ? `Click to earn. Auto-click at ${hoverPerSec} per second. ${HOVER_MODES.find((m) => m.id === hoverMode)?.blurb ?? ""} Current stage ${stageName}.`
             : `Click to earn. Current stage ${stageName}.`
         }
       >

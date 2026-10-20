@@ -58,6 +58,7 @@ describe("hover click", () => {
     roots.length = 0
     document.body.replaceChildren()
     setDeskPref("hoverClick", false)
+    setDeskPref("hoverMode", "auto")
     setDeskPref("sounds", true)
     useGame.getState().wipe()
   })
@@ -103,6 +104,46 @@ describe("hover click", () => {
       vi.advanceTimersByTime(1000)
     })
     expect(useGame.getState().xp).toBe(xpEach * 3)
+  })
+
+  it("hover mode ignores a finger held on the emoji, and hold mode ignores a resting mouse", () => {
+    vi.useFakeTimers()
+    setDeskPref("sounds", false)
+    setDeskPref("hoverClick", true)
+    useGame.setState({ gold: [2], xpTotal: 1e6, event: null })
+    const host = renderStage()
+    const button = host.querySelector<HTMLButtonElement>("[data-testid='stage']")
+    if (!button) throw new Error("missing stage")
+    const pointer = (type: string, pointerType: string, buttons: number) =>
+      flushSync(() => {
+        button.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType, buttons, clientX: 40, clientY: 36 }))
+      })
+
+    setDeskPref("hoverMode", "hover")
+    pointer("pointerdown", "touch", 1)
+    pointer("pointerup", "touch", 0)
+    const xpBefore = useGame.getState().xp
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpBefore)
+
+    setDeskPref("hoverMode", "hold")
+    flushSync(() => {
+      button.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse", clientX: 40, clientY: 36 }))
+    })
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpBefore)
+
+    pointer("pointerdown", "mouse", 1)
+    const xpEach = xpPerClick(useGame.getState().skills)
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().xp).toBe(xpBefore + xpEach * 3)
+    pointer("pointerup", "mouse", 0)
   })
 
   it("clicks at the rate of the hover gold skill owned, before the catalog is complete", () => {

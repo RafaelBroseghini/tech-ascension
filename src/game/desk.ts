@@ -10,6 +10,15 @@ import { readPref, writePref } from "./ledger.ts"
 
 /** Separate from the career save, so wiping a run keeps the room. The exception is the chosen cat (`catArt`): the store resets it on wipe, since the roster is found per run. */
 
+/** Which pointer auto-clicks the emoji. Auto is a mouse resting on it or a finger/pen pressing it, so a tablet works either way. */
+export const HOVER_MODES = [
+  { id: "auto", label: "Auto", blurb: "Hover on PC, hold on mobile." },
+  { id: "hover", label: "Hover", blurb: "Rest the pointer on the emoji. Touch does nothing." },
+  { id: "hold", label: "Hold", blurb: "Press and hold the emoji, with a mouse or a finger." },
+] as const
+
+export type HoverMode = (typeof HOVER_MODES)[number]["id"]
+
 export type DeskPrefs = {
   music: boolean
   musicStyle: MusicStyleId
@@ -27,6 +36,7 @@ export type DeskPrefs = {
   paradeSource: ParadeSourceId
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
+  hoverMode: HoverMode
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
   heroOffsetX: number
   heroOffsetY: number
@@ -44,11 +54,16 @@ const DEFAULTS: DeskPrefs = {
   paradeStyle: DEFAULT_PARADE_STYLE,
   paradeSource: "all",
   hoverClick: false,
+  hoverMode: "auto",
   heroOffsetX: 0,
   heroOffsetY: 0,
 }
 
 const HERO_OFFSET_CLAMP = 280
+
+function parseHoverMode(value: unknown): HoverMode {
+  return HOVER_MODES.find((mode) => mode.id === value)?.id ?? "auto"
+}
 
 function parseHeroOffset(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0
@@ -82,6 +97,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
   next.clickKit = parseClickKitId((body as Record<string, unknown>).clickKit)
   next.paradeStyle = parseParadeStyleId((body as Record<string, unknown>).paradeStyle)
   next.paradeSource = parseParadeSourceId((body as Record<string, unknown>).paradeSource)
+  next.hoverMode = parseHoverMode((body as Record<string, unknown>).hoverMode)
   const catArt = (body as Record<string, unknown>).catArt
   next.catArt = isRosterCat(catArt) ? catArt : null
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)

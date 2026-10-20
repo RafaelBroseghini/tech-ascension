@@ -188,8 +188,8 @@ export const FEATURES: readonly FeatureRow[] = [
   },
   {
     id: "hoverClick",
-    name: "Hover click",
-    blurb: "Rest the pointer on the emoji and it clicks for you.",
+    name: "Auto-click",
+    blurb: "Hover on PC or hold on mobile, and the emoji clicks for you.",
     size: "standard",
     trigger: { kind: "hover" },
     action: "Turn it on",
