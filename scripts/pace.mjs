@@ -42,6 +42,7 @@ const TABLE = [
   ["Weekly", 1 / 7, 30, 2],
 ]
 
+const duration = (seconds) => (seconds >= 86400 ? `${(seconds / 86400).toFixed(1)} days` : seconds >= 3600 ? `${(seconds / 3600).toFixed(1)} hours` : `${Math.round(seconds / 60)} minutes`)
 const days = (n) => (n >= 100 ? Math.round(n) : n.toFixed(1)).toString()
 
 function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
@@ -56,6 +57,8 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
       formula: valid ? days(estimateDays(profile, player.k)) : "n/a",
       // Time actually spent at the game: every visit, until the day it finishes.
       handsOn: run.complete ? `${Math.round((run.days * visitsPerDay * minutesPerVisit) / 60)} h` : "-",
+      // Most visits in a row that bought nothing new, before everything was owned.
+      longestWait: run.complete ? `${run.longestWaitVisits}` : "-",
       run,
     }
   })
@@ -105,14 +108,14 @@ const firstCopyIncome =
   JOB_TIERS.reduce((sum, r) => sum + r.cps, 0)
 
 console.log(`offline cap ${OFFLINE_CAP_SECONDS / 3600}h · final click share ${FINAL_CLICK_SHARE.toFixed(2)} · K ${PACE_K.oneOfEach} (one-of-each) / ${PACE_K.stacker} (stacker)`)
-console.log(`last row: ${last.name}, $${last.baseCost.toExponential(1)}; first-copy income without it $${firstCopyIncome.toExponential(2)}/s, so its price alone is ${(last.baseCost / firstCopyIncome / 86400).toFixed(1)} days of full income`)
+console.log(`last row: ${last.name}, $${last.baseCost.toExponential(1)}; first-copy income without it $${firstCopyIncome.toExponential(2)}/s, so its price alone is ${duration(last.baseCost / firstCopyIncome)} of full income`)
 console.log("")
-console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: model / formula | One-of-each: model / formula | Hands-on (stacker / one-of-each) |")
-console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: model / formula | One-of-each: model / formula | Hands-on (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |")
+console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 for (const { name, profile, cad, pace, cells } of rows) {
   const [oneOfEach, stacker] = cells
   console.log(
-    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${stacker.model} / ${stacker.formula} days | ${oneOfEach.model} / ${oneOfEach.formula} days | ${stacker.handsOn} / ${oneOfEach.handsOn} |`,
+    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${stacker.model} / ${stacker.formula} days | ${oneOfEach.model} / ${oneOfEach.formula} days | ${stacker.handsOn} / ${oneOfEach.handsOn} | ${stacker.longestWait} / ${oneOfEach.longestWait} |`,
   )
 }
 

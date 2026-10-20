@@ -94,7 +94,7 @@ export const FINAL_CLICK_SHARE = clickShare({ jobs: JOB_TIERS.map((job) => job.i
  * day, and `pace.test.ts` fails if the tables drift far enough to make them wrong. The stacker constant
  * only holds for a player who visits at least daily; further apart, use the one-of-each player's.
  */
-export const PACE_K = { oneOfEach: 9, stacker: 4 } as const
+export const PACE_K = { oneOfEach: 0.8, stacker: 0.9 } as const
 
 /** Multiplier on a full always-open, never-clicking day of income: idle share plus what clicking adds. */
 export function paceOf(profile: PlayProfile): number {
@@ -134,6 +134,11 @@ export type PaceResult = {
   /** The profile's earning share of the day and clicks per wall-clock second, the two terms of the formula. */
   idleShare: number
   clicksPerWallSecond: number
+  /**
+   * The most visits in a row that bought no first copy (of a skill, gig, job, gear or capital row) before
+   * everything was owned. The model only buys at visits, so a wait is counted in visits, not minutes.
+   */
+  longestWaitVisits: number
 }
 
 type Sim = Omit<Progress, "jobs" | "gigs"> & {
@@ -184,6 +189,12 @@ const MILESTONE_TESTS: Record<PaceMilestone, (s: Sim) => boolean> = {
   allJobs: (s) => JOB_TIERS.every((job) => s.jobs.includes(job.id)),
   allGear: (s) => GEAR.every((row) => ownedCount(s.equipment, row.id) > 0),
   allCapital: (s) => CAPITAL.every((row) => ownedCount(s.owned, row.id) > 0),
+}
+
+/** Rows held at least once across every catalog: the count a "first copy" bought during a visit raises. */
+function firstCopies(s: Sim): number {
+  const held = (rows: readonly { id: number }[], owned: Record<string, number>) => rows.filter((row) => ownedCount(owned, row.id) > 0).length
+  return held(SKILL_TIERS, s.skills) + held(GEAR, s.equipment) + held(CAPITAL, s.owned) + s.gigs.length + s.jobs.length
 }
 
 function earn(s: Sim, money: number, xp: number) {
@@ -329,6 +340,13 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   const note = () => {
     for (const id of PACE_MILESTONES) if (milestones[id] === undefined && MILESTONE_TESTS[id](s)) milestones[id] = t / DAY_SECONDS
   }
+  let longestWait = 0
+  let wait = 0
+  // A visit that bought a first copy ends the wait; one that did not extends it.
+  const endVisit = (before: number) => {
+    wait = firstCopies(s) > before ? 0 : wait + 1
+    longestWait = Math.max(longestWait, wait)
+  }
   const result = (complete: boolean): PaceResult => ({
     profile,
     complete,
@@ -336,6 +354,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
     milestones,
     idleShare: cad.idleShare,
     clicksPerWallSecond: cad.clicksPerWallSecond,
+    longestWaitVisits: longestWait,
   })
 
   for (let cycle = 0; cycle * cad.cycleSeconds < maxSeconds; cycle++) {
@@ -345,9 +364,13 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
       const away = Math.min(cad.awaySeconds, OFFLINE_CAP_SECONDS)
       earn(s, idlePerSec(s) * s.mult * away, xpPerSec(s) * s.mult * away)
     }
+    const before = firstCopies(s)
     shop(s, cad, paybackSeconds)
     note()
-    if (ownsEverything(s)) return result(true)
+    if (ownsEverything(s)) {
+      endVisit(before)
+      return result(true)
+    }
 
     for (let spent = 0; spent < cad.activeSeconds; ) {
       const step = Math.min(cad.activeSeconds - spent, Math.max(5, Math.min(900, t * 0.003)))
@@ -361,8 +384,12 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
       t += step
       shop(s, cad, paybackSeconds)
       note()
-      if (ownsEverything(s)) return result(true)
+      if (ownsEverything(s)) {
+      endVisit(before)
+      return result(true)
     }
+    }
+    endVisit(before)
   }
   return result(false)
 }
