@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { PERK } from "../../data/legacy.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./growth.ts"
-import { GROWTH_BASE, productFactsOf, productRevenueOf } from "./product.ts"
+import { productFactsOf, productRevenueOf } from "./product.ts"
 import { WIN_MULT } from "./world.ts"
 
 const roomy = { "54": 5 }
@@ -10,10 +10,10 @@ const step = (hires = {}) => advanceCompany({ ...FRESH_COMPANY, users: { "americ
 
 describe("the product's facts", () => {
   it("grows at the base pace with nobody hired, and the hires add on top", () => {
-    expect(productFactsOf({})).toMatchObject({ growthMult: GROWTH_BASE, hireBonus: 0, revenueMult: 1, payroll: 0 })
+    expect(productFactsOf({})).toMatchObject({ growthMult: 1, hireBonus: 0, revenueMult: 1, payroll: 0 })
     const team = productFactsOf({ outsourced: 10 })
     expect(team.hireBonus).toBeGreaterThan(0)
-    expect(team.growthMult).toBeCloseTo(GROWTH_BASE + team.hireBonus)
+    expect(team.growthMult).toBeCloseTo(1 + team.hireBonus)
     expect(team.payroll).toBeGreaterThan(0)
   })
 
