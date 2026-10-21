@@ -24,7 +24,7 @@ const EMPTY: ComboHoldings = { skills: {}, equipment: {}, owned: {}, jobs: [], g
 
 /** Holdings that hold exactly the row refs given. Tag refs are not built here. */
 function holding(...refs: ComboRef[]): ComboHoldings {
-  const h: ComboHoldings = { skills: {}, equipment: {}, owned: {}, jobs: [], gigs: [] }
+  const h = { skills: {} as Record<string, number>, equipment: {} as Record<string, number>, owned: {} as Record<string, number>, jobs: [] as number[], gigs: [] as number[] }
   for (const ref of refs) {
     if (ref.kind === "tag") throw new Error("a tag is not a row")
     const key = String(ref.id)
