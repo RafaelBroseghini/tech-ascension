@@ -74,7 +74,7 @@ Tuned constants (`src/data/legacy.ts`), kept at their original values because th
 
 | Scale | Per Prestige | Ending bonus | First Exit (stacker / one-of-each) | Done (stacker / one-of-each) |
 | --- | --- | --- | --- | --- |
-| 5e11 | 0.03 | 5 | day 1.67 +5 / day 2.00 +6 | career 6, day 12.3 / career 7, day 19.0 |
+| 5e11 | 0.03 | 5 | day 1.67 +5 / day 2.00 +6 | career 6, day 12.7 / career 7, day 19.3 |
 | 5e11 | 0.03 | 10 | day 1.67 +5 / day 2.00 +6 | career 7, day 14.0 / career 6, day 16.0 |
 | 5e11 | 0.06 | 5 | day 1.33 +3 / day 1.67 +3 | career 9, day 14.3 / career 8, day 15.3 |
 | 3e11 | 0.03 | 5 | day 1.67 +6 / day 2.00 +7 | career 7, day 13.7 / career 7, day 17.7 |
@@ -90,19 +90,19 @@ The stacker, career by career (users at the Exit, Prestige paid, the bonus after
 | 1 | 0.00 | 1.67 | 0.67 | - | 343M | 0 | 5 | 5 | ×1.15 |
 | 2 | 1.67 | 3.67 | 0.34 | 1.67 | 620M | 3 | 7 | 12 | ×1.36 |
 | 3 | 3.67 | 6.00 | 0.34 | 2.00 | 2.0B | 5 | 14 | 26 | ×1.78 |
-| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.9B | 7 | 18 | 44 | ×2.32 |
-| 5 | 8.33 | 10.33 | 0.33 | 2.00 | 8.2B | 9 | 16 (+5 ending) | 60 | ×2.80 |
-| 6 | 10.33 | 12.33 (done) | 0.33 | 2.00 | 8.2B | 10 | - | 60 | ×2.80 |
+| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.9B | 8 | 18 | 44 | ×2.32 |
+| 5 | 8.33 | 10.67 | 0.33 | 2.00 | 7.6B | 10 | 22 | 66 | ×2.98 |
+| 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 8.2B | 12 | - | 66 | ×2.98 |
 
 Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 2nd career on day 5.0 and the one-of-each player in the 3rd, also on day 5.0.
 
-The one-of-each player's run is the same shape, one career longer: Exits on days 2.0, 4.3, 7.0, 10.0, 13.3, 16.0, done on day 19.0 in career 7, the world first won in career 6 (+5 Prestige for the night owl ending). At the old 7B target it was done on day 16.3 in career 6; the extra billion users is the seventh career.
+The one-of-each player's run is the same shape, one career longer: Exits on days 2.0, 4.3, 7.0, 10.0, 13.3, 16.3, done on day 19.3 in career 7, the world first won in career 6 (+5 Prestige for the night owl ending). At the old 7B target it was done on day 16.3 in career 6; the extra billion users is the seventh career.
 
 Against the targets for the Regular player (all stale after the tail cut; the old results are kept for the record, and `pace.test.ts` now pins the model's own output):
 
 - **First Exit around day 1.5 to 2:** met (1.67 and 2.00).
 - **Career 2 reaches the point where career 1 exited in under half the time:** met for the **capital row**: row 6 comes 0.34 days in against 0.67 (one visit; the model cannot see faster than the 8 hours between visits). **Not met for earnings:** career 2 earns what career 1 earned in all after 1.67 days, for both players, against career 1's 1.67 days (stacker) and 2.00 (one-of-each). Income grows exponentially through the second day, so a head start of a few hours saves a few hours, and no value of the three knobs fixes it in the sweep above (the best case, 0.06 per Prestige, takes 0.80 of the first career's time and finishes in 8 to 9 careers). The perks are for the player who plays the early game by hand.
-- **The career that owns everything (or wins the world, whichever is later) is the 4th to 7th, two to three weeks:** met (6th on day 12.3 for the stacker, 7th on day 19.0 for the one-of-each player). `pace.test.ts` checks it.
+- **The career that owns everything (or wins the world, whichever is later) is the 4th to 7th, two to three weeks:** met (6th on day 12.7 for the stacker, 7th on day 19.3 for the one-of-each player). `pace.test.ts` checks it.
 - **Both endings in about a month:** not checked. The model has no hires, so it can only reach the night owl ending (career 6 for the one-of-each player). The first Exit after a win pays the 5 Prestige once.
 
 ## Reading it

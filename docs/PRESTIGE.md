@@ -57,7 +57,7 @@ Then the start card's product beat opens: a new product name is drawn (Reroll as
 | money, `peakMoney`, xp, xpTotal | Prestige, `prestigeTotal`, Legacy perks, careers count, Hall of Fame |
 | skills, gigs, jobs, gear, capital | 10x dev skills |
 | the product: users, regions, hires, `hiredUsers`, resistance, incidents, the win and its multiplier | the handle (a new product name is drawn) |
-| (nothing else is product state) | every cosmetic, the desk cat, the career timeline's unlocked rows (reveals never replay) |
+|  | every cosmetic, the desk cat, the career timeline's unlocked rows (reveals never replay) |
 | click boost, `tempMults`, `foreverMult` | the career log, with an `exit` entry between careers |
 | `stats.lifetimeEarned` (summed into `earnedAllRuns`) | LinkedOut (each sold product stays as a past "Founder, Otterly" or "Side project" line) |
 
@@ -119,7 +119,7 @@ Targets for the Regular player (3 visits a day of 15 minutes, 2 clicks/s), and w
 
 - first Exit around day 1.5 to 2: met (day 1.67 and 2.00);
 - career 2 reaches the point where career 1 exited in under half the time: not met for earnings, met for capital row 6;
-- the career that owns everything (or wins the world, whichever is later) is career 4 to 7, two to three weeks: met (career 6 on day 12.3, career 7 on day 19.0);
+- the career that owns everything (or wins the world, whichever is later) is career 4 to 7, two to three weeks: met (career 6 on day 12.7, career 7 on day 19.3);
 - both endings in about a month: not checked, since the model has no hires.
 
 Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`. Not the perk prices.

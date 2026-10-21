@@ -54,7 +54,6 @@ getState(): {
  headcount: number         // everyone hired
  hiredShare: number        // 0 to 1: the share of the users that came from growth the hires added
  ending: "nightOwl" | "sponsor" | null // how the win read, once it latched
- }
  world: {
   users: number                                  // all users; the goal is `target`
   target: number                                 // 8,000,000,000
