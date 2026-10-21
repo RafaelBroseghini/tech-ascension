@@ -76,6 +76,27 @@ describe("pace model", () => {
     }
   })
 
+  // A player who is away longer than the offline cap skips product time: the product only runs during a visit and the
+  // capped hours after it. Every product date is on the wall clock, so each one falls inside one of those windows.
+  it("dates the product milestones on the wall clock when visits are a day apart", () => {
+    const visit = profile(1, 10, 2)
+    const run = simulatePace(visit, { maxDays: 400 })
+    expect(run.complete).toBe(true)
+    const { users10k, users1m, won } = run.milestones
+    expect(users10k).toBeDefined()
+    expect(users1m).toBeDefined()
+    expect(won).toBeDefined()
+    expect(users10k!).toBeLessThanOrEqual(users1m!)
+    expect(users1m!).toBeLessThanOrEqual(won!)
+    expect(won!).toBeLessThanOrEqual(run.days)
+    const window = (visit.minutesPerVisit * 60 + OFFLINE_CAP_SECONDS) / 86_400
+    for (const [name, day] of Object.entries({ users10k, users1m, won })) {
+      expect(day! - Math.floor(day!), name).toBeLessThanOrEqual(window + 1e-6)
+    }
+    // The finish is the later of owning everything and the win.
+    expect(run.days).toBeCloseTo(Math.max(won!, run.ownedDays!), 6)
+  })
+
   it("counts a visit with no first copy as a wait", () => {
     // One minute a day with no clicking is too little to buy something new at every visit.
     const run = simulatePace(profile(1, 1, 0), { maxDays: 5 })

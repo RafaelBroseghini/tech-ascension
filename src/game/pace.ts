@@ -559,7 +559,7 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
     s.money = Math.max(0, s.money + grown.earned - grown.lost)
     if (s.money > s.peakMoney) s.peakMoney = s.money
     const users = totalUsers(grown.state.users)
-    for (const id of Object.keys(PRODUCT_MILESTONES) as ProductMilestone[]) if (p.marks[id] === undefined && users >= PRODUCT_MILESTONES[id]) p.marks[id] = end + p.skipped + p.skipped
+    for (const id of Object.keys(PRODUCT_MILESTONES) as ProductMilestone[]) if (p.marks[id] === undefined && users >= PRODUCT_MILESTONES[id]) p.marks[id] = end + p.skipped
     if (grown.state.won && p.winSeconds === null) {
       p.winSeconds = end + p.skipped
       p.marks.won = end + p.skipped
