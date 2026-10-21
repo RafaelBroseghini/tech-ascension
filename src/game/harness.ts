@@ -5,6 +5,8 @@ import { eventById, previewOffer } from "./events.ts"
 import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
+import { COMBOS } from "../data/combos.ts"
+import { comboById, effectLabel } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
 import { nextUnlock } from "./nextUnlock.ts"
@@ -162,6 +164,8 @@ export type GameSnapshot = {
   world: WorldSnapshot
   /** Prestige: Prestige, the permanent multiplier, the Exit and the Legacy perks. */
   legacy: LegacySnapshot
+  /** The kitchen: combos found this career, in the order they turned up, and how many the table holds. */
+  combos: { found: { id: string; name: string; joke: string; effect: string }[]; total: number }
 }
 
 
@@ -482,6 +486,13 @@ export function installGameHarness(): GameHarness {
           prestigeOnExit: exitOpen(state.legacy, state.stats.lifetimeEarned, exitWin(state)) ? prestigeOnExit(state.legacy, state.stats.lifetimeEarned, exitWin(state)) : 0,
           perks: [...state.legacy.perks],
           endings: [...state.legacy.endings],
+        },
+        combos: {
+          found: state.combos.flatMap((id) => {
+            const row = comboById(id)
+            return row ? [{ id: row.id, name: row.name, joke: row.joke, effect: effectLabel(row.effect) }] : []
+          }),
+          total: COMBOS.length,
         },
       }
     },

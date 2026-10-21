@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { comboFactors } from "../game/combos.ts"
 import { clickPower, xpPerClick } from "../game/economy.ts"
 import { setDeskPref } from "../game/desk.ts"
 import { useGame } from "../game/store.ts"
@@ -71,13 +72,16 @@ describe("hover click", () => {
     const host = renderStage()
     expect(host.querySelector("[data-testid='stage']")?.getAttribute("data-auto-click")).toBe("on")
     hoverEmoji(host)
-    const power = clickPower(useGame.getState())
-    const xpEach = xpPerClick(useGame.getState().skills)
+    // The whole catalog is held, so every click combo is in: a click pays its factor on top.
+    const combo = comboFactors(useGame.getState())
+    const power = clickPower(useGame.getState()) * combo.click
+    const xpEach = xpPerClick(useGame.getState().skills) * combo.click
     flushSync(() => {
       vi.advanceTimersByTime(1000)
     })
     expect(useGame.getState().money / (power * 20)).toBeCloseTo(1, 9)
-    expect(useGame.getState().xp).toBe(xpEach * 20)
+    // The combo factor makes each click a fraction, so twenty adds are compared as a ratio like the money.
+    expect(useGame.getState().xp / (xpEach * 20)).toBeCloseTo(1, 9)
   })
 
   it("auto-clicks while a finger is held on the emoji and stops on release", () => {

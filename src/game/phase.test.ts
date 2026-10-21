@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { CAPITAL_UNLOCK, EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
+import { comboFactors, foundCombos } from "./combos.ts"
 import { clickFlat, clickPower, gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
 import {
   canBuyJob,
@@ -297,7 +298,10 @@ describe("phase B: gigs", () => {
     useGame.getState().tick(before.now + 10_000)
     // The eight clients have no gear to serve them, so their drops cost part of the 20.
     const lost = dropsCost([1, 2, 3, 4, 5, 6, 7, 8], before.now, before.now + 10_000)
-    expect(useGame.getState().money - before.money).toBeCloseTo(20 - lost, 3)
+    // The skills held make Friday deploy (+1% idle), which is part of the 20.
+    expect(foundCombos(before).map((row) => row.id)).toContain("friday-deploy")
+    expect(comboFactors(before).cps).toBeCloseTo(1.01, 12)
+    expect(useGame.getState().money - before.money).toBeCloseTo(20 * comboFactors(before).cps - lost, 3)
     spy.mockRestore()
   })
 })
