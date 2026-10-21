@@ -36,13 +36,22 @@ export const NO_PERKS: PerkEffects = {
 
 const KNOWN = new Set(LEGACY_PERKS.map((perk) => perk.id))
 const memo = new Map<string, PerkEffects>()
+/** The last answer for each list, with a copy of the ids it was read from: the same list, unchanged, is answered without building a key. */
+const byList = new WeakMap<readonly string[], { readonly ids: readonly string[]; readonly effects: PerkEffects }>()
+
+const sameIds = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((id, i) => id === b[i])
 
 /** The effects of the perks held. Unknown ids are ignored. Answers are kept by the ids held (the game asks every tick), so a list changed in place is read afresh. */
 export function perkEffects(perks: readonly string[] | undefined): PerkEffects {
   if (!perks || perks.length === 0) return NO_PERKS
+  const seen = byList.get(perks)
+  if (seen && sameIds(seen.ids, perks)) return seen.effects
   const key = perks.join(",")
   const cached = memo.get(key)
-  if (cached) return cached
+  if (cached) {
+    byList.set(perks, { ids: [...perks], effects: cached })
+    return cached
+  }
   const has = (id: string) => KNOWN.has(id) && perks.includes(id)
   const effects: PerkEffects = {
     offlineHours: has("capital.offline") ? PERK.offlineHours : 0,
@@ -55,6 +64,7 @@ export function perkEffects(perks: readonly string[] | undefined): PerkEffects {
     startUsers: has("founder.users") ? PERK.startUsers : 0,
   }
   memo.set(key, effects)
+  byList.set(perks, { ids: [...perks], effects })
   return effects
 }
 

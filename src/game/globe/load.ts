@@ -23,9 +23,14 @@ export const servedRpsOf = (item: { readonly kind: GearKind; readonly cps: numbe
 /** Users one copy of a gear row keeps served: its requests a second over what each user sends. */
 export const servedUsersOf = (item: { readonly kind: GearKind; readonly cps: number }): number => servedRpsOf(item) / RPS_PER_USER
 
+/** The gear that serves, with the key it is held under and what one copy serves; the game asks for the capacity every tick. */
+const SERVING_ROWS = GEAR.flatMap((item) => (servedRpsOf(item) > 0 ? [{ key: String(item.id), rps: servedRpsOf(item) }] : []))
+
 /** Requests a second the company can serve with what it owns. */
 export function capacityOf(equipment: Readonly<Record<string, number>>): number {
-  return GEAR.reduce((rps, item) => rps + (equipment[String(item.id)] ?? 0) * servedRpsOf(item), BASE_RPS)
+  let rps = BASE_RPS
+  for (const row of SERVING_ROWS) rps += (equipment[row.key] ?? 0) * row.rps
+  return rps
 }
 
 /** Requests a second the users send. A DDoS surge multiplies a region's share, so callers pass the surged total. */
