@@ -54,6 +54,7 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
     const valid = player.name === "oneOfEach" || profile.visitsPerDay >= 1
     return {
       model: run.complete ? days(run.days) : `>${MAX_DAYS}`,
+      owned: run.ownedDays === null ? "-" : days(run.ownedDays),
       formula: valid ? days(estimateDays(profile, player.k)) : "n/a",
       // Time actually spent at the game: every visit, until the day it finishes.
       handsOn: run.complete ? `${Math.round((run.days * visitsPerDay * minutesPerVisit) / 60)} h` : "-",
@@ -110,12 +111,12 @@ const firstCopyIncome =
 console.log(`offline cap ${OFFLINE_CAP_SECONDS / 3600}h · final click share ${FINAL_CLICK_SHARE.toFixed(2)} · K ${PACE_K.oneOfEach} (one-of-each) / ${PACE_K.stacker} (stacker)`)
 console.log(`last row: ${last.name}, $${last.baseCost.toExponential(1)}; first-copy income without it $${firstCopyIncome.toExponential(2)}/s, so its price alone is ${duration(last.baseCost / firstCopyIncome)} of full income`)
 console.log("")
-console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: model / formula | One-of-each: model / formula | Hands-on (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |")
+console.log("| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: finish / owns everything / formula | One-of-each: finish / owns everything / formula | Hands-on to finish (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |")
 console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 for (const { name, profile, cad, pace, cells } of rows) {
   const [oneOfEach, stacker] = cells
   console.log(
-    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${stacker.model} / ${stacker.formula} days | ${oneOfEach.model} / ${oneOfEach.formula} days | ${stacker.handsOn} / ${oneOfEach.handsOn} | ${stacker.longestWait} / ${oneOfEach.longestWait} |`,
+    `| ${name} | ${Number(profile.visitsPerDay.toFixed(2))}/day | ${profile.minutesPerVisit} | ${profile.clicksPerSec} | ${cad.idleShare.toFixed(2)} | ${pace.toFixed(2)} | ${stacker.model} / ${stacker.owned} / ${stacker.formula} days | ${oneOfEach.model} / ${oneOfEach.owned} / ${oneOfEach.formula} days | ${stacker.handsOn} / ${oneOfEach.handsOn} | ${stacker.longestWait} / ${oneOfEach.longestWait} |`,
   )
 }
 
@@ -124,7 +125,8 @@ if (!custom) {
   // daily (the stacker's constant only holds there). This is the number to put in `PACE_K`.
   const daily = rows.filter((r) => r.profile.visitsPerDay >= 1)
   const fit = PLAYERS.map((player, index) => {
-    const a = daily.map((r) => 1 / (r.pace * r.cells[index].run.days))
+    // The formula is about owning everything, not the win.
+    const a = daily.map((r) => 1 / (r.pace * r.cells[index].run.ownedDays))
     const k = a.reduce((sum, x) => sum + x, 0) / a.reduce((sum, x) => sum + x * x, 0)
     return `${player.name} ${k.toFixed(1)}`
   })
@@ -138,6 +140,15 @@ if (custom) {
   for (const [index, player] of PLAYERS.entries()) {
     const { milestones } = rows[0].cells[index].run
     console.log(`- ${player.name}: ${PACE_MILESTONES.filter((id) => milestones[id] !== undefined).map((id) => `${id} ${milestones[id].toFixed(2)}`).join(", ")}`)
+  }
+  // The career gates to come read users (docs/BUILDS.md): each should land within about a visit of the job it sits on.
+  const visit = 1 / rows[0].profile.visitsPerDay
+  console.log("")
+  console.log(`Career gates (one visit is ${visit.toFixed(2)} days): users against the job each gate sits on, then the finish`)
+  for (const [index, player] of PLAYERS.entries()) {
+    const { milestones: m, days: finish, ownedDays } = rows[0].cells[index].run
+    const at = (n) => (n === undefined || n === null ? "never" : n.toFixed(2))
+    console.log(`- ${player.name}: Mid-level SWE day ${at(m.midJob)}, 10k users day ${at(m.users10k)}; Senior SWE day ${at(m.seniorJob)}, 1M users day ${at(m.users1m)}; win day ${at(m.won)}, owns everything day ${at(ownedDays)}, finish day ${at(rows[0].cells[index].run.complete ? finish : null)}`)
   }
 }
 

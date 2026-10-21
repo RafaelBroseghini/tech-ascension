@@ -33,7 +33,7 @@ export const SEED_PER_GIG = 40
 /** Share of all users that spill over into every region, by its population, through travel and word of mouth. */
 export const SPILL = 0.0004
 /** Growth a second, per unit of reach, at full health. */
-export const GROWTH_PER_SEC = 0.006
+export const GROWTH_PER_SEC = 0.05
 
 /** Growth in a region the company has not bought: the app is reachable, just badly. */
 const UNBOUGHT_REACH = 0.15
