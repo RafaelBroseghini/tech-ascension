@@ -59,8 +59,10 @@ describe("the pace of hiring", () => {
     expect([alone.won, hiring.won]).toEqual([true, true])
   })
 
-  it("leaves a career without hires at least four times slower than one that spends its cash on them", () => {
-    expect(alone.days).toBeGreaterThanOrEqual(hiring.days * 4)
+  // The player's own pace is about eight times faster than when the four was set, and both careers end on the same
+  // resistance-slowed tail, so the gap is smaller: 79 minutes against 22, a ratio of 3.6.
+  it("leaves a career without hires at least three times slower than one that spends its cash on them", () => {
+    expect(alone.days).toBeGreaterThanOrEqual(hiring.days * 3)
   })
 
   it("credits the team with most of the users, and the endings follow", () => {

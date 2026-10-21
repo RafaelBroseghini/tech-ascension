@@ -25,7 +25,7 @@ import {
   winNote,
 } from "./hires.ts"
 import { FRESH_FOOTPRINT } from "./footprint.ts"
-import { GROWTH_BASE, productFactsOf } from "./product.ts"
+import { productFactsOf } from "./product.ts"
 import type { Hires } from "./hires.ts"
 import { REGIONS } from "../../data/regions.ts"
 import { ceilingOf, totalUsers, WORLD_CEILING } from "./world.ts"
@@ -52,8 +52,8 @@ describe("the table", () => {
   })
 
   it("lets a big team outgrow the base pace many times over", () => {
-    expect(GROWTH_BASE + hireBonusOf(team(6, 1000))).toBeGreaterThan(GROWTH_BASE * 10)
-    expect(productFactsOf(team(6, 1000)).growthMult).toBeGreaterThan(GROWTH_BASE * 10)
+    expect(1 + hireBonusOf(team(6, 1000))).toBeGreaterThan(10)
+    expect(productFactsOf(team(6, 1000)).growthMult).toBeGreaterThan(10)
   })
 
   it("gives each kind diminishing returns, under its cap however many are hired", () => {
@@ -159,7 +159,7 @@ describe("salaries as a cost", () => {
   })
 
   it("add their growth to the base pace", () => {
-    expect(productFactsOf(team(3)).growthMult).toBeCloseTo(GROWTH_BASE + hireBonusOf(team(3)))
+    expect(productFactsOf(team(3)).growthMult).toBeCloseTo(1 + hireBonusOf(team(3)))
   })
 })
 
@@ -189,7 +189,7 @@ describe("who grew the product", () => {
   it("counts the base pace as the player's, and only what the hires add as theirs", () => {
     const grown = run(team(2)).state
     const bonus = hireBonusOf(team(2))
-    expect(grown.hiredUsers / (totalUsers(grown.users) - 1000)).toBeCloseTo(bonus / (GROWTH_BASE + bonus), 6)
+    expect(grown.hiredUsers / (totalUsers(grown.users) - 1000)).toBeCloseTo(bonus / (1 + bonus), 6)
   })
 
   it("loses its share along with the users it came from", () => {

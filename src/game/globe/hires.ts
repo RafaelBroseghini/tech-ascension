@@ -10,7 +10,7 @@ export interface Hire {
   readonly rate: number
   /** Dollars a second for each one held, for as long as they stay. */
   readonly salary: number
-  /** The most growth this kind can add to the multiplier, however many are hired. */
+  /** The most growth this kind can add to the multiplier, however many are hired. The multiplier is 1 for the player's own pace. */
   readonly growth: number
   /** Heads at which this kind has added 63% of its `growth`: the bonus is `growth × (1 − e^(−held / scale))`, so a crowd of them has diminishing returns. */
   readonly scale: number
@@ -18,14 +18,14 @@ export interface Hire {
 
 /** Cheapest first. A row opens once the one above it has a hire. */
 export const HIRES: readonly Hire[] = [
-  { id: "outsourced", name: "Outsourced body shop", line: "Ticket in, ticket out. Timezone not included.", price: 5_000, rate: 1.003, salary: 1, growth: 2.5, scale: 400 },
-  { id: "bootcamp", name: "Bootcamp grad", line: "Learned React in twelve weeks. Will tell you.", price: 50_000, rate: 1.003, salary: 5, growth: 3, scale: 400 },
-  { id: "copypaste", name: "Stack Overflow copy-paster", line: "Accepted answer, 2011. Ships it.", price: 500_000, rate: 1.003, salary: 12, growth: 3.5, scale: 400 },
-  { id: "senior", name: "Senior engineer", line: "'It depends.' Then fixes your architecture.", price: 5_000_000, rate: 1.003, salary: 25, growth: 4, scale: 400 },
-  { id: "staff", name: "Staff engineer", line: "Has not written code since the reorg. Prevents more than they ship.", price: 50_000_000, rate: 1.003, salary: 50, growth: 4.5, scale: 400 },
-  { id: "tenx", name: "10x developer", line: "Rumoured to exist. The standups confirm it.", price: 500_000_000, rate: 1.003, salary: 100, growth: 5, scale: 400 },
-  { id: "greybeard", name: "Greybeard", line: "Wrote the parser in 1987. Edits in vi. Will not explain.", price: 5_000_000_000, rate: 1.003, salary: 200, growth: 5.7, scale: 400 },
-  { id: "codegod", name: "Code god", line: "Commits straight to main. CI waits for them.", price: 50_000_000_000, rate: 1.003, salary: 400, growth: 6.4, scale: 400 },
+  { id: "outsourced", name: "Outsourced body shop", line: "Ticket in, ticket out. Timezone not included.", price: 5_000, rate: 1.003, salary: 1, growth: 10, scale: 400 },
+  { id: "bootcamp", name: "Bootcamp grad", line: "Learned React in twelve weeks. Will tell you.", price: 50_000, rate: 1.003, salary: 5, growth: 12, scale: 400 },
+  { id: "copypaste", name: "Stack Overflow copy-paster", line: "Accepted answer, 2011. Ships it.", price: 500_000, rate: 1.003, salary: 12, growth: 14, scale: 400 },
+  { id: "senior", name: "Senior engineer", line: "'It depends.' Then fixes your architecture.", price: 5_000_000, rate: 1.003, salary: 25, growth: 16, scale: 400 },
+  { id: "staff", name: "Staff engineer", line: "Has not written code since the reorg. Prevents more than they ship.", price: 50_000_000, rate: 1.003, salary: 50, growth: 18, scale: 400 },
+  { id: "tenx", name: "10x developer", line: "Rumoured to exist. The standups confirm it.", price: 500_000_000, rate: 1.003, salary: 100, growth: 20, scale: 400 },
+  { id: "greybeard", name: "Greybeard", line: "Wrote the parser in 1987. Edits in vi. Will not explain.", price: 5_000_000_000, rate: 1.003, salary: 200, growth: 22.8, scale: 400 },
+  { id: "codegod", name: "Code god", line: "Commits straight to main. CI waits for them.", price: 50_000_000_000, rate: 1.003, salary: 400, growth: 25.6, scale: 400 },
 ]
 
 /** Heads of each kind, by id. A kind with nobody is left out. */

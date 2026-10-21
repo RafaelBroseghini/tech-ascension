@@ -3,12 +3,9 @@ import type { Hires } from "./hires.ts"
 import { prestigeMult } from "../mods.ts"
 import { perkEffects } from "../perks.ts"
 
-/** The product grows on nights and weekends, with the days given to the job. The pace before the hires, the perks and Prestige scale it. */
-export const GROWTH_BASE = 0.25
-
 /** What the growth model reads from the career: the hires and the Legacy perks. */
 export interface ProductFacts {
-  /** The whole growth multiplier: the base, plus what the hires add. */
+  /** The whole growth multiplier: 1 for the player's own pace (`GROWTH_PER_SEC`), scaled by the perks, plus what the hires add. */
   readonly growthMult: number
   /** The part of `growthMult` the hires add. */
   readonly hireBonus: number
@@ -32,7 +29,7 @@ export function productFactsOf(hires: Hires, legacy?: LegacyFacts): ProductFacts
   const scale = perks.growth * prestigeMult(legacy?.prestigeTotal ?? 0)
   const hireBonus = hireBonusOf(hires) * scale
   return {
-    growthMult: GROWTH_BASE * scale + hireBonus,
+    growthMult: scale + hireBonus,
     hireBonus,
     revenueMult: perks.revenue,
     payroll: hirePayrollOf(hires),

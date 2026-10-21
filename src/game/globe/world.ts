@@ -32,8 +32,8 @@ export const WORLD_CEILING: number = REGIONS.reduce((sum, region) => sum + ceili
 export const SEED_PER_GIG = 40
 /** Share of all users that spill over into every region, by its population, through travel and word of mouth. */
 export const SPILL = 0.0004
-/** Growth a second, per unit of reach, at full health. */
-export const GROWTH_PER_SEC = 0.05
+/** Growth a second, per unit of reach, at full health, at the player's own pace (nights and weekends beside the day job). */
+export const GROWTH_PER_SEC = 0.0125
 
 /** Growth in a region the company has not bought: the app is reachable, just badly. */
 const UNBOUGHT_REACH = 0.15
