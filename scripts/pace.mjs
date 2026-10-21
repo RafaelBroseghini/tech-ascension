@@ -43,6 +43,8 @@ const TABLE = [
 ]
 
 const duration = (seconds) => (seconds >= 86400 ? `${(seconds / 86400).toFixed(1)} days` : seconds >= 3600 ? `${(seconds / 3600).toFixed(1)} hours` : `${Math.round(seconds / 60)} minutes`)
+// Time at the game reads in minutes under two hours, so the 30 to 90 minute target can be checked.
+const minutes = (n) => (n < 120 ? `${Math.round(n)} min` : `${(n / 60).toFixed(1)} h`)
 const days = (n) => (n >= 100 ? Math.round(n) : n.toFixed(1)).toString()
 
 function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
@@ -57,7 +59,7 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
       owned: run.ownedDays === null ? "-" : days(run.ownedDays),
       formula: valid ? days(estimateDays(profile, player.k)) : "n/a",
       // Time actually spent at the game: every visit, until the day it finishes.
-      handsOn: run.complete ? `${Math.round((run.days * visitsPerDay * minutesPerVisit) / 60)} h` : "-",
+      handsOn: run.complete ? minutes(run.days * visitsPerDay * minutesPerVisit) : "-",
       // Most visits in a row that bought nothing new, before everything was owned.
       longestWait: run.complete ? `${run.longestWaitVisits}` : "-",
       run,
