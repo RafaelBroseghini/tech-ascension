@@ -1,5 +1,6 @@
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { LEGACY_PERKS } from "../data/legacy.ts"
+import { comboById, effectLabel } from "./combos.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
 import { eventById } from "./events.ts"
@@ -35,6 +36,7 @@ export const CAREER_TYPES = [
   "milestone",
   "exit",
   "legacy",
+  "combo",
 ] as const
 
 export type CareerType = (typeof CAREER_TYPES)[number]
@@ -197,6 +199,8 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
       return BALANCE_MILESTONES.find((row) => `milestone:${row.id}` === entry.ref)?.label ?? entry.ref
     case "legacy":
       return LEGACY_PERKS.find((perk) => perk.id === entry.ref.slice("legacy:".length))?.name ?? entry.ref
+    case "combo":
+      return comboById(entry.ref.slice("combo:".length))?.name ?? entry.ref
     case "start":
     case "return":
     case "exit":
@@ -297,6 +301,10 @@ export function describeEntry(entry: CareerEntry): CareerRow {
     case "legacy": {
       const perk = LEGACY_PERKS.find((row) => `legacy:${row.id}` === entry.ref)
       return { title: `Legacy: ${name}`, detail: perk ? `${perk.cost} Prestige` : "perk", tone: "buy" }
+    }
+    case "combo": {
+      const combo = comboById(entry.ref.slice("combo:".length))
+      return { title: `Combo: ${name}`, detail: combo ? `${combo.joke} ${effectLabel(combo.effect)}` : "combo", tone: "unlock" }
     }
   }
 }

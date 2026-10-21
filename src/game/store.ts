@@ -28,6 +28,7 @@ import { noteToast } from "./offlineNote.ts"
 import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveReviewChoice } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
+import { newCombos } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import { HALL_OF_FAME } from "../data/legacy.ts"
 import { canBuyPerk, canExit, earningsPrestige, endingBonus, exitHeadline, freshLegacy, isFreshLegacy, legacyPerkById, mergeGrant, startingGrant, withStartUsers } from "./legacy.ts"
@@ -183,6 +184,8 @@ type GameState = {
   returns: number
   reveals: FeatureId[]
   whatsNew: boolean
+  /** Kitchen combos found this career, by id, in the order they turned up. Each is journaled once. */
+  combos: string[]
   click: () => { money: number; xp: number }
   /** Buy a Phase D capital row. */
   buy: (tierId: number) => void
@@ -294,6 +297,7 @@ function toSave(state: GameState, now: number): SaveData {
   save.company = state.company
   save.footprint = state.footprint
   if (Object.keys(state.hires).length > 0) save.hires = state.hires
+  if (state.combos.length > 0) save.combos = state.combos
   save.career = {
     seq: state.journal.seq,
     log: savedLog(state.journal.entries),
@@ -448,6 +452,7 @@ export const useGame = create<GameState>((set, get) => ({
   returns: booted.career.returns,
   reveals: booted.career.reveals,
   whatsNew: booted.career.whatsNew,
+  combos: booted.save.combos ?? [],
 
   click: () => {
     const state = get()
@@ -644,6 +649,7 @@ export const useGame = create<GameState>((set, get) => ({
       // Every career is a new product. The handle stays; the start card opens on the product beat.
       profile: { handle: state.profile.handle, product: randomProduct(state.profile.handle, Math.random, product), chosen: false },
       legacy,
+      combos: [],
       exitCard: {
         run: state.legacy.runs,
         headline: exitHeadline({ handle: state.profile.handle, product, users, won: state.company.won, ending: state.company.ending }),
@@ -960,6 +966,7 @@ export const useGame = create<GameState>((set, get) => ({
       ...freshCareerSlice(now),
       profile: { ...randomIdentity(), chosen: false },
       legacy: freshLegacy(),
+      combos: [],
       exitCard: null,
     })
   },
@@ -1075,11 +1082,16 @@ useGame.subscribe((state, prev) => {
   const notes = purchaseNotes(prev, state)
   const live = useGame.getState()
   const rows = newlyOpen(progressOf(live), live.unlocked)
-  if (notes.length === 0 && rows.length === 0) return
+  // The kitchen: a combo is found the moment both ingredients are held. Only a change of holdings can reveal one.
+  const held = state.skills !== prev.skills || state.equipment !== prev.equipment || state.owned !== prev.owned || state.jobs !== prev.jobs || state.gigs !== prev.gigs
+  const found = held ? newCombos(live, live.combos) : []
+  if (notes.length === 0 && rows.length === 0 && found.length === 0) return
   // While the "while you were out" note is up, what opens is part of the return: one reveal, the rest on the note.
   const returning = Boolean(live.toast?.note)
   const plan = rows.length > 0 ? planUnlocks(rows, live, returning, getAdminMode()) : null
-  const patch: Partial<GameState> = { journal: noted(live.journal, [...notes, ...(plan?.notes ?? [])], live) }
+  const comboNotes: CareerNote[] = found.map((row) => ({ type: "combo", ref: `combo:${row.id}` }))
+  const patch: Partial<GameState> = { journal: noted(live.journal, [...notes, ...(plan?.notes ?? []), ...comboNotes], live) }
+  if (found.length > 0) patch.combos = [...live.combos, ...found.map((row) => row.id)]
   if (plan) {
     patch.unlocked = plan.unlocked
     patch.fresh = plan.fresh
@@ -1089,6 +1101,18 @@ useGame.subscribe((state, prev) => {
   }
   useGame.setState(patch)
 })
+
+// A save from before the kitchen already holds some ingredients: its combos are found once, at boot, and journaled.
+{
+  const live = useGame.getState()
+  const found = newCombos(live, live.combos)
+  if (found.length > 0) {
+    useGame.setState({
+      combos: [...live.combos, ...found.map((row) => row.id)],
+      journal: noted(live.journal, found.map((row): CareerNote => ({ type: "combo", ref: `combo:${row.id}` })), live),
+    })
+  }
+}
 
 // Music is a career unlock: the saved switch only plays once the headset is bought (or in admin mode, which shows everything).
 function syncMusicGate() {
