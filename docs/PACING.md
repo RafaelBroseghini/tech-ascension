@@ -2,7 +2,9 @@
 
 How many days of real time it takes to own everything, for someone who does not sit at the game all day: they open it, click and shop for a while, leave, and come back.
 
-"Own everything" is the game's own finish line (`ownsEverything` in `src/game/nextUnlock.ts`): every skill, gig, job, gear row and capital row held at least once. It is the same test that unlocks Auto-click. Second copies are optional.
+"Own everything" is the game's own finish line for the shop (`ownsEverything` in `src/game/nextUnlock.ts`): every skill, gig, job, gear row and capital row held at least once. It is the same test that unlocks Auto-click. Second copies are optional.
+
+A career now finishes on the later of two days: the day it owns everything and the day the product wins the world (8B users). The pace model prints both. The formula below is about the first.
 
 ## The formula
 
@@ -36,39 +38,54 @@ Once a day for 30 minutes: you are away 23.5 hours but only 8 count, so `idleSha
 
 ## What it gives
 
-Days of real time, from the model (`src/game/pace.ts`) and from the formula. "Hands-on" is the time actually spent at the game, visits × minutes, until it finishes. Regenerate with `npm run pace`.
+Days of real time, from the model (`src/game/pace.ts`) and from the formula. Each player column reads "finish / owns everything / formula": the finish is the later of owning everything and the win, and the formula is about owning everything. "Hands-on to finish" is the time actually spent at the game, visits × minutes, until the finish. The stacker (reinvestor) re-buys anything that repays within two days; the one-of-each player (collector) within an hour. Regenerate with `npm run pace`.
 
-| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Reinvestor: model / formula | Collector: model / formula | Hands-on (reinvestor / collector) | Longest wait, visits (reinvestor / collector) |
+| Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: finish / owns everything / formula | One-of-each: finish / owns everything / formula | Hands-on to finish (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.34 | 0.6 / 0.7 days | 0.5 / 0.6 days | 4 h / 3 h | 1 / 1 |
-| Hardcore | 6/day | 20 | 3 | 1.00 | 1.17 | 0.8 / 0.8 days | 0.7 / 0.7 days | 2 h / 1 h | 0 / 0 |
-| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.0 / 0.9 days | 0.7 / 0.8 days | 1 h / 1 h | 0 / 0 |
-| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 1.5 / 1.3 days | 1.5 / 1.1 days | 1 h / 1 h | 0 / 0 |
-| Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 2.0 / 2.4 days | 3.0 / 2.1 days | 1 h / 2 h | 0 / 0 |
-| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 3.0 / 2.6 days | 3.0 / 2.3 days | 1 h / 1 h | 0 / 0 |
-| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.0 / n/a days | 6.0 / 4.2 days | 2 h / 2 h | 0 / 0 |
-| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 21.0 / n/a days | 35.0 / 14.6 days | 2 h / 3 h | 0 / 0 |
+| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.34 | 0.7 / 0.6 / 0.7 days | 0.7 / 0.5 / 0.6 days | 4.0 h / 4.0 h | 1 / 1 |
+| Hardcore | 6/day | 20 | 3 | 1.00 | 1.17 | 0.8 / 0.8 / 0.8 days | 0.8 / 0.7 / 0.7 days | 100 min / 97 min | 0 / 0 |
+| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.2 / 1.0 / 0.9 days | 1.1 / 0.7 / 0.8 days | 55 min / 51 min | 0 / 0 |
+| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 2.1 / 1.5 / 1.3 days | 2.2 / 1.5 / 1.1 days | 43 min / 43 min | 0 / 0 |
+| Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 3.0 / 2.0 / 2.4 days | 3.1 / 3.0 / 2.1 days | 91 min / 94 min | 0 / 0 |
+| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 4.1 / 3.0 / 2.6 days | 5.0 / 3.0 / 2.3 days | 41 min / 50 min | 0 / 0 |
+| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.3 / 6.0 / n/a days | 6.1 / 6.0 / 4.2 days | 94 min / 92 min | 0 / 0 |
+| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 28.0 / 21.0 / n/a days | 35.0 / 35.0 / 14.6 days | 2.0 h / 2.5 h | 0 / 0 |
 
 The finish is a whole number of visits, so a schedule with a long gap between visits reads in steps and the formula is only close, within about a third (the test allows 35%).
 
-**Longest wait** is the most visits in a row that bought no first copy of anything (a skill, gig, job, gear or capital row) before the career owned everything. The model only buys at visits, so a wait is counted in visits. A career that ends in a day should never come back to nothing new: for the target player (4 visits a day of 5 minutes, 2 clicks a second) both players wait 0 visits and own everything on day 1.00, and `pace.test.ts` pins at most 1.
+**Longest wait** is the most visits in a row that bought no first copy of anything (a skill, gig, job, gear or capital row) before the career owned everything. The model only buys at visits, so a wait is counted in visits. A career that ends in a day should never come back to nothing new: for the target player (4 visits a day of 5 minutes, 2 clicks a second) both players wait 0 visits and own everything on day 1.00, and `pace.test.ts` pins at most 1. The wait stops counting once everything is owned: after that the career waits on the product, not the shop.
 
 To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
 
+## The product in the single run
+
+The single run now models the product (an IC player, no hires, the free home region, no incidents) and does not model the kitchen's combo bonuses yet. The game's own `advanceCompany` walks it, so a change to `GROWTH_PER_SEC`, the serving gear or the revenue moves these numbers. `npm run pace -- 4 5 2` (the target player, 4 visits a day of 5 minutes, 2 clicks a second) prints the days the career gates to come sit on:
+
+```
+Career gates (one visit is 0.25 days): users against the job each gate sits on, then the finish
+- oneOfEach: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.39, owns everything day 1.00, finish day 1.39
+- stacker: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.40, owns everything day 1.00, finish day 1.40
+```
+
+- **10,000 users land within a visit of Mid-level SWE and 1,000,000 within a visit of Senior SWE.** Both players take both jobs at their second visit (day 0.25), and the product reaches 10k and 1M a few minutes later, at every growth pace tried (`GROWTH_PER_SEC` 0.0125 to 0.1).
+- **The win is not inside a day.** The shop is done on day 1.00, but the 8B win lands on day 1.4 (hands-on 28 minutes). The growth pace is not what holds it: raising `GROWTH_PER_SEC` eight times only brings it to 1.06 (stacker) and 1.27 (one-of-each). The player buys serving gear for the crowd it has, once per visit, and spends everything else on rows that pay back in income. At the day 0.75 visit it holds $1.9e13 and the cheapest serving gear that would carry 8B users (about 1e9 requests a second, from what it already owns) costs $1.1e12, so it could afford it; it just does not buy ahead of the crowd. The crowd then sits at the gear's capacity (9e8 users) for the last quarter day, and the 8B follows once the visit at day 1.0 and the one at 1.25 buy the rest. The lever is how the pace player buys serving gear (ahead of growth), a later step, not a growth constant.
+- **Growth is solved exactly.** `stepCompany` used to take one explicit step per minute. At the raised pace that is a factor of `GROWTH_PER_SEC x STEP_MS / 1000` = 0.05 x 0.25 x 60 = 0.75 per step (0.09 at the old 0.006), where the explicit step is no longer close to the curve: a tenth of a second at a time ended 41% above a minute at a time. A region now grows by the closed-form logistic over each piece, and a step is walked in pieces of at most `SUBSTEP_S` = 5 seconds so the crowd and the gear see each other: the factor is 0.06 per piece and one hour at 100 ms against 60 s steps differs by 1.4%.
+- **One pace.** The ladder's 0.25 (`GROWTH_BASE`) only existed to contrast with the removed founder fork. It is folded into `GROWTH_PER_SEC` = 0.0125 (what 0.05 x 0.25 was), the multiplier is 1 for the player's own pace, and the hires' `growth` is four times what it was so the team multiplies the player's pace by the same amount. Dropped users churn at `DROP_CHURN_PER_SEC` = 0.075, so a crowd the gear cannot serve still settles near its capacity (the growth would otherwise outrun the churn).
+
 ## Over several careers (the Exit)
 
-**Stale after the capital tail cut.** The Exit constants and the targets below were tuned for careers that took days; careers now take about a day, so the first Exit pays over a hundred Prestige and the targets and sweep below no longer hold (the Exit is admin-only and was left alone). The first career table and the `falling` and Long weekend figures are regenerated; the sweep table and the one-of-each narrative are the old numbers.
+**Stale after the capital tail cut.** The Exit constants and the targets below were tuned for careers that took days; careers now take about a day, so the first Exit pays over a hundred Prestige and the targets and sweep below no longer hold (the Exit is admin-only and was left alone). The first career table, the `falling` and the Long weekend figures are regenerated after the product was tuned to the pace of the single run (the player's own pace in `GROWTH_PER_SEC` is about eight times what it was); the sweep table and the one-of-each narrative are the old numbers.
 
 `simulateExits` in `src/game/pace.ts` plays the same player through the Exit (`docs/PRESTIGE.md`): the first career leaves once the Exit would raise the Prestige bonus enough, every career after that can leave at any visit. After each Exit it spends the Prestige on the cheapest perk it can pay for across the Network, Founder and Capital tracks (Network first on ties), applies the Prestige multiplier to every income and XP rate, and stops when a career owns everything **and** has won the world. `npm run pace` prints it for the Regular player after the table; `npm run pace -- exit [visits minutes clicks] [falling]` prints it for any profile.
 
-**The single-run table does not model the product.** `simulatePace` leaves it out; only `simulateExits` models it:
+**Both models have the product.** `simulatePace` (the single run) and `simulateExits` walk the same product:
 
-- **Modeled.** Users by region, grown with the game's own `advanceCompany`: gigs seed regions, the gear the sim already buys serves them (`capacityOf`), served users pay (`arpuOf`), dropped requests cost, and the footprint is the free home region. The Prestige bonus and Viral loop multiply growth, Platform multiplies revenue, the win at 8B users pays its x1.25 on everything earned after and records the night owl ending and its 5 Prestige. Early adopters seeds 1,000 users; Long weekend lengthens the offline cap; Volume discount, Bulk hardware, Raise season and Compounding change prices and income through the game's own functions.
-- **Left out.** Incidents (the random draw never throws one), hires (so only the **night owl** ending can be won: the Hall of Fame's other one is not modeled, and neither is "both in about a month"), regions and points of presence beyond the free home region, and any gear bought to serve users beyond what the one-of-each and stacker rules already buy. A one-of-each player never buys enough serving gear to win the world in the first career; a later career wins on the Prestige growth bonus.
+- **Modeled.** Users by region, grown with the game's own `advanceCompany`: gigs seed regions, the gear the sim already buys serves them (`capacityOf`), served users pay (`arpuOf`), dropped requests cost, and the footprint is the free home region. The player is an IC with no hires. The Prestige bonus and Viral loop multiply growth, Platform multiplies revenue, the win at 8B users pays its x1.25 on everything earned after and records the night owl ending and its 5 Prestige. Early adopters seeds 1,000 users; Long weekend lengthens the offline cap; Volume discount, Bulk hardware, Raise season and Compounding change prices and income through the game's own functions. In the single run, time away past the offline cap is not walked by the product (the game never credits it), and the dates of the product milestones are on the wall clock.
+- **Left out.** Incidents (the random draw never throws one), hires (so only the **night owl** ending can be won: the Hall of Fame's other one is not modeled, and neither is "both in about a month"), regions and points of presence beyond the free home region, any gear bought to serve users beyond what the one-of-each and stacker rules already buy, and the kitchen's combo bonuses (`docs/BUILDS.md`, section 5), which are not in the economy yet.
 
-Product revenue is not in the single-run table, so that table reads the same whether or not a career has a product. In `simulateExits`, the product changes when the world is won: the one-of-each player does not win within 60 days of a career with no Prestige.
+The single run's finish is the later of owning everything and the win; `simulateExits`' first career agrees with it on both days (`pace.test.ts`). The single run also dates three product milestones (`users10k`, `users1m`, `won`), and the script prints them next to the jobs the career gates will sit on.
 
-The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product it leaves a visit or two after the Regular player does (day 1.33 for the one-of-each player and 1.67 for the stacker, against day 1.00) and both finish in career 2 on day 2.3, so it does not test the replay either.
+The player leaves at the first visit where the Exit would raise the Prestige bonus by 15% or more (`EXIT_MIN_GROWTH`; the `×A → ×B` on the button). The textbook rule, "leave when Prestige per hour starts to fall", is `falling`: with the product both Regular players now finish in their first career on day 1.3, never leaving, so it does not test the replay either.
 
 Tuned constants (`src/data/legacy.ts`), kept at their original values because they still land: `PRESTIGE_EARN_SCALE = 5e11` (the first Prestige needs $5e11 earned across careers: the Exit opens around day 1.0 and is taken a visit or two later), `PRESTIGE_MULT_PER = 0.03` and `ENDING_BONUS = 5`. Swept around them for the Regular player (3 visits a day of 15 minutes, 2 clicks a second). The first row is measured at the 8B target; the other rows were swept at the old 7B target and are kept for their direction:
 
@@ -85,24 +102,24 @@ A larger bonus per Prestige finishes in more careers, not fewer (each Exit pays 
 
 The stacker, career by career (users at the Exit, Prestige paid, the bonus after):
 
-| Career | Day in | Day out | Row 6 after (days) | Matched last career's earnings after (days) | Users | Perks held | Prestige paid | Prestige total | Bonus |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 0.00 | 1.67 | 0.67 | - | 343M | 0 | 5 | 5 | ×1.15 |
-| 2 | 1.67 | 3.67 | 0.34 | 1.67 | 620M | 3 | 7 | 12 | ×1.36 |
-| 3 | 3.67 | 6.00 | 0.34 | 2.00 | 2.0B | 5 | 14 | 26 | ×1.78 |
-| 4 | 6.00 | 8.33 | 0.34 | 2.01 | 4.9B | 8 | 18 | 44 | ×2.32 |
-| 5 | 8.33 | 10.67 | 0.33 | 2.00 | 7.6B | 10 | 22 | 66 | ×2.98 |
-| 6 | 10.67 | 12.67 (done) | 0.33 | 2.00 | 8.2B | 12 | - | 66 | ×2.98 |
+| Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Matched the last career's earnings after (days) | World won after (days) | Users | Perks held | Earned | Prestige paid (ending bonus) | Prestige total | Bonus |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 0.00 | 1.00 | 1.00 | 0.67 | - | - | 3.1B | 0 | 6.7e+17 | 110 | 110 | x4.30 |
+| 2 | 1.00 | 1.67 | 0.33 | 0.01 | 0.67 | 0.41 | 8.2B | 13 | 8.6e+18 | 159 (5) | 269 | x9.07 |
+| 3 | 1.67 | 2.00 | 0.33 | 0.00 | 0.33 | 0.05 | 8.2B | 13 | 1.6e+19 | 104 | 373 | x12.19 |
+| 4 | 2.00 | 2.33 | 0.33 | 0.00 | 0.33 | 0.04 | 8.2B | 13 | 2.4e+19 | 92 | 465 | x14.95 |
+| 5 | 2.33 | 2.67 | 0.33 | 0.00 | 0.33 | 0.03 | 8.2B | 13 | 3.1e+19 | 81 | 546 | x17.38 |
+| 6 | 2.67 | 3.33 (done) | 0.33 | 0.00 | 0.33 | 0.02 | 8.2B | 13 | 9.0e+19 | - | 546 | x17.38 |
 
-Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career, and the stacker is done in the 2nd career on day 5.0 and the one-of-each player in the 3rd, also on day 5.0.
+Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career. The stacker now wins the world in its first career (day 3.0, no Exit), and the one-of-each player in the 3rd on day 4.0.
 
-The one-of-each player's run is the same shape, one career longer: Exits on days 2.0, 4.3, 7.0, 10.0, 13.3, 16.3, done on day 19.3 in career 7, the world first won in career 6 (+5 Prestige for the night owl ending). At the old 7B target it was done on day 16.3 in career 6; the extra billion users is the seventh career.
+The one-of-each player's run is shorter: one Exit on day 1.0 (6.5B users, 109 Prestige), then the world is won in career 2, done on day 1.67 (so no night owl ending bonus is paid).
 
 Against the targets for the Regular player (all stale after the tail cut; the old results are kept for the record, and `pace.test.ts` now pins the model's own output):
 
 - **First Exit around day 1.5 to 2:** met (1.67 and 2.00).
 - **Career 2 reaches the point where career 1 exited in under half the time:** met for the **capital row**: row 6 comes 0.34 days in against 0.67 (one visit; the model cannot see faster than the 8 hours between visits). **Not met for earnings:** career 2 earns what career 1 earned in all after 1.67 days, for both players, against career 1's 1.67 days (stacker) and 2.00 (one-of-each). Income grows exponentially through the second day, so a head start of a few hours saves a few hours, and no value of the three knobs fixes it in the sweep above (the best case, 0.06 per Prestige, takes 0.80 of the first career's time and finishes in 8 to 9 careers). The perks are for the player who plays the early game by hand.
-- **The career that owns everything (or wins the world, whichever is later) is the 4th to 7th, two to three weeks:** met (6th on day 12.7 for the stacker, 7th on day 19.3 for the one-of-each player). `pace.test.ts` checks it.
+- **The career that owns everything (or wins the world, whichever is later) is the 4th to 7th, two to three weeks:** met (6th on day 12.7 for the stacker, 7th on day 19.3 for the one-of-each player). (old result.)
 - **Both endings in about a month:** not checked. The model has no hires, so it can only reach the night owl ending (career 6 for the one-of-each player). The first Exit after a win pays the 5 Prestige once.
 
 ## Reading it
@@ -115,7 +132,7 @@ Against the targets for the Regular player (all stale after the tail cut; the ol
 
 ## What the model assumes
 
-`simulatePace` in `src/game/pace.ts` (no product; see above for `simulateExits`, which has one) plays the real tables with the real gates and the game's own economy functions, so a table change moves the answer.
+`simulatePace` in `src/game/pace.ts` (with the product, see above) plays the real tables with the real gates and the game's own economy functions, so a table change moves the answer.
 
 - You visit `visitsPerDay` times, evenly spaced, for `minutesPerVisit` each, clicking `clicksPerSec` the whole visit. You buy only while you are there.
 - Time away pays idle income and idle XP, up to the offline cap, once, when you return.
