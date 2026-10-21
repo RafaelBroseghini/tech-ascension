@@ -6,7 +6,7 @@ import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { bandForTier } from "../data/idePacks.ts"
 import { GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, CAPITAL_UNLOCK } from "../data/phases.ts"
-import { canAfford, equipById, gearBase, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
+import { canAfford, equipById, firstJobAtRank, gearBase, highestJobRank, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { goldSectionOpen, hoverRate } from "./gold.ts"
@@ -185,7 +185,7 @@ function gearProgress(p: FeatureProgress, id: number): TriggerProgress {
   if (!row) return { fill: 0, left: "" }
   if (!equipmentOpen(p)) return { fill: ratio(p.xpTotal, GEAR_TAB_UNLOCK.minXp) * 0.4, left: xpLeft() }
   if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs)) {
-    const job = row.unlockJobId > 0 && !p.jobs.includes(row.unlockJobId) ? jobById(row.unlockJobId) : undefined
+    const job = row.unlockJobRank > 0 && highestJobRank(p.jobs) < row.unlockJobRank ? firstJobAtRank(row.unlockJobRank) : undefined
     if (job) return { fill: 0.4, left: `the ${job.name} job` }
     return { fill: 0.4 + ratio(p.peakMoney, row.unlockMoney) * 0.3, left: "a bigger balance" }
   }
@@ -203,7 +203,7 @@ function hoverProgress(p: FeatureProgress): TriggerProgress {
 }
 
 function capitalProgress(p: FeatureProgress): TriggerProgress {
-  const senior = jobById(CAPITAL_UNLOCK.minJobId)
+  const senior = firstJobAtRank(CAPITAL_UNLOCK.minJobRank)
   const byJob = senior ? ratio(p.xpTotal, senior.xpReq) * 0.95 : 0
   const byMoney = ratio(p.peakMoney, CAPITAL_UNLOCK.minMoney)
   return byMoney >= byJob

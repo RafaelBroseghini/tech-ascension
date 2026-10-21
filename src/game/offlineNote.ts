@@ -1,5 +1,5 @@
 import { formatNumber } from "./format.ts"
-import { highestJobId } from "./economy.ts"
+import { highestJobRank } from "./economy.ts"
 
 /**
  * One sentence for the sticky note left on the desk while the player was away.
@@ -51,10 +51,10 @@ function diaryIndex(elapsed: number, size: number): number {
 }
 
 function poolFor(input: OfflineDiaryInput): readonly string[] {
-  const job = highestJobId(input.jobs) ?? 0
-  if (job >= 26) return EMPIRE
-  if (job >= 14) return SENIOR
-  if (job > 0) return EMPLOYED
+  const rank = highestJobRank(input.jobs)
+  if (rank >= 26) return EMPIRE
+  if (rank >= 14) return SENIOR
+  if (rank > 0) return EMPLOYED
   if (input.credit > 0) return RETAINER
   return STUDYING
 }

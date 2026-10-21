@@ -14,7 +14,7 @@
  */
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
-import { GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { GIGS, JOB_TIERS, SKILL_TIERS, highestJobRank } from "../data/phases.ts"
 import {
   canAfford,
   capitalBase,
@@ -132,9 +132,9 @@ export type PaceMilestone = (typeof PACE_MILESTONES)[number]
 export const PRODUCT_MILESTONES = { users10k: 10_000, users1m: 1_000_000, won: WORLD_TARGET } as const
 export type ProductMilestone = keyof typeof PRODUCT_MILESTONES
 
-/** Job ids the career gates sit on: Mid-level SWE (the specialization pick) and Senior SWE. */
-export const MID_JOB_ID = 7
-export const SENIOR_JOB_ID = 14
+/** Job ranks the career gates sit on: Mid-level SWE (the specialization pick) and Senior SWE. A milestone is met by holding a job of that rank or higher. */
+export const MID_JOB_RANK = 7
+export const SENIOR_JOB_RANK = 14
 
 export type PaceResult = {
   profile: PlayProfile
@@ -204,8 +204,8 @@ const MILESTONE_TESTS: Record<Exclude<PaceMilestone, ProductMilestone>, (s: Sim)
   gigBoard: gigBoardUnlocked,
   gear: equipmentOpen,
   jobBoard: jobBoardUnlocked,
-  midJob: (s) => s.jobs.includes(MID_JOB_ID),
-  seniorJob: (s) => s.jobs.includes(SENIOR_JOB_ID),
+  midJob: (s) => highestJobRank(s.jobs) >= MID_JOB_RANK,
+  seniorJob: (s) => highestJobRank(s.jobs) >= SENIOR_JOB_RANK,
   capital: capitalUnlocked,
   allSkills: (s) => SKILL_TIERS.every((row) => ownedCount(s.skills, row.id) > 0),
   allGigs: (s) => GIGS.every((gig) => s.gigs.includes(gig.id)),

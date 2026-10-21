@@ -46,7 +46,7 @@ describe("phase gates", () => {
   })
 
   it("opens capital on the Senior job (id >= 14) OR $500K held, and stays open once you own capital", () => {
-    expect(CAPITAL_UNLOCK).toEqual({ minJobId: 14, minMoney: 500_000 })
+    expect(CAPITAL_UNLOCK).toEqual({ minJobRank: 14, minMoney: 500_000 })
     expect(capitalUnlocked(EMPTY)).toBe(false)
     expect(capitalUnlocked({ ...EMPTY, jobs: [1, 2, 3, 4, 5, 6, 13] })).toBe(false)
     expect(capitalUnlocked({ ...EMPTY, jobs: [14] })).toBe(true)

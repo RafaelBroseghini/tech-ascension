@@ -13,7 +13,7 @@ import type { Tag } from "./tags.ts"
 export const COST_GROWTH = 1.15 as const;
 export const GIG_BOARD_UNLOCK = { minXp: 14000, requireOwnedSkills: [15, 16] as const };
 export const JOB_BOARD_UNLOCK = { minXp: 40000, minGigsCompleted: 6 } as const;
-export const CAPITAL_UNLOCK = { minJobId: 14, minMoney: 500000 } as const;
+export const CAPITAL_UNLOCK = { minJobRank: 14, minMoney: 500000 } as const;
 export const GEAR_TAB_UNLOCK = { minXp: 10000 } as const;
 
 export { GEAR as EQUIPMENT } from "./gear.ts";
@@ -270,6 +270,8 @@ export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => ({
  */
 export type JobTier = {
   id: number
+  /** Place on the job ladder. Gates compare ranks, never ids; trunk and specialization rows at the same height share a rank. */
+  rank: number
   name: string
   tags: readonly Tag[]
   xpReq: number
@@ -282,37 +284,37 @@ export type JobTier = {
   xpLump: number
 };
 const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump" | "xpCost"> & { baseCost: number; xpPerSec?: number; xpLump?: number })[] = [
-  { id: 1, name: "Internship offer", tags: ["product"], xpReq: 35000, baseCost: 0, cps: 8, clickBonus: 2, clickPct: 1, xpPerSec: 6, xpLump: 1500 },
-  { id: 2, name: "Junior SWE", tags: ["product"], xpReq: 45000, baseCost: 500, cps: 25, clickBonus: 4, clickPct: 1, xpPerSec: 8 },
-  { id: 3, name: "Junior + mentor buddy", tags: ["product"], xpReq: 50000, baseCost: 800, cps: 30, clickBonus: 4, clickPct: 1, xpPerSec: 12, xpLump: 2500 },
-  { id: 4, name: "Code review skills", tags: ["product"], xpReq: 55000, baseCost: 2000, cps: 15, clickBonus: 6, clickPct: 1.5, xpPerSec: 14, xpLump: 3500 },
-  { id: 5, name: "QA rotation", tags: ["product"], xpReq: 60000, baseCost: 1500, cps: 20, clickBonus: 4, clickPct: 1, xpLump: 3000 },
-  { id: 6, name: "On-call rotation", tags: ["infra"], xpReq: 70000, baseCost: 8000, cps: 40, clickBonus: 6, clickPct: 1, xpPerSec: 10, xpLump: 5000 },
-  { id: 7, name: "Mid-level SWE", tags: ["product"], xpReq: 90000, baseCost: 25000, cps: 80, clickBonus: 10, clickPct: 1.5 },
-  { id: 8, name: "Feature owner", tags: ["product"], xpReq: 100000, baseCost: 40000, cps: 100, clickBonus: 12, clickPct: 1.5 },
-  { id: 9, name: "System design study", tags: ["backend", "infra"], xpReq: 110000, baseCost: 50000, cps: 30, clickBonus: 15, clickPct: 2, xpPerSec: 18, xpLump: 8000 },
-  { id: 10, name: "Backend specialist", tags: ["backend"], xpReq: 120000, baseCost: 60000, cps: 120, clickBonus: 15, clickPct: 1.5 },
-  { id: 11, name: "Frontend specialist", tags: ["frontend"], xpReq: 120000, baseCost: 55000, cps: 110, clickBonus: 15, clickPct: 1.5 },
-  { id: 12, name: "Full-stack generalist", tags: ["frontend", "backend"], xpReq: 130000, baseCost: 70000, cps: 130, clickBonus: 18, clickPct: 1.5 },
-  { id: 13, name: "Tech lead (acting)", tags: ["product"], xpReq: 150000, baseCost: 100000, cps: 160, clickBonus: 20, clickPct: 2, xpLump: 8000 },
-  { id: 14, name: "Senior SWE", tags: ["product"], xpReq: 160000, baseCost: 120000, cps: 200, clickBonus: 25, clickPct: 2 },
-  { id: 15, name: "Senior + hiring loop", tags: ["product"], xpReq: 180000, baseCost: 150000, cps: 220, clickBonus: 25, clickPct: 2 },
-  { id: 16, name: "Staff engineer", tags: ["product"], xpReq: 220000, baseCost: 400000, cps: 500, clickBonus: 50, clickPct: 2, xpPerSec: 20, xpLump: 12000 },
-  { id: 17, name: "Staff platform", tags: ["infra", "backend"], xpReq: 250000, baseCost: 500000, cps: 550, clickBonus: 50, clickPct: 2 },
-  { id: 18, name: "Engineering manager", tags: ["product"], xpReq: 280000, baseCost: 700000, cps: 450, clickBonus: 60, clickPct: 2.5 },
-  { id: 19, name: "Principal engineer", tags: ["product"], xpReq: 300000, baseCost: 900000, cps: 800, clickBonus: 80, clickPct: 2.5, xpPerSec: 30, xpLump: 20000 },
-  { id: 20, name: "Director of Eng", tags: ["product"], xpReq: 350000, baseCost: 1500000, cps: 900, clickBonus: 100, clickPct: 2.5 },
-  { id: 21, name: "VP Engineering", tags: ["product"], xpReq: 450000, baseCost: 4000000, cps: 1500, clickBonus: 150, clickPct: 2.5 },
-  { id: 22, name: "CTO (startup)", tags: ["product"], xpReq: 500000, baseCost: 8000000, cps: 2000, clickBonus: 200, clickPct: 3 },
-  { id: 23, name: "Distinguished engineer", tags: ["product"], xpReq: 600000, baseCost: 12000000, cps: 2500, clickBonus: 250, clickPct: 3, xpPerSec: 40 },
-  { id: 24, name: "Fellow / industry voice", tags: ["product"], xpReq: 750000, baseCost: 25000000, cps: 4000, clickBonus: 400, clickPct: 3, xpPerSec: 50, xpLump: 50000 },
-  { id: 25, name: "Board advisor (tech)", tags: ["product"], xpReq: 900000, baseCost: 50000000, cps: 5000, clickBonus: 500, clickPct: 3 },
-  { id: 26, name: "Fractional executive", tags: ["product"], xpReq: 1000000, baseCost: 80000000, cps: 6000, clickBonus: 600, clickPct: 3 },
-  { id: 27, name: "Partner at BigCo", tags: ["product"], xpReq: 1200000, baseCost: 150000000, cps: 10000, clickBonus: 1000, clickPct: 3 },
-  { id: 28, name: "Chief Scientist", tags: ["ai", "data"], xpReq: 1400000, baseCost: 300000000, cps: 15000, clickBonus: 1500, clickPct: 3, xpPerSec: 60 },
-  { id: 29, name: "Lab director", tags: ["ai", "hardware"], xpReq: 1600000, baseCost: 500000000, cps: 20000, clickBonus: 2000, clickPct: 3, xpPerSec: 70, xpLump: 100000 },
-  { id: 30, name: "Empire operator", tags: ["product", "infra"], xpReq: 2000000, baseCost: 1000000000, cps: 35000, clickBonus: 3500, clickPct: 4 },
-  { id: 31, name: "Sovereign tech chair", tags: ["product"], xpReq: 2500000, baseCost: 5000000000, cps: 80000, clickBonus: 8000, clickPct: 4 },
+  { id: 1, rank: 1, name: "Internship offer", tags: ["product"], xpReq: 35000, baseCost: 0, cps: 8, clickBonus: 2, clickPct: 1, xpPerSec: 6, xpLump: 1500 },
+  { id: 2, rank: 2, name: "Junior SWE", tags: ["product"], xpReq: 45000, baseCost: 500, cps: 25, clickBonus: 4, clickPct: 1, xpPerSec: 8 },
+  { id: 3, rank: 3, name: "Junior + mentor buddy", tags: ["product"], xpReq: 50000, baseCost: 800, cps: 30, clickBonus: 4, clickPct: 1, xpPerSec: 12, xpLump: 2500 },
+  { id: 4, rank: 4, name: "Code review skills", tags: ["product"], xpReq: 55000, baseCost: 2000, cps: 15, clickBonus: 6, clickPct: 1.5, xpPerSec: 14, xpLump: 3500 },
+  { id: 5, rank: 5, name: "QA rotation", tags: ["product"], xpReq: 60000, baseCost: 1500, cps: 20, clickBonus: 4, clickPct: 1, xpLump: 3000 },
+  { id: 6, rank: 6, name: "On-call rotation", tags: ["infra"], xpReq: 70000, baseCost: 8000, cps: 40, clickBonus: 6, clickPct: 1, xpPerSec: 10, xpLump: 5000 },
+  { id: 7, rank: 7, name: "Mid-level SWE", tags: ["product"], xpReq: 90000, baseCost: 25000, cps: 80, clickBonus: 10, clickPct: 1.5 },
+  { id: 8, rank: 8, name: "Feature owner", tags: ["product"], xpReq: 100000, baseCost: 40000, cps: 100, clickBonus: 12, clickPct: 1.5 },
+  { id: 9, rank: 9, name: "System design study", tags: ["backend", "infra"], xpReq: 110000, baseCost: 50000, cps: 30, clickBonus: 15, clickPct: 2, xpPerSec: 18, xpLump: 8000 },
+  { id: 10, rank: 10, name: "Backend specialist", tags: ["backend"], xpReq: 120000, baseCost: 60000, cps: 120, clickBonus: 15, clickPct: 1.5 },
+  { id: 11, rank: 11, name: "Frontend specialist", tags: ["frontend"], xpReq: 120000, baseCost: 55000, cps: 110, clickBonus: 15, clickPct: 1.5 },
+  { id: 12, rank: 12, name: "Full-stack generalist", tags: ["frontend", "backend"], xpReq: 130000, baseCost: 70000, cps: 130, clickBonus: 18, clickPct: 1.5 },
+  { id: 13, rank: 13, name: "Tech lead (acting)", tags: ["product"], xpReq: 150000, baseCost: 100000, cps: 160, clickBonus: 20, clickPct: 2, xpLump: 8000 },
+  { id: 14, rank: 14, name: "Senior SWE", tags: ["product"], xpReq: 160000, baseCost: 120000, cps: 200, clickBonus: 25, clickPct: 2 },
+  { id: 15, rank: 15, name: "Senior + hiring loop", tags: ["product"], xpReq: 180000, baseCost: 150000, cps: 220, clickBonus: 25, clickPct: 2 },
+  { id: 16, rank: 16, name: "Staff engineer", tags: ["product"], xpReq: 220000, baseCost: 400000, cps: 500, clickBonus: 50, clickPct: 2, xpPerSec: 20, xpLump: 12000 },
+  { id: 17, rank: 17, name: "Staff platform", tags: ["infra", "backend"], xpReq: 250000, baseCost: 500000, cps: 550, clickBonus: 50, clickPct: 2 },
+  { id: 18, rank: 18, name: "Engineering manager", tags: ["product"], xpReq: 280000, baseCost: 700000, cps: 450, clickBonus: 60, clickPct: 2.5 },
+  { id: 19, rank: 19, name: "Principal engineer", tags: ["product"], xpReq: 300000, baseCost: 900000, cps: 800, clickBonus: 80, clickPct: 2.5, xpPerSec: 30, xpLump: 20000 },
+  { id: 20, rank: 20, name: "Director of Eng", tags: ["product"], xpReq: 350000, baseCost: 1500000, cps: 900, clickBonus: 100, clickPct: 2.5 },
+  { id: 21, rank: 21, name: "VP Engineering", tags: ["product"], xpReq: 450000, baseCost: 4000000, cps: 1500, clickBonus: 150, clickPct: 2.5 },
+  { id: 22, rank: 22, name: "CTO (startup)", tags: ["product"], xpReq: 500000, baseCost: 8000000, cps: 2000, clickBonus: 200, clickPct: 3 },
+  { id: 23, rank: 23, name: "Distinguished engineer", tags: ["product"], xpReq: 600000, baseCost: 12000000, cps: 2500, clickBonus: 250, clickPct: 3, xpPerSec: 40 },
+  { id: 24, rank: 24, name: "Fellow / industry voice", tags: ["product"], xpReq: 750000, baseCost: 25000000, cps: 4000, clickBonus: 400, clickPct: 3, xpPerSec: 50, xpLump: 50000 },
+  { id: 25, rank: 25, name: "Board advisor (tech)", tags: ["product"], xpReq: 900000, baseCost: 50000000, cps: 5000, clickBonus: 500, clickPct: 3 },
+  { id: 26, rank: 26, name: "Fractional executive", tags: ["product"], xpReq: 1000000, baseCost: 80000000, cps: 6000, clickBonus: 600, clickPct: 3 },
+  { id: 27, rank: 27, name: "Partner at BigCo", tags: ["product"], xpReq: 1200000, baseCost: 150000000, cps: 10000, clickBonus: 1000, clickPct: 3 },
+  { id: 28, rank: 28, name: "Chief Scientist", tags: ["ai", "data"], xpReq: 1400000, baseCost: 300000000, cps: 15000, clickBonus: 1500, clickPct: 3, xpPerSec: 60 },
+  { id: 29, rank: 29, name: "Lab director", tags: ["ai", "hardware"], xpReq: 1600000, baseCost: 500000000, cps: 20000, clickBonus: 2000, clickPct: 3, xpPerSec: 70, xpLump: 100000 },
+  { id: 30, rank: 30, name: "Empire operator", tags: ["product", "infra"], xpReq: 2000000, baseCost: 1000000000, cps: 35000, clickBonus: 3500, clickPct: 4 },
+  { id: 31, rank: 31, name: "Sovereign tech chair", tags: ["product"], xpReq: 2500000, baseCost: 5000000000, cps: 80000, clickBonus: 8000, clickPct: 4 },
 ] as const;
 
 /** A job costs a quarter of the lifetime XP it asks for, before the purchase scale; the dollar column above only orders the rows. */
@@ -324,6 +326,21 @@ export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map(({ baseCost, ...row })
   xpPerSec: row.xpPerSec ?? 0,
   xpLump: row.xpLump ?? 0,
 }))
+
+const JOB_RANK_BY_ID = new Map<number, number>(JOB_TIERS.map((row) => [row.id, row.rank]))
+
+/** A job's place on the ladder; 0 for an id that is not a job. Gates compare ranks, never ids. */
+export const jobRank = (id: number): number => JOB_RANK_BY_ID.get(id) ?? 0
+
+/** The first job row at a rank (the trunk row, before any specialization rows), for copy that names a gate. */
+export const firstJobAtRank = (rank: number): JobTier | undefined => JOB_TIERS.find((row) => row.rank === rank)
+
+/** Highest rank among the jobs held; 0 with none. */
+export function highestJobRank(jobs: readonly number[]): number {
+  let highest = 0
+  for (const id of jobs) highest = Math.max(highest, jobRank(id))
+  return highest
+}
 
 /** Balatro pops: big on gig/unlock; medium on click. */
 export const MONEY_POP = { click: "medium", gigClear: "large", unlock: "large" } as const;

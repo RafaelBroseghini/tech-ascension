@@ -47,7 +47,7 @@ function parseJobRows(src) {
 function parseGearRows(src) {
   const block = src.match(/const GEAR_ROWS[^[]*\[([\s\S]*?)\] as const/)?.[1] ?? ""
   const re =
-    /\{\s*id:\s*(\d+),\s*kind:\s*"([^"]+)",\s*name:\s*"((?:\\.|[^"\\])*)",\s*baseCost:\s*(\d+),\s*clickBonus:\s*(\d+),\s*cps:\s*([\d.]+),\s*unlockMoney:\s*(\d+),\s*unlockJobId:\s*(\d+)\s*\}/g
+    /\{\s*id:\s*(\d+),\s*kind:\s*"([^"]+)",\s*name:\s*"((?:\\.|[^"\\])*)",\s*baseCost:\s*(\d+),\s*clickBonus:\s*(\d+),\s*cps:\s*([\d.]+),\s*unlockMoney:\s*(\d+),\s*unlockJobRank:\s*(\d+)\s*\}/g
   const rows = []
   let m
   while ((m = re.exec(block))) {
@@ -59,7 +59,7 @@ function parseGearRows(src) {
       clickBonus: +m[5],
       cps: +parseFloat(m[6]),
       unlockMoney: +m[7],
-      unlockJobId: +m[8],
+      unlockJobRank: +m[8],
     })
   }
   return rows
@@ -74,7 +74,7 @@ function formatJobRow(row) {
 }
 
 function formatGearRow(row) {
-  return `  { id: ${row.id}, kind: "${row.kind}", name: "${row.name}", baseCost: ${row.baseCost}, clickBonus: ${row.clickBonus}, cps: ${row.cps}, unlockMoney: ${row.unlockMoney}, unlockJobId: ${row.unlockJobId} },`
+  return `  { id: ${row.id}, kind: "${row.kind}", name: "${row.name}", baseCost: ${row.baseCost}, clickBonus: ${row.clickBonus}, cps: ${row.cps}, unlockMoney: ${row.unlockMoney}, unlockJobRank: ${row.unlockJobRank} },`
 }
 
 function reorderGigs(rows) {
@@ -93,7 +93,7 @@ function reorderGear(rows) {
     const kb = GEAR_KIND_ORDER.indexOf(b.kind)
     if (ka !== kb) return ka - kb
     if (a.unlockMoney !== b.unlockMoney) return a.unlockMoney - b.unlockMoney
-    if (a.unlockJobId !== b.unlockJobId) return a.unlockJobId - b.unlockJobId
+    if (a.unlockJobRank !== b.unlockJobRank) return a.unlockJobRank - b.unlockJobRank
     return a.baseCost - b.baseCost || a.id - b.id
   })
   return sorted.map((row, i) => ({ ...row, id: i + 1 }))

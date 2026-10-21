@@ -3,7 +3,7 @@ import type { Gig, JobTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
-import { canAfford, capitalById, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
+import { canAfford, capitalById, firstJobAtRank, highestJobId, highestJobRank, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 
@@ -45,7 +45,7 @@ export function jobBoardUnlocked(p: Gates): boolean {
 
 /** The Senior job (id 14) or higher OR $500K held at some point (peakMoney) OR any capital row already owned. */
 export function capitalUnlocked(p: Gates): boolean {
-  if (p.jobs.some((id) => id >= CAPITAL_UNLOCK.minJobId)) return true
+  if (highestJobRank(p.jobs) >= CAPITAL_UNLOCK.minJobRank) return true
   if (canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney)) return true
   return Object.values(p.owned).some((count) => count > 0)
 }
@@ -120,7 +120,7 @@ export type Stage = {
 export function stageOf(p: Pick<Progress, "skills" | "owned" | "jobs" | "gigs">): Stage | null {
   const tier = highestOwnedCapital(p.owned)
   if (tier) return { artId: tier.artId, name: tier.name, era: tier.era, source: { kind: "capital", id: tier.id } }
-  const jobId = Math.max(0, ...p.jobs)
+  const jobId = highestJobId(p.jobs) ?? 0
   if (jobId > 0) return { artId: artFor(JOB_ART, jobId), name: jobById(jobId)?.name ?? "Engineer", era: "early", source: { kind: "job", id: jobId } }
   const gigId = Math.max(0, ...p.gigs)
   if (gigId > 0) return { artId: artFor(GIG_ART, gigId), name: "Freelancer", era: "early", source: { kind: "gig", id: gigId } }
@@ -171,7 +171,7 @@ export function jobBoardRequirements(p: Gates): Requirement[] {
 /** Either path opens capital, so the two lines are alternatives. */
 export function capitalRequirements(p: Gates): Requirement[] {
   return [
-    { text: `A senior job (${jobById(CAPITAL_UNLOCK.minJobId)?.name ?? "Senior SWE"} or higher)`, met: p.jobs.some((id) => id >= CAPITAL_UNLOCK.minJobId) },
+    { text: `A senior job (${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.name ?? "Senior SWE"} or higher)`, met: highestJobRank(p.jobs) >= CAPITAL_UNLOCK.minJobRank },
     { text: `or hold $${formatNumber(CAPITAL_UNLOCK.minMoney)} at once`, met: canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney) },
   ]
 }
