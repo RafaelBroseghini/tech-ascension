@@ -59,9 +59,13 @@ describe("pace model", () => {
     const m = run.milestones
     expect(m.gigBoard!).toBeLessThanOrEqual(m.jobBoard!)
     expect(m.jobBoard!).toBeLessThanOrEqual(m.capital!)
-    // Owning everything is the last thing to happen; with the capital tail cut, which list finishes last varies by player.
+    // Owning everything is the last thing in the shop; with the capital tail cut, which list finishes last varies by player.
     const last = Math.max(...PACE_MILESTONES.filter((id) => id.startsWith("all")).map((id) => m[id]!))
-    expect(run.days).toBeCloseTo(last, 6)
+    expect(run.ownedDays!).toBeCloseTo(last, 6)
+    // The career's finish is the later of owning everything and winning the world.
+    expect(run.days).toBeCloseTo(Math.max(last, m.won!), 6)
+    expect(m.users10k!).toBeLessThanOrEqual(m.users1m!)
+    expect(m.users1m!).toBeLessThanOrEqual(m.won!)
   })
 
   // 4 visits of 5 minutes, 2 clicks a second: a career takes a day, and no visit in the middle comes back to nothing new.
@@ -129,8 +133,9 @@ describe("pace model", () => {
       ["daily", profile(1, 30, 2)],
     ]
     for (const [name, p] of fits) {
-      const oneOfEach = simulatePace(p, { maxDays: 800, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS }).days
-      const stacker = simulatePace(p, { maxDays: 800, paybackSeconds: STACKER_PAYBACK_SECONDS }).days
+      // The formula is about owning everything, not the win.
+      const oneOfEach = simulatePace(p, { maxDays: 800, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS }).ownedDays!
+      const stacker = simulatePace(p, { maxDays: 800, paybackSeconds: STACKER_PAYBACK_SECONDS }).ownedDays!
       expect(Math.abs(estimateDays(p, PACE_K.oneOfEach) / oneOfEach - 1), `${name} one-of-each`).toBeLessThan(0.35)
       expect(Math.abs(estimateDays(p, PACE_K.stacker) / stacker - 1), `${name} stacker`).toBeLessThan(0.35)
     }
@@ -145,12 +150,17 @@ describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
     ["stacker", STACKER_PAYBACK_SECONDS],
     ["oneOfEach", ONE_OF_EACH_PAYBACK_SECONDS],
   ] as const) {
-    it(`a career that never leaves owns everything on the single-run day: the product adds users, not time (${name})`, () => {
+    it(`a career that never leaves finishes on the single run's day: owning everything, then the win (${name})`, () => {
       const single = simulatePace(regular, { maxDays: 400, paybackSeconds: payback })
       const never = simulateExits(regular, { maxDays: 30, paybackSeconds: payback, minGrowth: Number.POSITIVE_INFINITY })
       expect(never.runs).toHaveLength(1)
-      expect(never.runs[0]!.ownedDays).toBeCloseTo(single.days, 6)
-      expect(never.runs[0]!.users).toBeGreaterThan(1e6)
+      const first = never.runs[0]!
+      // The product is part of the finish: the later of the two, in both models.
+      expect(single.days).toBeCloseTo(Math.max(single.ownedDays!, single.milestones.won!), 6)
+      expect(first.ownedDays!).toBeCloseTo(single.ownedDays!, 6)
+      expect(first.winDays!).toBeCloseTo(single.milestones.won!, 6)
+      expect(first.endDay).toBeGreaterThanOrEqual(single.days - 1e-6)
+      expect(first.users).toBeGreaterThan(1e6)
     })
   }
 
@@ -176,11 +186,14 @@ describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
       // head start of a day saves a fraction of a day (docs/PACING.md, "Over several careers").
       expect(second!.catchUpDays).not.toBeNull()
       expect(second!.catchUpDays! / first!.endDay).toBeLessThan(1.01)
-      // Owning everything and winning the world is done in the fourth to sixth career, in two to four days.
-      expect(result.finishRun).toBeGreaterThanOrEqual(4)
-      expect(result.finishRun).toBeLessThanOrEqual(6)
-      expect(result.days).toBeGreaterThan(2)
-      expect(result.days).toBeLessThan(4)
+      // Owning everything and winning the world: the stacker is done in the fourth to sixth career, in two to four days.
+      // The one-of-each player buys little serving gear in a first career, but the product now grows fast enough that the
+      // second career (under the first Exit's perks) wins it: career 2 to 3, in under three days.
+      const [fewest, most, soonest, latest] = name === "stacker" ? [4, 6, 2, 4] : [2, 3, 1.5, 3]
+      expect(result.finishRun).toBeGreaterThanOrEqual(fewest!)
+      expect(result.finishRun).toBeLessThanOrEqual(most!)
+      expect(result.days).toBeGreaterThan(soonest!)
+      expect(result.days).toBeLessThan(latest!)
     })
 
     it(`only ever gains Prestige and bonus across careers (${name})`, () => {
