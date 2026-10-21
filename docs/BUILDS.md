@@ -161,8 +161,11 @@ Each step ships and checks on its own.
 8. **Pacing** to half a day or a day, with a pace sim per build.
 9. **Save slots**, opened by the first finished career.
 
+## Calls decided on 2026-10-21
+
+- **The one switch** keeps money, gear and the trunk jobs, loses the old specialization's jobs and starts at the new track's first row. Anything already open stays open (gates latch), so a switch after Senior does not close capital or hide gear.
+- **The click build's multiple:** 5 minutes of clicking is worth about 30 minutes of idle. Read as: on a click build, manual clicks at 2 a second pay 5 times the idle $/s while clicking (the other 5 of the 30 minutes is the idle that keeps running), measured with every job the build can see held. Hover and auto clicks do not get the build's multiplier. No return burst for now.
+
 ## Calls still open
 
-- What the one switch keeps and costs. Default unless changed: keep money, gear and the trunk jobs, lose the old specialization's jobs, start at the new track's first row.
-- The click build's multiple (default: 5 minutes of clicking on a click build is worth about 2 hours of idle), and whether a return burst comes too.
 - What replaces the Founder Legacy perks (admin only, so not urgent).
