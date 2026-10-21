@@ -3,6 +3,7 @@ import { gigById, idlePerSec, jobById, xpPerSec } from "./economy.ts"
 import { goldById, offlineCapMs } from "./gold.ts"
 import type { OwnedMap } from "./economy.ts"
 import { offlineToastText } from "./offlineNote.ts"
+import { comboFactors, normalizeComboIds } from "./combos.ts"
 import { clampForever, modFactors, pruneTemp, prestigeMult, TEMP_TARGETS } from "./mods.ts"
 import { freshLegacy, isFreshLegacy, normalizeLegacy } from "./legacy.ts"
 import type { LegacyState } from "./legacy.ts"
@@ -95,6 +96,8 @@ export type SaveData = {
   hires?: Hires
   /** Prestige: runs, Prestige, earnings of earlier careers, Legacy perks. Omitted on a first career with nothing in it; a save without it is run 1 with no Prestige. */
   legacy?: LegacyState
+  /** Kitchen combos found this career, by id: what the log lists and what is journaled once. Omitted with none; unknown ids are dropped on load. */
+  combos?: string[]
 }
 
 export type Hydrated = {
@@ -280,6 +283,8 @@ export function parseSave(input: unknown): SaveData | null {
   const legacyFounder = isRecord(input.founder) ? input.founder : {}
   const hires = parseHires(input.hires ?? legacyFounder.hires)
   if (Object.keys(hires).length > 0) save.hires = hires
+  const combos = normalizeComboIds(input.combos)
+  if (combos.length > 0) save.combos = combos
   if (input.legacy !== undefined) {
     const legacy = normalizeLegacy(input.legacy)
     if (!isFreshLegacy(legacy)) save.legacy = legacy
@@ -305,7 +310,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   const capMs = offlineCapMs(loaded.gold ?? [], OFFLINE_CAP_MS, loaded.legacy?.perks)
   const away = Math.min(Math.max(0, now - loaded.savedAt), capMs)
   const fx = modFactors(
-    { foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {}, legacyMult: prestigeMult(loaded.legacy?.prestigeTotal ?? 0) },
+    { foreverMult: loaded.foreverMult ?? 1, temp: loaded.tempMults ?? {}, legacyMult: prestigeMult(loaded.legacy?.prestigeTotal ?? 0), combo: comboFactors(loaded) },
     loaded.savedAt,
     loaded.savedAt + away,
   )

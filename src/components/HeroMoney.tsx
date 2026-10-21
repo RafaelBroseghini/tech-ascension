@@ -152,7 +152,7 @@ function HeroMoneyBody() {
   const paysClickMoney = clickPaysMoney({ jobs })
   // Until the first dollar the card is about XP: no "$0" for money that cannot be earned yet.
   const moneyOpen = useFeatureOpen("money")
-  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
+  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
 
   useEffect(() => {
     const el = valueRef.current

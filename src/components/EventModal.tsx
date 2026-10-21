@@ -38,7 +38,7 @@ function EventDialog({ event }: { event: ActiveEvent }) {
     const def = eventById(event.eventId)
     if (!def) return null
     const at = Math.max(Date.now(), now)
-    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, at, modsOf({ foreverMult, tempMults, legacy }))
+    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, at, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
     return {
       name: def.name,
       flavor: def.flavor,
