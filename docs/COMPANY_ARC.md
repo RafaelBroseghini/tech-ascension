@@ -18,7 +18,7 @@ Both names are saved in the `profile` block. Esc and the backdrop keep what is o
 
 ## 2. Growth, hires and the endings
 
-Jobs pay salary and teach XP. The product grows at its nights-and-weekends pace, which is slow: a growth multiplier of × 0.25 (`GROWTH_BASE` in `src/game/globe/product.ts`), so 8B alone is a very long road. Gear and regions are bought out of salary. Capital rows stay as they are today: you invest in other companies.
+Jobs pay salary and teach XP. The product grows at the player's own pace (`GROWTH_PER_SEC` in `src/game/globe/world.ts`, a growth multiplier of 1 before the hires and the perks), and the gear is the throttle, so 8B takes the shop's whole day. Gear and regions are bought out of salary. Capital rows stay as they are today: you invest in other companies.
 
 **Hires.** You can't give the product your days, so you pay people who can. A Hires row in the Company tab sells smart people, cheapest first: an outsourced body shop, a bootcamp grad, a Stack Overflow copy-paster, a senior engineer, a staff engineer, a 10x developer, a greybeard, a code god. Each is hired again and again, costs a salary a second per head and adds growth. Hiring is how a career reaches 8B in reasonable time, but the people you hired do the growing, and the game keeps count. The product tracks how many of its users came from growth your hires added (`hiredUsers`, against the total). The numbers are in `docs/PACING.md`.
 

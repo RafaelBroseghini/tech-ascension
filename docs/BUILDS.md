@@ -77,7 +77,7 @@ The career and the product become one loop, so the globe shows the build and the
 - **One finish: the 8B win.** Today a career has two (`ownsEverything` and the win). The catalogs become the way to the win.
 - **Later, on screen:** the globe answers every purchase. A gig, job or gear buy pulses the region it touched.
 
-Gating the career on users makes the product's growth a blocker, and it was only ever simulated with maxed gear, never tuned by hand. The single-run pace model leaves the product out (`simulatePace`), so it has to model it before any gate reads users.
+Gating the career on users makes the product's growth a blocker, and it was only ever simulated with maxed gear, never tuned by hand. The single-run pace model now models the product (`simulatePace`), so its growth is tuned before any gate reads users.
 
 ## 4. Tags and the gig board
 
@@ -139,7 +139,7 @@ The levers: a career sees fewer rows (one specialization's), the capital tail is
 - **`ownsEverything`.** It opens Auto-click, ends the How to play copy (Sabbatical) and is the pace model's finish line. The finish moves to the 8B win; Auto-click and the copy need a new trigger.
 - **The fork goes.** `track`, the burn, runway and bridges (`src/game/globe/track.ts`), `FullTime.tsx`, `ForkCard.tsx`, the skipped fork smoke scenario, the founder ending and its headline. The ladder's growth × 0.25 only existed to contrast with the founder, so the product's growth is retuned without it. The Founder Legacy track (Early adopters, Lean team, Friendly investors, Viral loop, Platform) loses two perks and needs rewriting, though the Exit is admin only.
 - **`nextUnlock`** and the Next banner assume one path. A branch point needs a "pick one" state.
-- **The pace model** runs one strategy, leaves the product out of the single run and only reaches the night owl ending. It needs the product in the single run, a sim per specialization, and hires modeled. The `pace.test.ts` check that the product adds no time turns around.
+- **The pace model** runs one strategy and only reaches the night owl ending. It has the product in the single run now (the check that the product adds no time turned around: the finish is the later of owning everything and the win). It still needs a sim per specialization, hires modeled and the kitchen's combos.
 - **The Company tab** loses its region shop to capital and its hires to the Manager branch, the fork card goes, and the tab keeps the globe and the status page.
 - **The save** gains the origin, the specialization, the leadership track and the combos found. That is either a version bump (a wipe) or optional blocks (`docs/SAVE.md`).
 - **The harness** gains `pickOrigin`, `pickSpecialization`, `getState().build` and `getState().combos` (`docs/HARNESS.md`).
@@ -153,7 +153,7 @@ Each step ships and checks on its own.
 0. **The endgame wait**, before anything else: cut the capital tail so a career owns everything within a day for the target player, and add the pace check for the longest wait between purchases. It does not depend on the tree. If capital rows become company moves (section 3), the tail is redesigned again, so keep this a price change only.
 1. **Tags** on every row. Data only, no behavior; a test pins that every row has one.
 2. **The kitchen** with the first combos. Additive, no balance risk, and the jokes ship early.
-3. **The product in the pace model**, so its growth can be tuned before anything depends on it.
+3. **The product in the pace model**, so its growth can be tuned before anything depends on it. Done: `simulatePace` walks the product (IC player, no hires, home region, no incidents; no kitchen combos yet), the finish is the later of owning everything and the win, and 10k and 1M users land within a visit of Mid-level SWE and Senior SWE. The win is still on day 1.4 for the target player, because the pace player buys serving gear only for the crowd it has (`docs/PACING.md`, "The product in the single run").
 4. **Specializations and leadership**: the job tree, the click or idle split, how each grows the product, hires moved into the Manager branch, the fork removed.
 5. **Capital as company moves** that open regions, and the gates that read users.
 6. **The tagged gig board.**
