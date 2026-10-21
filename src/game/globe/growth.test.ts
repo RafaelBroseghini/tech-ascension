@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { advanceCompany, FRESH_COMPANY, settleGrowth, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
+import { advanceCompany, FRESH_COMPANY, grownUsers, settleGrowth, growthFacts, parseCompany, STATUS_DAY_MS, stepCompany, uptimePercent } from "./growth.ts"
 import type { CompanyState } from "./growth.ts"
-import { arpuOf, BASE_RPS, RPS_PER_USER, servingOf } from "./load.ts"
+import { arpuOf, BASE_RPS, RPS_PER_USER, SERVING_KINDS, servingOf } from "./load.ts"
 import { ceilingOf, INCIDENT_MIN_USERS, MAX_INCIDENTS, totalUsers, WORLD_CEILING, WORLD_TARGET } from "./world.ts"
 import type { Incident } from "./world.ts"
+import { GEAR } from "../../data/gear.ts"
 import { REGIONS } from "../../data/regions.ts"
 
 const never = () => 0.999
@@ -12,6 +13,7 @@ const gigs = (n: number) => Array.from({ length: n }, (_, i) => i + 1)
 const facts = (n: number, equipment: Record<string, number> = {}) => growthFacts(gigs(n), equipment)
 const state = (over: Partial<CompanyState> = {}): CompanyState => ({ ...FRESH_COMPANY, day: 0, uptime: "o", ...over })
 const roomy = { "54": 5 }
+const fiveOfEach = Object.fromEntries(GEAR.filter((item) => SERVING_KINDS.includes(item.kind)).map((item) => [String(item.id), 5]))
 const ddos = (over: Partial<Incident> = {}): Incident => ({ id: 1, kind: "ddos", region: "americas-east", until: 10 * 60_000, strength: 3, ...over })
 
 describe("users", () => {
@@ -65,10 +67,44 @@ describe("users", () => {
   })
 })
 
+describe("the growth curve", () => {
+  const walk = (users: number, seed: number, ceiling: number, rate: number, sec: number, pieces: number) => {
+    let here = users
+    for (let i = 0; i < pieces; i++) here = grownUsers(here, seed, ceiling, rate, sec / pieces)
+    return here
+  }
+
+  it("does not depend on the step: one long step lands where many short ones do, at a pace that would blow up explicit steps", () => {
+    // 0.0125 a second over a minute is a factor of 0.75 per step.
+    for (const [users, seed] of [[1000, 0], [5, 40], [0, 40], [3e6, 100]] as const) {
+      const once = walk(users, seed, 1e9, 0.0125, 3600, 1)
+      const many = walk(users, seed, 1e9, 0.0125, 3600, 3600)
+      expect(Math.abs(once - many) / many, `${users} from ${seed}`).toBeLessThan(1e-9)
+    }
+  })
+
+  it("starts at the seed, never passes the ceiling, and leaves an empty region with no seed empty", () => {
+    expect(grownUsers(0, 40, 1e6, 0.01, 1)).toBeGreaterThan(0)
+    expect(grownUsers(0, 0, 1e6, 0.01, 1e6)).toBe(0)
+    expect(grownUsers(1000, 0, 1e6, 0.5, 1e6)).toBeLessThanOrEqual(1e6)
+    expect(grownUsers(1000, 0, 1e6, 0.5, 1e6)).toBeGreaterThan(1e6 * 0.999)
+    expect(grownUsers(2e6, 0, 1e6, 0.5, 10)).toBe(2e6)
+    expect(grownUsers(1000, 0, 1e6, 0, 10)).toBe(1000)
+  })
+
+  it("matches the differential equation for a short step", () => {
+    const users = 1e5
+    const rate = 0.0125
+    expect(grownUsers(users, 0, 1e9, rate, 0.1)).toBeCloseTo(users + rate * users * (1 - users / 1e9) * 0.1, 0)
+  })
+})
+
 describe("the world pushing back", () => {
   it("resistance climbs as the company grows", () => {
-    const small = stepCompany(state({ users: { "americas-east": 1e6 } }), facts(3, roomy), 600_000, 600_000, never)
-    const huge = stepCompany(state({ users: { asia: 2e9, europe: 6e8 } }), facts(3, roomy), 600_000, 600_000, never)
+    // Both crowds are served: a crowd the gear drops melts away within the step, and resistance follows the crowd that is left.
+    const served = facts(3, fiveOfEach)
+    const small = stepCompany(state({ users: { "americas-east": 1e6 } }), served, 600_000, 600_000, never)
+    const huge = stepCompany(state({ users: { asia: 2e9, europe: 6e8 } }), served, 600_000, 600_000, never)
     expect(huge.state.resistance).toBeGreaterThan(small.state.resistance)
     expect(huge.state.resistance).toBeGreaterThan(1)
   })
@@ -144,8 +180,9 @@ describe("the world pushing back", () => {
   it("a rival halves the growth in its region", () => {
     const rival: Incident = { id: 1, kind: "rival", region: "americas-east", until: 10 * 60_000, strength: 0.5 }
     const users = { "americas-east": 100_000 }
-    const free = stepCompany(state({ users }), facts(3, roomy), 60_000, 60_000, never)
-    const rivalled = stepCompany(state({ users, incidents: [rival] }), facts(3, roomy), 60_000, 60_000, never)
+    // A short step, where the gain is still in proportion to the pace; over a minute the crowd compounds.
+    const free = stepCompany(state({ users }), facts(3, roomy), 100, 100, never)
+    const rivalled = stepCompany(state({ users, incidents: [rival] }), facts(3, roomy), 100, 100, never)
     const gain = (s: typeof free) => s.state.users["americas-east"]! - 100_000
     expect(gain(rivalled)).toBeCloseTo(gain(free) * 0.5, 0)
   })
@@ -259,11 +296,12 @@ describe("product revenue", () => {
   })
 
   it("is paid a step at a time", () => {
-    const step = stepCompany(state({ users: crowd }), facts(3, roomy), 10_000, 10_000, never)
-    expect(step.earned).toBeCloseTo(servingOf(crowd, [], roomy).revenuePerSec * 10)
+    // A step of at most five seconds (SUBSTEP_S) is one piece, paid at the crowd it started with.
+    const step = stepCompany(state({ users: crowd }), facts(3, roomy), 5_000, 5_000, never)
+    expect(step.earned).toBeCloseTo(servingOf(crowd, [], roomy).revenuePerSec * 5)
     const walked = advanceCompany(state({ users: crowd }), facts(3, roomy), 0, 3 * 60_000, never)
-    expect(walked.earned).toBeGreaterThan(step.earned * 18)
-    expect(stepCompany(state(), facts(3, roomy), 10_000, 10_000, never).earned).toBe(0)
+    expect(walked.earned).toBeGreaterThan(step.earned * 36)
+    expect(stepCompany(state(), facts(3, roomy), 5_000, 5_000, never).earned).toBe(0)
   })
 
   it("falls per user as the crowd grows, while the total keeps rising", () => {
