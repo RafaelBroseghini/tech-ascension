@@ -1,4 +1,4 @@
-import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS, firstJobAtRank, highestJobRank, jobRank } from "../data/phases.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
@@ -55,12 +55,20 @@ export const capitalById = (id: number): Capital | undefined => CAPITAL_BY_ID.ge
 export const skillById = (id: number): SkillTier | undefined => SKILL_BY_ID.get(id)
 export const gigById = (id: number): Gig | undefined => GIG_BY_ID.get(id)
 export const jobById = (id: number): JobTier | undefined => JOB_BY_ID.get(id)
+export { firstJobAtRank, highestJobRank, jobRank }
 
-/** Highest held job, or null when the career has none. */
+/** The highest held job (the higher id on a tie in rank), or null when the career has none. */
 export function highestJobId(jobs: readonly number[]): number | null {
-  let highest = 0
-  for (const id of jobs) if (id > highest) highest = id
-  return highest > 0 ? highest : null
+  let best = 0
+  let bestRank = 0
+  for (const id of jobs) {
+    const rank = jobRank(id)
+    if (rank > bestRank || (rank === bestRank && rank > 0 && id > best)) {
+      best = id
+      bestRank = rank
+    }
+  }
+  return best > 0 ? best : null
 }
 export const equipById = (id: number): Equip | undefined => EQUIP_BY_ID.get(id)
 
@@ -254,10 +262,10 @@ export function isSkillRevealed(row: SkillTier, skills: OwnedMap, xpTotal: numbe
   return ownedCount(skills, row.id) > 0 || xpTotal >= row.unlockAtXp
 }
 
-/** A gear row shows once the player has held its `unlockMoney` and holds its `unlockJobId` (0 = none), or already owns it. */
+/** A gear row shows once the player has held its `unlockMoney` and holds a job of rank `unlockJobRank` or higher (0 = none), or already owns it. */
 export function isGearRevealed(row: Equip, equipment: OwnedMap, peakMoney: number, jobs: readonly number[]): boolean {
   if (ownedCount(equipment, row.id) > 0) return true
-  return canAfford(peakMoney, row.unlockMoney) && (row.unlockJobId === 0 || jobs.includes(row.unlockJobId))
+  return canAfford(peakMoney, row.unlockMoney) && (row.unlockJobRank === 0 || highestJobRank(jobs) >= row.unlockJobRank)
 }
 
 /**

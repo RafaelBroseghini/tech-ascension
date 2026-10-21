@@ -4,7 +4,7 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { canAfford, capitalBase, gearBase, isGearRevealed, jobById, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
+import { canAfford, capitalBase, firstJobAtRank, gearBase, highestJobRank, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
@@ -64,8 +64,8 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
     return gig ? { tab: "B", row: `gig:${gig.id}` } : null
   }
 
-  if (next.key === "board:capital" && !p.jobs.some((id) => id >= CAPITAL_UNLOCK.minJobId)) {
-    return { tab: "C", row: `job:${CAPITAL_UNLOCK.minJobId}` }
+  if (next.key === "board:capital" && highestJobRank(p.jobs) < CAPITAL_UNLOCK.minJobRank) {
+    return { tab: "C", row: `job:${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.id ?? CAPITAL_UNLOCK.minJobRank}` }
   }
 
   return null
@@ -114,7 +114,7 @@ function boardTarget(p: Progression, tab: ShopTab): NextUnlock | null {
   }
 
   if (tab === "D" && !capitalUnlocked(p)) {
-    const senior = jobById(CAPITAL_UNLOCK.minJobId)
+    const senior = firstJobAtRank(CAPITAL_UNLOCK.minJobRank)
     const gap = !senior ? null : p.xpTotal < senior.xpReq ? xpLeft() : null
     const needs = [
       `${senior?.name ?? "Senior SWE"}${gap ? ` (${gap})` : ""}`,
@@ -211,7 +211,7 @@ function gearTarget(p: Progression, row: GearItem): NextUnlock {
   const needs: string[] = []
   if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs)) {
     if (p.peakMoney < row.unlockMoney) needs.push(balanceGoal())
-    if (row.unlockJobId > 0 && !p.jobs.includes(row.unlockJobId)) needs.push(jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`)
+    if (row.unlockJobRank > 0 && highestJobRank(p.jobs) < row.unlockJobRank) needs.push(firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`)
   }
   if (needs.length === 0) {
     const cost = nextCost(gearBase(row, p), 0)

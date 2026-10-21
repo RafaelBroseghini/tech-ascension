@@ -1,6 +1,7 @@
 import { EVENT_MEAN_WAIT_MS, EVENTS, eventsForEra } from "../data/events.ts"
 import type { EventOffer, EventRequires, EventResource, GameEvent } from "../data/events.ts"
 import type { Era } from "../data/capital.ts"
+import { highestJobRank } from "../data/phases.ts"
 import { sampleWaitMs } from "./boosts.ts"
 import { formatNumber } from "./format.ts"
 import type { TempTarget } from "./mods.ts"
@@ -37,9 +38,8 @@ export function eventRequiresMet(event: { requires?: EventRequires }, owned: Eve
   const jobs = owned.jobs ?? []
   const gigs = owned.gigs ?? []
   const equipment = owned.equipment ?? {}
-  if (typeof req.minJobId === "number" && Number.isFinite(req.minJobId)) {
-    const highest = jobs.reduce((max, id) => (id > max ? id : max), 0)
-    if (highest < req.minJobId) return false
+  if (typeof req.minJobRank === "number" && Number.isFinite(req.minJobRank)) {
+    if (highestJobRank(jobs) < req.minJobRank) return false
   }
   const jobIds = numberList(req.jobIds)
   if (jobIds.length > 0 && !jobIds.some((id) => jobs.includes(id))) return false

@@ -1,4 +1,4 @@
-import { gigById, jobById } from "./economy.ts"
+import { gigById, jobById, jobRank } from "./economy.ts"
 
 /**
  * A LinkedIn-shaped career, built from the jobs and gigs the player actually holds.
@@ -188,21 +188,21 @@ const THOUGHT_LEADERSHIP: readonly LinkedOutPost[] = [
   },
 ]
 
-function recruiterInMail(topJobId: number): RecruiterInMail | null {
-  if (topJobId < 7) {
+function recruiterInMail(topRank: number): RecruiterInMail | null {
+  if (topRank < 7) {
     return {
       from: "Alex T. · Talent partner",
       preview: "Saw you're interning — open to a quick chat about new grad roles next year?",
     }
   }
-  if (topJobId >= 16) {
+  if (topRank >= 16) {
     return {
       from: "Priya M. · Executive search",
       preview:
         "Hi — confidential Staff+ loop at a decacorn. Comp is 'flexible' (their words). 15 min this week?",
     }
   }
-  if (topJobId >= 14) {
+  if (topRank >= 14) {
     return {
       from: "Jordan K. · Tech recruiter",
       preview: "Saw your Senior title — open to Staff at a Series C? Remote-first, 'fast-paced culture.'",
@@ -380,8 +380,8 @@ export function linkedOutProfile(input: {
   const topRole = top?.roles[0]
   const headline = top && topRole ? `${topRole.title} at ${top.org}` : "Freelance developer"
   const location = top?.place ?? indie.place
-  const topJobId = topRole ? Number(topRole.id.slice(4)) : 0
-  const openToWork = topJobId < 14
+  const topRank = topRole ? jobRank(Number(topRole.id.slice(4))) : 0
+  const openToWork = topRank < 14
 
   return {
     headline,
@@ -389,8 +389,8 @@ export function linkedOutProfile(input: {
     openToWork,
     /** Same window as the top-right resume: any held job below Senior. */
     openToWorkBanner: openToWork && jobs.length > 0 ? OPEN_TO_WORK_BANNER : null,
-    thoughtLeadership: topJobId >= 16 ? THOUGHT_LEADERSHIP.slice(0, Math.min(3, 1 + Math.floor((topJobId - 16) / 3))) : [],
-    recruiterInMail: jobs.length > 0 ? recruiterInMail(topJobId) : null,
+    thoughtLeadership: topRank >= 16 ? THOUGHT_LEADERSHIP.slice(0, Math.min(3, 1 + Math.floor((topRank - 16) / 3))) : [],
+    recruiterInMail: jobs.length > 0 ? recruiterInMail(topRank) : null,
     experience,
     projects,
     skills: input.skills ?? [],

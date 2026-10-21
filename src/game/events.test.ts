@@ -76,22 +76,22 @@ describe("event requires", () => {
   it("treats a missing or empty gate as eligible, and ANDs filled fields", () => {
     expect(eventRequiresMet(def())).toBe(true)
     expect(eventRequiresMet(def({ requires: { minGigs: 0, minGearOwned: 0 } }))).toBe(true)
-    expect(eventRequiresMet(def({ requires: { minJobId: 2 } }))).toBe(false)
-    expect(eventRequiresMet(def({ requires: { minJobId: 2 } }), { jobs: [2] })).toBe(true)
-    expect(eventRequiresMet(def({ requires: { minJobId: 7 } }), { jobs: [2, 6] })).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minJobRank: 2 } }))).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minJobRank: 2 } }), { jobs: [2] })).toBe(true)
+    expect(eventRequiresMet(def({ requires: { minJobRank: 7 } }), { jobs: [2, 6] })).toBe(false)
     expect(eventRequiresMet(def({ requires: { jobIds: [6, 8] } }), { jobs: [8] })).toBe(true)
     expect(eventRequiresMet(def({ requires: { gigIds: [8, 22] } }), { gigs: [22] })).toBe(true)
     expect(eventRequiresMet(def({ requires: { gigIds: [8, 22] } }), { gigs: [1] })).toBe(false)
     expect(eventRequiresMet(def({ requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "4": 1 } })).toBe(false)
     expect(eventRequiresMet(def({ requires: { minGearOwned: 1, gearIds: [7] } }), { equipment: { "7": 2 } })).toBe(true)
-    expect(eventRequiresMet(def({ requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2] })).toBe(false)
-    expect(eventRequiresMet(def({ requires: { minJobId: 2, gigIds: [1] } }), { jobs: [2], gigs: [1] })).toBe(true)
+    expect(eventRequiresMet(def({ requires: { minJobRank: 2, gigIds: [1] } }), { jobs: [2] })).toBe(false)
+    expect(eventRequiresMet(def({ requires: { minJobRank: 2, gigIds: [1] } }), { jobs: [2], gigs: [1] })).toBe(true)
   })
 
   it("keeps required rows out of an empty career and lets them in once the gate is met", () => {
     expect(eligibleEvents("mid", true).some((event) => event.id === 26)).toBe(false)
     expect(eligibleEvents("mid", true, { jobs: [2] }).some((event) => event.id === 26)).toBe(true)
-    expect(eligibleEvents("early", true).some((event) => event.requires?.minJobId || event.requires?.gigIds || event.requires?.gearIds)).toBe(false)
+    expect(eligibleEvents("early", true).some((event) => event.requires?.minJobRank || event.requires?.gigIds || event.requires?.gearIds)).toBe(false)
   })
 })
 

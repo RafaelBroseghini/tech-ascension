@@ -13,7 +13,7 @@ import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, capitalBase, gearBase, isGearRevealed, isRevealed, isSkillRevealed, jobById, nextCost, ownedCount, skillCost, visibleShopRows } from "../game/economy.ts"
+import { canAfford, capitalBase, firstJobAtRank, gearBase, highestJobRank, isGearRevealed, isRevealed, isSkillRevealed, nextCost, ownedCount, skillCost, visibleShopRows } from "../game/economy.ts"
 import { canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
 import {
@@ -755,7 +755,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                           locked={!revealed && have === 0}
                           unlock={[
                             ...(peakMoney < row.unlockMoney ? ["A bigger balance"] : []),
-                            ...(row.unlockJobId > 0 && !jobs.includes(row.unlockJobId) ? [`the ${jobById(row.unlockJobId)?.name ?? `job ${row.unlockJobId}`} job`] : []),
+                            ...(row.unlockJobRank > 0 && highestJobRank(jobs) < row.unlockJobRank ? [`the ${firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`} job`] : []),
                           ]}
                           unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
                           title={row.name}
