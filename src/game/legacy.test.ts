@@ -202,14 +202,15 @@ describe("Legacy perks", () => {
 describe("the product under the perks", () => {
   const roomy = { "54": 5 }
   const never = () => 0.999
-  const grown = (hires: Record<string, number>, legacy?: { perks: string[]; prestigeTotal: number }) =>
-    advanceCompany({ ...FRESH_COMPANY, users: { "americas-east": 1000 } }, growthFacts([1, 2, 3], roomy, undefined, productFactsOf(hires, legacy)), 0, 60_000, never)
+  const grown = (hires: Record<string, number>, legacy?: { perks: string[]; prestigeTotal: number }, ms = 60_000) =>
+    advanceCompany({ ...FRESH_COMPANY, users: { "americas-east": 1000 } }, growthFacts([1, 2, 3], roomy, undefined, productFactsOf(hires, legacy)), 0, ms, never)
 
   it("the permanent bonus multiplies product growth, once", () => {
     const base = productFactsOf({})
     const boosted = productFactsOf({}, { perks: [], prestigeTotal: 10 })
     expect(boosted.growthMult).toBeCloseTo(base.growthMult * prestigeMult(10))
-    const gained = (legacy?: { perks: string[]; prestigeTotal: number }) => grown({}, legacy).state.users["americas-east"]! - 1000
+    // A short step, where the gain is still in proportion to the pace; over a minute the crowd compounds.
+    const gained = (legacy?: { perks: string[]; prestigeTotal: number }) => grown({}, legacy, 10).state.users["americas-east"]! - 1000
     expect(gained({ perks: [], prestigeTotal: 10 }) / gained()).toBeCloseTo(prestigeMult(10), 3)
   })
 

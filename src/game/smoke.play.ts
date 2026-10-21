@@ -14,9 +14,11 @@ import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
 import { REGIONS } from "../data/regions.ts"
 import { useGame } from "./store.ts"
 
-/** The drops the company costs over a span, with incident rolls off. Money tests subtract it so they count the income alone. */
-const dropsOver = (state: { company: CompanyState; gigs: readonly number[]; equipment: Record<string, number> }, from: number, to: number) =>
-  advanceCompany(state.company, growthFacts(state.gigs, state.equipment), from, to, () => 0.999).lost
+/** What the company's served users pay less what its drops cost over a span, with incident rolls off. Money tests add it so they count the income alone. */
+const productNet = (state: { company: CompanyState; gigs: readonly number[]; equipment: Record<string, number> }, from: number, to: number) => {
+  const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment), from, to, () => 0.999)
+  return grown.earned - grown.lost
+}
 
 const game = installGameHarness()
 
@@ -131,8 +133,8 @@ test("B: a retainer gig is the first $/s", () => {
   const before = game.getState()
   const storeBefore = useGame.getState()
   game.tick(10_000)
-  // The retainer's clients have no gear to serve them, so their drops come out of the income.
-  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10 - dropsOver(storeBefore, storeBefore.now, storeBefore.now + 10_000), 3)
+  // The retainer's clients have only the laptop to serve them: the users it serves pay and the drops cost, on top of the income.
+  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10 + productNet(storeBefore, storeBefore.now, storeBefore.now + 10_000), 3)
   spy.mockRestore()
   expect(game.getState().lastPop?.kind).toBe("gigClear")
 })
@@ -287,10 +289,14 @@ test("users pay: idle money rises by the product revenue, and the note counts it
   expect(world.capacity).toBeGreaterThan(world.demand)
   expect(world.revenuePerSec).toBeGreaterThan(0)
   // cps stays what the owned items pay; product revenue is its own figure.
+  const storeBefore = useGame.getState()
+  // The crowd grows through the ten seconds, so the users pay a little more than they did at the start.
+  const grownFacts = growthFacts(storeBefore.gigs, storeBefore.equipment, storeBefore.footprint, productFactsOf(storeBefore.hires, storeBefore.legacy))
+  const walkedTen = advanceCompany(storeBefore.company, grownFacts, storeBefore.now, storeBefore.now + 10_000, () => 0.999)
   game.tick(10_000)
   const gained = game.getState().money - money
   expect(gained).toBeGreaterThanOrEqual(world.revenuePerSec * 10)
-  expect(gained).toBeCloseTo((cps + world.revenuePerSec) * 10, 0)
+  expect(gained).toBeCloseTo(cps * 10 + walkedTen.earned - walkedTen.lost, 0)
 
   // Away, the users pay once. The note shows income, the balance also loses the drops.
   const hour = 60 * 60 * 1000

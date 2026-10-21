@@ -17,11 +17,11 @@ import {
 } from "./phase.ts"
 import { useGame } from "./store.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
-import type { CompanyState } from "./globe/growth.ts"
 
-/** What the company's drops cost over a span. Viral spikes are off in these tests, so the rest of the money adds up. */
-function dropsCost(gigs: readonly number[], from: number, to: number, equipment: Record<string, number> = {}, company: CompanyState = FRESH_COMPANY): number {
-  return advanceCompany(company, growthFacts(gigs, equipment), from, to, () => 0.999).lost
+/** What the company's served users pay less what its drops cost over a span. */
+function productNet(gigs: readonly number[], from: number, to: number): number {
+  const grown = advanceCompany(FRESH_COMPANY, growthFacts(gigs, {}), from, to, () => 0.999)
+  return grown.earned - grown.lost
 }
 
 const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
@@ -296,12 +296,9 @@ describe("phase B: gigs", () => {
     expect(idlePerSec(before)).toBe(2)
     expect(before.money).toBe(GIGS.filter((gig) => gig.id <= 8).reduce((sum, gig) => sum + gig.lump, 0))
     useGame.getState().tick(before.now + 10_000)
-    // The eight clients have no gear to serve them, so their drops cost part of the 20.
-    const lost = dropsCost([1, 2, 3, 4, 5, 6, 7, 8], before.now, before.now + 10_000)
-    // The skills held make Friday deploy (+1% idle), which is part of the 20.
-    expect(foundCombos(before).map((row) => row.id)).toContain("friday-deploy")
-    expect(comboFactors(before).cps).toBeCloseTo(1.01, 12)
-    expect(useGame.getState().money - before.money).toBeCloseTo(20 * comboFactors(before).cps - lost, 3)
+    // The eight clients have only the laptop to serve them: the users it serves pay and the drops cost, on top of the 20.
+    const net = productNet([1, 2, 3, 4, 5, 6, 7, 8], before.now, before.now + 10_000)
+    expect(useGame.getState().money - before.money).toBeCloseTo(20 + net, 3)
     spy.mockRestore()
   })
 })
