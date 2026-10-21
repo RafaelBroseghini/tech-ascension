@@ -31,8 +31,8 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 - Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, world, founder, legacy, features, ...).
 - Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`.
 - Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `forceIncident`, `setUsers`, `setPrestige`, `previewEra`.
-- Answer prompts: `acceptEvent`, `dismissEvent`, `answerReview`, `dismissReview`, `keepProfile`, `keepClimbing`.
-- Company and prestige: `goFullTime`, `raiseBridge`, `returnToLadder`, `respondIncident`, `hire`, `fire`, `setPopActive`, `setRegionActive`, `exit`, `buyLegacy`.
+- Answer prompts: `acceptEvent`, `dismissEvent`, `answerReview`, `dismissReview`, `keepProfile`.
+- Company and prestige: `respondIncident`, `hire`, `fire`, `setPopActive`, `setRegionActive`, `exit`, `buyLegacy`.
 - `reset()` wipes the save back to high school. `careerLog()` returns the journal.
 - Purchase prices are scaled by `PURCHASE_COST_SCALE` in `src/data/costs.ts`; exported rows are already scaled. Never copy a price into a test or a doc; import it from the data module.
 - `forceX` helpers bypass gates; the plain version enforces them. Test gates with the plain version.
