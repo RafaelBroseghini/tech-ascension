@@ -1,5 +1,7 @@
 /** Multipliers granted by random events and by Prestige. Pure data plus the math that folds them into rates. */
 import { PRESTIGE_MULT_PER } from "../data/legacy.ts"
+import { comboFactors, NO_COMBO_FACTORS } from "./combos.ts"
+import type { ComboFactors, ComboHoldings } from "./combos.ts"
 
 /** The multiplier on every income and XP stream: 1 + PRESTIGE_MULT_PER per Prestige earned, spent or not. */
 export function prestigeMult(prestigeTotal: number): number {
@@ -19,11 +21,13 @@ export type EventMods = {
   temp: TempMults
   /** Permanent multiplier from Prestige (`prestigeMult`), on every income and XP stream. Omitted means 1. */
   legacyMult?: number
+  /** The kitchen's bonus (`comboFactors`), added up from the combos held. Omitted means 1. */
+  combo?: ComboFactors
 }
 
-/** The store keeps the timed table as `tempMults`; the math wants it as `temp`. */
-export function modsOf(state: { foreverMult: number; tempMults: TempMults; legacy?: { prestigeTotal: number } }): EventMods {
-  return { foreverMult: state.foreverMult, temp: state.tempMults, legacyMult: prestigeMult(state.legacy?.prestigeTotal ?? 0) }
+/** The store keeps the timed table as `tempMults`; the math wants it as `temp`. The holdings are what the combos read. */
+export function modsOf(state: ComboHoldings & { foreverMult: number; tempMults: TempMults; legacy?: { prestigeTotal: number } }): EventMods {
+  return { foreverMult: state.foreverMult, temp: state.tempMults, legacyMult: prestigeMult(state.legacy?.prestigeTotal ?? 0), combo: comboFactors(state) }
 }
 
 export const NO_MODS: EventMods = { foreverMult: 1, temp: {} }
@@ -52,10 +56,11 @@ function tempAverage(entry: TempMult | undefined, from: number, to: number): num
 /** Average factors over [from, to]. With to <= from this is the instantaneous value at `from`. */
 export function modFactors(mods: EventMods, from: number, to: number): ModFactors {
   const forever = clampForever(mods.foreverMult) * (mods.legacyMult !== undefined && mods.legacyMult > 0 ? mods.legacyMult : 1)
+  const combo = mods.combo ?? NO_COMBO_FACTORS
   return {
-    click: forever * tempAverage(mods.temp.click, from, to),
-    cps: forever * tempAverage(mods.temp.cps, from, to),
-    xpIdle: forever * tempAverage(mods.temp.xpPerSec, from, to),
+    click: forever * combo.click * tempAverage(mods.temp.click, from, to),
+    cps: forever * combo.cps * tempAverage(mods.temp.cps, from, to),
+    xpIdle: forever * combo.xpIdle * tempAverage(mods.temp.xpPerSec, from, to),
   }
 }
 

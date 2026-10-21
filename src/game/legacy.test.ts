@@ -55,7 +55,7 @@ describe("Prestige formula", () => {
   })
 
   it("folds into the click, idle and XP factors beside the event multipliers", () => {
-    const fx = modFactors(modsOf({ foreverMult: 2, tempMults: {}, legacy: { prestigeTotal: 10 } }), 0, 0)
+    const fx = modFactors(modsOf({ skills: {}, equipment: {}, owned: {}, jobs: [], gigs: [], foreverMult: 2, tempMults: {}, legacy: { prestigeTotal: 10 } }), 0, 0)
     expect(fx.click).toBeCloseTo(2 * prestigeMult(10))
     expect(fx.cps).toBeCloseTo(2 * prestigeMult(10))
     expect(fx.xpIdle).toBeCloseTo(2 * prestigeMult(10))

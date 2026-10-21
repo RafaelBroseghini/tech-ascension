@@ -35,7 +35,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
   const view = useMemo(() => {
     const prompt = reviewById(review.promptId)
     if (!prompt) return null
-    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ foreverMult, tempMults, legacy }))
+    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
     const earning = {
       cps: rates.idle,
       click: rates.click,
