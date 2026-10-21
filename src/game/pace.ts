@@ -39,8 +39,9 @@ import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import { advanceCompany, FRESH_COMPANY } from "./globe/growth.ts"
 import type { CompanyState, GrowthFacts } from "./globe/growth.ts"
 import type { Ending } from "./globe/hires.ts"
+import { arpuOf, REVENUE_PER_DROPPED_RPS, RPS_PER_USER, servedRpsOf, servingOf } from "./globe/load.ts"
 import { productFactsOf } from "./globe/product.ts"
-import { liveRegions, reachOf, seedsOf, WIN_MULT } from "./globe/world.ts"
+import { liveRegions, reachOf, seedsOf, totalUsers, WIN_MULT, WORLD_TARGET } from "./globe/world.ts"
 import { prestigeMult } from "./mods.ts"
 import { perkEffects } from "./perks.ts"
 import { ownsEverything } from "./nextUnlock.ts"
@@ -112,6 +113,7 @@ export const PACE_MILESTONES = [
   "gigBoard",
   "gear",
   "jobBoard",
+  "midJob",
   "seniorJob",
   "capital",
   "allSkills",
@@ -119,16 +121,29 @@ export const PACE_MILESTONES = [
   "allJobs",
   "allGear",
   "allCapital",
+  "users10k",
+  "users1m",
+  "won",
 ] as const
 
 export type PaceMilestone = (typeof PACE_MILESTONES)[number]
 
+/** Users the product has to reach for each product milestone. The first two are the career gates to come (`docs/BUILDS.md`). */
+export const PRODUCT_MILESTONES = { users10k: 10_000, users1m: 1_000_000, won: WORLD_TARGET } as const
+export type ProductMilestone = keyof typeof PRODUCT_MILESTONES
+
+/** Job ids the career gates sit on: Mid-level SWE (the specialization pick) and Senior SWE. */
+export const MID_JOB_ID = 7
+export const SENIOR_JOB_ID = 14
+
 export type PaceResult = {
   profile: PlayProfile
-  /** True when everything was owned before `maxDays`. */
+  /** True when everything was owned and (with the product) the world was won before `maxDays`. */
   complete: boolean
-  /** Wall-clock days until everything was owned (or `maxDays` when it never was). */
+  /** Wall-clock days until the career finished: the later of owning everything and the win (or `maxDays` when it never did). */
   days: number
+  /** Wall-clock day everything was owned (`ownsEverything`), or null if it never was. The formula in docs/PACING.md is about this day. */
+  ownedDays: number | null
   /** The day each milestone first held, for the ones that did. */
   milestones: Partial<Record<PaceMilestone, number>>
   /** The profile's earning share of the day and clicks per wall-clock second, the two terms of the formula. */
@@ -148,7 +163,7 @@ type Sim = Omit<Progress, "jobs" | "gigs"> & {
   mult: number
   /** Dollars credited this career (gig lumps, idle, click and product income); the seed money is not. */
   earned: number
-  /** The product, when the run models it (`simulateExits`). Left out, `simulatePace` plays the day job alone. */
+  /** The product, when the run models it (`simulateExits`, and `simulatePace` unless it is turned off). */
   product?: ProductSim
 }
 
@@ -160,6 +175,13 @@ type ProductSim = {
   prestigeTotal: number
   /** Day of this career the world was won, or null. */
   winSeconds: number | null
+  /** Second of this career each product milestone was first reached; the win is `winSeconds`. */
+  marks: Partial<Record<ProductMilestone, number>>
+  /**
+   * Seconds of the wall clock the product did not see (time away past the offline cap). The product walks its own clock;
+   * marks and the win are dated on the wall clock, which is that plus this.
+   */
+  skipped: number
 }
 
 function freshSim(): Sim {
@@ -178,11 +200,12 @@ function freshSim(): Sim {
   }
 }
 
-const MILESTONE_TESTS: Record<PaceMilestone, (s: Sim) => boolean> = {
+const MILESTONE_TESTS: Record<Exclude<PaceMilestone, ProductMilestone>, (s: Sim) => boolean> = {
   gigBoard: gigBoardUnlocked,
   gear: equipmentOpen,
   jobBoard: jobBoardUnlocked,
-  seniorJob: (s) => s.jobs.includes(14),
+  midJob: (s) => s.jobs.includes(MID_JOB_ID),
+  seniorJob: (s) => s.jobs.includes(SENIOR_JOB_ID),
   capital: capitalUnlocked,
   allSkills: (s) => SKILL_TIERS.every((row) => ownedCount(s.skills, row.id) > 0),
   allGigs: (s) => GIGS.every((gig) => s.gigs.includes(gig.id)),
@@ -235,6 +258,12 @@ function takeJobs(s: Sim): boolean {
   return any
 }
 
+/** The player keeps the status page green: it reads "degraded" above this share of capacity in use (`servingOf`), so they buy before the drops start. */
+const SERVING_TARGET_LOAD = 0.8
+
+/** Serving gear the users are outgrowing is bought if the revenue it saves repays it within a day, for both players. */
+const PRODUCT_PAYBACK_SECONDS = 2 * DAY_SECONDS
+
 /**
  * Gear and capital are bought by payback: `cost / gain`, where `gain` is the $/s the copy adds as the
  * player actually earns it (idle share of the day, plus the click share of a visit). A first copy is bought
@@ -250,17 +279,22 @@ function spendMoney(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
     const capitalIncome = perkEffects(s.legacy?.perks).capitalIncome
 
     let best: { payback: number; cost: number; buy: () => void } | null = null
-    const consider = (cost: number, first: boolean, gain: number, buy: () => void) => {
+    // Users the gear cannot serve are dropped: a serving copy earns its cost back from the revenue it saves, whichever rule the player reinvests by.
+    const serving = s.product ? servingOf(s.product.company.users, [], s.equipment) : null
+    const perDroppedRps = serving ? REVENUE_PER_DROPPED_RPS + arpuOf(totalUsers(s.product!.company.users)) / RPS_PER_USER : 0
+    const consider = (cost: number, first: boolean, gain: number, buy: () => void, servedRps = 0) => {
       if (!canAfford(s.money, cost)) return
+      const saved = serving ? Math.min(servedRps, Math.max(0, serving.demand / SERVING_TARGET_LOAD - serving.capacity)) * perDroppedRps : 0
+      gain += saved
       const payback = gain > 0 ? cost / gain : Number.POSITIVE_INFINITY
-      if (!first && payback > paybackSeconds) return
+      if (!first && payback > (saved > 0 ? Math.max(paybackSeconds, PRODUCT_PAYBACK_SECONDS) : paybackSeconds)) return
       if (!best || payback < best.payback || (payback === best.payback && cost < best.cost)) best = { payback, cost, buy }
     }
 
     for (const row of GEAR) {
       const have = ownedCount(s.equipment, row.id)
       if (!equipmentOpen(s) || !isGearRevealed(row, s.equipment, s.peakMoney, s.jobs)) continue
-      consider(nextCost(gearBase(row, s), have), have === 0, (row.cps * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.equipment[String(row.id)] = have + 1))
+      consider(nextCost(gearBase(row, s), have), have === 0, (row.cps * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.equipment[String(row.id)] = have + 1), servedRpsOf(row))
     }
     if (capitalUnlocked(s)) {
       for (const row of CAPITAL) {
@@ -319,6 +353,8 @@ export type PaceOptions = {
    * (best payback first). 0 never buys one. Default `STACKER_PAYBACK_SECONDS`.
    */
   paybackSeconds?: number
+  /** Play the day job alone, with no product: the finish is owning everything. Default false. */
+  withoutProduct?: boolean
 }
 
 /**
@@ -329,28 +365,55 @@ export type PaceOptions = {
 export const ONE_OF_EACH_PAYBACK_SECONDS = 60 * 60
 export const STACKER_PAYBACK_SECONDS = 2 * DAY_SECONDS
 
+/**
+ * The single career. The product is in it: a fresh company walked with the game's own growth (`stepProduct`), an IC player
+ * with no hires on the free home region. The career finishes when it owns everything and has won the world.
+ */
 export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): PaceResult {
   const maxSeconds = (options.maxDays ?? 365) * DAY_SECONDS
   const cad = cadenceOf(profile)
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
   const s = freshSim()
+  if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, winSeconds: null, marks: {}, skipped: 0 }
   const milestones: Partial<Record<PaceMilestone, number>> = {}
   let t = 0
+  let walked = 0
+  let ownedAt: number | null = null
 
-  const note = () => {
-    for (const id of PACE_MILESTONES) if (milestones[id] === undefined && MILESTONE_TESTS[id](s)) milestones[id] = t / DAY_SECONDS
+  // The product's clock is the wall clock less the time away past the offline cap, which the game never walks.
+  const syncProduct = (pastCap = 0) => {
+    const p = s.product
+    if (!p) return
+    const target = t - pastCap - p.skipped
+    stepProduct(s, walked, target)
+    walked = Math.max(walked, target)
+    p.skipped += pastCap
   }
+  const note = () => {
+    for (const id of PACE_MILESTONES) {
+      if (milestones[id] !== undefined) continue
+      if (id in PRODUCT_MILESTONES) {
+        const at = s.product?.marks[id as ProductMilestone]
+        if (at !== undefined) milestones[id] = at / DAY_SECONDS
+      } else if (MILESTONE_TESTS[id as keyof typeof MILESTONE_TESTS](s)) milestones[id] = t / DAY_SECONDS
+    }
+    if (ownedAt === null && ownsEverything(s)) ownedAt = t
+  }
+  const finished = () => ownedAt !== null && (!s.product || s.product.winSeconds !== null)
   let longestWait = 0
   let wait = 0
   // A visit that bought a first copy ends the wait; one that did not extends it.
   const endVisit = (before: number) => {
+    // The wait after everything is owned is the product's, not the shop's.
+    if (ownedAt !== null) return
     wait = firstCopies(s) > before ? 0 : wait + 1
     longestWait = Math.max(longestWait, wait)
   }
   const result = (complete: boolean): PaceResult => ({
     profile,
     complete,
-    days: t / DAY_SECONDS,
+    days: complete ? Math.max(ownedAt ?? 0, s.product?.winSeconds ?? 0) / DAY_SECONDS : t / DAY_SECONDS,
+    ownedDays: ownedAt === null ? null : ownedAt / DAY_SECONDS,
     milestones,
     idleShare: cad.idleShare,
     clicksPerWallSecond: cad.clicksPerWallSecond,
@@ -360,14 +423,15 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   for (let cycle = 0; cycle * cad.cycleSeconds < maxSeconds; cycle++) {
     t = cycle * cad.cycleSeconds
     if (cycle > 0) {
-      // Coming back pays the time away, up to the cap, at the rates held when they left.
+      // The product grows through the time away; coming back pays the time away, up to the cap, at the rates held when they left.
+      syncProduct(Math.max(0, cad.awaySeconds - OFFLINE_CAP_SECONDS))
       const away = Math.min(cad.awaySeconds, OFFLINE_CAP_SECONDS)
       earn(s, idlePerSec(s) * s.mult * away, xpPerSec(s) * s.mult * away)
     }
     const before = firstCopies(s)
     shop(s, cad, paybackSeconds)
     note()
-    if (ownsEverything(s)) {
+    if (finished()) {
       endVisit(before)
       return result(true)
     }
@@ -382,18 +446,18 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
       )
       spent += step
       t += step
+      syncProduct()
       shop(s, cad, paybackSeconds)
       note()
-      if (ownsEverything(s)) {
-      endVisit(before)
-      return result(true)
-    }
+      if (finished()) {
+        endVisit(before)
+        return result(true)
+      }
     }
     endVisit(before)
   }
   return result(false)
 }
-
 
 /** The Exit's capital row: the first career reaches it, and the table prints when. */
 const EXIT_ROW = 6
@@ -469,6 +533,9 @@ const NEVER = () => 0.999
 const HOME_REACH = reachOf(FRESH_FOOTPRINT)
 const HOME_LIVE = liveRegions(FRESH_FOOTPRINT)
 
+/** The product is walked in chunks this long, so a milestone is dated to ten minutes and not to the next visit. */
+const PRODUCT_CHUNK_SECONDS = 600
+
 /**
  * Walks the product from `fromSec` to `toSec` of the run with the real `advanceCompany`: users grow by region from the
  * clients signed, the gear the sim owns serves them, served users pay and dropped requests cost. The career has
@@ -484,15 +551,21 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
     equipment: s.equipment,
     product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }),
   }
-  const grown = advanceCompany(p.company, facts, fromSec * 1000, toSec * 1000, NEVER)
-  p.company = grown.state
-  s.earned += grown.earned
-  s.money = Math.max(0, s.money + grown.earned - grown.lost)
-  if (s.money > s.peakMoney) s.peakMoney = s.money
-  if (grown.state.won && p.winSeconds === null) {
-    p.winSeconds = toSec
-    // The win pays its multiplier on everything earned from then on, as `foreverMult` does.
-    s.mult *= WIN_MULT
+  for (let at = fromSec; at < toSec; at += PRODUCT_CHUNK_SECONDS) {
+    const end = Math.min(toSec, at + PRODUCT_CHUNK_SECONDS)
+    const grown = advanceCompany(p.company, facts, at * 1000, end * 1000, NEVER)
+    p.company = grown.state
+    s.earned += grown.earned
+    s.money = Math.max(0, s.money + grown.earned - grown.lost)
+    if (s.money > s.peakMoney) s.peakMoney = s.money
+    const users = totalUsers(grown.state.users)
+    for (const id of Object.keys(PRODUCT_MILESTONES) as ProductMilestone[]) if (p.marks[id] === undefined && users >= PRODUCT_MILESTONES[id]) p.marks[id] = end + p.skipped + p.skipped
+    if (grown.state.won && p.winSeconds === null) {
+      p.winSeconds = end + p.skipped
+      p.marks.won = end + p.skipped
+      // The win pays its multiplier on everything earned from then on, as `foreverMult` does.
+      s.mult *= WIN_MULT
+    }
   }
 }
 
@@ -508,6 +581,8 @@ function newCareer(legacy: LegacyState): Sim {
     perks: [...legacy.perks],
     prestigeTotal: legacy.prestigeTotal,
     winSeconds: null,
+    marks: {},
+    skipped: 0,
   }
   return s
 }
@@ -534,7 +609,7 @@ function buyPerks(legacy: LegacyState) {
  * single-run model: served users pay, the win (8B users) pays its x1.25 and its Hall of Fame bonus. Left out: incidents,
  * hires (so only the night owl ending can be won and the hires' share does nothing), extra regions and points of
  * presence, and any gear bought to serve users beyond what the
- * model already buys. `simulatePace` is untouched and does not model the product.
+ * model already buys. `simulatePace` now models the same product for the single career.
  */
 export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}): ExitsResult {
   const maxSeconds = (options.maxDays ?? 365) * DAY_SECONDS
