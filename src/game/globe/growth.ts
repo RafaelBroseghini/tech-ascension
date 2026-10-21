@@ -37,13 +37,19 @@ export const STATUS_DAY_MS = 60_000
 /** How many days the status page keeps. */
 export const STATUS_DAYS = 90
 
-/** Lost to drops, per second and per unit of drop share. */
-const DROP_CHURN_PER_SEC = 0.01
+/**
+ * Lost to drops, per second and per unit of drop share. Dropped users also stop growing, so a crowd the gear cannot serve
+ * settles at its capacity times (1 + growth / this): at a sixth of the growth pace it stays within about a sixth over.
+ */
+const DROP_CHURN_PER_SEC = 0.075
 /** Users a block or a law bleeds a second, per unit of its strength. A server in the region halves it. */
 const BLEED_PER_SEC = 0.002
 
 /** The longest step a stretch is walked in, so a long time away still plays out. */
 export const STEP_MS = 60_000
+
+/** The longest piece a step is solved in, in seconds: the crowd and the gear see each other this often. */
+export const SUBSTEP_S = 5
 
 const SEVERITY = "odpm"
 
@@ -100,6 +106,28 @@ export interface GrowthStep {
 }
 
 /**
+ * Users in a region after `sec` seconds of growth at `rate`: `d users / dt = rate × max(users, seed) × (1 − users / ceiling)`.
+ * Solved exactly, in two parts. Below the seed the base is the seed, so the crowd closes on the ceiling at a fixed pace; from
+ * the seed up it is logistic. A step of any length gives the same answer, so a long stretch away needs no small steps.
+ */
+export function grownUsers(users: number, seed: number, ceiling: number, rate: number, sec: number): number {
+  if (rate <= 0 || sec <= 0 || users >= ceiling) return users
+  let here = users
+  let left = sec
+  if (here < seed) {
+    // Linear in the gap to the ceiling: gap(t) = gap0 × e^(−k t).
+    const k = (rate * seed) / ceiling
+    const toSeed = seed < ceiling ? Math.log((ceiling - here) / (ceiling - seed)) / k : Number.POSITIVE_INFINITY
+    if (toSeed >= left) return ceiling - (ceiling - here) * Math.exp(-k * left)
+    here = seed
+    left -= toSeed
+  }
+  if (here <= 0) return 0
+  // Logistic: users(t) = ceiling / (1 + (ceiling / users0 − 1) e^(−rate t)).
+  return ceiling / (1 + (ceiling / here - 1) * Math.exp(-rate * left))
+}
+
+/**
  * Advances the company over `ms` (a short step, at most `STEP_MS`). `at` is when the step ends. `rand` is in [0, 1)
  * and drives what the world throws, so a test can pin it.
  */
@@ -110,35 +138,49 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   let incidents = state.incidents.filter((i) => i.until > at)
   let seq = state.incidentSeq
 
-  const { dropShare, lostPerSec, revenuePerSec } = servingOf(state.users, incidents, facts.equipment)
-  const served = 1 - dropShare
   const growthMult = facts.product?.growthMult ?? 1
   const teamShare = hireShareOfGrowth(facts.product?.hireBonus ?? 0, growthMult)
   const payroll = facts.product?.payroll ?? 0
+  const revenueMult = facts.product?.revenueMult ?? 1
   let hiredAdded = 0
+  let earned = 0
+  let lost = 0
+  let resistance = state.resistance
+  let users: Record<string, number> = { ...state.users }
 
-  const resistance = state.resistance + (resistanceTarget(before) - state.resistance) * (1 - Math.exp(-sec / RESISTANCE_LAG_S))
-  const drag = 1 - (0.5 * resistance) / 100
+  // The crowd and the gear answer each other (users past the capacity are dropped, and dropped users stop growing), so the
+  // step is walked in short pieces that feed the new crowd back in. Within a piece the growth is exact.
+  const pieces = Math.max(1, Math.ceil(sec / SUBSTEP_S))
+  const dt = sec / pieces
+  for (let piece = 0; piece < pieces; piece++) {
+    const now = totalUsers(users)
+    const { dropShare, lostPerSec, revenuePerSec } = servingOf(users, incidents, facts.equipment)
+    const served = 1 - dropShare
+    resistance += (resistanceTarget(now) - resistance) * (1 - Math.exp(-dt / RESISTANCE_LAG_S))
+    const drag = 1 - (0.5 * resistance) / 100
 
-  const users: Record<string, number> = {}
-  for (const region of REGIONS) {
-    const here = state.users[region.id] ?? 0
-    const ceiling = ceilingOf(region.id)
-    const hasPop = facts.live[region.id] === true
-    const stalling = biting(incidents, region.id, "stall", hasPop)
-    const stalled = stalling.length > 0
-    const rival = multiplierOf(incidents, region.id, "drag")
-    const seed = (facts.seeds[region.id] ?? 0) + SPILL * before * (populationOf(region.id) / WORLD_POPULATION)
-    const growth = stalled ? 0 : GROWTH_PER_SEC * (facts.reach[region.id] ?? 0) * Math.max(here, seed) * Math.max(0, 1 - here / ceiling) * served * drag * rival * growthMult
-    const bleed = stalling.reduce((rate, i) => rate + BLEED_PER_SEC * i.strength * (hasPop ? 0.5 : 1) * (1 + resistance / 100), 0)
-    const churn = Math.min(0.9, (DROP_CHURN_PER_SEC * dropShare + bleed) * sec)
-    const next = Math.min(ceiling, Math.max(0, (here + growth * sec) * (1 - churn)))
-    if (next > 0) users[region.id] = next
-    hiredAdded += Math.max(0, next - here * (1 - churn)) * teamShare
+    const nextUsers: Record<string, number> = {}
+    for (const region of REGIONS) {
+      const here = users[region.id] ?? 0
+      const ceiling = ceilingOf(region.id)
+      const hasPop = facts.live[region.id] === true
+      const stalling = biting(incidents, region.id, "stall", hasPop)
+      const stalled = stalling.length > 0
+      const rival = multiplierOf(incidents, region.id, "drag")
+      const seed = (facts.seeds[region.id] ?? 0) + SPILL * now * (populationOf(region.id) / WORLD_POPULATION)
+      const rate = stalled ? 0 : GROWTH_PER_SEC * (facts.reach[region.id] ?? 0) * served * drag * rival * growthMult
+      const grown = grownUsers(here, seed, ceiling, rate, dt)
+      const bleed = stalling.reduce((sum, i) => sum + BLEED_PER_SEC * i.strength * (hasPop ? 0.5 : 1) * (1 + resistance / 100), 0)
+      const churn = Math.min(0.9, 1 - Math.exp(-(DROP_CHURN_PER_SEC * dropShare + bleed) * dt))
+      const next = Math.min(ceiling, Math.max(0, grown * (1 - churn)))
+      if (next > 0) nextUsers[region.id] = next
+      hiredAdded += Math.max(0, next - here * (1 - churn)) * teamShare
+    }
+    users = nextUsers
+    lost += lostPerSec * dt
+    earned += revenuePerSec * revenueMult * dt
   }
   const total = totalUsers(users)
-  const lost = lostPerSec * sec
-  const earned = revenuePerSec * (facts.product?.revenueMult ?? 1) * sec
   const paid = payroll * sec
   // Users lost in the step are lost from both sides alike; what the team added is carried over and never passes the crowd.
   const hiredUsers = Math.min(total, (before > 0 ? state.hiredUsers * Math.min(1, total / before) : 0) + hiredAdded)
