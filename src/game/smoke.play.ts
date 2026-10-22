@@ -1,11 +1,12 @@
 import { expect, test, vi } from "vitest"
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { PRESTIGE_MULT_PER } from "../data/legacy.ts"
 import { installGameHarness } from "./harness.ts"
 import { formatNumber } from "./format.ts"
+import { nextUnlock } from "./nextUnlock.ts"
 import { hydrate } from "./save.ts"
 import { advanceCompany, growthFacts } from "./globe/growth.ts"
 import type { CompanyState } from "./globe/growth.ts"
@@ -190,6 +191,59 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   expect(d.phase).toBe("D")
   expect(d.money).toBe(0)
   expect(d.lastPop).toMatchObject({ kind: "unlock", size: "large" })
+})
+
+test("specializations: the pick opens at Mid-level, locks the rows above it, switches once, and click builds pay manual clicks more", () => {
+  game.reset()
+  game.keepProfile()
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+
+  // Refused before Mid-level SWE; every job above it needs the pick.
+  expect(game.pickSpecialization("frontend")).toBe(false)
+  expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [] })
+  for (let id = 1; id <= 6; id++) expect(game.buyJob(id)).toBe(true)
+  expect(game.pickSpecialization("frontend")).toBe(false)
+  expect(game.buyJob(7)).toBe(true)
+  for (const id of [8, 14, 16, 108]) expect(game.buyJob(id), `job ${id} before the pick`).toBe(false)
+  expect(game.getState().unlocks.capital).toBe(false)
+  // The Jobs panel names the pick (the whole-game answer is still a skill while skills are unbought).
+  expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "spec:pick", name: "Pick a specialization", tab: "C" })
+  expect(game.getState().build.options).toHaveLength(6)
+
+  // The pick is made once; the other tracks stay hidden and unbuyable.
+  expect(game.pickSpecialization("wizard")).toBe(false)
+  expect(game.pickSpecialization("backend")).toBe(true)
+  expect(game.pickSpecialization("infra")).toBe(false)
+  expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "spec:backend")).toBe(true)
+  for (const id of [108, 208, 308, 408, 508]) expect(game.buyJob(id), `job ${id} on another track`).toBe(false)
+
+  // Past Senior: capital is open, and the one switch keeps it open.
+  for (let id = 8; id <= 14; id++) expect(game.buyJob(id), `job ${id}`).toBe(true)
+  expect(game.getState().unlocks.capital).toBe(true)
+  game.setMoney(5_000)
+  const before = game.getState()
+  expect(game.switchSpecialization("backend")).toBe(false)
+  expect(game.switchSpecialization("frontend")).toBe(true)
+  const after = game.getState()
+  expect(after.build).toMatchObject({ specialization: "frontend", switched: true, options: [] })
+  expect(after.jobs).toEqual([1, 2, 3, 4, 5, 6, 7])
+  expect(after.money).toBe(before.money)
+  expect(after.unlocks.capital).toBe(true)
+  expect(after.phase).toBe("D")
+  expect(game.switchSpecialization("infra")).toBe(false)
+  expect(game.buyJob(9)).toBe(false)
+  expect(game.buyJob(108)).toBe(true)
+
+  // A click build pays a manual click 2.5x the idle $/s with every job held; a hover or auto click does not get that.
+  const held = visibleJobs("frontend").map((job) => job.id)
+  useGame.setState({ jobs: held, money: 0, activeBoost: null })
+  const idle = game.getState().cps
+  const manual = game.click().money
+  const auto = useGame.getState().click("auto").money
+  expect(manual).toBeGreaterThan(auto)
+  expect(game.getState().clickShare).toBeCloseTo(2.5, 6)
+  expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
 })
 
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
