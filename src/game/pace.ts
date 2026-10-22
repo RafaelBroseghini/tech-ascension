@@ -16,8 +16,9 @@ import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { GIGS, SKILL_TIERS, highestJobRank, visibleJobs } from "../data/phases.ts"
 import type { LeadId } from "../data/leadership.ts"
+import { effectsOf } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { buildFactsOf, leadPickedBuild, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
+import { buildFactsOf, hireLocked, leadPickedBuild, specOf, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
   capitalBase,
@@ -41,7 +42,8 @@ import type { LegacyState } from "./legacy.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import { advanceCompany, FRESH_COMPANY } from "./globe/growth.ts"
 import type { CompanyState, GrowthFacts } from "./globe/growth.ts"
-import type { Ending } from "./globe/hires.ts"
+import { headcountOf, hirePayrollOf, hirePrice, openHires } from "./globe/hires.ts"
+import type { Ending, Hires } from "./globe/hires.ts"
 import { arpuOf, REVENUE_PER_DROPPED_RPS, RPS_PER_USER, servedRpsOf, servingOf } from "./globe/load.ts"
 import { productFactsOf } from "./globe/product.ts"
 import { liveRegions, reachOf, seedsOf, totalUsers, WIN_MULT, WORLD_TARGET } from "./globe/world.ts"
@@ -163,6 +165,8 @@ export type PaceResult = {
    * everything was owned. The model only buys at visits, so a wait is counted in visits, not minutes.
    */
   longestWaitVisits: number
+  /** Heads on the payroll at the end: 0 on the IC line, whatever a Manager hired under `HIRE_CASH_SHARE` and `HIRE_PAYROLL_SHARE`. */
+  headcount: number
 }
 
 type Sim = Omit<Progress, "jobs" | "gigs"> & {
@@ -186,6 +190,8 @@ type ProductSim = {
   /** Legacy perks held and the Prestige total behind the permanent bonus (it multiplies growth). */
   perks: readonly string[]
   prestigeTotal: number
+  /** The team a Manager has hired, by kind. Empty on the IC line. */
+  hires: Hires
   /** Day of this career the world was won, or null. */
   winSeconds: number | null
   /** Second of this career each product milestone was first reached; the win is `winSeconds`. */
@@ -284,6 +290,15 @@ const SERVING_TARGET_LOAD = 0.8
 const PRODUCT_PAYBACK_SECONDS = 2 * DAY_SECONDS
 
 /**
+ * A Manager hires whenever a kind's next copy costs no more than this share of the cash in hand: someone who treats the
+ * team as a side bet. It is a model assumption, not a tuned number; `docs/PACING.md` sweeps it. The kinds are the ones
+ * the line's ranks open (`hireLocked`).
+ */
+export const HIRE_CASH_SHARE = 0.05
+/** ...and only while the payroll, with that hire, stays within this share of what the product's served users pay. */
+export const HIRE_PAYROLL_SHARE = 0.25
+
+/**
  * Gear and capital are bought by payback: `cost / gain`, where `gain` is the $/s the copy adds as the
  * player actually earns it (idle share of the day, plus the click share of a visit). A first copy is bought
  * as soon as it is affordable. A repeat copy is bought only if its payback is within `paybackSeconds`.
@@ -320,6 +335,21 @@ function spendMoney(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
         const have = ownedCount(s.owned, row.id)
         if (!isRevealed(row, s.owned, s.peakMoney)) continue
         consider(nextCost(capitalBase(row, s), have), have === 0, (row.cps * capitalIncome * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.owned[String(row.id)] = have + 1))
+      }
+    }
+
+    // A Manager hires the cheapest kind the cash share allows, before the shop's rows.
+    if (s.product && s.lead === "manager") {
+      const p = s.product
+      const revenueNow = servingOf(p.company.users, [], s.equipment).revenuePerSec * perkEffects(p.perks).revenue * effectsOf(specOf(s)).revenue
+      const row = openHires(p.hires)
+        .filter((h) => hireLocked(s, h) === null && hirePrice(h, p.hires[h.id] ?? 0) <= s.money * HIRE_CASH_SHARE && hirePayrollOf(p.hires) + h.salary <= revenueNow * HIRE_PAYROLL_SHARE)
+        .sort((a, b) => hirePrice(a, p.hires[a.id] ?? 0) - hirePrice(b, p.hires[b.id] ?? 0))[0]
+      if (row) {
+        s.money -= hirePrice(row, p.hires[row.id] ?? 0)
+        p.hires = { ...p.hires, [row.id]: (p.hires[row.id] ?? 0) + 1 }
+        any = true
+        continue
       }
     }
 
@@ -397,7 +427,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   const cad = cadenceOf(profile)
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
   const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
-  if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, winSeconds: null, marks: {}, skipped: 0 }
+  if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, hires: {}, winSeconds: null, marks: {}, skipped: 0 }
   const milestones: Partial<Record<PaceMilestone, number>> = {}
   let t = 0
   let walked = 0
@@ -441,6 +471,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
     idleShare: cad.idleShare,
     clicksPerWallSecond: cad.clicksPerWallSecond,
     longestWaitVisits: longestWait,
+    headcount: headcountOf(s.product?.hires ?? {}),
   })
 
   for (let cycle = 0; cycle * cad.cycleSeconds < maxSeconds; cycle++) {
@@ -572,14 +603,14 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
     reach: HOME_REACH,
     live: HOME_LIVE,
     equipment: s.equipment,
-    product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }, buildFactsOf(s)),
+    product: productFactsOf(p.hires, { perks: p.perks, prestigeTotal: p.prestigeTotal }, buildFactsOf(s)),
   }
   for (let at = fromSec; at < toSec; at += PRODUCT_CHUNK_SECONDS) {
     const end = Math.min(toSec, at + PRODUCT_CHUNK_SECONDS)
     const grown = advanceCompany(p.company, facts, at * 1000, end * 1000, NEVER)
     p.company = grown.state
     s.earned += grown.earned
-    s.money = Math.max(0, s.money + grown.earned - grown.lost)
+    s.money = Math.max(0, s.money + grown.earned - grown.lost - grown.payroll)
     if (s.money > s.peakMoney) s.peakMoney = s.money
     const users = totalUsers(grown.state.users)
     for (const id of Object.keys(PRODUCT_MILESTONES) as ProductMilestone[]) if (p.marks[id] === undefined && users >= PRODUCT_MILESTONES[id]) p.marks[id] = end + p.skipped
@@ -603,6 +634,7 @@ function newCareer(legacy: LegacyState, track: SpecId, lead: LeadId): Sim {
     company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
     perks: [...legacy.perks],
     prestigeTotal: legacy.prestigeTotal,
+    hires: {},
     winSeconds: null,
     marks: {},
     skipped: 0,

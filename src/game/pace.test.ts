@@ -6,6 +6,7 @@ import {
   ONE_OF_EACH_PAYBACK_SECONDS,
   estimateDays,
   FINAL_CLICK_SHARE,
+  HIRE_PAYROLL_SHARE,
   OFFLINE_CAP_SECONDS,
   PACE_K,
   PACE_MILESTONES,
@@ -17,6 +18,9 @@ import {
 import type { PlayProfile } from "./pace.ts"
 import { OFFLINE_CAP_MS } from "./save.ts"
 import { visibleJobs } from "../data/phases.ts"
+import type { LeadId } from "../data/leadership.ts"
+import { SPECIALIZATIONS } from "../data/specializations.ts"
+import type { SpecId } from "../data/specializations.ts"
 
 const profile = (visitsPerDay: number, minutesPerVisit: number, clicksPerSec: number): PlayProfile => ({
   visitsPerDay,
@@ -228,5 +232,37 @@ describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
     const result = simulateExits(regular, { maxDays: 400, exitRule: "falling" })
     const worth = simulateExits(regular, { maxDays: 400 })
     expect(result.runs[0]!.endDay).toBeGreaterThan(worth.runs[0]!.endDay)
+  })
+})
+
+describe("pace by build", () => {
+  const leftOpen = profile(24, 15, 2)
+  const run = (specialization: SpecId, leadership: LeadId, paybackSeconds = STACKER_PAYBACK_SECONDS) => simulatePace(leftOpen, { maxDays: 30, paybackSeconds, specialization, leadership })
+
+  it("hires nobody on the IC line and a team on the Manager's, which still finishes", () => {
+    const ic = run("backend", "ic")
+    const manager = run("backend", "manager")
+    expect(ic.headcount).toBe(0)
+    expect(manager.headcount).toBeGreaterThan(0)
+    expect(ic.complete).toBe(true)
+    expect(manager.complete).toBe(true)
+    expect(manager.days).toBeGreaterThan(0)
+  })
+
+  it("keeps the Manager within a day of the IC for every specialization, so neither line is a dead end", () => {
+    for (const spec of SPECIALIZATIONS) {
+      const ic = run(spec.id, "ic")
+      const manager = run(spec.id, "manager")
+      expect(Math.abs(manager.days - ic.days), spec.id).toBeLessThan(1)
+    }
+  }, 60_000)
+
+  it("lets a click build win the world sooner than a plain one (its clicks pay more)", () => {
+    expect(run("frontend", "ic").milestones.won!).toBeLessThan(run("backend", "ic").milestones.won!)
+  })
+
+  it("only hires while the payroll stays within its share of the revenue", () => {
+    expect(HIRE_PAYROLL_SHARE).toBeGreaterThan(0)
+    expect(HIRE_PAYROLL_SHARE).toBeLessThanOrEqual(1)
   })
 })
