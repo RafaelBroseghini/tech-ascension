@@ -9,6 +9,9 @@ import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { Shop } from "./Shop.tsx"
 
+/** The first 10x dev row a career can reach on XP alone (Hover Tap also waits for a Senior SWE). */
+const OPEN_ROW = GOLD_SKILLS.find((row) => !row.unlockJobRank)!
+
 const roots: Root[] = []
 
 function renderInto(element: ReturnType<typeof createElement>): HTMLDivElement {
@@ -55,7 +58,7 @@ describe("10x dev skills in the shop", () => {
 
   it("keeps the perks out of the skills list and in their own 10x dev sub-tab", () => {
     writeSavedShopTab("A")
-    useGame.setState({ xpTotal: GOLD_SKILLS[0]!.unlockXp, xp: 0, skills: { "1": 1 } })
+    useGame.setState({ xpTotal: OPEN_ROW.unlockXp, xp: 0, skills: { "1": 1 } })
     const host = renderShop()
     const tabs = [...host.querySelectorAll("[role='tab'][data-view]")]
     // The 10x dev tab opened with this XP, so it carries its NEW pill until it is clicked.
@@ -79,16 +82,30 @@ describe("10x dev skills in the shop", () => {
 
   it("claims a perk with XP and then shows it owned", () => {
     writeSavedShopTab("A")
-    const perk = GOLD_SKILLS[0]!
-    useGame.setState({ xpTotal: GOLD_SKILLS[0]!.unlockXp, xp: perk.cost, skills: { "1": 1 } })
+    const perk = OPEN_ROW
+    useGame.setState({ xpTotal: OPEN_ROW.unlockXp, xp: perk.cost, skills: { "1": 1 } })
     const host = renderShop()
     openTenx(host)
-    click(host.querySelector(".gold-offer .offer-actions button"))
+    const row = () => host.querySelector(`[data-row='gold:${perk.id}']`)
+    click(row()?.querySelector(".offer-actions button") ?? null)
     expect(useGame.getState().gold).toEqual([perk.id])
     expect(useGame.getState().xp).toBe(0)
-    expect(host.querySelector(".gold-offer")?.className).toContain("is-done")
-    expect(host.querySelector(".gold-offer .offer-actions button")?.textContent).toBe("Owned")
+    expect(row()?.className).toContain("is-done")
+    expect(row()?.querySelector(".offer-actions button")?.textContent).toBe("Owned")
     expect(goldRows(host)).toContain("Overnight Cron")
+  })
+
+  it("keeps Hover Tap locked until a Senior SWE is held, and says which job", () => {
+    writeSavedShopTab("A")
+    const hover = GOLD_SKILLS.find((row) => row.name === "Hover Tap")!
+    useGame.setState({ xpTotal: 1e9, xp: 1e9, skills: { "1": 1 }, jobs: [1, 2, 3] })
+    const host = renderShop()
+    openTenx(host)
+    const row = () => host.querySelector<HTMLElement>(`[data-row='gold:${hover.id}']`)
+    expect(row()?.querySelector(".offer-actions button")?.textContent).toBe("Locked")
+    expect(row()?.textContent).toContain("Senior SWE")
+    click(row()?.querySelector(".offer-actions button") ?? null)
+    expect(useGame.getState().gold).toEqual([])
   })
 
 })

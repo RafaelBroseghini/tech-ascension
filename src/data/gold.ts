@@ -25,6 +25,8 @@ export type GoldSkill = {
   effect: GoldEffect
   /** Lifetime XP that opens the row. */
   unlockXp: number
+  /** The job rank that also opens it, 0 or left out for none: hover clicking waits for a Senior SWE (rank 14). */
+  unlockJobRank?: number
   /** Spendable XP, already scaled like every other price. */
   cost: number
 }
@@ -32,7 +34,7 @@ export type GoldSkill = {
 type GoldRow = Omit<GoldSkill, "cost">
 
 const GOLD_ROWS: readonly GoldRow[] = [
-  { id: 2, name: "Hover Tap", blurb: "Rest the pointer on the emoji, or hold it on touch, to click 2 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 2 }, unlockXp: 20_000 },
+  { id: 2, name: "Hover Tap", blurb: "Rest the pointer on the emoji, or hold it on touch, to click 2 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 2 }, unlockXp: 20_000, unlockJobRank: 14 },
   { id: 4, name: "Overnight Cron", blurb: "Time away pays for up to 12 hours.", family: "away", effect: { kind: "offlineCap", hours: 12 }, unlockXp: 100_000 },
   { id: 5, name: "Hover Rhythm", blurb: "Hover clicking speeds up to 5 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 5 }, unlockXp: 250_000 },
   { id: 7, name: "Hover Flow", blurb: "Hover clicking speeds up to 10 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 10 }, unlockXp: 1_500_000 },

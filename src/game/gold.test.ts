@@ -15,6 +15,9 @@ import { installGameHarness } from "./harness.ts"
 import { hydrate, OFFLINE_CAP_MS, parseSave, freshSave } from "./save.ts"
 import { useGame } from "./store.ts"
 
+/** The first 10x dev row a career can reach on XP alone (Hover Tap also waits for a Senior SWE). */
+const OPEN_ROW = GOLD_SKILLS.find((row) => !row.unlockJobRank)!
+
 const HOUR = 3_600_000
 const idOf = (name: string) => GOLD_SKILLS.find((row) => row.name === name)!.id
 
@@ -102,7 +105,7 @@ describe("gold in the store", () => {
   })
 
   it("spends spendable XP, keeps lifetime XP and persists the id", () => {
-    const first = GOLD_SKILLS[0]!
+    const first = OPEN_ROW
     useGame.setState({ xp: first.cost + 10, xpTotal: first.unlockXp + 500 })
     expect(useGame.getState().buyGold(first.id)).toBe(true)
     const state = useGame.getState()
@@ -114,7 +117,7 @@ describe("gold in the store", () => {
   })
 
   it("refuses a locked or unaffordable row", () => {
-    const first = GOLD_SKILLS[0]!
+    const first = OPEN_ROW
     useGame.setState({ xp: 1e9, xpTotal: first.unlockXp - 1 })
     expect(useGame.getState().buyGold(first.id)).toBe(false)
     useGame.setState({ xp: first.cost - 1, xpTotal: 1e9 })
@@ -172,7 +175,7 @@ describe("gold through the harness", () => {
   it("buys through the normal gates", () => {
     const game = installGameHarness()
     game.reset()
-    const first = GOLD_SKILLS[0]!
+    const first = OPEN_ROW
     game.setXp(first.unlockXp + first.cost)
     expect(game.buyGold(first.id)).toBe(true)
     expect(game.getState().gold).toEqual([first.id])

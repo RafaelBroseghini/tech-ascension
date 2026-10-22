@@ -3,6 +3,8 @@ import { perkEffects } from "./perks.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import { MAX_CLICKS_PER_SEC } from "./autoClick.ts"
 import { canAfford } from "./economy.ts"
+import { heldRank } from "./build.ts"
+import type { BuildState } from "./build.ts"
 
 const GOLD_BY_ID = new Map<number, GoldSkill>(GOLD_SKILLS.map((row) => [row.id, row]))
 
@@ -27,16 +29,19 @@ export function offlineCapMs(gold: readonly number[], baseMs: number, perks?: re
   return cap + perkEffects(perks).offlineHours * 3_600_000
 }
 
-export type GoldGates = { xpTotal: number; gold: readonly number[] }
+/** `jobs` (and `build`, for the rank a switch kept) are the career's jobs: a row with a job rank waits on it. Left out, the rank is not tracked and the row opens on XP alone. */
+export type GoldGates = { xpTotal: number; gold: readonly number[]; jobs?: readonly number[]; build?: BuildState }
 
-/** A gold row shows once lifetime XP reaches its gate, or when it is already owned. */
+/** A gold row shows once lifetime XP reaches its gate and a job of its rank is held, or when it is already owned. */
 export function isGoldRevealed(row: GoldSkill, p: GoldGates): boolean {
-  return p.gold.includes(row.id) || p.xpTotal >= row.unlockXp
+  if (p.gold.includes(row.id)) return true
+  if (p.xpTotal < row.unlockXp) return false
+  return !row.unlockJobRank || p.jobs === undefined || heldRank({ jobs: p.jobs, build: p.build }) >= row.unlockJobRank
 }
 
 /** The gold section stays out of the shop until the first row is in reach. */
 export function goldSectionOpen(p: GoldGates): boolean {
-  return p.gold.length > 0 || GOLD_SKILLS.some((row) => p.xpTotal >= row.unlockXp)
+  return p.gold.length > 0 || GOLD_SKILLS.some((row) => isGoldRevealed(row, p))
 }
 
 /**
