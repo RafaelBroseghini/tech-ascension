@@ -8,12 +8,13 @@ import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
-import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
+import { heldRank, needsPick } from "../game/build.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
 import type { Era } from "../data/capital.ts"
-import { canAfford, capitalBase, firstJobAtRank, gearBase, highestJobRank, isGearRevealed, isRevealed, isSkillRevealed, nextCost, ownedCount, skillCost, visibleShopRows } from "../game/economy.ts"
+import { canAfford, capitalBase, firstJobAtRank, gearBase, isGearRevealed, isRevealed, isSkillRevealed, nextCost, ownedCount, skillCost, visibleShopRows } from "../game/economy.ts"
 import { canBuyGold, goldSectionOpen, isGoldRevealed, nextInFamily, visibleGold } from "../game/gold.ts"
 import { formatNumber } from "../game/format.ts"
 import {
@@ -199,6 +200,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const equipment = useGame((s) => s.equipment)
   const owned = useGame((s) => s.owned)
   const jobs = useGame((s) => s.jobs)
+  const build = useGame((s) => s.build)
   const gigs = useGame((s) => s.gigs)
   const gold = useGame((s) => s.gold)
   const legacyHeld = useGame((s) => s.legacy)
@@ -234,7 +236,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
   const companyOpen = useFeatureOpen("studio")
-  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs }
+  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, build }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
@@ -272,7 +274,11 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     (row) => ownedCount(skills, row.id) > 0,
   )
   const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id))
-  const jobRows = visibleShopRows(JOB_TIERS, (job) => jobs.includes(job.id))
+  // A career sees its own track only. Before the pick, the rows above Mid-level wait behind it.
+  const jobRows = visibleShopRows(
+    visibleJobs(build.spec).filter((job) => build.spec !== null || !needsPick(job)),
+    (job) => jobs.includes(job.id),
+  )
   const equipRows = visibleShopRows(
     EQUIPMENT,
     (row) => ownedCount(equipment, row.id) > 0,
@@ -401,7 +407,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
         visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
     (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
     (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready")) ||
-    (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs))) ||
+    (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank))) ||
     (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0))
 
   const tabGlow = PHASE_TAB[tab].glow
@@ -738,7 +744,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   {group.rows.map((row, index) => {
                       const have = ownedCount(equipment, row.id)
                       const cost = nextCost(gearBase(row, perksHeld), have)
-                      const revealed = isGearRevealed(row, equipment, peakMoney, jobs)
+                      const revealed = isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank)
                       const afford = revealed && canAfford(money, cost)
                       const key = `equip:${row.id}`
                       return (
@@ -755,7 +761,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                           locked={!revealed && have === 0}
                           unlock={[
                             ...(peakMoney < row.unlockMoney ? ["A bigger balance"] : []),
-                            ...(row.unlockJobRank > 0 && highestJobRank(jobs) < row.unlockJobRank ? [`the ${firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`} job`] : []),
+                            ...(row.unlockJobRank > 0 && heldRank({ jobs, build }) < row.unlockJobRank ? [`the ${firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`} job`] : []),
                           ]}
                           unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
                           title={row.name}

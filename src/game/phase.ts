@@ -3,8 +3,9 @@ import type { Gig, JobTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
-import { canAfford, capitalById, firstJobAtRank, highestJobId, highestJobRank, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
+import { canAfford, capitalById, firstJobAtRank, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
+import { heldRank, needsPick, rowVisible, specOf } from "./build.ts"
 import { formatNumber } from "./format.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
@@ -24,7 +25,7 @@ export const PHASE_NAME: Record<Phase, string> = {
   D: "Capital",
 }
 
-export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs">
+export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs"> & Partial<Pick<Progress, "build">>
 
 /**
  * Gates latch: each one also opens when the player already holds what it leads to (a gig done,
@@ -43,9 +44,9 @@ export function jobBoardUnlocked(p: Gates): boolean {
   return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= JOB_BOARD_UNLOCK.minGigsCompleted
 }
 
-/** The Senior job (id 14) or higher OR $500K held at some point (peakMoney) OR any capital row already owned. */
+/** A Senior job (rank 14) or higher, now or before a switch, OR $500K held at some point (peakMoney) OR any capital row already owned. */
 export function capitalUnlocked(p: Gates): boolean {
-  if (highestJobRank(p.jobs) >= CAPITAL_UNLOCK.minJobRank) return true
+  if (heldRank(p) >= CAPITAL_UNLOCK.minJobRank) return true
   if (canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney)) return true
   return Object.values(p.owned).some((count) => count > 0)
 }
@@ -88,11 +89,14 @@ export function gigState(p: Gates, gig: Gig): GigState {
   return "ready"
 }
 
-export type JobState = "owned" | "board-locked" | "locked" | "ready"
+/** "hidden" is another track's row, which this career never sees; "pick" is a row above the trunk before a specialization is picked. */
+export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "locked" | "ready"
 
 export function jobState(p: Gates, job: JobTier): JobState {
   if (p.jobs.includes(job.id)) return "owned"
   if (!jobBoardUnlocked(p)) return "board-locked"
+  if (!rowVisible(job, specOf(p))) return "hidden"
+  if (needsPick(job) && specOf(p) === null) return "pick"
   if (p.xpTotal < job.xpReq) return "locked"
   return "ready"
 }
@@ -171,7 +175,7 @@ export function jobBoardRequirements(p: Gates): Requirement[] {
 /** Either path opens capital, so the two lines are alternatives. */
 export function capitalRequirements(p: Gates): Requirement[] {
   return [
-    { text: `A senior job (${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.name ?? "Senior SWE"} or higher)`, met: highestJobRank(p.jobs) >= CAPITAL_UNLOCK.minJobRank },
+    { text: `A senior job (${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.name ?? "Senior SWE"} or higher)`, met: heldRank(p) >= CAPITAL_UNLOCK.minJobRank },
     { text: `or hold $${formatNumber(CAPITAL_UNLOCK.minMoney)} at once`, met: canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney) },
   ]
 }

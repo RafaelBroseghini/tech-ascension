@@ -11,6 +11,8 @@ import type { TempMults } from "./mods.ts"
 import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
+import { normalizeBuild } from "./build.ts"
+import type { BuildState } from "./build.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, settleGrowth } from "./globe/growth.ts"
 import { productFactsOf } from "./globe/product.ts"
@@ -68,6 +70,8 @@ export type SaveData = {
   gigs: number[]
   /** Owned gold skill ids. Omitted when none. */
   gold?: number[]
+  /** The specialization picked and the one switch. Omitted before the pick. A save that holds a job above Mid-level without one is a Backend career. */
+  build?: BuildState
   savedAt: number
   /** Omitted when no boost is running. Cleared on load if endsAt has passed. */
   activeBoost?: ActiveBoost
@@ -263,6 +267,9 @@ export function parseSave(input: unknown): SaveData | null {
     peakMoney: Math.max(money, finite(input.peakMoney)),
   }
   if (boost) save.activeBoost = boost
+  const built = normalizeBuild(input.build, save.jobs)
+  save.jobs = built.jobs
+  if (built.build) save.build = built.build
   const gold = normalizeIds(input.gold, (id) => goldById(id) !== undefined)
   if (gold.length > 0) save.gold = gold
   const foreverMult = clampForever(finite(input.foreverMult) || 1)

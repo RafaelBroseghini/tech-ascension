@@ -3,6 +3,7 @@ import { LEGACY_PERKS } from "../data/legacy.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
+import { isSpecId, specById } from "../data/specializations.ts"
 import { eventById } from "./events.ts"
 import { featureById, triggerLabel } from "./features.ts"
 import { formatNumber } from "./format.ts"
@@ -37,6 +38,8 @@ export const CAREER_TYPES = [
   "exit",
   "legacy",
   "combo",
+  "pick",
+  "switch",
 ] as const
 
 export type CareerType = (typeof CAREER_TYPES)[number]
@@ -166,6 +169,11 @@ function idOf(ref: string): number {
   return Number.isFinite(id) ? id : 0
 }
 
+function specName(ref: string): string {
+  const id = ref.slice("spec:".length)
+  return isSpecId(id) ? specById(id).name : ref
+}
+
 /** The name of what an entry is about, or "" when there is nothing to name. */
 export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
   switch (entry.type) {
@@ -201,6 +209,9 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
       return LEGACY_PERKS.find((perk) => perk.id === entry.ref.slice("legacy:".length))?.name ?? entry.ref
     case "combo":
       return comboById(entry.ref.slice("combo:".length))?.name ?? entry.ref
+    case "pick":
+    case "switch":
+      return specName(entry.ref)
     case "start":
     case "return":
     case "exit":
@@ -301,6 +312,12 @@ export function describeEntry(entry: CareerEntry): CareerRow {
     case "legacy": {
       const perk = LEGACY_PERKS.find((row) => `legacy:${row.id}` === entry.ref)
       return { title: `Legacy: ${name}`, detail: perk ? `${perk.cost} Prestige` : "perk", tone: "buy" }
+    }
+    case "pick":
+      return { title: `Specialized: ${name}`, detail: "specialization", tone: "career" }
+    case "switch": {
+      const from = typeof data.from === "string" && isSpecId(data.from) ? specById(data.from).name : ""
+      return { title: `Switched to ${name}`, detail: from ? `left ${from}` : "specialization", tone: "career" }
     }
     case "combo": {
       const combo = comboById(entry.ref.slice("combo:".length))

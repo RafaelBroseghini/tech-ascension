@@ -4,7 +4,8 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { canAfford, capitalBase, firstJobAtRank, gearBase, highestJobRank, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
+import { heldRank } from "./build.ts"
+import { canAfford, capitalBase, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
@@ -64,7 +65,7 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
     return gig ? { tab: "B", row: `gig:${gig.id}` } : null
   }
 
-  if (next.key === "board:capital" && highestJobRank(p.jobs) < CAPITAL_UNLOCK.minJobRank) {
+  if (next.key === "board:capital" && heldRank(p) < CAPITAL_UNLOCK.minJobRank) {
     return { tab: "C", row: `job:${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.id ?? CAPITAL_UNLOCK.minJobRank}` }
   }
 
@@ -209,9 +210,9 @@ function jobTarget(p: Progression, job: JobTier): NextUnlock {
 
 function gearTarget(p: Progression, row: GearItem): NextUnlock {
   const needs: string[] = []
-  if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs)) {
+  if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs, p.build?.peakRank)) {
     if (p.peakMoney < row.unlockMoney) needs.push(balanceGoal())
-    if (row.unlockJobRank > 0 && highestJobRank(p.jobs) < row.unlockJobRank) needs.push(firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`)
+    if (row.unlockJobRank > 0 && heldRank(p) < row.unlockJobRank) needs.push(firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`)
   }
   if (needs.length === 0) {
     const cost = nextCost(gearBase(row, p), 0)

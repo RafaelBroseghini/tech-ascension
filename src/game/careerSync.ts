@@ -39,6 +39,7 @@ export function progressOf(state: SyncState): FeatureProgress {
     owned: state.owned,
     jobs: state.jobs,
     gigs: state.gigs,
+    ...(state.build ? { build: state.build } : {}),
     gold: state.gold,
     returns: state.returns,
     playTimeMs: state.stats.playTimeMs,
