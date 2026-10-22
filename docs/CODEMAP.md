@@ -26,7 +26,8 @@
 | Specializations: the six, their job tracks and ids, the pick, the one switch, `heldRank`, the click and idle style factors, the save block's checks | `src/data/specializations.ts` (data), `src/data/phases.ts` (`visibleJobs`, track rows), `src/game/build.ts` (rules; the actions are in `src/game/store.ts`), the pick and switch rows in `src/components/Shop.tsx` (`SpecPick`, `SpecSwitch`) |
 | Cost, click power, idle, XP rates | `src/game/economy.ts` |
 | Gates, phase, shop tab order, stage | `src/game/phase.ts` |
-| Next banner target, per shop tab (including the "pick a specialization" step) | `src/game/nextUnlock.ts` |
+| Leadership: IC and Manager after Senior, the pick, the rows of each line, the manager ranks that open hiring, the ending a line forces, the old-save mapping | `src/data/leadership.ts` (data), `src/data/phases.ts` (`lead` on rows 16-24, `visibleJobs(spec, lead)`), `src/game/build.ts` (`leadPickOpen`, `hireLocked`, `normalizeBuild`), `src/game/globe/hires.ts` (`rank` on each kind), `src/game/globe/product.ts` (the forced ending), `LeadPick` in `src/components/Shop.tsx`, the locked hire rows in `src/components/globe/WorldPanel.tsx` |
+| Next banner target, per shop tab (including the "pick a specialization" and "pick a leadership line" steps) | `src/game/nextUnlock.ts` |
 | Number formatting (raw digits cutoff) | `src/game/format.ts` |
 | Save and offline credit | `src/game/save.ts` |
 | Prestige: the formula's constants, the perk table, the Hall of Fame list | `src/data/legacy.ts` (`PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`, `PERK`, `LEGACY_PERKS`, `HALL_OF_FAME`) |
