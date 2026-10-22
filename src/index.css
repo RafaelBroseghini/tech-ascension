@@ -841,10 +841,11 @@ img { -webkit-user-drag: none; user-select: none; }
   overflow: hidden;
 }
 
+/* A logo's path (rise, fall, bounces, sink) is sampled in src/game/waterfall.ts and played from Stage.tsx. */
 .drop {
   position: absolute;
   z-index: 1;
-  animation: drop-fall 2000ms linear forwards;
+  will-change: transform, opacity;
 }
 
 .drop .developer-icons,
@@ -866,7 +867,7 @@ img { -webkit-user-drag: none; user-select: none; }
   pointer-events: none;
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: 1.05rem;
   line-height: 1;
   white-space: nowrap;
   color: var(--text);
@@ -876,7 +877,7 @@ img { -webkit-user-drag: none; user-select: none; }
   animation: loot-fall 1100ms linear forwards;
 }
 
-.loot-xp { color: var(--accent-hi); font-size: 1.1rem; }
+.loot-xp { color: var(--accent-hi); font-size: 0.85rem; }
 
 .confetti {
   position: absolute;
