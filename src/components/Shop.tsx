@@ -481,11 +481,17 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     visibleJobs(build.spec, build.leadership ?? null).filter((job) => (build.spec !== null || !needsPick(job)) && (build.leadership !== undefined || !needsLead(job))),
     (job) => jobs.includes(job.id),
   )
-  const equipRows = visibleShopRows(
-    EQUIPMENT,
-    (row) => ownedCount(equipment, row.id) > 0,
-  )
-  const goldOpen = goldSectionOpen({ xpTotal, gold })
+  // Gear that serves users is its own track, shown from the moment the company opens (the first job): its next row is
+  // always in the list, whatever desk gear is still unbought, so the first dropped requests have somewhere to go.
+  // Before the company opens the serving rows stay out of the list.
+  const heldGear = (row: { id: number }) => ownedCount(equipment, row.id) > 0
+  const equipRows = (() => {
+    const desk = visibleShopRows(EQUIPMENT.filter((row) => !isServingKind(row.kind)), heldGear)
+    const serving = companyOpen ? visibleShopRows(EQUIPMENT.filter((row) => isServingKind(row.kind)), heldGear) : []
+    const shown = new Set([...desk, ...serving].map((row) => row.id))
+    return EQUIPMENT.filter((row) => shown.has(row.id))
+  })()
+  const goldOpen = goldSectionOpen({ xpTotal, gold, jobs, build })
   // The Skills tab splits in two once the first 10x dev skill is in reach: the 104 skills, or the perks.
   const tenx = tab === "A" && goldOpen && skillView === "tenx"
   const goldRows = visibleGold(gold)
@@ -606,7 +612,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const tabHasNew = (id: ShopTab) =>
     (id === "A" &&
       (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
-        visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
+        visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold, jobs, build }) && nextInFamily(gold, row)))) ||
     (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
     (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build, company }) || leadPickOpen({ jobs, build }))) ||
     (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank))) ||
@@ -716,7 +722,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
           >
             <Trophy {...UI_ICON_SM} aria-hidden />
             10x dev
-            {visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)) ? <i className="deal-dot" aria-label="Something new to buy" /> : null}
+            {visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold, jobs, build }) && nextInFamily(gold, row)) ? <i className="deal-dot" aria-label="Something new to buy" /> : null}
             <NewMark id="tenx" pill />
           </button>
         </div>
@@ -806,8 +812,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
             </p>
             {goldRows.map((row, index) => {
               const owns = gold.includes(row.id)
-              const revealed = isGoldRevealed(row, { xpTotal, gold })
-              const afford = canBuyGold({ xp, xpTotal, gold }, row)
+              const revealed = isGoldRevealed(row, { xpTotal, gold, jobs, build })
+              const afford = canBuyGold({ xp, xpTotal, gold, jobs, build }, row)
               const key = `gold:${row.id}`
               return (
                 <Offer
@@ -822,7 +828,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   locked={!revealed && !owns}
                   done={owns}
                   gold
-                  unlock={["More lifetime XP"]}
+                  unlock={row.unlockJobRank && xpTotal >= row.unlockXp ? [`The ${firstJobAtRank(row.unlockJobRank)?.name ?? "senior"} job`] : ["More lifetime XP"]}
                   title={row.name}
                   art={<GoldArt row={row} />}
                   actions={

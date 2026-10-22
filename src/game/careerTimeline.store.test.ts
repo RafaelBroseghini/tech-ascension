@@ -28,25 +28,35 @@ describe("career timeline", () => {
     expect(state.reveals).toEqual([])
   })
 
-  it("the first skill opens the studio: logged, revealed, no NEW marker", () => {
+  it("the first skill opens nothing: the company waits for the first job", () => {
     learn(1)
     const state = useGame.getState()
-    expect(types()).toEqual(["start:", "learn:skill:1", "unlock:studio"])
-    expect(state.unlocked).toEqual(["studio"])
-    expect(state.reveals).toEqual(["studio"])
-    expect(state.fresh).toEqual([])
+    expect(types()).toEqual(["start:", "learn:skill:1"])
+    expect(state.unlocked).toEqual([])
+    expect(state.reveals).toEqual([])
+  })
+
+  it("the first job opens the studio, logged and revealed, with no NEW marker", () => {
+    useGame.setState({ xp: 1e6, xpTotal: 1e6, gigs: [1, 2, 3, 4, 5, 6] })
+    expect(useGame.getState().unlocked).not.toContain("studio")
+    expect(useGame.getState().buyJob(1)).toBe(true)
+    const state = useGame.getState()
+    expect(types()).toContain("unlock:studio")
+    expect(state.unlocked).toContain("studio")
+    expect(state.reveals).toContain("studio")
+    expect(state.fresh).not.toContain("studio")
   })
 
   it("the skills before Git + GitHug hygiene open nothing, and it opens the career log with a NEW marker that using it clears", () => {
     learn(1, 4)
-    expect(useGame.getState().unlocked).toEqual(["studio"])
+    expect(useGame.getState().unlocked).toEqual([])
     learn(5)
     const state = useGame.getState()
     expect(state.unlocked).toContain("careerLog")
     expect(state.fresh).toContain("careerLog")
-    expect(state.reveals).toEqual(["studio", "careerLog", "githug"])
-    expect(useGame.getState().takeReveal()).toBe("studio")
-    expect(useGame.getState().reveals).toEqual(["careerLog", "githug"])
+    expect(state.reveals).toEqual(["careerLog", "githug"])
+    expect(useGame.getState().takeReveal()).toBe("careerLog")
+    expect(useGame.getState().reveals).toEqual(["githug"])
     useGame.getState().seeFeature("careerLog")
     expect(useGame.getState().fresh).not.toContain("careerLog")
   })
@@ -174,7 +184,7 @@ describe("career timeline", () => {
     const old = { ...freshSave(Date.now()), skills: { "1": 1, "8": 1, "5": 1 }, xpTotal: 3_000, xp: 10 }
     delete (old as { career?: unknown }).career
     const career = bootCareer(old, Date.now())
-    expect(career.unlocked).toEqual(expect.arrayContaining(["studio", "careerLog", "cat"]))
+    expect(career.unlocked).toEqual(expect.arrayContaining(["careerLog", "cat"]))
     expect(career.reveals).toEqual([])
     expect(career.fresh).toEqual([])
     expect(career.whatsNew).toBe(true)

@@ -90,9 +90,9 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "studio",
     name: "Your company",
-    blurb: "Your company, on the globe. Every gig you clear brings users, and the world is the goal.",
+    blurb: "Your company, on the globe. Every gig you clear brought users, and the world is the goal. Serve them with Cloud gear from the Gear tab.",
     size: "big",
-    trigger: { kind: "skill", id: 1 },
+    trigger: { kind: "firstJob" },
     action: "Try it",
     ghost: false,
   },

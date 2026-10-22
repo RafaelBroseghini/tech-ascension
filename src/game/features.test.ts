@@ -21,6 +21,9 @@ import {
   upNext,
 } from "./features.ts"
 
+/** The first 10x dev row a career can reach on XP alone (Hover Tap also waits for a Senior SWE). */
+const OPEN_ROW = GOLD_SKILLS.find((row) => !row.unlockJobRank)!
+
 function progress(over: Partial<FeatureProgress> = {}): FeatureProgress {
   return {
     money: 0,
@@ -73,7 +76,7 @@ describe("gates", () => {
   })
 
   it("opens the firsts, the boards and the 10x dev section from progress", () => {
-    const p = progress({ gigs: [1], peakMoney: 40, xpTotal: GOLD_SKILLS[0]!.unlockXp, skills: { "15": 1, "16": 1 } })
+    const p = progress({ gigs: [1], peakMoney: 40, xpTotal: OPEN_ROW.unlockXp, skills: { "15": 1, "16": 1 } })
     expect(triggerMet({ kind: "firstGig" }, p)).toBe(true)
     expect(triggerMet({ kind: "money" }, p)).toBe(true)
     expect(triggerMet({ kind: "firstJob" }, p)).toBe(false)
@@ -142,7 +145,7 @@ describe("teasing", () => {
 
 describe("rows that open something", () => {
   it("names the feature a shop row opens", () => {
-    expect(rowUnlocks("skill:1").map((row) => row.id)).toEqual(["studio"])
+    expect(rowUnlocks("skill:1")).toEqual([])
     expect(rowUnlocks("skill:8")).toEqual([])
     expect(rowUnlocks("gear:11").map((row) => row.id)).toEqual(["themes", "theme:dracula"])
     expect(rowUnlocks("gig:1")).toEqual([])

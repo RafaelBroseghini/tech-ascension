@@ -98,7 +98,7 @@ describe("booting the timeline", () => {
       career: { ...freshCareer(now), unlocked: ["editor", "terminal", "cat"], fresh: ["terminal"], returns: 1 },
     }
     const career = bootCareer(save, now)
-    expect(career.unlocked).toEqual(["cat", "studio"])
+    expect(career.unlocked).toEqual(["cat"])
     expect(career.fresh).toEqual([])
     expect(career.unlocked).not.toContain("terminal")
     expect(career.unlocked).not.toContain("editor")

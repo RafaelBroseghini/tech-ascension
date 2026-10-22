@@ -199,6 +199,7 @@ function hoverProgress(p: FeatureProgress): TriggerProgress {
   const row = GOLD_SKILLS.find((gold) => gold.effect.kind === "hoverRate")
   if (!row) return { fill: 0, left: "" }
   if (p.xpTotal < row.unlockXp) return { fill: ratio(p.xpTotal, row.unlockXp) * 0.5, left: xpLeft() }
+  if (row.unlockJobRank && heldRank(p) < row.unlockJobRank) return { fill: 0.45, left: `the ${firstJobAtRank(row.unlockJobRank)?.name ?? "senior"} job` }
   if (canAfford(p.xp, row.cost)) return { fill: 1, left: "ready to claim" }
   return { fill: 0.5 + ratio(p.xp, row.cost) * 0.5, left: "more XP" }
 }

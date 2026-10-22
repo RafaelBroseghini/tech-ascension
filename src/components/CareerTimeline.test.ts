@@ -131,7 +131,7 @@ describe("the career log", () => {
     const history = $$("[data-testid='career-log-history'] li")
     expect(history[0]?.textContent).toContain("HEAD")
     expect(history.at(-1)?.textContent).toContain("init: high school")
-    expect($$("[data-testid='career-log-next'] li").map((li) => li.dataset.feature)).toEqual(["careerLog", "githug", "linkedout"])
+    expect($$("[data-testid='career-log-next'] li").map((li) => li.dataset.feature)).toEqual(["studio", "careerLog", "githug"])
   })
 })
 
@@ -141,8 +141,8 @@ describe("the shop teases what is next", () => {
     useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 4).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
     render(Shop, { onCollapse: () => {}, docked: false, onDock: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
-    // Skill 1 opened the studio, so the Company tab is there too.
-    expect(tabs).toEqual(["A", "G", "W"])
+    // The studio waits for the first job, so there is no Company tab yet.
+    expect(tabs).toEqual(["A", "G"])
     expect($("[data-phase='G']")?.classList.contains("is-next")).toBe(true)
     expect($$("[data-row='skill:5'] [data-testid='unlock-chip']").map((chip) => chip.dataset.feature)).toEqual(["careerLog", "githug"])
     // A row wears the feature's icon and keeps the name for the tooltip and screen readers.

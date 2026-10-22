@@ -592,8 +592,8 @@ test("save: a save from another schema version is wiped, not migrated", () => {
 
 test("10x dev (gold) skills: hover clicking and the offline cap open at XP milestones", () => {
   game.reset()
-  // The first perk opens at its lifetime XP and costs spendable XP.
-  const first = GOLD_SKILLS[0]!
+  // The first perk a career can reach on XP alone opens at its lifetime XP and costs spendable XP.
+  const first = GOLD_SKILLS.find((row) => !row.unlockJobRank)!
   game.setXp(first.unlockXp - 1)
   expect(game.buyGold(first.id)).toBe(false)
   game.setXp(first.unlockXp + first.cost)
@@ -605,6 +605,26 @@ test("10x dev (gold) skills: hover clicking and the offline cap open at XP miles
   game.setXp(1e9)
   expect(game.buySkill(2)).toBe(true)
   expect(game.getState().skills["2"]).toBe(1)
+
+  // Hover clicking waits for a Senior SWE: the XP alone does not open Hover Tap, the job does.
+  game.reset()
+  game.keepProfile()
+  const hover = GOLD_SKILLS.find((row) => row.name === "Hover Tap")!
+  expect(hover.unlockJobRank).toBe(14)
+  game.setXp(1e9)
+  expect(game.buyGold(hover.id)).toBe(false)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 7; id++) game.buyJob(id)
+  game.setUsers("americas-east", 10_000)
+  game.pickSpecialization("backend")
+  game.setUsers("americas-east", 1_000_000)
+  for (let id = 8; id <= 13; id++) game.buyJob(id)
+  game.setXp(1e9)
+  expect(game.buyGold(hover.id)).toBe(false)
+  expect(game.buyJob(14)).toBe(true)
+  game.setXp(1e9)
+  expect(game.buyGold(hover.id)).toBe(true)
+  expect(game.getState().hoverRate).toBe(2)
 
   // Hover clicking waits for a hover skill (or the whole catalog) and speeds up per tier.
   game.reset()
@@ -631,19 +651,18 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(start.careerLog.last).toMatchObject({ seq: 1, type: "start" })
   expect(start.features.upNext.map((row) => row.id)).toEqual(["studio", "careerLog", "githug"])
 
-  // The first skill opens Your company: logged twice (the skill, the unlock) and queued to reveal.
+  // The first skill opens nothing: Your company waits for the first job, and Git + GitHug hygiene (skill 5) is next.
   game.setXp(90)
   expect(game.buySkill(1)).toBe(true)
   let state = game.getState()
-  expect(state.features.open).toEqual(["studio"])
-  expect(state.features.reveals).toEqual(["studio"])
-  expect(state.features.next?.id).toBe("careerLog")
-  expect(game.careerLog().slice(-2).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1", "unlock:studio"])
+  expect(state.features.open).toEqual([])
+  expect(state.features.reveals).toEqual([])
+  expect(game.careerLog().slice(-1).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1"])
 
-  // The skills before it open nothing. Git + GitHug hygiene (skill 5) opens the career log, marked NEW until used.
+  // Skills 2 to 4 open nothing either. Skill 5 opens the career log, marked NEW until used.
   game.setXp(2_300)
   for (let id = 2; id <= 4; id++) game.buySkill(id)
-  expect(game.getState().features.open).toEqual(["studio"])
+  expect(game.getState().features.open).toEqual([])
   game.buySkill(5)
   state = game.getState()
   expect(state.features.open).toContain("careerLog")
@@ -660,6 +679,9 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()
   expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "githug", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
+  // The first job also opens Your company and brings the cat.
+  expect(state.features.open).toContain("studio")
+  expect(state.features.reveals).toContain("studio")
   expect(state.features.open).toContain("cat")
 
   // Every journal line is one flat JSON object with a time, a type and the balances it left.
