@@ -298,7 +298,10 @@ describe("phase B: gigs", () => {
     useGame.getState().tick(before.now + 10_000)
     // The eight clients have only the laptop to serve them: the users it serves pay and the drops cost, on top of the 20.
     const net = productNet([1, 2, 3, 4, 5, 6, 7, 8], before.now, before.now + 10_000)
-    expect(useGame.getState().money - before.money).toBeCloseTo(20 + net, 3)
+    // The skills held make Friday deploy (+1% idle), which is part of the 20.
+    expect(foundCombos(before).map((row) => row.id)).toContain("friday-deploy")
+    expect(comboFactors(before).cps).toBeCloseTo(1.01, 12)
+    expect(useGame.getState().money - before.money).toBeCloseTo(20 * comboFactors(before).cps + net, 3)
     spy.mockRestore()
   })
 })
