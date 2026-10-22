@@ -8,6 +8,8 @@
  * Skill unlockAtXp in the raw rows is ignored: earlyGrind, scalePurchaseCost and the unlock chain recompute it.
  */
 import { scalePurchaseCost } from "./costs.ts"
+import { SPEC_ID_BASE, SPECIALIZATIONS, TRACK_FIRST_RANK } from "./specializations.ts"
+import type { SpecId } from "./specializations.ts"
 import type { Tag } from "./tags.ts"
 
 export const COST_GROWTH = 1.15 as const;
@@ -272,6 +274,8 @@ export type JobTier = {
   id: number
   /** Place on the job ladder. Gates compare ranks, never ids; trunk and specialization rows at the same height share a rank. */
   rank: number
+  /** The specialization whose track this row belongs to. Left out on the shared trunk (ranks 1 to 7) and leadership rows (16 to 31). */
+  spec?: SpecId
   name: string
   tags: readonly Tag[]
   xpReq: number
@@ -291,14 +295,14 @@ const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump" | "xpCost"> & { ba
   { id: 5, rank: 5, name: "QA rotation", tags: ["product"], xpReq: 60000, baseCost: 1500, cps: 20, clickBonus: 4, clickPct: 1, xpLump: 3000 },
   { id: 6, rank: 6, name: "On-call rotation", tags: ["infra"], xpReq: 70000, baseCost: 8000, cps: 40, clickBonus: 6, clickPct: 1, xpPerSec: 10, xpLump: 5000 },
   { id: 7, rank: 7, name: "Mid-level SWE", tags: ["product"], xpReq: 90000, baseCost: 25000, cps: 80, clickBonus: 10, clickPct: 1.5 },
-  { id: 8, rank: 8, name: "Feature owner", tags: ["product"], xpReq: 100000, baseCost: 40000, cps: 100, clickBonus: 12, clickPct: 1.5 },
-  { id: 9, rank: 9, name: "System design study", tags: ["backend", "infra"], xpReq: 110000, baseCost: 50000, cps: 30, clickBonus: 15, clickPct: 2, xpPerSec: 18, xpLump: 8000 },
-  { id: 10, rank: 10, name: "Backend specialist", tags: ["backend"], xpReq: 120000, baseCost: 60000, cps: 120, clickBonus: 15, clickPct: 1.5 },
-  { id: 11, rank: 11, name: "Frontend specialist", tags: ["frontend"], xpReq: 120000, baseCost: 55000, cps: 110, clickBonus: 15, clickPct: 1.5 },
-  { id: 12, rank: 12, name: "Full-stack generalist", tags: ["frontend", "backend"], xpReq: 130000, baseCost: 70000, cps: 130, clickBonus: 18, clickPct: 1.5 },
-  { id: 13, rank: 13, name: "Tech lead (acting)", tags: ["product"], xpReq: 150000, baseCost: 100000, cps: 160, clickBonus: 20, clickPct: 2, xpLump: 8000 },
-  { id: 14, rank: 14, name: "Senior SWE", tags: ["product"], xpReq: 160000, baseCost: 120000, cps: 200, clickBonus: 25, clickPct: 2 },
-  { id: 15, rank: 15, name: "Senior + hiring loop", tags: ["product"], xpReq: 180000, baseCost: 150000, cps: 220, clickBonus: 25, clickPct: 2 },
+  { id: 8, rank: 8, spec: "backend", name: "Feature owner", tags: ["product"], xpReq: 100000, baseCost: 40000, cps: 100, clickBonus: 12, clickPct: 1.5 },
+  { id: 9, rank: 9, spec: "backend", name: "System design study", tags: ["backend", "infra"], xpReq: 110000, baseCost: 50000, cps: 30, clickBonus: 15, clickPct: 2, xpPerSec: 18, xpLump: 8000 },
+  { id: 10, rank: 10, spec: "backend", name: "Backend specialist", tags: ["backend"], xpReq: 120000, baseCost: 60000, cps: 120, clickBonus: 15, clickPct: 1.5 },
+  { id: 11, rank: 11, spec: "backend", name: "API owner", tags: ["backend"], xpReq: 120000, baseCost: 55000, cps: 110, clickBonus: 15, clickPct: 1.5 },
+  { id: 12, rank: 12, spec: "backend", name: "Platform engineer", tags: ["backend", "infra"], xpReq: 130000, baseCost: 70000, cps: 130, clickBonus: 18, clickPct: 1.5 },
+  { id: 13, rank: 13, spec: "backend", name: "Tech lead (acting)", tags: ["product"], xpReq: 150000, baseCost: 100000, cps: 160, clickBonus: 20, clickPct: 2, xpLump: 8000 },
+  { id: 14, rank: 14, spec: "backend", name: "Senior SWE", tags: ["product"], xpReq: 160000, baseCost: 120000, cps: 200, clickBonus: 25, clickPct: 2 },
+  { id: 15, rank: 15, spec: "backend", name: "Senior + hiring loop", tags: ["product"], xpReq: 180000, baseCost: 150000, cps: 220, clickBonus: 25, clickPct: 2 },
   { id: 16, rank: 16, name: "Staff engineer", tags: ["product"], xpReq: 220000, baseCost: 400000, cps: 500, clickBonus: 50, clickPct: 2, xpPerSec: 20, xpLump: 12000 },
   { id: 17, rank: 17, name: "Staff platform", tags: ["infra", "backend"], xpReq: 250000, baseCost: 500000, cps: 550, clickBonus: 50, clickPct: 2 },
   { id: 18, rank: 18, name: "Engineering manager", tags: ["product"], xpReq: 280000, baseCost: 700000, cps: 450, clickBonus: 60, clickPct: 2.5 },
@@ -320,7 +324,80 @@ const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump" | "xpCost"> & { ba
 /** A job costs a quarter of the lifetime XP it asks for, before the purchase scale; the dollar column above only orders the rows. */
 const JOB_XP_COST_SHARE = 0.25
 
-export const JOB_TIERS: readonly JobTier[] = JOB_ROWS.map(({ baseCost, ...row }) => ({
+type JobRow = (typeof JOB_ROWS)[number]
+
+/**
+ * The other five tracks, one entry per rank from 8 to 15. A track row has the same pay, price, XP and click numbers as
+ * the backend row at its rank (so every track paces like the plain ladder); only the name and tags are its own.
+ * Rank 14 reads as Senior in every track.
+ */
+const TRACK_ROWS: Readonly<Record<Exclude<SpecId, "backend">, readonly { name: string; tags: readonly Tag[] }[]>> = {
+  frontend: [
+    { name: "Component librarian", tags: ["frontend"] },
+    { name: "Browser internals study", tags: ["frontend"] },
+    { name: "Design-system owner", tags: ["frontend"] },
+    { name: "Frontend specialist", tags: ["frontend"] },
+    { name: "Core Web Vitals whisperer", tags: ["frontend", "product"] },
+    { name: "UI lead (acting)", tags: ["frontend", "product"] },
+    { name: "Senior frontend engineer", tags: ["frontend", "product"] },
+    { name: "Senior frontend + hiring loop", tags: ["frontend", "product"] },
+  ],
+  infra: [
+    { name: "On-call primary", tags: ["infra"] },
+    { name: "Postmortem study group", tags: ["infra"] },
+    { name: "Runbook librarian", tags: ["infra"] },
+    { name: "Capacity planner", tags: ["infra"] },
+    { name: "Chaos engineer", tags: ["infra"] },
+    { name: "SRE lead (acting)", tags: ["infra", "product"] },
+    { name: "Senior SRE", tags: ["infra", "product"] },
+    { name: "Senior SRE + hiring loop", tags: ["infra", "product"] },
+  ],
+  ai: [
+    { name: "Prompt engineer", tags: ["ai"] },
+    { name: "Model internals study", tags: ["ai", "data"] },
+    { name: "RAG plumber", tags: ["ai", "data"] },
+    { name: "Evals wrangler", tags: ["ai"] },
+    { name: "Agent wrangler", tags: ["ai"] },
+    { name: "Head of AI (acting)", tags: ["ai", "product"] },
+    { name: "Senior AI engineer", tags: ["ai", "product"] },
+    { name: "Senior AI + hiring loop", tags: ["ai", "product"] },
+  ],
+  fde: [
+    { name: "Embedded at a client", tags: ["product"] },
+    { name: "Customer discovery study", tags: ["product"] },
+    { name: "Solutions engineer", tags: ["product"] },
+    { name: "Solutions architect", tags: ["product"] },
+    { name: "Deployment strategist", tags: ["product"] },
+    { name: "Engagement lead (acting)", tags: ["product"] },
+    { name: "Senior forward deployed engineer", tags: ["product"] },
+    { name: "Senior FDE + hiring loop", tags: ["product"] },
+  ],
+  security: [
+    { name: "AppSec reviewer", tags: ["security"] },
+    { name: "Threat modeling study", tags: ["security"] },
+    { name: "Security specialist", tags: ["security"] },
+    { name: "Compliance wrangler", tags: ["security"] },
+    { name: "Red-team lead", tags: ["security"] },
+    { name: "CISO (acting)", tags: ["security", "product"] },
+    { name: "Senior security engineer", tags: ["security", "product"] },
+    { name: "Senior security + hiring loop", tags: ["security", "product"] },
+  ],
+}
+
+const trackRowsOf = (spec: Exclude<SpecId, "backend">): JobRow[] =>
+  TRACK_ROWS[spec].map((entry, index) => {
+    const base = JOB_ROWS.find((row) => row.rank === TRACK_FIRST_RANK + index)
+    if (!base) throw new Error(`no backend row at rank ${TRACK_FIRST_RANK + index}`)
+    return { ...base, id: SPEC_ID_BASE[spec] + base.rank, spec, name: entry.name, tags: entry.tags }
+  })
+
+/** Every row in the game: the trunk, the shared leadership rows and all six tracks. Ids ascend, so the table is ordered by id. */
+const ALL_JOB_ROWS: readonly JobRow[] = [
+  ...JOB_ROWS,
+  ...SPECIALIZATIONS.filter((row) => row.id !== "backend").flatMap((row) => trackRowsOf(row.id as Exclude<SpecId, "backend">)),
+].sort((a, b) => a.id - b.id)
+
+export const JOB_TIERS: readonly JobTier[] = ALL_JOB_ROWS.map(({ baseCost, ...row }) => ({
   ...row,
   xpCost: baseCost > 0 ? Math.round(scalePurchaseCost(row.xpReq * JOB_XP_COST_SHARE)) : 0,
   xpPerSec: row.xpPerSec ?? 0,
@@ -332,7 +409,7 @@ const JOB_RANK_BY_ID = new Map<number, number>(JOB_TIERS.map((row) => [row.id, r
 /** A job's place on the ladder; 0 for an id that is not a job. Gates compare ranks, never ids. */
 export const jobRank = (id: number): number => JOB_RANK_BY_ID.get(id) ?? 0
 
-/** The first job row at a rank (the trunk row, before any specialization rows), for copy that names a gate. */
+/** The first job row at a rank (the trunk or backend row, before any other track's), for copy that names a gate. */
 export const firstJobAtRank = (rank: number): JobTier | undefined => JOB_TIERS.find((row) => row.rank === rank)
 
 /** Highest rank among the jobs held; 0 with none. */
@@ -340,6 +417,22 @@ export function highestJobRank(jobs: readonly number[]): number {
   let highest = 0
   for (const id of jobs) highest = Math.max(highest, jobRank(id))
   return highest
+}
+
+const VISIBLE_CACHE = new Map<SpecId | "none", readonly JobTier[]>()
+
+/**
+ * The jobs a career can see: the trunk, its own track and the shared leadership rows, in rank order. With no
+ * specialization picked yet, the trunk and the shared rows. Other tracks' rows are never part of a career.
+ */
+export function visibleJobs(spec: SpecId | null): readonly JobTier[] {
+  const key = spec ?? "none"
+  let rows = VISIBLE_CACHE.get(key)
+  if (!rows) {
+    rows = JOB_TIERS.filter((row) => row.spec === undefined || row.spec === spec).sort((a, b) => a.rank - b.rank)
+    VISIBLE_CACHE.set(key, rows)
+  }
+  return rows
 }
 
 /** Balatro pops: big on gig/unlock; medium on click. */

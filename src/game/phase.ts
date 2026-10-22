@@ -1,6 +1,6 @@
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } from "../data/phases.ts"
 import type { Gig, JobTier } from "../data/phases.ts"
-import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, firstJobAtRank, highestJobId, highestJobRank, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
@@ -121,7 +121,7 @@ export function stageOf(p: Pick<Progress, "skills" | "owned" | "jobs" | "gigs">)
   const tier = highestOwnedCapital(p.owned)
   if (tier) return { artId: tier.artId, name: tier.name, era: tier.era, source: { kind: "capital", id: tier.id } }
   const jobId = highestJobId(p.jobs) ?? 0
-  if (jobId > 0) return { artId: artFor(JOB_ART, jobId), name: jobById(jobId)?.name ?? "Engineer", era: "early", source: { kind: "job", id: jobId } }
+  if (jobId > 0) return { artId: jobArtId(jobId), name: jobById(jobId)?.name ?? "Engineer", era: "early", source: { kind: "job", id: jobId } }
   const gigId = Math.max(0, ...p.gigs)
   if (gigId > 0) return { artId: artFor(GIG_ART, gigId), name: "Freelancer", era: "early", source: { kind: "gig", id: gigId } }
   const skill = highestOwnedSkill(p.skills)
@@ -139,7 +139,7 @@ export function ownedArtIds(p: Pick<Progress, "skills" | "equipment" | "owned" |
   for (const [key, count] of Object.entries(p.owned)) if (count > 0) ids.add(capitalById(Number(key))?.artId ?? 0)
   for (const [key, count] of Object.entries(p.skills)) if (count > 0) ids.add(artFor(SKILL_ART, Number(key)))
   for (const [key, count] of Object.entries(p.equipment)) if (count > 0) ids.add(artFor(EQUIP_ART, Number(key)))
-  for (const id of p.jobs) ids.add(artFor(JOB_ART, id))
+  for (const id of p.jobs) ids.add(jobArtId(id))
   for (const id of p.gigs) ids.add(artFor(GIG_ART, id))
   ids.delete(0)
   return [...ids]

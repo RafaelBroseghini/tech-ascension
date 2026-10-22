@@ -3,6 +3,7 @@
  * with no logo are absent on purpose. The icons are the real marks those rows stand in for.
  */
 import type { ComponentType } from "react"
+import { jobRank } from "./phases.ts"
 import {
   AWS,
   Ansible,
@@ -347,7 +348,8 @@ export function iconPool(owned: IconOwners = EMPTY): IconName[] {
   pushOwned(pool, owned.skills, SKILL_ICONS)
   pushOwned(pool, owned.equipment, GEAR_ICONS)
   pushIds(pool, owned.gigs, GIG_ICONS)
-  pushIds(pool, owned.jobs, JOB_ICONS)
+  // A specialization row wears the icons of the backend row at its rank.
+  pushIds(pool, owned.jobs.map(jobRank), JOB_ICONS)
   return pool
 }
 

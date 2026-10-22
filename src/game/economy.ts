@@ -1,6 +1,6 @@
 import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS, firstJobAtRank, highestJobRank, jobRank } from "../data/phases.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../data/phases.ts"
-import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital } from "../data/capital.ts"
@@ -230,7 +230,7 @@ export function ownedSources(p: Pick<Progress, "skills" | "equipment" | "owned" 
   for (const id of p.jobs) {
     const job = jobById(id)
     if (job)
-      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: artFor(JOB_ART, id), count: 1, idle: job.cps * perks.salaries, xpIdle: job.xpPerSec, click: job.clickBonus })
+      rows.push({ key: `job:${id}`, kind: "job", id, name: job.name, artId: jobArtId(id), count: 1, idle: job.cps * perks.salaries, xpIdle: job.xpPerSec, click: job.clickBonus })
   }
   for (const row of EQUIPMENT) {
     const count = ownedCount(p.equipment, row.id)

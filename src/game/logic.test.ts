@@ -323,9 +323,9 @@ describe("click boosts", () => {
 describe("catalog tables", () => {
   const contiguous = (rows: readonly { id: number }[]) => rows.every((row, index) => row.id === index + 1)
 
-  it("ships Catalogs v4: 104 skills, 65 gigs, 31 jobs, 110 gear, 25 capital, ids 1..n", () => {
-    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([104, 65, 31, 110, 25])
-    for (const rows of [SKILL_TIERS, GIGS, JOB_TIERS, EQUIPMENT, CAPITAL]) expect(contiguous(rows)).toBe(true)
+  it("ships Catalogs v4: 104 skills, 65 gigs, 71 jobs (31 on the backend ladder), 110 gear, 25 capital, ids 1..n", () => {
+    expect([SKILL_TIERS.length, GIGS.length, JOB_TIERS.length, EQUIPMENT.length, CAPITAL.length]).toEqual([104, 65, 71, 110, 25])
+    for (const rows of [SKILL_TIERS, GIGS, JOB_TIERS.slice(0, 31), EQUIPMENT, CAPITAL]) expect(contiguous(rows)).toBe(true)
   })
 
   it("doubles purchase prices and leaves payouts and gig lumps alone", () => {
@@ -385,7 +385,8 @@ describe("emoji.gg art", () => {
     expect(Object.keys(EMOJI_SKILLS).length).toBe(SKILL_TIERS.length + 1)
     expect(hasEmoji("skill", 0)).toBe(true)
     expect(Object.keys(EMOJI_GIGS).length).toBe(GIGS.length)
-    expect(Object.keys(EMOJI_JOBS).length).toBe(JOB_TIERS.length)
+    // A specialization's rows wear the backend row's art at their rank, so the table has the 31 backend rows.
+    expect(Object.keys(EMOJI_JOBS).length).toBe(31)
     expect(Object.keys(EMOJI_GEAR).length).toBe(EQUIPMENT.length)
     expect(Object.keys(EMOJI_CAPITAL).length).toBe(CAPITAL.length)
     for (const row of SKILL_TIERS) expect(hasEmoji("skill", row.id)).toBe(true)
@@ -420,7 +421,7 @@ describe("emoji.gg art", () => {
   })
 
   it("does not show the ERROR stamp as job art", () => {
-    const frontend = JOB_TIERS.find((job) => job.name === "Frontend specialist")
+    const frontend = JOB_TIERS.find((job) => job.id === 11)
     const advisor = JOB_TIERS.find((job) => job.name === "Board advisor (tech)")
     expect(frontend?.id).toBe(11)
     expect(advisor?.id).toBe(25)

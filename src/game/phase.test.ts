@@ -127,15 +127,15 @@ describe("phase gates", () => {
 })
 
 describe("phase tables", () => {
-  it("ships 104 skills, 65 gigs and 31 jobs with contiguous ids", () => {
+  it("ships 104 skills, 65 gigs and 71 jobs (31 on the backend ladder, 5 other tracks of 8) with contiguous ids", () => {
     expect(SKILL_TIERS).toHaveLength(104)
     expect(GIGS).toHaveLength(65)
-    expect(JOB_TIERS).toHaveLength(31)
+    expect(JOB_TIERS).toHaveLength(31 + 5 * 8)
     SKILL_TIERS.forEach((row, index) => {
       expect(row.id).toBe(index + 1)
       if (index > 11 && index < 50) expect(row.baseXpCost).toBeGreaterThan(SKILL_TIERS[index - 1]?.baseXpCost ?? 0)
     })
-    JOB_TIERS.forEach((row, index) => expect(row.id).toBe(index + 1))
+    JOB_TIERS.slice(0, 31).forEach((row, index) => expect(row.id).toBe(index + 1))
   })
 
   it("has exactly one first idle source among the gigs, and it is a retainer", () => {
