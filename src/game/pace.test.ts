@@ -152,7 +152,7 @@ describe("pace model", () => {
       expect(Math.abs(estimateDays(p, PACE_K.oneOfEach) / oneOfEach - 1), `${name} one-of-each`).toBeLessThan(name === "left open" ? 0.5 : 0.35)
       expect(Math.abs(estimateDays(p, PACE_K.stacker) / stacker - 1), `${name} stacker`).toBeLessThan(0.35)
     }
-  })
+  }, 60_000)
 })
 
 // Each case simulates hundreds of days over several careers: about 2 s here, past the 5 s default on a CI runner.
