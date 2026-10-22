@@ -18,6 +18,8 @@ import { GIGS, SKILL_TIERS, highestJobRank, visibleJobs } from "../data/phases.t
 import type { LeadId } from "../data/leadership.ts"
 import { effectsOf } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
+import { shipLaunches, shipsLaunches } from "./launch.ts"
+import { servableUsers } from "./globe/load.ts"
 import { buildFactsOf, hireLocked, leadPickedBuild, specOf, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
@@ -270,6 +272,15 @@ function clearGigs(s: Sim): boolean {
   return any
 }
 
+/** A Frontend build's clicks ship launches: `clicks` manual clicks charge it, and each full charge adds users to the product (`src/game/launch.ts`). */
+function launch(s: Sim, clicks: number) {
+  const p = s.product
+  if (!p || !shipsLaunches(s.build?.spec ?? null) || s.jobs.length === 0) return
+  const shipped = shipLaunches(p.company, s.build?.charge ?? 0, clicks, servableUsers(s.equipment))
+  p.company = shipped.company
+  s.build = { ...(s.build ?? { spec: "frontend", switched: false }), charge: shipped.charge }
+}
+
 /** The model takes its track the moment the pick opens (Mid-level SWE held and 10,000 users) and its line once Senior is held. */
 function takePicks(s: Sim): boolean {
   let any = false
@@ -517,6 +528,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
       spent += step
       t += step
       syncProduct()
+      launch(s, profile.clicksPerSec * step)
       shop(s, cad, paybackSeconds)
       note()
       if (finished()) {

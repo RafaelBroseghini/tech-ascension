@@ -1,5 +1,5 @@
 import type { SpecId } from "../../data/specializations.ts"
-import { effectsOf } from "../../data/specializations.ts"
+import { effectsOf, gpuGrowthOf } from "../../data/specializations.ts"
 import { leadById } from "../../data/leadership.ts"
 import type { BuildFacts } from "../build.ts"
 import { hireBonusOf, hirePayrollOf } from "./hires.ts"
@@ -35,7 +35,7 @@ export interface LegacyFacts {
 /** Growth an IC adds for each IC-line job held: the multiplier is 1 for the player's own pace, a small team is a few. Five rows make the line. */
 export const IC_GROWTH_PER_ROW = 3
 
-export const NO_BUILD: BuildFacts = { spec: null, lead: null, icRows: 0 }
+export const NO_BUILD: BuildFacts = { spec: null, lead: null, icRows: 0, gpus: 0 }
 
 /**
  * The facts for the growth model. Growth is scaled once by the permanent Prestige bonus, Viral loop and the
@@ -48,7 +48,7 @@ export const NO_BUILD: BuildFacts = { spec: null, lead: null, icRows: 0 }
 export function productFactsOf(hires: Hires, legacy?: LegacyFacts, build: BuildFacts = NO_BUILD): ProductFacts {
   const perks = perkEffects(legacy?.perks)
   const fx = effectsOf(build.spec)
-  const scale = perks.growth * prestigeMult(legacy?.prestigeTotal ?? 0) * fx.growth
+  const scale = perks.growth * prestigeMult(legacy?.prestigeTotal ?? 0) * fx.growth * gpuGrowthOf(build.spec, build.gpus)
   const hireBonus = hireBonusOf(hires) * scale
   const icBonus = build.icRows * IC_GROWTH_PER_ROW * scale
   return {

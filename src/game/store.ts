@@ -29,7 +29,9 @@ import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveR
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
-import { buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import { shipLaunches, shipsLaunches } from "./launch.ts"
+import { servableUsers } from "./globe/load.ts"
+import { omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
 import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
@@ -476,7 +478,15 @@ export const useGame = create<GameState>((set, get) => ({
     const rates = production(state, state.activeBoost, now, modsOf(state))
     const xpGain = rates.xpClick * rates.mult
     const clickMoney = clickPaysMoney(state) ? (source === "auto" ? rates.clickAuto : rates.click) : 0
+    // Frontend's manual clicks charge a launch, and each full charge ships one: a burst of users (src/game/launch.ts).
+    const launched = source === "manual" && shipsLaunches(specOf(state)) ? shipLaunches(state.company, state.build.charge ?? 0, 1, servableUsers(state.equipment)) : null
     set({
+      ...(launched
+        ? {
+            build: launched.charge > 0 ? { ...state.build, charge: launched.charge } : omitCharge(state.build),
+            ...(launched.launches > 0 ? { company: launched.company } : {}),
+          }
+        : {}),
       money: state.money + clickMoney,
       // Kept here so the peak subscriber below does not notify everyone a second time.
       peakMoney: Math.max(state.peakMoney, state.money + clickMoney),

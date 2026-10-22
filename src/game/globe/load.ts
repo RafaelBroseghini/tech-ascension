@@ -33,6 +33,9 @@ export function capacityOf(equipment: Readonly<Record<string, number>>): number 
   return rps
 }
 
+/** The most users the gear can serve: its capacity over what each user sends. */
+export const servableUsers = (equipment: Readonly<Record<string, number>>): number => capacityOf(equipment) / RPS_PER_USER
+
 /** Requests a second the users send. A DDoS surge multiplies a region's share, so callers pass the surged total. */
 export function demandOf(users: number): number {
   return Math.max(0, users) * RPS_PER_USER
