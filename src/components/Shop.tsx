@@ -10,7 +10,7 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
-import { heldRank, needsPick, pickOpen, specOptions } from "../game/build.ts"
+import { heldRank, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
 import { isSpecId, SPECIALIZATIONS, specById } from "../data/specializations.ts"
 import type { SpecId, SpecStyle } from "../data/specializations.ts"
 import { CAPITAL } from "../data/capital.ts"
@@ -426,9 +426,9 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     (row) => ownedCount(skills, row.id) > 0,
   )
   const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id))
-  // A career sees its own track only. Before the pick, the rows above Mid-level wait behind it.
+  // A career sees its own track and line only. Before the picks, the rows above Mid-level and above rank 15 wait behind them.
   const jobRows = visibleShopRows(
-    visibleJobs(build.spec).filter((job) => build.spec !== null || !needsPick(job)),
+    visibleJobs(build.spec, build.leadership ?? null).filter((job) => (build.spec !== null || !needsPick(job)) && (build.leadership !== undefined || !needsLead(job))),
     (job) => jobs.includes(job.id),
   )
   const equipRows = visibleShopRows(

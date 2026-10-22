@@ -6,7 +6,7 @@ import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { COMBOS } from "../data/combos.ts"
-import { specOptions } from "./build.ts"
+import { leadOptions, specOptions } from "./build.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
@@ -165,8 +165,11 @@ export type GameSnapshot = {
   world: WorldSnapshot
   /** Prestige: Prestige, the permanent multiplier, the Exit and the Legacy perks. */
   legacy: LegacySnapshot
-  /** The specialization: the one picked (null before), whether the one switch is spent, and the ids that could be picked or switched to now. */
-  build: { specialization: string | null; switched: boolean; options: string[] }
+  /**
+   * The specialization: the one picked (null before), whether the one switch is spent, and the ids that could be picked or switched to now.
+   * Then the leadership line (`ic` or `manager`, null before the pick) and, while the pick is open, both ids (else empty).
+   */
+  build: { specialization: string | null; switched: boolean; options: string[]; leadership: string | null; leadershipOptions: string[] }
   /** The kitchen: combos found this career, in the order they turned up, and how many the table holds. */
   combos: { found: { id: string; name: string; joke: string; effect: string }[]; total: number }
 }
@@ -225,6 +228,12 @@ export type GameHarness = {
    */
   pickSpecialization: (id: string) => boolean
   /**
+   * Pick the career's leadership line (`ic` or `manager`). It opens once a Senior job (rank 14) is held and is made once. False
+   * before that, once picked, or for an unknown id. Every job above rank 15 needs it (and only its own line's rows open),
+   * and hiring is refused unless the line is `manager`, each kind from its manager rank.
+   */
+  pickLeadership: (id: string) => boolean
+  /**
    * The career's one switch: keeps money, gear and the trunk jobs, drops the old track's jobs, and anything already open
    * (capital, gear) stays open. False without a pick, after the switch, or to the same specialization.
    */
@@ -252,7 +261,7 @@ export type GameHarness = {
   setPopActive: (cityId: string, on: boolean) => boolean
   /** Switch a bought region on or off as a whole. False for the last region serving. */
   setRegionActive: (regionId: string, on: boolean) => boolean
-  /** Hire one person of a kind. False in a closed row or short of the price. */
+  /** Hire one person of a kind. False unless the career leads as a Manager at the kind's rank (outsourced and bootcamp 18, copypaste and senior 20, staff and tenx 21, greybeard and codegod 22), in a closed row, or short of the price. */
   hire: (id: string) => boolean
   /** Let go of one person of a kind. No refund. False with nobody of that kind. */
   fire: (id: string) => boolean
@@ -500,7 +509,13 @@ export function installGameHarness(): GameHarness {
           perks: [...state.legacy.perks],
           endings: [...state.legacy.endings],
         },
-        build: { specialization: state.build.spec, switched: state.build.switched, options: specOptions(state) },
+        build: {
+          specialization: state.build.spec,
+          switched: state.build.switched,
+          options: specOptions(state),
+          leadership: state.build.leadership ?? null,
+          leadershipOptions: leadOptions(state),
+        },
         combos: {
           found: state.combos.flatMap((id) => {
             const row = comboById(id)
@@ -528,6 +543,8 @@ export function installGameHarness(): GameHarness {
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
 
     pickSpecialization: (id) => useGame.getState().pickSpecialization(id),
+
+    pickLeadership: (id) => useGame.getState().pickLeadership(id),
 
     switchSpecialization: (id) => useGame.getState().switchSpecialization(id),
 

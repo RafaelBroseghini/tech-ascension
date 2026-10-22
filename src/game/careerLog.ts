@@ -3,6 +3,7 @@ import { LEGACY_PERKS } from "../data/legacy.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
+import { isLeadId, leadById } from "../data/leadership.ts"
 import { isSpecId, specById } from "../data/specializations.ts"
 import { eventById } from "./events.ts"
 import { featureById, triggerLabel } from "./features.ts"
@@ -170,6 +171,10 @@ function idOf(ref: string): number {
 }
 
 function specName(ref: string): string {
+  if (ref.startsWith("lead:")) {
+    const lead = ref.slice("lead:".length)
+    return isLeadId(lead) ? leadById(lead).name : ref
+  }
   const id = ref.slice("spec:".length)
   return isSpecId(id) ? specById(id).name : ref
 }
@@ -314,7 +319,9 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: `Legacy: ${name}`, detail: perk ? `${perk.cost} Prestige` : "perk", tone: "buy" }
     }
     case "pick":
-      return { title: `Specialized: ${name}`, detail: "specialization", tone: "career" }
+      return entry.ref.startsWith("lead:")
+        ? { title: `Leading as: ${name}`, detail: "leadership", tone: "career" }
+        : { title: `Specialized: ${name}`, detail: "specialization", tone: "career" }
     case "switch": {
       const from = typeof data.from === "string" && isSpecId(data.from) ? specById(data.from).name : ""
       return { title: `Switched to ${name}`, detail: from ? `left ${from}` : "specialization", tone: "career" }

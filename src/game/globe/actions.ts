@@ -2,7 +2,9 @@ import { popCostOf, regionById, regionOfCity } from "../../data/regions.ts"
 import { canBuyRegion, canDeployPop, canSetPop, canSetRegion, setPop, setRegion } from "./footprint.ts"
 import type { Footprint } from "./footprint.ts"
 import type { CompanyState } from "./growth.ts"
-import { fire as fireSome, hire as hireOne } from "./hires.ts"
+import { hireLocked } from "../build.ts"
+import type { HasBuild } from "../build.ts"
+import { fire as fireSome, hire as hireOne, hireById } from "./hires.ts"
 import type { Hires } from "./hires.ts"
 import { ceilingOf, INCIDENT_KINDS, incidentCost, makeIncident, MAX_INCIDENTS, RELIEF, totalUsers } from "./world.ts"
 import type { IncidentKind } from "./world.ts"
@@ -38,8 +40,10 @@ export function setRegionActive(s: CompanySlice, regionId: string, on: boolean):
   return canSetRegion(s.footprint, regionId, on) ? { footprint: setRegion(s.footprint, regionId, on) } : null
 }
 
-/** Hires one of a kind. Refused in a closed row or short of the price. */
-export function hire(s: CompanySlice, id: string): CompanyPatch {
+/** Hires one of a kind. Refused unless the career leads as a Manager at the kind's rank, in a closed row, or short of the price. */
+export function hire(s: CompanySlice, id: string, career: HasBuild & { readonly jobs: readonly number[] }): CompanyPatch {
+  const row = hireById(id)
+  if (!row || hireLocked(career, row) !== null) return null
   return hireOne(s, id)
 }
 

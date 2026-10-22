@@ -5,7 +5,7 @@ import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, firstJobAtRank, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { heldRank, needsPick, rowVisible, specOf } from "./build.ts"
+import { heldRank, leadOf, needsLead, needsPick, rowVisible, specOf } from "./build.ts"
 import { formatNumber } from "./format.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
@@ -89,14 +89,18 @@ export function gigState(p: Gates, gig: Gig): GigState {
   return "ready"
 }
 
-/** "hidden" is another track's row, which this career never sees; "pick" is a row above the trunk before a specialization is picked. */
-export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "locked" | "ready"
+/**
+ * "hidden" is another track's or the other line's row, which this career never sees; "pick" is a row above the trunk
+ * before a specialization is picked; "lead" is a row above rank 15 before a leadership line is picked.
+ */
+export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "ready"
 
 export function jobState(p: Gates, job: JobTier): JobState {
   if (p.jobs.includes(job.id)) return "owned"
   if (!jobBoardUnlocked(p)) return "board-locked"
-  if (!rowVisible(job, specOf(p))) return "hidden"
+  if (!rowVisible(job, specOf(p), leadOf(p))) return "hidden"
   if (needsPick(job) && specOf(p) === null) return "pick"
+  if (needsLead(job) && leadOf(p) === null) return "lead"
   if (p.xpTotal < job.xpReq) return "locked"
   return "ready"
 }

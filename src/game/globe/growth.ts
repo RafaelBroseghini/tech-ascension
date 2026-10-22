@@ -200,7 +200,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
     if (before < row.users && total >= row.users) {
       if (row.id === "won") {
         won = true
-        ending = state.ending ?? endingOf(total > 0 ? hiredUsers / total : 0)
+        ending = state.ending ?? facts.product?.ending ?? endingOf(total > 0 ? hiredUsers / total : 0)
       }
       notes.push({ type: "world", ref: `world:${row.id}`, data: { users: Math.round(total), ...(row.id === "won" && ending ? { ending } : {}) } })
     }
@@ -232,7 +232,7 @@ export function uptimePercent(uptime: string): number {
 let memo: { gigs: readonly number[]; equipment: Readonly<Record<string, number>>; footprint: Footprint; product: ProductFacts | undefined; facts: GrowthFacts } | null = null
 
 const sameProduct = (a: ProductFacts | undefined, b: ProductFacts | undefined): boolean =>
-  a === b || (a !== undefined && b !== undefined && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.payroll === b.payroll)
+  a === b || (a !== undefined && b !== undefined && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.payroll === b.payroll && a.ending === b.ending)
 
 /**
  * The growth facts the game has right now, for `stepCompany`. The game ticks ten times a second and reach walks every

@@ -29,8 +29,9 @@ import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveR
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
-import { canPick, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import { canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
+import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import { HALL_OF_FAME } from "../data/legacy.ts"
@@ -200,6 +201,8 @@ type GameState = {
   buyJob: (jobId: number) => boolean
   /** Pick the career's specialization. Opens at Mid-level SWE and is made once. False before that, once picked, or for an unknown id. */
   pickSpecialization: (id: string) => boolean
+  /** Pick the career's leadership line (IC or Manager). Opens once a Senior job is held and is made once. False before that, once picked, or for an unknown id. */
+  pickLeadership: (id: string) => boolean
   /** Take the one switch: keeps money, gear and the trunk jobs, drops the old track's jobs. False without a pick, after the switch, or to the same one. */
   switchSpecialization: (id: string) => boolean
   /**
@@ -580,7 +583,7 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
-  hire: (id) => commitCompany(companyActions.hire(get(), id), true),
+  hire: (id) => commitCompany(companyActions.hire(get(), id, get()), true),
   fire: (id) => commitCompany(companyActions.fire(get(), id), true),
   buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
   deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
@@ -738,6 +741,21 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
+  pickLeadership: (id) => {
+    const state = get()
+    if (!canPickLead(state, id)) return false
+    const lead = id as LeadId
+    set({
+      build: leadPickedBuild(state.build, lead),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+      journal: noted(state.journal, [{ type: "pick", ref: `lead:${lead}` }], state),
+    })
+    persistNow()
+    return true
+  },
+
   switchSpecialization: (id) => {
     const state = get()
     if (!canSwitch(state, id)) return false
@@ -888,7 +906,7 @@ export const useGame = create<GameState>((set, get) => ({
     const boosting = advanced.clock.activeBoost !== null
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy)), now - dt, now, Math.random)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy, state.build.leadership)), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
