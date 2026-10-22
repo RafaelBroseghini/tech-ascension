@@ -397,6 +397,10 @@
   font-size: inherit;
 }
 
+.world-hire.is-locked .world-hire-locked {
+  color: var(--ide-peach);
+}
+
 .world-hire button,
 .world-incidents button {
   border: var(--stroke, 2px) solid var(--ink, var(--ide-crust));

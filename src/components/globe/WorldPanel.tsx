@@ -1,4 +1,6 @@
 import { memo } from "react"
+import { hireLocked } from "../../game/build.ts"
+import type { BuildState } from "../../game/build.ts"
 import { REGIONS } from "../../data/regions.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
@@ -19,12 +21,16 @@ const users = (n: number) => formatNumber(Math.round(n))
 /** The people on the payroll, a row for each kind that is open, and how much of the crowd they brought. */
 function Team({
   hires,
+  jobs,
+  build,
   cash,
   share,
   onHire,
   onFire,
 }: {
   hires: Hires
+  jobs: readonly number[]
+  build: BuildState
   cash: number
   share: number
   onHire: (id: string) => boolean
@@ -38,15 +44,18 @@ function Team({
         {openHires(hires).map((row) => {
           const held = hires[row.id] ?? 0
           const cost = hireCost(row, held, 1)
+          // Hiring is the Manager's, each kind from its rank: a shut row says why and keeps its Fire button for hires already held.
+          const locked = hireLocked({ jobs, build }, row)
           return (
-            <li key={row.id} className="world-hire" data-hire={row.id} data-testid={`world-hire-${row.id}`}>
+            <li key={row.id} className={locked ? "world-hire is-locked" : "world-hire"} data-hire={row.id} data-testid={`world-hire-${row.id}`}>
               <span>
                 <strong>{row.name}</strong>
                 {`${formatNumber(held)} hired · −${money(held * row.salary)}/s`}
                 <small>{`each: −${money(row.salary)}/s · +${growth(hireGrowthStep(row, held))}% growth`}</small>
+                {locked ? <small className="world-hire-locked" data-testid={`world-hire-locked-${row.id}`}>{locked}</small> : null}
               </span>
               <div className="world-hire-actions">
-                <button type="button" disabled={!canHire(hires, cash, row.id)} title={row.line} onClick={() => onHire(row.id)}>
+                <button type="button" disabled={locked !== null || !canHire(hires, cash, row.id)} title={locked ?? row.line} onClick={() => onHire(row.id)}>
                   {`Hire · ${money(cost)}`}
                 </button>
                 {held > 0 ? (
@@ -77,6 +86,8 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const respond = useGame((state) => state.respondIncident)
   const bar = Math.min(100, company.share * 100)
   const hires = useGame((state) => state.hires)
+  const jobs = useGame((state) => state.jobs)
+  const build = useGame((state) => state.build)
   const raw = useGame((state) => state.company)
   const hire = useGame((state) => state.hire)
   const fire = useGame((state) => state.fire)
@@ -119,7 +130,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
           )
         })}
       </ul>
-      <Team hires={hires} cash={cash} share={creditOf(raw).hiredShare} onHire={hire} onFire={fire} />
+      <Team hires={hires} jobs={jobs} build={build} cash={cash} share={creditOf(raw).hiredShare} onHire={hire} onFire={fire} />
       {company.incidents.length > 0 ? (
         <ul className="world-incidents" data-testid="world-incidents">
           {company.incidents.map((incident) => {

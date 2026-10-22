@@ -1,4 +1,4 @@
-import { Activity, ArrowDown, Bot, BriefcaseBusiness, Check, ChevronRight, Circle, Handshake, Lock, Monitor, MousePointerClick, Server, ShieldCheck, Trophy } from "lucide-react"
+import { Activity, ArrowDown, Bot, BriefcaseBusiness, Check, ChevronRight, Circle, Handshake, Keyboard, Lock, Monitor, MousePointerClick, Server, ShieldCheck, Trophy, Users } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
@@ -10,7 +10,9 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
-import { heldRank, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
+import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
+import { LEADERSHIP } from "../data/leadership.ts"
+import type { LeadId } from "../data/leadership.ts"
 import { isSpecId, SPECIALIZATIONS, specById } from "../data/specializations.ts"
 import type { SpecId, SpecStyle } from "../data/specializations.ts"
 import { CAPITAL } from "../data/capital.ts"
@@ -264,6 +266,50 @@ function SpecPick({ glow }: { glow: string }) {
   )
 }
 
+const LEAD_ICON: Record<LeadId, LucideIcon> = { ic: Keyboard, manager: Users }
+
+/** One leadership line as a shop row: its name, a line about it, and the button that takes it. */
+function LeadRow({ id, glow, index, action }: { id: LeadId; glow: string; index: number; action: () => void }) {
+  const lead = LEADERSHIP.find((row) => row.id === id)!
+  const Icon = LEAD_ICON[id]
+  return (
+    <Offer
+      kind="job"
+      id={0}
+      rowKey={`lead:${id}`}
+      glow={glow}
+      index={index}
+      afford
+      title={lead.name}
+      art={
+        <span className="spec-art" role="img" aria-label={lead.name}>
+          <Icon size={34} strokeWidth={2.2} aria-hidden />
+        </span>
+      }
+      actions={
+        <button type="button" onClick={action} aria-label={`Pick ${lead.name}`}>
+          Pick
+        </button>
+      }
+    >
+      {lead.blurb}
+    </Offer>
+  )
+}
+
+/** The leadership pick: opens at Senior SWE, made once. Every job above rank 15 waits behind it, and only the picked line's rows open. */
+function LeadPick({ glow }: { glow: string }) {
+  const pick = useGame((s) => s.pickLeadership)
+  return (
+    <>
+      <h3 className="shop-section">Pick a leadership line</h3>
+      {LEADERSHIP.map((lead, index) => (
+        <LeadRow key={lead.id} id={lead.id} glow={glow} index={index} action={() => pick(lead.id)} />
+      ))}
+    </>
+  )
+}
+
 /** After the pick: one row naming the specialization and, once per career, a switch with a confirm step that says what it keeps and drops. */
 function SpecSwitch({ spec, switched, glow }: { spec: SpecId; switched: boolean; glow: string }) {
   const switchTo = useGame((s) => s.switchSpecialization)
@@ -460,7 +506,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
+    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   useShopRows(listRef, narrow && tab !== "W", rowScope)
   // The phone sheet's expanded height in px, or null at three rows. Another tab, a dock or a new screen size starts over at three rows.
@@ -558,7 +604,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
       (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
         visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
     (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build }))) ||
+    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build }) || leadPickOpen({ jobs, build }))) ||
     (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank))) ||
     (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0))
 
@@ -875,6 +921,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               )
             })}
             {pickOpen({ jobs, build }) ? <SpecPick glow={tabGlow} /> : null}
+            {leadPickOpen({ jobs, build }) ? <LeadPick glow={tabGlow} /> : null}
             {build.spec !== null && isSpecId(build.spec) ? <SpecSwitch spec={build.spec} switched={build.switched} glow={tabGlow} /> : null}
             </>
           ) : (
