@@ -204,6 +204,8 @@ const STATES = {
   "phase-c": `g.reset(); g.keepProfile(); g.setXp(200000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); g.buyJob(1); g.setMoney(60000); g.clearReveals(); g.tick(1000); return 1`,
   "jobs-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
   "jobs-track": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.pickSpecialization("frontend"); for (let id = 108; id <= 110; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
+  "lead-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.pickSpecialization("backend"); for (let id = 8; id <= 15; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
+  "lead-track": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.pickSpecialization("backend"); for (let id = 8; id <= 15; id++) g.buyJob(id); g.pickLeadership("manager"); g.buyJob(18); g.clearReveals(); g.tick(1000); return 1`,
   "mid-d": `g.reset(); g.keepProfile(); g.setXp(400000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); g.buyJob(1); for (let id = 2; id <= 7; id++) g.buyJob(id); g.pickSpecialization("backend"); g.buyJob(14); g.setMoney(9e6); g.buy(1); g.buy(3); g.clearReveals(); g.tick(1000); return 1`,
 }
 
@@ -291,6 +293,17 @@ async function runViewports() {
     for (const [state, body] of Object.entries(STATES)) {
       game(body)
       await settle()
+      // Holding Senior opens capital and the shop moves to it: the leadership states look at the Jobs tab.
+      if (state.startsWith("lead-")) {
+        try {
+          ab("find", "role", "tab", "click", "--name", "Jobs")
+        } catch {
+          failures.push(`${tag(vp)} ${state}: no Jobs tab to open`)
+        }
+        // The pick and the new rows sit at the foot of the list.
+        ab("eval", "(() => { const list = document.querySelector('.shop-list'); if (list) list.scrollTop = list.scrollHeight; return 1 })()")
+        await settle()
+      }
       check(vp, state, measure())
       shot(vp, state)
     }
