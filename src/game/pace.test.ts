@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   cadenceOf,
+  DEFAULT_PACE_LEAD,
   DEFAULT_PACE_SPEC,
   ONE_OF_EACH_PAYBACK_SECONDS,
   estimateDays,
@@ -46,7 +47,7 @@ describe("pace cadence", () => {
   it("gives pace as idle share plus the click share the jobs add, and the formula is k over pace", () => {
     const p = profile(1, 30, 2)
     const cad = cadenceOf(p)
-    expect(FINAL_CLICK_SHARE).toBeCloseTo(visibleJobs(DEFAULT_PACE_SPEC).reduce((sum, job) => sum + job.clickPct, 0) / 100, 10)
+    expect(FINAL_CLICK_SHARE).toBeCloseTo(visibleJobs(DEFAULT_PACE_SPEC, DEFAULT_PACE_LEAD).reduce((sum, job) => sum + job.clickPct, 0) / 100, 10)
     expect(paceOf(p)).toBeCloseTo(cad.idleShare + cad.clicksPerWallSecond * FINAL_CLICK_SHARE, 10)
     expect(estimateDays(p, 8)).toBeCloseTo(8 / paceOf(p), 10)
   })

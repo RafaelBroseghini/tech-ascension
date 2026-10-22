@@ -90,7 +90,7 @@ describe("hover click", () => {
     setDeskPref("hoverClick", true)
     ownCatalog()
     // A Frontend career holds the whole ladder it can see, so a tap pays 2.5x the idle $/s on top of the flat part.
-    useGame.setState({ jobs: visibleJobs("frontend").map((job) => job.id), build: { spec: "frontend", switched: false } })
+    useGame.setState({ jobs: visibleJobs("frontend", "ic").map((job) => job.id), build: { spec: "frontend", switched: false, leadership: "ic" } })
     const host = renderStage()
     hoverEmoji(host)
     const state = useGame.getState()
