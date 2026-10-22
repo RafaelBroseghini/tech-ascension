@@ -1,7 +1,7 @@
 import { EditorSettings } from "./EditorSettings.tsx"
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
-import type { KeyboardEvent, MouseEvent, PointerEvent } from "react"
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react"
 import { GOLD_MULT_THRESHOLD } from "../data/boosts.ts"
 import { CLICK_ICONS, iconPool, pickClickIcon } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
@@ -16,7 +16,7 @@ import { eraOf, stageOf } from "../game/phase.ts"
 import type { Era } from "../data/capital.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
-import { capDrops, FALL_MS, fallDistance, fountainLift, LOOT_RISE_SCALE, toss, waterfallCount } from "../game/waterfall.ts"
+import { capDrops, dropPath, fallDistance, fountainLift, LOOT_MS, pathMs, toss, tossLoot, waterfallCount } from "../game/waterfall.ts"
 import type { Drop } from "../game/waterfall.ts"
 import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
@@ -97,22 +97,53 @@ function flipSide(): 1 | -1 {
   return nextSide
 }
 
+/** One logo of the fountain: it plays its sampled path (rise, fall, bounces, sink) once, on the compositor, from where it mounts. */
+function DropIcon({ drop, children }: { drop: Drop; children: ReactNode }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof el.animate !== "function") return
+    const life = Math.max(1, drop.life)
+    const frames = drop.frames.map((f) => ({
+      offset: f.t / life,
+      transform: `translate(${f.x.toFixed(1)}px, ${f.y.toFixed(1)}px) rotate(${f.rot.toFixed(1)}deg) scale(${f.sx.toFixed(3)}, ${f.sy.toFixed(3)})`,
+      opacity: f.o,
+    }))
+    // Reduced motion keeps a short, plain fall: the logo drops straight to the ground and goes, with no bounces.
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+    const first = frames[0]!
+    const plain = [first, { offset: 1, transform: `translate(0px, ${drop.fall.toFixed(1)}px)`, opacity: 0 }]
+    const run = el.animate(still ? plain : frames, { duration: still ? 900 : life, easing: "linear", fill: "forwards" })
+    return () => run.cancel()
+  }, [drop])
+  return (
+    <span ref={ref} className="drop" data-icon={drop.icon} style={{ left: drop.x - drop.size / 2, top: drop.y - drop.size / 2, width: drop.size, height: drop.size }}>
+      {children}
+    </span>
+  )
+}
+
 /** One random owned logo per spray, tossed up from just above the pointer. */
 function fountain(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {
   if (icons.length === 0) return []
   return Array.from({ length: count }, () => {
     const icon = pickClickIcon(icons) ?? icons[0] ?? "Git"
     const { dx, rise } = toss(flipSide())
+    const fall = fallDistance(window.innerHeight, y, ICON_PX)
+    const rot = (Math.random() - 0.5) * 220
+    const frames = dropPath(rise, dx, fall, rot)
     return {
       id: seq++,
       x: x + (Math.random() - 0.5) * 14,
       y,
       dx,
       rise,
-      fall: fallDistance(window.innerHeight, y, ICON_PX),
-      rot: (Math.random() - 0.5) * 140,
+      fall,
+      rot,
       size: ICON_PX,
       icon,
+      frames,
+      life: pathMs(frames),
     }
   })
 }
@@ -295,13 +326,13 @@ export function Stage() {
       const bornLoot = textLabels.map((label) => {
         // Money and XP go opposite ways when both pay; a lone label takes the next side.
         const side = textLabels.length > 1 ? (label.kind === "xp" ? 1 : -1) : flipSide()
-        const { dx, rise } = toss(side)
+        const { dx, rise } = tossLoot(side)
         return {
           id: seq++,
           x: originX + side * 8,
           y: originY - (label.kind === "xp" ? 10 : 0),
-          dx: dx * 0.7,
-          rise: rise * LOOT_RISE_SCALE + 8,
+          dx,
+          rise,
           text: label.text,
           kind: label.kind,
         }
@@ -316,10 +347,12 @@ export function Stage() {
       setDrops((current) => capDrops(current, born))
     }
     if (fallen.size > 0) {
+      // The text clears itself after LOOT_MS; the logos after their bounces, which take longer.
+      const lasts = Math.max(textLabels.length > 0 ? LOOT_MS : 0, ...born.map((drop) => drop.life))
       window.setTimeout(() => {
         setLoot(without(fallen))
         setDrops(without(fallen))
-      }, FALL_MS + 60)
+      }, lasts + 60)
     }
     if (prefersReducedMotion()) return
     const ring = { id: seq++, x, y, big: false }
@@ -485,23 +518,9 @@ export function Stage() {
             const Icon = CLICK_ICONS[drop.icon as IconName]
             if (!Icon) return null
             return (
-              <span
-                key={drop.id}
-                className="drop"
-                data-icon={drop.icon}
-                style={{
-                  left: drop.x - drop.size / 2,
-                  top: drop.y - drop.size / 2,
-                  width: drop.size,
-                  height: drop.size,
-                  ["--dx" as string]: `${drop.dx}px`,
-                  ["--rise" as string]: `${drop.rise}px`,
-                  ["--fall" as string]: `${drop.fall}px`,
-                  ["--rot" as string]: `${drop.rot}deg`,
-                }}
-              >
+              <DropIcon key={drop.id} drop={drop}>
                 <Icon size={drop.size} />
-              </span>
+              </DropIcon>
             )
           })}
           {loot.map((item) => (

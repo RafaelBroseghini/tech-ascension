@@ -11,29 +11,9 @@
  */
 
 /*
- * Click fountain: tossed up from just above the pointer, over a short arc, then down past the viewport bottom.
- * Rise (0-25%): y = -rise x (2u - u^2) with u = t/25%, easing to a stop at the peak, one --rise up.
- * Fall (25-100%): y = -rise + (rise + fall) x v^2 with v = (t - 25%)/75%, speeding up like gravity and
- * reaching --fall (set per drop to just below the viewport bottom) at 100%. Opacity stays 1: it ends off screen.
+ * Click fountain: the logos are not CSS keyframes. Each one plays a path sampled from a little physics loop
+ * (src/game/waterfall.ts, `dropPath`): up high, down to the bottom edge, a few bounces, then it sinks and fades.
  */
-@keyframes drop-fall {
-  0% { transform: translate(0, 0) rotate(calc(var(--rot) * 0.000)) scale(0.85); opacity: 1; }
-  5% { transform: translate(calc(var(--dx) * 0.050), calc(var(--rise) * -0.36)) rotate(calc(var(--rot) * 0.050)) scale(0.95); opacity: 1; }
-  10% { transform: translate(calc(var(--dx) * 0.100), calc(var(--rise) * -0.64)) rotate(calc(var(--rot) * 0.100)) scale(1); opacity: 1; }
-  15% { transform: translate(calc(var(--dx) * 0.150), calc(var(--rise) * -0.84)) rotate(calc(var(--rot) * 0.150)) scale(1); opacity: 1; }
-  20% { transform: translate(calc(var(--dx) * 0.200), calc(var(--rise) * -0.96)) rotate(calc(var(--rot) * 0.200)) scale(1); opacity: 1; }
-  25% { transform: translate(calc(var(--dx) * 0.250), calc(var(--rise) * -1)) rotate(calc(var(--rot) * 0.250)) scale(1); opacity: 1; }
-  32.5% { transform: translate(calc(var(--dx) * 0.325), calc(var(--fall) * 0.01 + var(--rise) * -0.99)) rotate(calc(var(--rot) * 0.325)) scale(1); opacity: 1; }
-  40% { transform: translate(calc(var(--dx) * 0.400), calc(var(--fall) * 0.04 + var(--rise) * -0.96)) rotate(calc(var(--rot) * 0.400)) scale(1); opacity: 1; }
-  47.5% { transform: translate(calc(var(--dx) * 0.475), calc(var(--fall) * 0.09 + var(--rise) * -0.91)) rotate(calc(var(--rot) * 0.475)) scale(1); opacity: 1; }
-  55% { transform: translate(calc(var(--dx) * 0.550), calc(var(--fall) * 0.16 + var(--rise) * -0.84)) rotate(calc(var(--rot) * 0.550)) scale(1); opacity: 1; }
-  62.5% { transform: translate(calc(var(--dx) * 0.625), calc(var(--fall) * 0.25 + var(--rise) * -0.75)) rotate(calc(var(--rot) * 0.625)) scale(1); opacity: 1; }
-  70% { transform: translate(calc(var(--dx) * 0.700), calc(var(--fall) * 0.36 + var(--rise) * -0.64)) rotate(calc(var(--rot) * 0.700)) scale(1); opacity: 1; }
-  77.5% { transform: translate(calc(var(--dx) * 0.775), calc(var(--fall) * 0.49 + var(--rise) * -0.51)) rotate(calc(var(--rot) * 0.775)) scale(1); opacity: 1; }
-  85% { transform: translate(calc(var(--dx) * 0.850), calc(var(--fall) * 0.64 + var(--rise) * -0.36)) rotate(calc(var(--rot) * 0.850)) scale(1); opacity: 1; }
-  92.5% { transform: translate(calc(var(--dx) * 0.925), calc(var(--fall) * 0.81 + var(--rise) * -0.19)) rotate(calc(var(--rot) * 0.925)) scale(1); opacity: 1; }
-  100% { transform: translate(calc(var(--dx) * 1.000), calc(var(--fall) * 1.00 + var(--rise) * -0.00)) rotate(calc(var(--rot) * 1.000)) scale(1); opacity: 1; }
-}
 
 /* Payout text rides the same arc, centred on its point. */
 @keyframes loot-fall {
@@ -196,8 +176,7 @@
     display: none !important;
   }
 
-  /* Click loot still falls. The global 0.01ms duration would erase it. */
-  .drop,
+  /* Click loot still falls. The global 0.01ms duration would erase it. (The logos play a plain fall from Stage.tsx.) */
   .loot {
     animation-duration: 900ms !important;
     animation-iteration-count: 1 !important;
