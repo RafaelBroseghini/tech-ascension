@@ -55,6 +55,7 @@ export type FeatureId =
   | "hoverClick"
   | "music"
   | "boardCapital"
+  | "parade"
   | "cat"
   | "exit"
   | `kit:${string}`
@@ -208,6 +209,15 @@ export const FEATURES: readonly FeatureRow[] = [
     blurb: "Funds, equity and firms. The long climb.",
     size: "phase",
     trigger: { kind: "board", board: "capital" },
+  },
+  {
+    id: "parade",
+    name: "Gif parade",
+    blurb: "Every gif you have unlocked takes a lap round the stage. Settings picks the gifs and one of fourteen paths.",
+    size: "standard",
+    trigger: { kind: "era", era: "mid" },
+    action: "Open settings",
+    ghost: false,
   },
   {
     id: "cat",

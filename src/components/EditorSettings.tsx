@@ -63,7 +63,7 @@ const TOGGLES: readonly {
 ]
 
 /** Rows in the settings menu that can carry a NEW mark: the career rows above, and the recurring picks under them. */
-const SETTINGS_FEATURES: readonly FeatureId[] = ["music", "clickKits", "hoverClick", "themes", "cat", "rosters"]
+const SETTINGS_FEATURES: readonly FeatureId[] = ["music", "clickKits", "hoverClick", "themes", "cat", "parade", "rosters"]
 const SETTINGS_PICK_PREFIXES = ["music:", "kit:", "theme:"] as const
 /** Anchors for the reveal cards on narrow screens, where the status bar is folded into this menu. */
 const SETTINGS_ANCHORS = [...SETTINGS_FEATURES, ...SETTINGS_PICK_PREFIXES.map((prefix) => prefix.slice(0, -1))].join(" ")
@@ -168,6 +168,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
   // styles, kits and themes earned so far (plus whichever one is in use).
   const music = useFeatureOpen("music")
   const cat = useFeatureOpen("cat")
+  const paradeOpen = useFeatureOpen("parade")
   const paradeProgress = useParadeProgress()
   const paradeCounts = useMemo(() => countParadeGifs(paradeProgress), [paradeProgress])
   const kits = useFeatureOpen("clickKits")
@@ -179,7 +180,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
     if (toggle.complete && hoverPerSec <= 0) return false
     if (toggle.key === "music" && !music) return false
     if (toggle.key === "cat" && !cat) return false
-    if (toggle.key === "parade" && paradeCounts.all === 0) return false
+    if (toggle.key === "parade" && (!paradeOpen || paradeCounts.all === 0)) return false
     return true
   })
 
@@ -317,7 +318,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
               {hoverPerSec > 0 && desk.hoverClick ? <HoverModeList desk={desk} /> : null}
             </div>
           </section>
-          {paradeCounts.all > 0 && desk.parade ? (
+          {paradeOpen && paradeCounts.all > 0 && desk.parade ? (
             <>
               <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-source`}>
                 <p className="ide-theme-heading" id={`${menuId}-parade-source`}>

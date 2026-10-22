@@ -18,6 +18,8 @@ export const PARADE_OPACITY = 0.85
 /** Drift speed of the free styles, px per second. */
 export const SPEED_MIN = 30
 export const SPEED_SPAN = 40
+/** Under the OS "reduce motion" setting the paths run at this share of their pace: calmer, but still travelling (frozen paths with fading cats read as broken). */
+export const REDUCED_MOTION_SCALE = 0.35
 /** A frame longer than this (a tab coming back from the background) moves the clock this far only. */
 export const MAX_STEP_MS = 100
 

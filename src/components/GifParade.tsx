@@ -10,6 +10,7 @@ import {
   paradeAt,
   paradeCap,
   paradeCount,
+  REDUCED_MOTION_SCALE,
   pickCat,
   spawnCat,
   type ParadeBox,
@@ -18,6 +19,7 @@ import {
 import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
 import { paradePool } from "../game/paradePool.ts"
 import { useParadeProgress } from "./useParadeProgress.ts"
+import { useFeatureOpen } from "./useFeature.ts"
 
 /** On the first fill the gifs come in one after another rather than all in the same frame. */
 const ARRIVE_GAP_MS = 80
@@ -26,13 +28,14 @@ const paradePref = () => getDeskPrefs().parade
 const sourcePref = () => getDeskPrefs().paradeSource
 const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 
-/** Every gif unlocked this run (or one category of them), moving round the stage. The settings menu turns it off and picks the gifs and the path. */
+/** Every gif unlocked this run (or one category of them), moving round the stage once the parade itself is unlocked (the mid game, `parade` in src/data/features.ts). The settings menu turns it off and picks the gifs and the path. */
 export function GifParade() {
   const on = useSyncExternalStore(subscribeDeskPrefs, paradePref, paradePref)
   const source = useSyncExternalStore(subscribeDeskPrefs, sourcePref, sourcePref)
+  const unlocked = useFeatureOpen("parade")
   const progress = useParadeProgress()
   const gifs = useMemo(() => paradePool(source, progress), [source, progress])
-  if (!on || gifs.length === 0) return null
+  if (!unlocked || !on || gifs.length === 0) return null
   return <ParadeLayer gifs={gifs} />
 }
 
@@ -68,7 +71,7 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
   // The parade keeps its own clock, so a hidden tab pauses the paths and the rotation alike.
   useEffect(() => {
     if (typeof requestAnimationFrame !== "function") return
-    const still = prefersReducedMotion()
+    const pace = prefersReducedMotion() ? REDUCED_MOTION_SCALE : 1
     let cats: ParadeGif[] = []
     let last: number | null = null
     let clock = 0
@@ -96,7 +99,7 @@ function ParadeLayer({ gifs }: { gifs: readonly string[] }) {
         swapAt = clock + nextSwapDelay()
       }
 
-      const t = still ? 0 : clock / 1000
+      const t = (clock / 1000) * pace
       for (let i = 0; i < cats.length; i += 1) {
         let cat = cats[i]!
         if (catGone(cat, clock)) {
