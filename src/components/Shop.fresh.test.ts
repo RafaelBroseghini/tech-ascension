@@ -125,8 +125,8 @@ describe("shop row badges and job art", () => {
     useGame.setState({
       xpTotal: 3_000_000,
       money: 1,
-      build: { spec: "backend", switched: false },
-      jobs: visibleJobs("backend").map((job) => job.id),
+      build: { spec: "backend", switched: false, leadership: "ic" },
+      jobs: visibleJobs("backend", "ic").map((job) => job.id),
       gigs: [1, 2, 3, 4, 5, 6],
     })
     const host = renderShop()

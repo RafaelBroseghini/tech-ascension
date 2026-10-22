@@ -60,9 +60,9 @@ describe("admin", () => {
     expect(Object.keys(state.owned)).toHaveLength(CAPITAL.length)
     expect(state.equipment[String(EQUIPMENT[0]!.id)]).toBe(3)
     expect(state.gigs).toHaveLength(GIGS.length)
-    // A career holds its own track only: the picked one, or Backend when nothing was picked.
-    expect(state.jobs).toHaveLength(visibleJobs("backend").length)
-    expect(state.build.spec).toBe("backend")
+    // A career holds its own track and line only: the picked ones, or Backend and the individual contributor line when nothing was picked.
+    expect(state.jobs).toHaveLength(visibleJobs("backend", "ic").length)
+    expect(state.build).toMatchObject({ spec: "backend", leadership: "ic" })
     const xp = state.xp
     buyEverything()
     expect(useGame.getState().xp).toBe(xp)

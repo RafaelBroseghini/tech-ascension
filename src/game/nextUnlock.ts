@@ -83,11 +83,10 @@ const gigsLeft = () => "more gigs"
 const cashShort = () => "more money"
 const xpShort = () => "more XP"
 
-/** True once every skill, gig, job the career can see (its track and its line), gear row, and capital row is owned at least once. A career with no line picked has not finished the ladder. */
+/** True once every skill, gig, job the career can see (its track and its line), gear row, and capital row is owned at least once. */
 export function ownsEverything(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "build">): boolean {
   for (const skill of SKILL_TIERS) if (ownedCount(p.skills, skill.id) === 0) return false
   for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return false
-  if (leadOf(p) === null) return false
   for (const job of visibleJobs(specOf(p), leadOf(p))) if (!p.jobs.includes(job.id)) return false
   for (const row of GEAR) if (ownedCount(p.equipment, row.id) === 0) return false
   for (const row of CAPITAL) if (ownedCount(p.owned, row.id) === 0) return false

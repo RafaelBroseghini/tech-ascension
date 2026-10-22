@@ -3,6 +3,8 @@ import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
 import { GIGS, JOB_TIERS, jobRank, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
+import { LEADERSHIP } from "../data/leadership.ts"
+import type { LeadId } from "../data/leadership.ts"
 import { SPECIALIZATIONS } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
 import {
@@ -58,7 +60,7 @@ describe("the pick", () => {
     game.setXp(1e9)
     for (let id = 1; id <= 6; id++) game.forceGig(id)
     expect(game.pickSpecialization("backend")).toBe(false)
-    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [] })
+    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
     for (let id = 1; id <= 6; id++) game.buyJob(id)
     expect(game.pickSpecialization("backend")).toBe(false)
     expect(game.buyJob(7)).toBe(true)
@@ -109,6 +111,11 @@ describe("the pick", () => {
     expect(game.buyJob(8)).toBe(false)
     expect(game.buyJob(108)).toBe(false)
     game.pickSpecialization("security")
+    // The specialization is not enough for them any more: they wait for a leadership line too (src/game/leadership.test.ts).
+    expect(game.buyJob(16)).toBe(false)
+    climb("security", 14)
+    game.pickLeadership("ic")
+    game.setXp(1e9)
     expect(game.buyJob(16)).toBe(true)
   })
 
@@ -131,6 +138,7 @@ describe("the pick", () => {
       toMid()
       expect(game.pickSpecialization(spec.id)).toBe(true)
       climb(spec.id)
+      expect(game.pickLeadership("ic"), spec.id).toBe(true)
       game.setXp(1e9)
       expect(game.buyJob(16), spec.id).toBe(true)
       expect(game.getState().unlocks.capital, spec.id).toBe(true)
@@ -169,6 +177,7 @@ describe("the switch", () => {
     toMid()
     game.pickSpecialization("backend")
     climb("backend", 15)
+    game.pickLeadership("ic")
     game.setXp(1e9)
     expect(game.buyJob(16)).toBe(true)
     expect(game.buyJob(17)).toBe(true)
@@ -290,7 +299,7 @@ describe("reset and the Exit", () => {
     expect(useGame.getState().build.switched).toBe(true)
     game.reset()
     expect(useGame.getState().build).toEqual(FRESH_BUILD)
-    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [] })
+    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
     expect(JSON.parse(readCareerText() ?? "{}").build).toBeUndefined()
   })
 
@@ -299,7 +308,7 @@ describe("reset and the Exit", () => {
     game.pickSpecialization("ai")
     game.setMoney(PRESTIGE_EARN_SCALE * 3)
     expect(game.exit()).toBeGreaterThan(0)
-    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [] })
+    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
     expect(game.getState().jobs.every((id) => id <= 7)).toBe(true)
     toMid()
     expect(game.pickSpecialization("security")).toBe(true)
@@ -307,10 +316,12 @@ describe("reset and the Exit", () => {
 })
 
 describe("click and idle builds", () => {
-  const fullyHeld = (spec: SpecId) => ({ jobs: ids(visibleJobs(spec)), build: { spec, switched: false } })
+  // Every row of the spec's ladder, both leadership lines' rows together: the sum the click build is calibrated on (a real career holds one line).
+  const ladder = (spec: SpecId) => JOB_TIERS.filter((job) => job.spec === undefined || job.spec === spec)
+  const fullyHeld = (spec: SpecId) => ({ jobs: ids(ladder(spec)), build: { spec, switched: false } })
 
   it("derives the click multiple from the plain ladder's 0.68 share", () => {
-    expect(visibleJobs("backend").reduce((sum, job) => sum + job.clickPct, 0) / 100).toBeCloseTo(0.68, 12)
+    expect(ladder("backend").reduce((sum, job) => sum + job.clickPct, 0) / 100).toBeCloseTo(0.68, 12)
     expect(CLICK_BUILD_CLICK_MULT).toBeCloseTo(2.5 / 0.68, 12)
     expect(MANUAL_CLICKS_PER_SEC).toBe(2)
     expect(IDLE_BUILD_IDLE_MULT).toBe(1.25)
@@ -444,29 +455,31 @@ describe("click and idle builds", () => {
 })
 
 describe("owning everything", () => {
-  const everything = (spec: SpecId) => ({
+  const everything = (spec: SpecId, lead: LeadId) => ({
     skills: Object.fromEntries(SKILL_TIERS.map((row) => [String(row.id), 1])),
     equipment: Object.fromEntries(GEAR.map((row) => [String(row.id), 1])),
     owned: Object.fromEntries(CAPITAL.map((row) => [String(row.id), 1])),
     gigs: GIGS.map((gig) => gig.id),
-    jobs: ids(visibleJobs(spec)),
-    build: { spec, switched: false },
+    jobs: ids(visibleJobs(spec, lead)),
+    build: { spec, switched: false, leadership: lead },
   })
 
-  it("is reachable for every specialization by holding every row it can see", () => {
+  it("is reachable for every specialization and line by holding every row it can see", () => {
     for (const row of SPECIALIZATIONS) {
-      const held = everything(row.id)
-      expect(held.jobs, row.id).toHaveLength(31)
-      expect(ownsEverything(held), row.id).toBe(true)
-      expect(ownsEverything({ ...held, jobs: held.jobs.slice(1) }), row.id).toBe(false)
-      expect(ownsEverything({ ...held, jobs: held.jobs.filter((id) => jobRank(id) !== 14) }), row.id).toBe(false)
+      for (const lead of LEADERSHIP) {
+        const held = everything(row.id, lead.id)
+        expect(held.jobs, `${row.id} ${lead.id}`).toHaveLength(lead.id === "ic" ? 27 : 26)
+        expect(ownsEverything(held), `${row.id} ${lead.id}`).toBe(true)
+        expect(ownsEverything({ ...held, jobs: held.jobs.slice(1) }), row.id).toBe(false)
+        expect(ownsEverything({ ...held, jobs: held.jobs.filter((id) => jobRank(id) !== 14) }), row.id).toBe(false)
+      }
     }
   })
 
   it("does not ask for the other tracks' rows, and does not take them instead", () => {
-    const backend = everything("backend")
+    const backend = everything("backend", "ic")
     expect(ownsEverything({ ...backend, jobs: [...backend.jobs, ...ids(JOB_TIERS.filter((job) => job.spec === "frontend"))] })).toBe(true)
-    expect(ownsEverything({ ...backend, build: { spec: "frontend", switched: false } })).toBe(false)
+    expect(ownsEverything({ ...backend, build: { spec: "frontend", switched: false, leadership: "ic" } })).toBe(false)
   })
 
   it("walks the next job of the career's own track", () => {
