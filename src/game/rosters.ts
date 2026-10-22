@@ -102,10 +102,10 @@ export function rosterEntries(kind: RosterKind, p: RosterProgress): RosterEntry[
       )
     })
   } else if (kind === "jobs") {
-    JOB_TIERS.forEach((job, index) => {
-      if (!p.jobs.includes(job.id)) return
+    // Held jobs only, by rank: a career holds one track, and the slot number is the rank, as in the backend ladder.
+    JOB_TIERS.filter((job) => p.jobs.includes(job.id)).sort((a, b) => a.rank - b.rank || a.id - b.id).forEach((job) => {
       rows.push(
-        entry(kind, job.id, index + 1, job.name, 1, [
+        entry(kind, job.id, job.rank, job.name, 1, [
           job.cps > 0 ? `${money(job.cps)}/s salary` : "Unpaid",
           job.clickBonus > 0 ? `+${money(job.clickBonus)}/click` : "",
           job.clickPct > 0 ? `+${job.clickPct}% of $/s per click` : "",

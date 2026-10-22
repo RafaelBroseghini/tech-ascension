@@ -1,10 +1,10 @@
-import { CAPITAL_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import type { Gig, JobTier, SkillTier } from "../data/phases.ts"
 import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { heldRank } from "./build.ts"
+import { heldRank, needsPick, specOf } from "./build.ts"
 import { canAfford, capitalBase, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
@@ -79,11 +79,11 @@ const gigsLeft = () => "more gigs"
 const cashShort = () => "more money"
 const xpShort = () => "more XP"
 
-/** True once every skill, gig, job, gear row, and capital row is owned at least once. */
-export function ownsEverything(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs">): boolean {
+/** True once every skill, gig, job the career can see, gear row, and capital row is owned at least once. */
+export function ownsEverything(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "build">): boolean {
   for (const skill of SKILL_TIERS) if (ownedCount(p.skills, skill.id) === 0) return false
   for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return false
-  for (const job of JOB_TIERS) if (!p.jobs.includes(job.id)) return false
+  for (const job of visibleJobs(specOf(p))) if (!p.jobs.includes(job.id)) return false
   for (const row of GEAR) if (ownedCount(p.equipment, row.id) === 0) return false
   for (const row of CAPITAL) if (ownedCount(p.owned, row.id) === 0) return false
   return true
@@ -136,7 +136,12 @@ function rowTarget(p: Progression, tab: ShopTab): NextUnlock | null {
     for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return gigTarget(p, gig)
   }
   if (tab === "C") {
-    for (const job of JOB_TIERS) if (!p.jobs.includes(job.id)) return jobTarget(p, job)
+    // Before the pick the rows above Mid-level wait behind it, so the walk stops at the trunk.
+    const spec = specOf(p)
+    for (const job of visibleJobs(spec)) {
+      if (spec === null && needsPick(job)) break
+      if (!p.jobs.includes(job.id)) return jobTarget(p, job)
+    }
   }
   if (tab === "G") {
     for (const row of GEAR) if (ownedCount(p.equipment, row.id) === 0) return gearTarget(p, row)
