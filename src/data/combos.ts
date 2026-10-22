@@ -4,8 +4,8 @@ import type { Tag } from "./tags.ts"
  * The kitchen: two things that go together make a combo, like mixing two emoji. A drop-in table of hand-written
  * jokes, one per combo; nothing generates them. The rules are in src/game/combos.ts.
  *
- * An ingredient is a catalog row you hold, or a tag you hold enough rows of. Origins and specializations will join
- * this union when they exist; nothing else here needs to change for them.
+ * An ingredient is a catalog row you hold, a job of a given rank (whichever specialization's row it is), or a tag you
+ * hold enough rows of. Origins will join this union when they exist; nothing else here needs to change for them.
  *
  * Effects are small on purpose. `idle` is $/s, `click` is $ and XP per click, `xp` is idle XP/s. A combo is 1 to 5
  * percent and the sum of each kind is capped at COMBO_CAP_PCT (a test pins both), added together, not compounded.
@@ -14,6 +14,8 @@ export type ComboRowKind = "skill" | "gig" | "job" | "gear" | "capital"
 
 export type ComboRef =
   | { kind: ComboRowKind; id: number }
+  /** Holds a job of this rank, whichever specialization's row it is: the acting lead or the senior seat of any track. */
+  | { kind: "jobRank"; rank: number }
   /** Holds at least `count` rows that carry this tag, across every catalog. */
   | { kind: "tag"; tag: Tag; count: number }
 
@@ -34,6 +36,7 @@ export const COMBO_CAP_PCT = 25
 const skill = (id: number): ComboRef => ({ kind: "skill", id })
 const gig = (id: number): ComboRef => ({ kind: "gig", id })
 const job = (id: number): ComboRef => ({ kind: "job", id })
+const jobAt = (rank: number): ComboRef => ({ kind: "jobRank", rank })
 const gear = (id: number): ComboRef => ({ kind: "gear", id })
 const capital = (id: number): ComboRef => ({ kind: "capital", id })
 const tag = (name: Tag, count: number): ComboRef => ({ kind: "tag", tag: name, count })
@@ -80,14 +83,14 @@ export const COMBOS: readonly Combo[] = [
   { id: "yaml-indentation", a: skill(72), b: skill(74), name: "YAML indentation", joke: "The deploy failed because of a space you cannot see.", effect: { kind: "idle", pct: 1 } },
   // CI/CD pipeline toy + Feature flag mental model
   { id: "flag-debt", a: skill(54), b: skill(59), name: "Flag debt", joke: "Four hundred flags. Nobody knows which one is the real one.", effect: { kind: "xp", pct: 1 } },
-  // Tech lead (acting) + 1080p webcam
-  { id: "on-mute", a: job(13), b: gear(7), name: "You're on mute", joke: "Eleven people watched you explain it in silence.", effect: { kind: "click", pct: 1 } },
+  // Any acting lead (rank 13, every track) + 1080p webcam
+  { id: "on-mute", a: jobAt(13), b: gear(7), name: "You're on mute", joke: "Eleven people watched you explain it in silence.", effect: { kind: "click", pct: 1 } },
   // Three security rows + ten infra rows
   { id: "zero-trust", a: tag("security", 3), b: tag("infra", 10), name: "Zero trust", joke: "Trust no one. Especially the load balancer you configured yourself.", effect: { kind: "idle", pct: 1 } },
   // Twelve backend rows + twelve frontend rows
   { id: "full-stack-trace", a: tag("backend", 12), b: tag("frontend", 12), name: "Full-stack trace", joke: "The bug is in the frontend. And the backend. And the part between.", effect: { kind: "click", pct: 3 } },
-  // Senior SWE + System design lightweight
-  { id: "it-depends", a: job(14), b: skill(62), name: "It depends", joke: "The senior answer to every question, and the correct one.", effect: { kind: "xp", pct: 2 } },
+  // Any Senior (rank 14, every track) + System design lightweight
+  { id: "it-depends", a: jobAt(14), b: skill(62), name: "It depends", joke: "The senior answer to every question, and the correct one.", effect: { kind: "xp", pct: 2 } },
   // Distributed systems notes + Learn Temporal
   { id: "halting-problem", a: skill(87), b: skill(71), name: "Halting problem", joke: "Will the workflow finish? Temporal says yes. Turing says no.", effect: { kind: "idle", pct: 1 } },
   // AI-IDE workflow + LeetCrate Easy reps

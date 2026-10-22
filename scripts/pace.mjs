@@ -10,9 +10,10 @@
 import { CAPITAL } from "../src/data/capital.ts"
 import { ENDING_BONUS, PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
 import { GEAR } from "../src/data/gear.ts"
-import { JOB_TIERS } from "../src/data/phases.ts"
+import { visibleJobs } from "../src/data/phases.ts"
 import {
   cadenceOf,
+  DEFAULT_PACE_SPEC,
   PACE_MILESTONES,
   ONE_OF_EACH_PAYBACK_SECONDS,
   estimateDays,
@@ -108,7 +109,7 @@ const last = CAPITAL.reduce((a, b) => (b.baseCost > a.baseCost ? b : a))
 const firstCopyIncome =
   CAPITAL.reduce((sum, r) => sum + (r === last ? 0 : r.cps), 0) +
   GEAR.reduce((sum, r) => sum + r.cps, 0) +
-  JOB_TIERS.reduce((sum, r) => sum + r.cps, 0)
+  visibleJobs(DEFAULT_PACE_SPEC).reduce((sum, r) => sum + r.cps, 0)
 
 console.log(`offline cap ${OFFLINE_CAP_SECONDS / 3600}h · final click share ${FINAL_CLICK_SHARE.toFixed(2)} · K ${PACE_K.oneOfEach} (one-of-each) / ${PACE_K.stacker} (stacker)`)
 console.log(`last row: ${last.name}, $${last.baseCost.toExponential(1)}; first-copy income without it $${firstCopyIncome.toExponential(2)}/s, so its price alone is ${duration(last.baseCost / firstCopyIncome)} of full income`)

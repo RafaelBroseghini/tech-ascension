@@ -3,7 +3,7 @@ import { createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it } from "vitest"
-import { JOB_TIERS } from "../data/phases.ts"
+import { visibleJobs } from "../data/phases.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { Shop } from "./Shop.tsx"
@@ -120,17 +120,18 @@ describe("shop row badges and job art", () => {
     expect(hasNew(next)).toBe(true)
   })
 
-  it("shows Frontend specialist by name with art that is not the ERROR stamp", () => {
+  it("shows API owner by name with art that is not the ERROR stamp", () => {
     writeSavedShopTab("C")
     useGame.setState({
       xpTotal: 3_000_000,
       money: 1,
-      jobs: JOB_TIERS.map((job) => job.id),
+      build: { spec: "backend", switched: false },
+      jobs: visibleJobs("backend").map((job) => job.id),
       gigs: [1, 2, 3, 4, 5, 6],
     })
     const host = renderShop()
     const row = host.querySelector<HTMLElement>("[data-row='job:11']")
-    expect(row?.querySelector("h3")?.textContent).toContain("Frontend specialist")
+    expect(row?.querySelector("h3")?.textContent).toContain("API owner")
     const src = row?.querySelector("img")?.getAttribute("src") ?? ""
     expect(src).toMatch(/10881-unicorn\.png$/)
     expect(src).not.toMatch(/Error\.png/i)

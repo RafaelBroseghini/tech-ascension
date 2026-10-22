@@ -7,7 +7,7 @@ import { CAPITAL } from "../data/capital.ts"
 import { COMBO_CAP_PCT, COMBOS } from "../data/combos.ts"
 import type { Combo, ComboEffect, ComboRef, ComboRowKind } from "../data/combos.ts"
 import { GEAR } from "../data/gear.ts"
-import { GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { GIGS, JOB_TIERS, jobRank, SKILL_TIERS } from "../data/phases.ts"
 import { tagLabel } from "../data/tags.ts"
 import type { Tag } from "../data/tags.ts"
 import type { OwnedMap } from "./economy.ts"
@@ -69,6 +69,7 @@ export function tagCounts(h: ComboHoldings): Map<Tag, number> {
 
 function holds(ref: ComboRef, h: ComboHoldings, counts: () => Map<Tag, number>): boolean {
   if (ref.kind === "tag") return (counts().get(ref.tag) ?? 0) >= ref.count
+  if (ref.kind === "jobRank") return h.jobs.some((id) => jobRank(id) === ref.rank)
   return heldRow(ref.kind, ref.id, h)
 }
 
@@ -129,6 +130,7 @@ const KIND_WORD: Record<ComboRef["kind"], string> = {
   skill: "a skill",
   gig: "a gig",
   job: "a job",
+  jobRank: "a job",
   gear: "some gear",
   capital: "a stake in something big",
   tag: "",
@@ -145,7 +147,8 @@ export function comboHint(row: Combo): string {
   const a = refHint(row.a)
   const b = refHint(row.b)
   if (a !== b) return `${a} and ${b}`
-  return row.a.kind === "tag" ? `${a} twice over` : `two ${PLURAL_KIND[row.a.kind]}`
+  if (row.a.kind === "tag") return `${a} twice over`
+  return `two ${row.a.kind === "jobRank" ? PLURAL_KIND.job : PLURAL_KIND[row.a.kind]}`
 }
 
 const EFFECT_WORD: Record<ComboEffect["kind"], string> = { idle: "idle $/s", click: "per click", xp: "idle XP/s" }

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { EQUIPMENT, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { buyEverything, parseAmount, setMoneyDirect, setXpDirect } from "./admin.ts"
 import { ADMIN_CODE, getAdminMode, isAdminCode, setAdminMode, subscribeAdminMode } from "./adminMode.ts"
 import { useGame } from "./store.ts"
@@ -60,7 +60,9 @@ describe("admin", () => {
     expect(Object.keys(state.owned)).toHaveLength(CAPITAL.length)
     expect(state.equipment[String(EQUIPMENT[0]!.id)]).toBe(3)
     expect(state.gigs).toHaveLength(GIGS.length)
-    expect(state.jobs).toHaveLength(JOB_TIERS.length)
+    // A career holds its own track only: the picked one, or Backend when nothing was picked.
+    expect(state.jobs).toHaveLength(visibleJobs("backend").length)
+    expect(state.build.spec).toBe("backend")
     const xp = state.xp
     buyEverything()
     expect(useGame.getState().xp).toBe(xp)

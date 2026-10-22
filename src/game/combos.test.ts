@@ -27,6 +27,11 @@ function holding(...refs: ComboRef[]): ComboHoldings {
   const h = { skills: {} as Record<string, number>, equipment: {} as Record<string, number>, owned: {} as Record<string, number>, jobs: [] as number[], gigs: [] as number[] }
   for (const ref of refs) {
     if (ref.kind === "tag") throw new Error("a tag is not a row")
+    // A job of a rank is held as the backend row at that rank, whose id is the rank.
+    if (ref.kind === "jobRank") {
+      h.jobs.push(ref.rank)
+      continue
+    }
     const key = String(ref.id)
     if (ref.kind === "skill") h.skills[key] = 1
     else if (ref.kind === "gear") h.equipment[key] = 1
@@ -67,6 +72,8 @@ describe("the combo table", () => {
         if (ref.kind === "tag") {
           expect(isTag(ref.tag), `${row.id}: tag ${ref.tag}`).toBe(true)
           expect(ref.count, `${row.id}: tag count`).toBeGreaterThanOrEqual(1)
+        } else if (ref.kind === "jobRank") {
+          expect(JOB_TIERS.some((job) => job.rank === ref.rank), `${row.id}: job rank ${ref.rank}`).toBe(true)
         } else {
           expect(TABLES[ref.kind].has(ref.id), `${row.id}: ${ref.kind} ${ref.id}`).toBe(true)
         }
