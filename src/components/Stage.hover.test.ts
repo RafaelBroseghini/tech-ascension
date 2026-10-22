@@ -6,7 +6,7 @@ import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
-import { GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { GIGS, JOB_TIERS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { comboFactors } from "../game/combos.ts"
 import { clickPower, xpPerClick } from "../game/economy.ts"
 import { setDeskPref } from "../game/desk.ts"
@@ -82,6 +82,32 @@ describe("hover click", () => {
     expect(useGame.getState().money / (power * 20)).toBeCloseTo(1, 9)
     // The combo factor makes each click a fraction, so twenty adds are compared as a ratio like the money.
     expect(useGame.getState().xp / (xpEach * 20)).toBeCloseTo(1, 9)
+  })
+
+  it("pays a hover click without a click build's multiple, and a tap with it", () => {
+    vi.useFakeTimers()
+    setDeskPref("sounds", false)
+    setDeskPref("hoverClick", true)
+    ownCatalog()
+    // A Frontend career holds the whole ladder it can see, so a tap pays 2.5x the idle $/s on top of the flat part.
+    useGame.setState({ jobs: visibleJobs("frontend").map((job) => job.id), build: { spec: "frontend", switched: false } })
+    const host = renderStage()
+    hoverEmoji(host)
+    const state = useGame.getState()
+    const combo = comboFactors(state)
+    const plain = clickPower(state, "auto") * combo.click
+    const tap = clickPower(state, "manual") * combo.click
+    expect(tap).toBeGreaterThan(plain * 1.5)
+    flushSync(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(useGame.getState().money / (plain * 20)).toBeCloseTo(1, 9)
+    const before = useGame.getState().money
+    const button = host.querySelector<HTMLButtonElement>("[data-testid='stage']")!
+    flushSync(() => {
+      button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0, buttons: 1, clientX: 40, clientY: 36 }))
+    })
+    expect((useGame.getState().money - before) / tap).toBeCloseTo(1, 9)
   })
 
   it("auto-clicks while a finger is held on the emoji and stops on release", () => {

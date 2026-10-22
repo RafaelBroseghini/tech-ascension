@@ -95,7 +95,10 @@ export function normalizeBuild(raw: unknown, jobs: readonly number[]): { build: 
   }
   const peak = typeof record.peakRank === "number" && Number.isFinite(record.peakRank) ? Math.floor(record.peakRank) : 0
   const peakRank = Math.min(Math.max(0, peak), 31)
-  const kept = spec === null ? jobs.filter((id) => JOB_BY_ID.get(id)?.spec === undefined) : jobs.filter((id) => { const row = JOB_BY_ID.get(id); return row !== undefined && rowVisible(row, spec) })
+  const kept = jobs.filter((id) => {
+    const row = JOB_BY_ID.get(id)
+    return row !== undefined && (spec === null ? row.spec === undefined : rowVisible(row, spec))
+  })
   const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}) }
   return { build: isFreshBuild(build) ? undefined : build, jobs: kept }
 }
