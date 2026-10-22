@@ -22,12 +22,12 @@ export type Specialization = {
 }
 
 export const SPECIALIZATIONS: readonly Specialization[] = [
-  { id: "frontend", name: "Frontend", tag: "frontend", style: "click", blurb: "Ship the interface. Your clicks pay the most here." },
-  { id: "backend", name: "Backend / Platform", tag: "backend", style: "balanced", blurb: "Own the services behind it. A steady all-rounder." },
-  { id: "infra", name: "Infra / SRE", tag: "infra", style: "idle", blurb: "Keep it up. Income that keeps running while you are away." },
-  { id: "ai", name: "AI engineer", tag: "ai", style: "idle", blurb: "Wrangle models and agents. The machines do the earning." },
-  { id: "fde", name: "Forward deployed engineer", tag: "product", style: "click", blurb: "Sit with the customer and ship what they asked for. Your clicks pay the most here." },
-  { id: "security", name: "Security", tag: "security", style: "balanced", blurb: "Find the holes before anyone else does. A steady all-rounder." },
+  { id: "frontend", name: "Frontend", tag: "frontend", style: "click", blurb: "Ship the interface people touch." },
+  { id: "backend", name: "Backend / Platform", tag: "backend", style: "balanced", blurb: "Own the services behind it." },
+  { id: "infra", name: "Infra / SRE", tag: "infra", style: "idle", blurb: "Keep it up while everyone sleeps." },
+  { id: "ai", name: "AI engineer", tag: "ai", style: "idle", blurb: "Wrangle models and agents." },
+  { id: "fde", name: "Forward deployed engineer", tag: "product", style: "click", blurb: "Sit with the customer and ship what they asked for." },
+  { id: "security", name: "Security", tag: "security", style: "balanced", blurb: "Find the holes before anyone else does." },
 ]
 
 const BY_ID = new Map<SpecId, Specialization>(SPECIALIZATIONS.map((row) => [row.id, row]))
