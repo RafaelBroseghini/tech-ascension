@@ -1,79 +1,25 @@
 import { memo } from "react"
-import { hireLocked } from "../../game/build.ts"
-import type { BuildState } from "../../game/build.ts"
+import type { LeadId } from "../../data/leadership.ts"
 import { REGIONS } from "../../data/regions.ts"
 import { formatNumber } from "../../game/format.ts"
 import type { Company } from "../../game/globe/company.ts"
 import { ceilingOf, incidentCost, INCIDENTS, regionName, WIN_MULT, WORLD_TARGET } from "../../game/globe/world.ts"
-import { canHire, creditOf, headcountOf, hireCost, hireGrowthStep, hirePayrollOf, openHires, winNote } from "../../game/globe/hires.ts"
+import { creditOf, headcountOf, hirePayrollOf, winNote } from "../../game/globe/hires.ts"
 import type { Hires } from "../../game/globe/hires.ts"
 import { earnedPerSec, useGame } from "../../game/store.ts"
 import { nextStep } from "./nextStep.ts"
 
 const money = (n: number) => `$${formatNumber(n)}`
-/** A share of the growth multiplier, in percent, to two significant digits. */
-const growth = (n: number) => {
-  const pct = n * 100
-  return pct >= 10 ? pct.toFixed(0) : pct >= 1 ? pct.toFixed(1) : pct.toFixed(2)
-}
 const users = (n: number) => formatNumber(Math.round(n))
 
-/** The people on the payroll, a row for each kind that is open, and how much of the crowd they brought. */
-function Team({
-  hires,
-  jobs,
-  build,
-  cash,
-  share,
-  onHire,
-  onFire,
-}: {
-  hires: Hires
-  jobs: readonly number[]
-  build: BuildState
-  cash: number
-  share: number
-  onHire: (id: string) => boolean
-  onFire: (id: string) => boolean
-}) {
+/** The team as the Company tab shows it: a line, since hiring and firing are in the Jobs tab. */
+function TeamNote({ hires, lead, share }: { hires: Hires; lead: LeadId | null; share: number }) {
+  const heads = headcountOf(hires)
   const percent = Math.round(share * 100)
   return (
-    <section className="world-team" data-testid="world-team" aria-label="Team">
-      <h4>{`Team · ${formatNumber(headcountOf(hires))} hired · ${money(hirePayrollOf(hires))}/s`}</h4>
-      <ul className="world-hired" data-testid="world-hired">
-        {openHires(hires).map((row) => {
-          const held = hires[row.id] ?? 0
-          const cost = hireCost(row, held, 1)
-          // Hiring is the Manager's, each kind from its rank: a shut row says why and keeps its Fire button for hires already held.
-          const locked = hireLocked({ jobs, build }, row)
-          return (
-            <li key={row.id} className={locked ? "world-hire is-locked" : "world-hire"} data-hire={row.id} data-testid={`world-hire-${row.id}`}>
-              <span>
-                <strong>{row.name}</strong>
-                {`${formatNumber(held)} hired · −${money(held * row.salary)}/s`}
-                <small>{`each: −${money(row.salary)}/s · +${growth(hireGrowthStep(row, held))}% growth`}</small>
-                {locked ? <small className="world-hire-locked" data-testid={`world-hire-locked-${row.id}`}>{locked}</small> : null}
-              </span>
-              <div className="world-hire-actions">
-                <button type="button" disabled={locked !== null || !canHire(hires, cash, row.id)} title={locked ?? row.line} onClick={() => onHire(row.id)}>
-                  {`Hire · ${money(cost)}`}
-                </button>
-                {held > 0 ? (
-                  <button
-                    type="button"
-                    className="world-fire"
-                    data-testid={`world-fire-${row.id}`}
-                    title={`Let one go: −${money(row.salary)}/s in salaries, and the growth they add. No refund.`}
-                    onClick={() => onFire(row.id)}
-                  >
-                    Fire
-                  </button>
-                ) : null}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+    <section className="world-team world-team-note" data-testid="world-team-note" aria-label="Team">
+      <h4>{`Team · ${formatNumber(heads)} hired · ${money(hirePayrollOf(hires))}/s`}</h4>
+      <p>{lead === "manager" || heads > 0 ? "Hire and let people go in the Jobs tab." : "Hiring is the Manager's: lead as a Manager in the Jobs tab."}</p>
       {share > 0 ? <p className="world-credit" data-testid="world-credit">{`Your team grew ${percent < 1 ? "under 1" : percent}% of the users`}</p> : null}
     </section>
   )
@@ -86,11 +32,8 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
   const respond = useGame((state) => state.respondIncident)
   const bar = Math.min(100, company.share * 100)
   const hires = useGame((state) => state.hires)
-  const jobs = useGame((state) => state.jobs)
   const build = useGame((state) => state.build)
   const raw = useGame((state) => state.company)
-  const hire = useGame((state) => state.hire)
-  const fire = useGame((state) => state.fire)
   const next = nextStep(company)
   return (
     <section className="world" data-testid="company-world" aria-label="The world">
@@ -130,7 +73,7 @@ export const WorldPanel = memo(function WorldPanel({ company }: { company: Compa
           )
         })}
       </ul>
-      <Team hires={hires} jobs={jobs} build={build} cash={cash} share={creditOf(raw).hiredShare} onHire={hire} onFire={fire} />
+      <TeamNote hires={hires} lead={build.leadership ?? null} share={creditOf(raw).hiredShare} />
       {company.incidents.length > 0 ? (
         <ul className="world-incidents" data-testid="world-incidents">
           {company.incidents.map((incident) => {

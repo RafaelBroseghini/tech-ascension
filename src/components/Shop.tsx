@@ -10,6 +10,8 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
+import { TeamPanel } from "./Team.tsx"
+import { headcountOf } from "../game/globe/hires.ts"
 import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, pickWaitsOnUsers, specOptions, usersOf } from "../game/build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
@@ -435,6 +437,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   }
   const companyOpen = useFeatureOpen("studio")
   const company = useGame((state) => state.company)
+  const hires = useGame((state) => state.hires)
   const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, build, company }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
@@ -925,6 +928,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
             {pickWaitsOnUsers({ jobs, build, company }) ? <LockPanel title="Pick a specialization" lines={[{ text: `${PICK_USERS.toLocaleString("en-US")} users (${Math.round(usersOf({ company }) ?? 0).toLocaleString("en-US")} now)`, met: false }]} /> : null}
             {leadPickOpen({ jobs, build }) ? <LeadPick glow={tabGlow} /> : null}
             {build.spec !== null && isSpecId(build.spec) ? <SpecSwitch spec={build.spec} switched={build.switched} glow={tabGlow} /> : null}
+            {build.leadership === "manager" || headcountOf(hires) > 0 ? <TeamPanel /> : null}
             </>
           ) : (
             <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />
