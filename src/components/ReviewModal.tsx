@@ -24,6 +24,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
   const equipment = useGame((state) => state.equipment)
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
+  const build = useGame((state) => state.build)
   const gigs = useGame((state) => state.gigs)
   const activeBoost = useGame((state) => state.activeBoost)
   const foreverMult = useGame((state) => state.foreverMult)
@@ -35,7 +36,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
   const view = useMemo(() => {
     const prompt = reviewById(review.promptId)
     if (!prompt) return null
-    const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
+    const rates = production({ skills, equipment, owned, jobs, gigs, build }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
     const earning = {
       cps: rates.idle,
       click: rates.click,
@@ -50,7 +51,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
         preview: previewReviewChoice(reply.choice, earning, money, xp),
       })),
     }
-  }, [review, money, xp, skills, equipment, owned, jobs, gigs, activeBoost, foreverMult, tempMults, legacy, now])
+  }, [review, money, xp, skills, equipment, owned, jobs, gigs, build, activeBoost, foreverMult, tempMults, legacy, now])
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef)
   const reviewId = review.id

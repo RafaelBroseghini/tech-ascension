@@ -30,7 +30,7 @@ import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
 import { canPick, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, pickedBuild, specOf, switchedBuild } from "./build.ts"
-import type { BuildState } from "./build.ts"
+import type { BuildState, ClickSource } from "./build.ts"
 import type { SpecId } from "../data/specializations.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import { HALL_OF_FAME } from "../data/legacy.ts"
@@ -191,7 +191,8 @@ type GameState = {
   whatsNew: boolean
   /** Kitchen combos found this career, by id, in the order they turned up. Each is journaled once. */
   combos: string[]
-  click: () => { money: number; xp: number }
+  /** A click. `source` is "auto" for a hover click or auto-click, which skips a click build's multiple; the default is a manual click. */
+  click: (source?: ClickSource) => { money: number; xp: number }
   /** Buy a Phase D capital row. */
   buy: (tierId: number) => void
   buySkill: (skillId: number) => void
@@ -465,13 +466,13 @@ export const useGame = create<GameState>((set, get) => ({
   whatsNew: booted.career.whatsNew,
   combos: booted.save.combos ?? [],
 
-  click: () => {
+  click: (source = "manual") => {
     const state = get()
     const now = Date.now()
     const stats = applyClickStats(state.stats, now)
     const rates = production(state, state.activeBoost, now, modsOf(state))
     const xpGain = rates.xpClick * rates.mult
-    const clickMoney = clickPaysMoney(state) ? rates.click : 0
+    const clickMoney = clickPaysMoney(state) ? (source === "auto" ? rates.clickAuto : rates.click) : 0
     set({
       money: state.money + clickMoney,
       // Kept here so the peak subscriber below does not notify everyone a second time.
