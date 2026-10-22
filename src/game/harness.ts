@@ -6,6 +6,7 @@ import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { COMBOS } from "../data/combos.ts"
+import { specOptions } from "./build.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
@@ -164,6 +165,8 @@ export type GameSnapshot = {
   world: WorldSnapshot
   /** Prestige: Prestige, the permanent multiplier, the Exit and the Legacy perks. */
   legacy: LegacySnapshot
+  /** The specialization: the one picked (null before), whether the one switch is spent, and the ids that could be picked or switched to now. */
+  build: { specialization: string | null; switched: boolean; options: string[] }
   /** The kitchen: combos found this career, in the order they turned up, and how many the table holds. */
   combos: { found: { id: string; name: string; joke: string; effect: string }[]; total: number }
 }
@@ -216,6 +219,16 @@ export type GameHarness = {
   buy: (tierId: number) => boolean
   buySkill: (skillId: number) => boolean
   buyJob: (jobId: number) => boolean
+  /**
+   * Pick the career's specialization (`frontend`, `backend`, `infra`, `ai`, `fde`, `security`). It opens once a job of rank 7
+   * (Mid-level SWE) is held and is made once. False before that, once picked, or for an unknown id. Every job above rank 7 needs it.
+   */
+  pickSpecialization: (id: string) => boolean
+  /**
+   * The career's one switch: keeps money, gear and the trunk jobs, drops the old track's jobs, and anything already open
+   * (capital, gear) stays open. False without a pick, after the switch, or to the same specialization.
+   */
+  switchSpecialization: (id: string) => boolean
   buyEquipment: (equipId: number) => boolean
   /**
    * Sell the product (the Exit): pay the Prestige this career's earnings climbed to, plus a new ending's bonus, and start
@@ -487,6 +500,7 @@ export function installGameHarness(): GameHarness {
           perks: [...state.legacy.perks],
           endings: [...state.legacy.endings],
         },
+        build: { specialization: state.build.spec, switched: state.build.switched, options: specOptions(state) },
         combos: {
           found: state.combos.flatMap((id) => {
             const row = comboById(id)
@@ -512,6 +526,10 @@ export function installGameHarness(): GameHarness {
     },
 
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
+
+    pickSpecialization: (id) => useGame.getState().pickSpecialization(id),
+
+    switchSpecialization: (id) => useGame.getState().switchSpecialization(id),
 
     buyEquipment: (equipId) => {
       const before = ownedCount(useGame.getState().equipment, equipId)

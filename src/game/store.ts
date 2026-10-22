@@ -29,6 +29,9 @@ import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveR
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
+import { canPick, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import type { BuildState } from "./build.ts"
+import type { SpecId } from "../data/specializations.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import { HALL_OF_FAME } from "../data/legacy.ts"
 import { canBuyPerk, canExit, earningsPrestige, endingBonus, exitHeadline, freshLegacy, isFreshLegacy, legacyPerkById, mergeGrant, startingGrant, withStartUsers } from "./legacy.ts"
@@ -135,6 +138,8 @@ type GameState = {
   gigs: number[]
   /** Owned gold skill ids. */
   gold: number[]
+  /** The specialization picked (once, after Mid-level SWE), whether the one switch is spent, and the rank a switch kept. */
+  build: BuildState
   phase: Phase
   activeBoost: ActiveBoost | null
   nextBoostAt: number | null
@@ -192,6 +197,10 @@ type GameState = {
   buySkill: (skillId: number) => void
   buyEquipment: (equipId: number) => void
   buyJob: (jobId: number) => boolean
+  /** Pick the career's specialization. Opens at Mid-level SWE and is made once. False before that, once picked, or for an unknown id. */
+  pickSpecialization: (id: string) => boolean
+  /** Take the one switch: keeps money, gear and the trunk jobs, drops the old track's jobs. False without a pick, after the switch, or to the same one. */
+  switchSpecialization: (id: string) => boolean
   /**
    * Leave this career: pay the Prestige its earnings climbed to, reset the run and the product (see `exit` in the store),
    * start the next career under the Network and Founder perks held. Returns the Prestige earned, or false when the Exit is not open or would pay nothing.
@@ -288,6 +297,7 @@ function toSave(state: GameState, now: number): SaveData {
     stats: state.stats,
   }
   if (state.gold.length > 0) save.gold = state.gold
+  if (!isFreshBuild(state.build)) save.build = state.build
   if (!isFreshLegacy(state.legacy)) save.legacy = state.legacy
   if (state.foreverMult !== 1) save.foreverMult = state.foreverMult
   const temp = pruneTemp(state.tempMults, now)
@@ -415,6 +425,7 @@ export const useGame = create<GameState>((set, get) => ({
   jobs: booted.save.jobs,
   gigs: booted.save.gigs,
   gold: booted.save.gold ?? [],
+  build: booted.save.build ?? FRESH_BUILD,
   phase: phaseOf(booted.save),
   activeBoost: booted.save.activeBoost ?? null,
   nextBoostAt: null,
@@ -541,7 +552,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     if (!equipmentOpen(state)) return
     const have = ownedCount(state.equipment, equip.id)
-    if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs)) return
+    if (have === 0 && !isGearRevealed(equip, state.equipment, state.peakMoney, state.jobs, state.build.peakRank)) return
     const quote = quotePurchase(state.money, gearBase(equip, state), have)
     if (quote.count <= 0) return
     set({
@@ -625,6 +636,7 @@ export const useGame = create<GameState>((set, get) => ({
       owned: {},
       jobs: start.jobs,
       gigs: start.gigs,
+      build: FRESH_BUILD,
       // The product starts over: users, regions, hires, the win and its multiplier.
       company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
       footprint: FRESH_FOOTPRINT,
@@ -705,6 +717,38 @@ export const useGame = create<GameState>((set, get) => ({
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
+    })
+    persistNow()
+    return true
+  },
+
+  pickSpecialization: (id) => {
+    const state = get()
+    if (!canPick(state, id)) return false
+    const spec = id as SpecId
+    set({
+      build: pickedBuild(state.build, spec),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+      journal: noted(state.journal, [{ type: "pick", ref: `spec:${spec}` }], state),
+    })
+    persistNow()
+    return true
+  },
+
+  switchSpecialization: (id) => {
+    const state = get()
+    if (!canSwitch(state, id)) return false
+    const from = specOf(state) as SpecId
+    const spec = id as SpecId
+    set({
+      build: switchedBuild(state, spec),
+      jobs: jobsAfterSwitch(state.jobs, from),
+      now: Date.now(),
+      buyStamp: state.buyStamp + 1,
+      celebrationNonce: state.celebrationNonce + 1,
+      journal: noted(state.journal, [{ type: "switch", ref: `spec:${spec}`, data: { from } }], state),
     })
     persistNow()
     return true
@@ -940,6 +984,7 @@ export const useGame = create<GameState>((set, get) => ({
       jobs: [],
       gigs: [],
       gold: [],
+      build: FRESH_BUILD,
       phase: "A",
       activeBoost: null,
       nextBoostAt: null,

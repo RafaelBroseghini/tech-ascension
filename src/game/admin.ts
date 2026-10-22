@@ -1,6 +1,7 @@
 import { CAPITAL } from "../data/capital.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { EQUIPMENT, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
+import { pickedBuild } from "./build.ts"
 import type { OwnedMap } from "./economy.ts"
 import { creditMoney } from "./stats.ts"
 import { persistNow, useGame } from "./store.ts"
@@ -56,15 +57,18 @@ function withOneOfEach(owned: OwnedMap, rows: readonly { id: number }[]): OwnedM
  */
 export function buyEverything(): void {
   useGame.setState((state) => {
-    const newJobs = JOB_TIERS.filter((job) => !state.jobs.includes(job.id))
+    // A career holds its own track only: the picked one, or Backend when nothing was picked.
+    const visible = visibleJobs(state.build.spec ?? "backend")
+    const newJobs = visible.filter((job) => !state.jobs.includes(job.id))
     const lump = newJobs.reduce((sum, job) => sum + job.xpLump, 0)
     return {
+      build: state.build.spec ? state.build : pickedBuild(state.build, "backend"),
       skills: withOneOfEach(state.skills, SKILL_TIERS),
       equipment: withOneOfEach(state.equipment, EQUIPMENT),
       owned: withOneOfEach(state.owned, CAPITAL),
       gigs: GIGS.map((gig) => gig.id),
       gold: GOLD_SKILLS.map((row) => row.id),
-      jobs: JOB_TIERS.map((job) => job.id),
+      jobs: visible.map((job) => job.id),
       xp: state.xp + lump,
       xpTotal: state.xpTotal + lump,
       now: Date.now(),

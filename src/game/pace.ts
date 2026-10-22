@@ -293,7 +293,7 @@ function spendMoney(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
 
     for (const row of GEAR) {
       const have = ownedCount(s.equipment, row.id)
-      if (!equipmentOpen(s) || !isGearRevealed(row, s.equipment, s.peakMoney, s.jobs)) continue
+      if (!equipmentOpen(s) || !isGearRevealed(row, s.equipment, s.peakMoney, s.jobs, s.build?.peakRank)) continue
       consider(nextCost(gearBase(row, s), have), have === 0, (row.cps * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.equipment[String(row.id)] = have + 1), servedRpsOf(row))
     }
     if (capitalUnlocked(s)) {

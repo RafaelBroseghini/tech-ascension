@@ -8,6 +8,7 @@ import { modFactors, NO_MODS } from "./mods.ts"
 import { perksOf } from "./perks.ts"
 import type { HasPerks } from "./perks.ts"
 
+import type { BuildState } from "./build.ts"
 import type { EventMods } from "./mods.ts"
 /**
  * Balances and costs are IEEE-754 doubles.
@@ -41,6 +42,8 @@ export type Progress = {
   gigs: readonly number[]
   /** The Legacy perks held. Left out, none: no discounts, no multipliers. */
   legacy?: HasPerks["legacy"]
+  /** The specialization picked, and the rank kept across a switch. Left out, no pick yet. */
+  build?: BuildState
 }
 
 export const BASE_CLICK = 1
@@ -262,10 +265,13 @@ export function isSkillRevealed(row: SkillTier, skills: OwnedMap, xpTotal: numbe
   return ownedCount(skills, row.id) > 0 || xpTotal >= row.unlockAtXp
 }
 
-/** A gear row shows once the player has held its `unlockMoney` and holds a job of rank `unlockJobRank` or higher (0 = none), or already owns it. */
-export function isGearRevealed(row: Equip, equipment: OwnedMap, peakMoney: number, jobs: readonly number[]): boolean {
+/**
+ * A gear row shows once the player has held its `unlockMoney` and holds a job of rank `unlockJobRank` or higher (0 = none),
+ * or already owns it. `peakRank` is the rank a switch kept (`BuildState.peakRank`), so giving up a track never hides gear.
+ */
+export function isGearRevealed(row: Equip, equipment: OwnedMap, peakMoney: number, jobs: readonly number[], peakRank = 0): boolean {
   if (ownedCount(equipment, row.id) > 0) return true
-  return canAfford(peakMoney, row.unlockMoney) && (row.unlockJobRank === 0 || highestJobRank(jobs) >= row.unlockJobRank)
+  return canAfford(peakMoney, row.unlockMoney) && (row.unlockJobRank === 0 || Math.max(highestJobRank(jobs), peakRank) >= row.unlockJobRank)
 }
 
 /**
