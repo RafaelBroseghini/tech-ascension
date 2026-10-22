@@ -201,7 +201,7 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
 
   // Refused before Mid-level SWE; every job above it needs the pick.
   expect(game.pickSpecialization("frontend")).toBe(false)
-  expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [] })
+  expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
   for (let id = 1; id <= 6; id++) expect(game.buyJob(id)).toBe(true)
   expect(game.pickSpecialization("frontend")).toBe(false)
   expect(game.buyJob(7)).toBe(true)
@@ -236,7 +236,8 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(game.buyJob(108)).toBe(true)
 
   // A click build pays a manual click 2.5x the idle $/s with every job held; a hover or auto click does not get that.
-  const held = visibleJobs("frontend").map((job) => job.id)
+  // Every row of the ladder, both leadership lines' rows together: the sum the click build is calibrated on.
+  const held = JOB_TIERS.filter((job) => job.spec === undefined || job.spec === "frontend").map((job) => job.id)
   useGame.setState({ jobs: held, money: 0, activeBoost: null })
   const idle = game.getState().cps
   const manual = game.click().money
@@ -244,6 +245,89 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(manual).toBeGreaterThan(auto)
   expect(game.getState().clickShare).toBeCloseTo(2.5, 6)
   expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
+})
+
+test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring is the Manager's, and the ending follows the line", () => {
+  game.reset()
+  game.keepProfile()
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 7; id++) game.buyJob(id)
+  game.pickSpecialization("backend")
+
+  // Shut until Senior SWE (rank 14) is held; rank 15 is still the track's.
+  for (let id = 8; id <= 13; id++) game.buyJob(id)
+  expect(game.pickLeadership("manager")).toBe(false)
+  expect(game.getState().build).toMatchObject({ leadership: null, leadershipOptions: [] })
+  expect(game.buyJob(14)).toBe(true)
+  expect(game.getState().build.leadershipOptions).toEqual(["ic", "manager"])
+  expect(game.buyJob(15)).toBe(true)
+  for (const id of [16, 18, 25]) expect(game.buyJob(id), `job ${id} before the pick`).toBe(false)
+  expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "lead:pick", name: "Pick a leadership line", tab: "C" })
+  expect(nextUnlock(useGame.getState(), "C")?.needs.length).toBeGreaterThan(0)
+
+  // Made once. An IC does not see the Manager's rows, and cannot hire.
+  expect(game.pickLeadership("wizard")).toBe(false)
+  expect(game.pickLeadership("ic")).toBe(true)
+  expect(game.pickLeadership("manager")).toBe(false)
+  expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "lead:ic")).toBe(true)
+  for (const id of [18, 20, 21, 22]) expect(game.buyJob(id), `job ${id} on the other line`).toBe(false)
+  for (const id of [16, 17, 19, 23, 24, 25]) expect(game.buyJob(id), `job ${id}`).toBe(true)
+  game.setMoney(1e12)
+  expect(game.hire("outsourced")).toBe(false)
+
+  // A Manager hires from Engineering manager (rank 18), and each kind opens at its rank.
+  game.reset()
+  game.keepProfile()
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 7; id++) game.buyJob(id)
+  game.pickSpecialization("backend")
+  for (let id = 8; id <= 15; id++) game.buyJob(id)
+  expect(game.pickLeadership("manager")).toBe(true)
+  game.setMoney(1e15)
+  expect(game.hire("outsourced")).toBe(false)
+  for (const id of [16, 17, 19, 23, 24]) expect(game.buyJob(id), `job ${id} on the other line`).toBe(false)
+  expect(game.buyJob(18)).toBe(true)
+  expect(game.hire("outsourced")).toBe(true)
+  expect(game.hire("bootcamp")).toBe(true)
+  expect(game.hire("copypaste")).toBe(false)
+  expect(game.buyJob(20)).toBe(true)
+  expect(game.hire("copypaste")).toBe(true)
+  expect(game.hire("senior")).toBe(true)
+  expect(game.hire("staff")).toBe(false)
+  expect(game.buyJob(21)).toBe(true)
+  expect(game.hire("staff")).toBe(true)
+  expect(game.hire("tenx")).toBe(true)
+  expect(game.hire("greybeard")).toBe(false)
+  expect(game.buyJob(22)).toBe(true)
+  expect(game.hire("greybeard")).toBe(true)
+  expect(game.hire("codegod")).toBe(true)
+  expect(game.getState().headcount).toBe(8)
+
+  // The win reads the line: a Manager's is the sponsor's even with a small team's share, and an IC's is the night owl's.
+  for (const [lead, ending] of [["manager", "sponsor"], ["ic", "nightOwl"]] as const) {
+    game.reset()
+    game.keepProfile()
+    game.setXp(1e9)
+    for (let id = 1; id <= 6; id++) game.forceGig(id)
+    for (let id = 1; id <= 7; id++) game.buyJob(id)
+    game.pickSpecialization("backend")
+    for (let id = 8; id <= 15; id++) game.buyJob(id)
+    game.pickLeadership(lead)
+    // The late gear waits on the late jobs: hold every row of the line.
+    for (const job of visibleJobs("backend", lead)) if (job.rank > 15) game.buyJob(job.id)
+    for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
+    game.setXp(1e9)
+    game.setMoney(1e15)
+    for (const id of [105, 106, 107, 108, 109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
+    for (const incident of game.getState().world.incidents) game.respondIncident(incident.id)
+    const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
+    for (let i = 0; i < 60 && !game.getState().world.won; i++) game.tick(Date.now() + (i + 2) * 3_600_000)
+    calmRolls.mockRestore()
+    expect(game.getState().world.won, lead).toBe(true)
+    expect(useGame.getState().company.ending, lead).toBe(ending)
+  }
 })
 
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
@@ -652,7 +736,9 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
   game.pickSpecialization("backend")
-  for (let id = 8; id <= 31; id++) game.buyJob(id)
+  for (let id = 8; id <= 15; id++) game.buyJob(id)
+  game.pickLeadership("ic")
+  for (let id = 16; id <= 31; id++) game.buyJob(id)
   game.setXp(1e9)
   game.setMoney(1e15)
   for (const id of [105, 106, 107, 108, 109, 110]) {
@@ -690,7 +776,9 @@ test("the world while away: the win is journaled and paid when it happens offlin
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
   game.pickSpecialization("backend")
-  for (let id = 8; id <= 31; id++) game.buyJob(id)
+  for (let id = 8; id <= 15; id++) game.buyJob(id)
+  game.pickLeadership("ic")
+  for (let id = 16; id <= 31; id++) game.buyJob(id)
   game.setMoney(1e15)
   for (const id of [109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
   for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
@@ -707,9 +795,15 @@ test("the world while away: the win is journaled and paid when it happens offlin
 test("prestige: selling the product pays Prestige, restarts the career and the product, keeps the Legacy, and perks start the next one", () => {
   game.reset()
   game.keepProfile()
-  game.setXp(200_000)
+  game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   expect(game.buyJob(1)).toBe(true)
+  // Hiring is the Manager's: the career leads a team (Engineering manager, rank 18) before it can hire.
+  for (let id = 2; id <= 7; id++) game.buyJob(id)
+  game.pickSpecialization("backend")
+  for (let id = 8; id <= 15; id++) game.buyJob(id)
+  expect(game.pickLeadership("manager")).toBe(true)
+  expect(game.buyJob(18)).toBe(true)
   game.forceGold(2)
   const { handle, product } = game.getState().profile
   // The product has users, a region bought, and a hire to throw away.
