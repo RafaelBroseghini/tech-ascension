@@ -146,6 +146,42 @@ describe("next unlock per panel", () => {
   })
 })
 
+describe("pick one", () => {
+  const trunk = [1, 2, 3, 4, 5, 6, 7]
+  const open = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, gigs: ALL_GIGS, peakMoney: 1e9, money: 1e9 }
+
+  it("names the pick once Mid-level SWE is held and nothing is picked", () => {
+    const next = nextUnlock({ ...open, jobs: trunk }, "C")
+    expect(next).toMatchObject({ key: "spec:pick", name: "Pick a specialization", tab: "C", either: true })
+    expect(next?.needs).toEqual(["Frontend", "Backend / Platform", "Infra / SRE", "AI engineer", "Forward deployed engineer", "Security"])
+    expect(next?.needs.length).toBeGreaterThan(0)
+  })
+
+  it("is the whole-game answer when it is the first thing left, after gigs", () => {
+    expect(nextUnlock({ ...open, jobs: trunk })).toMatchObject({ key: "spec:pick", tab: "C" })
+    expect(nextUnlock({ ...open, jobs: trunk, gigs: [1, 2, 3, 4, 5, 6] })).toMatchObject({ key: "gig:7", tab: "B" })
+  })
+
+  it("keeps naming the trunk job still missing, and waits for the trunk before the pick", () => {
+    expect(nextUnlock({ ...open, jobs: [1, 2, 3, 4, 5, 6] }, "C")).toMatchObject({ key: "job:7" })
+    expect(nextUnlock({ ...open, jobs: [1, 2, 3] }, "C")).toMatchObject({ key: "job:4" })
+  })
+
+  it("moves on to the picked track's first row", () => {
+    expect(nextUnlock({ ...open, jobs: trunk, build: { spec: "fde", switched: false } }, "C")).toMatchObject({ key: "job:408", name: "Embedded at a client" })
+    expect(nextUnlock({ ...open, jobs: trunk, build: { spec: "backend", switched: false } }, "C")).toMatchObject({ key: "job:8" })
+  })
+
+  it("sends the Next click to the first specialization row", () => {
+    const next = nextUnlock({ ...open, jobs: trunk }, "C")!
+    expect(shopFocus({ ...open, jobs: trunk }, next)).toEqual({ tab: "C", row: "spec:frontend" })
+  })
+
+  it("stays quiet for a career that has no use for a pick (every visible job held)", () => {
+    expect(nextUnlock({ ...open, jobs: ALL_JOBS }, "C")).toBeNull()
+  })
+})
+
 describe("next click focus", () => {
   it("lands on the catalog row the suggestion names", () => {
     const open = { ...EMPTY, xpTotal: 1e7, skills: ALL_SKILLS, gigs: ALL_GIGS, jobs: ALL_JOBS, peakMoney: 1e9 }
