@@ -155,4 +155,19 @@ describe("rows that open something", () => {
     expect(musicChoices(none)).toEqual([])
     expect(musicChoices(new Set(["music", "music:cozy"]))).toEqual(["cozy"])
   })
+
+  describe("the gif parade", () => {
+    const parade = featureById("parade")!
+
+    it("is a mid-game row: it opens with the first mid-era capital row and not before", () => {
+      expect(parade.trigger).toEqual({ kind: "era", era: "mid" })
+      expect(openFeatureIds(progress({ owned: {} }))).not.toContain("parade")
+      expect(openFeatureIds(progress({ jobs: [1, 2, 3, 4, 5, 6, 7], gigs: [1, 2, 3, 4, 5, 6], xpTotal: 1e9 }))).not.toContain("parade")
+      expect(openFeatureIds(progress({ owned: { "1": 1 } }))).toContain("parade")
+    })
+
+    it("is not opened by the cats, the rows held or a hover skill (the things that fill it)", () => {
+      expect(openFeatureIds(progress({ gigs: [1, 2, 3, 4, 5, 6, 7, 8], jobs: [1, 2, 3], xpTotal: 1e9 }))).not.toContain("parade")
+    })
+  })
 })

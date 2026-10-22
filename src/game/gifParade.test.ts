@@ -23,6 +23,7 @@ import {
   SWAP_MIN_MS,
   SWAP_SPAN_MS,
   type ParadeGif,
+  REDUCED_MOTION_SCALE,
 } from "./gifParade.ts"
 
 const cat = (over: Partial<ParadeGif> = {}): ParadeGif => ({ url: "a.gif", seed: [0, 0, 0, 0], bornAt: 0, leavingAt: null, ...over })
@@ -146,5 +147,17 @@ describe("gif parade", () => {
     const cats = [cat({ bornAt: 3000 }), cat({ bornAt: 1000, leavingAt: 9000 }), cat({ bornAt: 2000 })]
     expect(oldestStaying(cats, 2000 + MIN_STAY_MS)).toBe(2)
     expect(oldestStaying(cats, 2000 + MIN_STAY_MS - 1)).toBe(-1)
+  })
+})
+
+describe("reduced motion", () => {
+  it("slows the paths but never freezes them", () => {
+    expect(REDUCED_MOTION_SCALE).toBeGreaterThan(0)
+    expect(REDUCED_MOTION_SCALE).toBeLessThan(1)
+    const box = { width: 800, height: 500 }
+    const seed = [0.5, 0.1, 0.4, 0.6] as const
+    const a = paradeAt("bounce", seed, { slot: 0, count: 10 }, 10 * REDUCED_MOTION_SCALE, box)
+    const b = paradeAt("bounce", seed, { slot: 0, count: 10 }, 14 * REDUCED_MOTION_SCALE, box)
+    expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(5)
   })
 })
