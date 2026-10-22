@@ -296,7 +296,7 @@ const PRODUCT_PAYBACK_SECONDS = 2 * DAY_SECONDS
  */
 export const HIRE_CASH_SHARE = 0.05
 /** ...and only while the payroll, with that hire, stays within this share of what the product's served users pay. */
-export const HIRE_PAYROLL_SHARE = 0.25
+export const HIRE_PAYROLL_SHARE = 0.05
 
 /**
  * Gear and capital are bought by payback: `cost / gain`, where `gain` is the $/s the copy adds as the

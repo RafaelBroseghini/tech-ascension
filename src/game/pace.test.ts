@@ -249,11 +249,11 @@ describe("pace by build", () => {
     expect(manager.days).toBeGreaterThan(0)
   })
 
-  it("keeps the Manager within a day of the IC for every specialization, so neither line is a dead end", () => {
+  it("keeps a lightly hiring Manager within 10% of the IC for every specialization, so neither line is a dead end", () => {
     for (const spec of SPECIALIZATIONS) {
       const ic = run(spec.id, "ic")
       const manager = run(spec.id, "manager")
-      expect(Math.abs(manager.days - ic.days), spec.id).toBeLessThan(1)
+      expect(Math.abs(manager.days / ic.days - 1), spec.id).toBeLessThan(0.1)
     }
   }, 60_000)
 
