@@ -114,6 +114,8 @@ function DropIcon({ drop, children }: { drop: Drop; children: ReactNode }) {
     const first = frames[0]!
     const plain = [first, { offset: 1, transform: `translate(0px, ${drop.fall.toFixed(1)}px)`, opacity: 0 }]
     const run = el.animate(still ? plain : frames, { duration: still ? 900 : life, easing: "linear", fill: "forwards" })
+    // Cancelling on unmount rejects `finished`; nobody waits on it.
+    run.finished.catch(() => {})
     return () => run.cancel()
   }, [drop])
   return (
