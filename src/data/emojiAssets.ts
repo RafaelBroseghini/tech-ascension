@@ -1,5 +1,6 @@
 /** A catalog row with emoji.gg art, hotlinked from their CDN. */
 import type { EmojiArt } from "./emojiCdn.ts"
+import { jobRank } from "./phases.ts"
 import {
   DESK_CAT_CLICK_POOL,
   DESK_CAT_EMOJI,
@@ -37,7 +38,8 @@ const TABLE: Readonly<Record<EmojiKind, Readonly<Record<number, EmojiArt>>>> = {
 }
 
 function rowFor(kind: EmojiKind, id: number): EmojiArt | null {
-  return TABLE[kind][id] ?? null
+  // A specialization's job row has no art of its own: it wears the backend row's at the same rank.
+  return TABLE[kind][id] ?? (kind === "job" ? (TABLE.job[jobRank(id)] ?? null) : null)
 }
 
 /** Click-reaction image, or null when this row has no emoji yet. */

@@ -247,8 +247,12 @@ function monthsBetween(start: YearMonth, end: YearMonth): number {
   return (end.year - start.year) * 12 + (end.month - start.month)
 }
 
-function roleDates(ids: readonly number[], lengthOf: (id: number) => number): Map<number, { start: YearMonth; end: YearMonth; present: boolean; months: number }> {
-  const ordered = [...ids].filter((id) => lengthOf(id) > 0).sort((a, b) => b - a)
+function roleDates(
+  ids: readonly number[],
+  lengthOf: (id: number) => number,
+  orderOf: (id: number) => number = (id) => id,
+): Map<number, { start: YearMonth; end: YearMonth; present: boolean; months: number }> {
+  const ordered = [...ids].filter((id) => lengthOf(id) > 0).sort((a, b) => orderOf(b) - orderOf(a))
   const dates = new Map<number, { start: YearMonth; end: YearMonth; present: boolean; months: number }>()
   let cursor = NOW
   ordered.forEach((id, index) => {
@@ -289,18 +293,20 @@ export function linkedOutProfile(input: {
   gigs: readonly number[]
   skills?: readonly string[]
 }): LinkedOutProfile | null {
-  const jobs = [...new Set(input.jobs)].filter((id) => jobById(id) && POSTS[id])
+  // A specialization's row keeps the company, tenure and blurb of the backend row at its rank, and sorts by rank.
+  const postOf = (id: number) => POSTS[jobRank(id)]
+  const jobs = [...new Set(input.jobs)].filter((id) => jobById(id) && postOf(id))
   const gigs = [...new Set(input.gigs)].filter((id) => gigById(id))
   if (jobs.length === 0 && gigs.length === 0) return null
 
-  const jobDates = roleDates(jobs, (id) => POSTS[id]?.months ?? 0)
+  const jobDates = roleDates(jobs, (id) => postOf(id)?.months ?? 0, (id) => jobRank(id) * 1000 + id)
   const roles = jobs
     .map((id) => {
       const job = jobById(id)
-      const post = POSTS[id]
+      const post = postOf(id)
       const dated = jobDates.get(id)
       if (!job || !post || !dated) return null
-      return { post, role: toRole(`job:${id}`, job.name, post.employment, dated, BLURBS[id] ?? job.name) }
+      return { post, role: toRole(`job:${id}`, job.name, post.employment, dated, BLURBS[jobRank(id)] ?? job.name) }
     })
     .filter((row): row is { post: (typeof POSTS)[number]; role: LinkedRole } => row !== null)
     .sort((a, b) => b.role.end.year - a.role.end.year || b.role.end.month - a.role.end.month || b.role.start.year - a.role.start.year)

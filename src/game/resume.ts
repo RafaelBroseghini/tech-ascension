@@ -1,4 +1,4 @@
-import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
+import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import { GEAR_ICONS, GIG_ICONS, JOB_ICONS, SKILL_ICONS } from "../data/clickIcons.ts"
 import type { IconName } from "../data/clickIcons.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
@@ -58,8 +58,8 @@ export function resumeMarks(owned: Owners): ResumeMark[] {
   }
   for (const job of JOB_TIERS) {
     if (!owned.jobs.includes(job.id)) continue
-    const icons = JOB_ICONS[job.id]
-    const artId = artFor(JOB_ART, job.id)
+    const icons = JOB_ICONS[job.rank]
+    const artId = jobArtId(job.id)
     if (icons && icons.length > 0) for (const icon of icons) push(`icon:${icon}`, job.name, icon, artId)
     else push(`job:${job.id}`, job.name, null, artId)
   }
