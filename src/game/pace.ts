@@ -15,8 +15,9 @@
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { GIGS, SKILL_TIERS, highestJobRank, visibleJobs } from "../data/phases.ts"
+import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { pickedBuild, pickOpen } from "./build.ts"
+import { leadPickedBuild, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
   capitalBase,
@@ -90,8 +91,11 @@ export function cadenceOf(profile: PlayProfile, capSeconds: number = OFFLINE_CAP
 /** The track the model takes when it reaches the pick, unless a run asks for another. Backend is the plain ladder. */
 export const DEFAULT_PACE_SPEC: SpecId = "backend"
 
+/** The line the model takes when it reaches Senior, unless a run asks for another. The sim is an IC player with no hires. */
+export const DEFAULT_PACE_LEAD: LeadId = "ic"
+
 /** Share of idle income each click adds once every job the pace build can see is held: the sum of their `clickPct`, as a fraction. */
-export const FINAL_CLICK_SHARE = clickShare({ jobs: visibleJobs(DEFAULT_PACE_SPEC).map((job) => job.id) })
+export const FINAL_CLICK_SHARE = clickShare({ jobs: visibleJobs(DEFAULT_PACE_SPEC, DEFAULT_PACE_LEAD).map((job) => job.id) })
 
 /**
  * The fitted constant of the formula, in days. The model's finish time is close to `k / pace`, where `pace` is
@@ -172,6 +176,8 @@ type Sim = Omit<Progress, "jobs" | "gigs"> & {
   product?: ProductSim
   /** The specialization the run picks the first time it holds Mid-level SWE. */
   track: SpecId
+  /** The leadership line the run picks the first time it holds Senior SWE. */
+  lead: LeadId
 }
 
 /** What the model keeps of the company: users by region and the product's facts, no incidents, no hires, no extra regions. */
@@ -191,9 +197,10 @@ type ProductSim = {
   skipped: number
 }
 
-function freshSim(track: SpecId): Sim {
+function freshSim(track: SpecId, lead: LeadId): Sim {
   return {
     track,
+    lead,
     money: 0,
     xp: 0,
     xpTotal: 0,
@@ -217,7 +224,7 @@ const MILESTONE_TESTS: Record<Exclude<PaceMilestone, ProductMilestone>, (s: Sim)
   capital: capitalUnlocked,
   allSkills: (s) => SKILL_TIERS.every((row) => ownedCount(s.skills, row.id) > 0),
   allGigs: (s) => GIGS.every((gig) => s.gigs.includes(gig.id)),
-  allJobs: (s) => visibleJobs(s.track).every((job) => s.jobs.includes(job.id)),
+  allJobs: (s) => visibleJobs(s.track, s.lead).every((job) => s.jobs.includes(job.id)),
   allGear: (s) => GEAR.every((row) => ownedCount(s.equipment, row.id) > 0),
   allCapital: (s) => CAPITAL.every((row) => ownedCount(s.owned, row.id) > 0),
 }
@@ -255,7 +262,7 @@ function clearGigs(s: Sim): boolean {
 /** A job pays salary and, for the teaching ones, XP, so it is taken the moment it can be afforded. */
 function takeJobs(s: Sim): boolean {
   let any = false
-  for (const job of visibleJobs(s.track)) {
+  for (const job of visibleJobs(s.track, s.lead)) {
     if (!canBuyJob(s, job)) continue
     s.xp -= job.xpCost
     s.jobs.push(job.id)
@@ -263,6 +270,8 @@ function takeJobs(s: Sim): boolean {
     earn(s, 0, job.xpLump)
     // The pick opens at Mid-level SWE and the model takes its track at once.
     if (pickOpen(s)) s.build = pickedBuild(s.build, s.track)
+    // The leadership pick opens at Senior SWE and the model takes its line at once.
+    if (leadPickOpen(s)) s.build = leadPickedBuild(s.build, s.lead)
     any = true
   }
   return any
@@ -367,6 +376,8 @@ export type PaceOptions = {
   withoutProduct?: boolean
   /** The specialization the career picks at Mid-level SWE. Default `DEFAULT_PACE_SPEC` (Backend, the plain ladder). */
   specialization?: SpecId
+  /** The leadership line the career picks at Senior SWE. Default `DEFAULT_PACE_LEAD` (IC: no hires are modeled, so only the night owl ending can be won). */
+  leadership?: LeadId
 }
 
 /**
@@ -385,7 +396,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   const maxSeconds = (options.maxDays ?? 365) * DAY_SECONDS
   const cad = cadenceOf(profile)
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
-  const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC)
+  const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
   if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, winSeconds: null, marks: {}, skipped: 0 }
   const milestones: Partial<Record<PaceMilestone, number>> = {}
   let t = 0
@@ -561,7 +572,7 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
     reach: HOME_REACH,
     live: HOME_LIVE,
     equipment: s.equipment,
-    product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }),
+    product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }, s.build?.leadership),
   }
   for (let at = fromSec; at < toSec; at += PRODUCT_CHUNK_SECONDS) {
     const end = Math.min(toSec, at + PRODUCT_CHUNK_SECONDS)
@@ -582,8 +593,8 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
 }
 
 /** A new career under the perks held: the grant merged into an empty one, the Prestige multiplier on, the product seeded. */
-function newCareer(legacy: LegacyState, track: SpecId): Sim {
-  const s = freshSim(track)
+function newCareer(legacy: LegacyState, track: SpecId, lead: LeadId): Sim {
+  const s = freshSim(track, lead)
   const start = mergeGrant(s, startingGrant(legacy.perks))
   Object.assign(s, { skills: start.skills, gigs: start.gigs, jobs: start.jobs, xp: start.xp, xpTotal: start.xpTotal, money: start.money, peakMoney: start.peakMoney })
   s.mult = prestigeMult(legacy.prestigeTotal)
@@ -629,7 +640,7 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
   const legacy = freshLegacy()
   const runs: ExitRun[] = []
-  let s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC)
+  let s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
   let cad = cadenceOf(profile)
   let runStart = 0
   let row6At: number | null = null
@@ -728,7 +739,7 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
       legacy.runs += 1
       buyPerks(legacy)
       perksAtStart = legacy.perks.length
-      s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC)
+      s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
       cad = cadenceOf(profile, OFFLINE_CAP_SECONDS + perkEffects(legacy.perks).offlineHours * 3600)
       runStart = t
       walked = t

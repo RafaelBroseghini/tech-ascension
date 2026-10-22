@@ -4,7 +4,8 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { heldRank, needsPick, pickOpen, specOf } from "./build.ts"
+import { heldRank, leadOf, leadPickOpen, needsLead, needsPick, pickOpen, specOf } from "./build.ts"
+import { LEADERSHIP } from "../data/leadership.ts"
 import { SPECIALIZATIONS } from "../data/specializations.ts"
 import { canAfford, capitalBase, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
@@ -48,6 +49,7 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
   if (rowId(next.key, "gig:")) return { tab: "B", row: next.key }
   if (rowId(next.key, "job:")) return { tab: "C", row: next.key }
   if (next.key === PICK_KEY) return { tab: "C", row: `spec:${SPECIALIZATIONS[0]!.id}` }
+  if (next.key === LEAD_PICK_KEY) return { tab: "C", row: `lead:${LEADERSHIP[0]!.id}` }
   if (rowId(next.key, "gear:")) return { tab: "G", row: next.key }
 
   const capitalId = rowId(next.key, "capital:")
@@ -81,11 +83,12 @@ const gigsLeft = () => "more gigs"
 const cashShort = () => "more money"
 const xpShort = () => "more XP"
 
-/** True once every skill, gig, job the career can see, gear row, and capital row is owned at least once. */
+/** True once every skill, gig, job the career can see (its track and its line), gear row, and capital row is owned at least once. A career with no line picked has not finished the ladder. */
 export function ownsEverything(p: Pick<Progress, "skills" | "equipment" | "owned" | "jobs" | "gigs" | "build">): boolean {
   for (const skill of SKILL_TIERS) if (ownedCount(p.skills, skill.id) === 0) return false
   for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return false
-  for (const job of visibleJobs(specOf(p))) if (!p.jobs.includes(job.id)) return false
+  if (leadOf(p) === null) return false
+  for (const job of visibleJobs(specOf(p), leadOf(p))) if (!p.jobs.includes(job.id)) return false
   for (const row of GEAR) if (ownedCount(p.equipment, row.id) === 0) return false
   for (const row of CAPITAL) if (ownedCount(p.owned, row.id) === 0) return false
   return true
@@ -138,11 +141,14 @@ function rowTarget(p: Progression, tab: ShopTab): NextUnlock | null {
     for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return gigTarget(p, gig)
   }
   if (tab === "C") {
-    // The rows above Mid-level wait behind the pick: once the trunk is held, the next step is to pick one.
+    // The rows above Mid-level wait behind the pick: once the trunk is held, the next step is to pick one. The rows
+    // above the tracks wait behind the leadership pick the same way, once the track is held to its top.
     const spec = specOf(p)
-    for (const job of visibleJobs(spec)) {
+    const lead = leadOf(p)
+    for (const job of visibleJobs(spec, lead)) {
       if (p.jobs.includes(job.id)) continue
       if (spec === null && needsPick(job)) return pickOpen(p) ? pickTarget() : null
+      if (lead === null && needsLead(job)) return leadPickOpen(p) ? leadPickTarget() : null
       return jobTarget(p, job)
     }
   }
@@ -190,6 +196,13 @@ export const PICK_KEY = "spec:pick"
 
 function pickTarget(): NextUnlock {
   return { key: PICK_KEY, name: "Pick a specialization", tab: "C", needs: SPECIALIZATIONS.map((row) => row.name), either: true }
+}
+
+/** A Senior job is held and no line is picked: either one is the next step. */
+export const LEAD_PICK_KEY = "lead:pick"
+
+function leadPickTarget(): NextUnlock {
+  return { key: LEAD_PICK_KEY, name: "Pick a leadership line", tab: "C", needs: LEADERSHIP.map((row) => row.name), either: true }
 }
 
 function skillTarget(p: Progression, skill: SkillTier): NextUnlock {

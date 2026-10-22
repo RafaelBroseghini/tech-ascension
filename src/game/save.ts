@@ -70,7 +70,7 @@ export type SaveData = {
   gigs: number[]
   /** Owned gold skill ids. Omitted when none. */
   gold?: number[]
-  /** The specialization picked and the one switch. Omitted before the pick. A save that holds a job above Mid-level without one is a Backend career. */
+  /** The specialization picked, the one switch and the leadership line. Omitted before the first pick. A save that holds a job above Mid-level without a specialization is a Backend career; one that holds a job above rank 15 without a line takes one (docs/SAVE.md). */
   build?: BuildState
   savedAt: number
   /** Omitted when no boost is running. Cleared on load if endsAt has passed. */
@@ -267,7 +267,9 @@ export function parseSave(input: unknown): SaveData | null {
     peakMoney: Math.max(money, finite(input.peakMoney)),
   }
   if (boost) save.activeBoost = boost
-  const built = normalizeBuild(input.build, save.jobs)
+  const legacyFounder = isRecord(input.founder) ? input.founder : {}
+  const hires = parseHires(input.hires ?? legacyFounder.hires)
+  const built = normalizeBuild(input.build, save.jobs, hires)
   save.jobs = built.jobs
   if (built.build) save.build = built.build
   const gold = normalizeIds(input.gold, (id) => goldById(id) !== undefined)
@@ -287,8 +289,6 @@ export function parseSave(input: unknown): SaveData | null {
   if (company) save.company = company
   const footprint = parseFootprint(input.footprint)
   if (footprint) save.footprint = footprint
-  const legacyFounder = isRecord(input.founder) ? input.founder : {}
-  const hires = parseHires(input.hires ?? legacyFounder.hires)
   if (Object.keys(hires).length > 0) save.hires = hires
   const combos = normalizeComboIds(input.combos)
   if (combos.length > 0) save.combos = combos
@@ -323,7 +323,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   )
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
   // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
-  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, productFactsOf(loaded.hires ?? {}, loaded.legacy ?? freshLegacy())), loaded.savedAt, loaded.savedAt + away, Math.random)
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, productFactsOf(loaded.hires ?? {}, loaded.legacy ?? freshLegacy(), loaded.build?.leadership)), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
   const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown)
