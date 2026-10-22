@@ -8,6 +8,7 @@
  * Skill unlockAtXp in the raw rows is ignored: earlyGrind, scalePurchaseCost and the unlock chain recompute it.
  */
 import { scalePurchaseCost } from "./costs.ts"
+import type { LeadId } from "./leadership.ts"
 import { SPEC_ID_BASE, SPECIALIZATIONS, TRACK_FIRST_RANK } from "./specializations.ts"
 import type { SpecId } from "./specializations.ts"
 import type { Tag } from "./tags.ts"
@@ -276,6 +277,8 @@ export type JobTier = {
   rank: number
   /** The specialization whose track this row belongs to. Left out on the shared trunk (ranks 1 to 7) and leadership rows (16 to 31). */
   spec?: SpecId
+  /** The leadership line this row belongs to (ranks 16 to 24). Left out on the rows every line shares. */
+  lead?: LeadId
   name: string
   tags: readonly Tag[]
   xpReq: number
@@ -303,15 +306,15 @@ const JOB_ROWS: readonly (Omit<JobTier, "xpPerSec" | "xpLump" | "xpCost"> & { ba
   { id: 13, rank: 13, spec: "backend", name: "Tech lead (acting)", tags: ["product"], xpReq: 150000, baseCost: 100000, cps: 160, clickBonus: 20, clickPct: 2, xpLump: 8000 },
   { id: 14, rank: 14, spec: "backend", name: "Senior SWE", tags: ["product"], xpReq: 160000, baseCost: 120000, cps: 200, clickBonus: 25, clickPct: 2 },
   { id: 15, rank: 15, spec: "backend", name: "Senior + hiring loop", tags: ["product"], xpReq: 180000, baseCost: 150000, cps: 220, clickBonus: 25, clickPct: 2 },
-  { id: 16, rank: 16, name: "Staff engineer", tags: ["product"], xpReq: 220000, baseCost: 400000, cps: 500, clickBonus: 50, clickPct: 2, xpPerSec: 20, xpLump: 12000 },
-  { id: 17, rank: 17, name: "Staff platform", tags: ["infra", "backend"], xpReq: 250000, baseCost: 500000, cps: 550, clickBonus: 50, clickPct: 2 },
-  { id: 18, rank: 18, name: "Engineering manager", tags: ["product"], xpReq: 280000, baseCost: 700000, cps: 450, clickBonus: 60, clickPct: 2.5 },
-  { id: 19, rank: 19, name: "Principal engineer", tags: ["product"], xpReq: 300000, baseCost: 900000, cps: 800, clickBonus: 80, clickPct: 2.5, xpPerSec: 30, xpLump: 20000 },
-  { id: 20, rank: 20, name: "Director of Eng", tags: ["product"], xpReq: 350000, baseCost: 1500000, cps: 900, clickBonus: 100, clickPct: 2.5 },
-  { id: 21, rank: 21, name: "VP Engineering", tags: ["product"], xpReq: 450000, baseCost: 4000000, cps: 1500, clickBonus: 150, clickPct: 2.5 },
-  { id: 22, rank: 22, name: "CTO (startup)", tags: ["product"], xpReq: 500000, baseCost: 8000000, cps: 2000, clickBonus: 200, clickPct: 3 },
-  { id: 23, rank: 23, name: "Distinguished engineer", tags: ["product"], xpReq: 600000, baseCost: 12000000, cps: 2500, clickBonus: 250, clickPct: 3, xpPerSec: 40 },
-  { id: 24, rank: 24, name: "Fellow / industry voice", tags: ["product"], xpReq: 750000, baseCost: 25000000, cps: 4000, clickBonus: 400, clickPct: 3, xpPerSec: 50, xpLump: 50000 },
+  { id: 16, rank: 16, lead: "ic", name: "Staff engineer", tags: ["product"], xpReq: 220000, baseCost: 400000, cps: 500, clickBonus: 50, clickPct: 2, xpPerSec: 20, xpLump: 12000 },
+  { id: 17, rank: 17, lead: "ic", name: "Staff platform", tags: ["infra", "backend"], xpReq: 250000, baseCost: 500000, cps: 550, clickBonus: 50, clickPct: 2 },
+  { id: 18, rank: 18, lead: "manager", name: "Engineering manager", tags: ["product"], xpReq: 280000, baseCost: 700000, cps: 450, clickBonus: 60, clickPct: 2.5 },
+  { id: 19, rank: 19, lead: "ic", name: "Principal engineer", tags: ["product"], xpReq: 300000, baseCost: 900000, cps: 800, clickBonus: 80, clickPct: 2.5, xpPerSec: 30, xpLump: 20000 },
+  { id: 20, rank: 20, lead: "manager", name: "Director of Eng", tags: ["product"], xpReq: 350000, baseCost: 1500000, cps: 900, clickBonus: 100, clickPct: 2.5 },
+  { id: 21, rank: 21, lead: "manager", name: "VP Engineering", tags: ["product"], xpReq: 450000, baseCost: 4000000, cps: 1500, clickBonus: 150, clickPct: 2.5 },
+  { id: 22, rank: 22, lead: "manager", name: "CTO (startup)", tags: ["product"], xpReq: 500000, baseCost: 8000000, cps: 2000, clickBonus: 200, clickPct: 3 },
+  { id: 23, rank: 23, lead: "ic", name: "Distinguished engineer", tags: ["product"], xpReq: 600000, baseCost: 12000000, cps: 2500, clickBonus: 250, clickPct: 3, xpPerSec: 40 },
+  { id: 24, rank: 24, lead: "ic", name: "Fellow / industry voice", tags: ["product"], xpReq: 750000, baseCost: 25000000, cps: 4000, clickBonus: 400, clickPct: 3, xpPerSec: 50, xpLump: 50000 },
   { id: 25, rank: 25, name: "Board advisor (tech)", tags: ["product"], xpReq: 900000, baseCost: 50000000, cps: 5000, clickBonus: 500, clickPct: 3 },
   { id: 26, rank: 26, name: "Fractional executive", tags: ["product"], xpReq: 1000000, baseCost: 80000000, cps: 6000, clickBonus: 600, clickPct: 3 },
   { id: 27, rank: 27, name: "Partner at BigCo", tags: ["product"], xpReq: 1200000, baseCost: 150000000, cps: 10000, clickBonus: 1000, clickPct: 3 },
@@ -419,17 +422,19 @@ export function highestJobRank(jobs: readonly number[]): number {
   return highest
 }
 
-const VISIBLE_CACHE = new Map<SpecId | "none", readonly JobTier[]>()
+const VISIBLE_CACHE = new Map<string, readonly JobTier[]>()
 
 /**
- * The jobs a career can see: the trunk, its own track and the shared leadership rows, in rank order. With no
- * specialization picked yet, the trunk and the shared rows. Other tracks' rows are never part of a career.
+ * The jobs a career can see, in rank order: the trunk, its own specialization's track, its own leadership line's rows
+ * and the rows every line shares. With no specialization picked yet, no track; with no leadership picked yet, none of
+ * the line rows (ranks 16 to 24), so a career that has not picked sees the rows it could hold now. Other tracks' and
+ * the other line's rows are never part of a career.
  */
-export function visibleJobs(spec: SpecId | null): readonly JobTier[] {
-  const key = spec ?? "none"
+export function visibleJobs(spec: SpecId | null, lead: LeadId | null = null): readonly JobTier[] {
+  const key = `${spec ?? "none"}|${lead ?? "none"}`
   let rows = VISIBLE_CACHE.get(key)
   if (!rows) {
-    rows = JOB_TIERS.filter((row) => row.spec === undefined || row.spec === spec).sort((a, b) => a.rank - b.rank)
+    rows = JOB_TIERS.filter((row) => (row.spec === undefined || row.spec === spec) && (row.lead === undefined || row.lead === lead)).sort((a, b) => a.rank - b.rank)
     VISIBLE_CACHE.set(key, rows)
   }
   return rows
