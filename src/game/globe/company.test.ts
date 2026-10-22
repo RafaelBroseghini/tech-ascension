@@ -76,4 +76,11 @@ describe("your company on the globe", () => {
   it("eight billion users send eight hundred million requests a second", () => {
     expect(demandOf(WORLD_TARGET)).toBeCloseTo(8e8)
   })
+
+  it("shows the revenue and the drop cost the build pays", () => {
+    const base = companyOf(facts({ "americas-east": 1000 }))
+    const shown = companyOf(facts({ "americas-east": 1000 }, { revenueMult: 1.3, dropsMult: 0.5 }))
+    expect(shown.revenuePerSec).toBeCloseTo(base.revenuePerSec * 1.3, 9)
+    expect(shown.lostPerSec).toBeCloseTo(base.lostPerSec * 0.5, 9)
+  })
 })

@@ -35,6 +35,9 @@ export interface CompanyFacts {
   readonly footprint: Footprint
   /** Gear owned, by id. */
   readonly equipment: Readonly<Record<string, number>>
+  /** What the perks and the build do to the revenue and to what drops cost (`ProductFacts`); 1 when left out. */
+  readonly revenueMult?: number
+  readonly dropsMult?: number
 }
 
 /** How many of a region's cities show on the globe for its users: one for the first few, then a few more with each tenfold. */
@@ -60,6 +63,7 @@ export function audienceOf(users: Readonly<Record<string, number>>): AudienceSha
 
 export function companyOf(facts: CompanyFacts): Company {
   const users = totalUsers(facts.users)
+  const serving = servingOf(facts.users, facts.incidents, facts.equipment)
   return {
     audience: audienceOf(facts.users),
     users,
@@ -68,7 +72,9 @@ export function companyOf(facts: CompanyFacts): Company {
     resistance: facts.resistance,
     incidents: facts.incidents,
     won: facts.won,
-    ...servingOf(facts.users, facts.incidents, facts.equipment),
+    ...serving,
+    revenuePerSec: serving.revenuePerSec * (facts.revenueMult ?? 1),
+    lostPerSec: serving.lostPerSec * (facts.dropsMult ?? 1),
     pops: activePops(facts.footprint),
     idlePops: idlePops(facts.footprint),
     regions: facts.footprint.regions,
