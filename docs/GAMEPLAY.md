@@ -92,7 +92,7 @@ Every career builds one product. Selling it is the **Exit**: it pays **Prestige*
 | Founder | Early adopters: 1,000 users at the home region (2) · Viral loop: product growth ×1.5 (11) · Platform: product revenue ×1.5 (16) |
 | Capital | Long weekend: offline cap +4 hours, on top of Time away (2) · Volume discount: capital rows −10% (4) · Bulk hardware: gear rows −10% (7) · Raise season: salaries and retainers ×2 (11) · Compounding: capital rows earn ×1.5 (16) |
 
-**Hall of Fame.** The two endings (Night owl, Executive sponsor), each recorded the first time a career wins the world with it and shown in the Prestige panel (`???` until then). Owning both is the long goal. The pace model (`npm run pace`, `docs/PACING.md`) puts a Regular player's first Exit around day 1.7 to 2 for 5 or 6 Prestige and a career that owns everything and wins the world in the sixth, 13 to 16 days in; it can only reach the night owl ending.
+**Hall of Fame.** The two endings (Night owl, Executive sponsor), each recorded the first time a career wins the world with it and shown in the Prestige panel (`???` until then). Owning both is the long goal. The pace model (`npm run pace`, `docs/PACING.md`) puts a Regular player's first Exit around day 1 for about 110 Prestige and a career that owns everything and wins the world in the fourth to sixth, 2 to 3 days in; it can only reach the night owl ending. The Exit constants were tuned for longer careers and are stale (`docs/PACING.md`).
 
 ## Stage
 
