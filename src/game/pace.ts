@@ -182,6 +182,8 @@ type Sim = Omit<Progress, "jobs" | "gigs"> & {
   track: SpecId
   /** The leadership line the run picks the first time it holds Senior SWE. */
   lead: LeadId
+  /** The product's company, which the user gates read: the pick opens at 10,000 users and Senior at 1,000,000. Left out when the run has no product, and the gates stay open. */
+  readonly company?: CompanyState
 }
 
 /** What the model keeps of the company: users by region and the product's facts, no incidents, no hires, no extra regions. */
@@ -207,6 +209,9 @@ function freshSim(track: SpecId, lead: LeadId): Sim {
   return {
     track,
     lead,
+    get company() {
+      return this.product?.company
+    },
     money: 0,
     xp: 0,
     xpTotal: 0,
@@ -265,19 +270,30 @@ function clearGigs(s: Sim): boolean {
   return any
 }
 
+/** The model takes its track the moment the pick opens (Mid-level SWE held and 10,000 users) and its line once Senior is held. */
+function takePicks(s: Sim): boolean {
+  let any = false
+  if (pickOpen(s)) {
+    s.build = pickedBuild(s.build, s.track)
+    any = true
+  }
+  if (leadPickOpen(s)) {
+    s.build = leadPickedBuild(s.build, s.lead)
+    any = true
+  }
+  return any
+}
+
 /** A job pays salary and, for the teaching ones, XP, so it is taken the moment it can be afforded. */
 function takeJobs(s: Sim): boolean {
-  let any = false
+  let any = takePicks(s)
   for (const job of visibleJobs(s.track, s.lead)) {
     if (!canBuyJob(s, job)) continue
     s.xp -= job.xpCost
     s.jobs.push(job.id)
     s.jobs.sort((a, b) => a - b)
     earn(s, 0, job.xpLump)
-    // The pick opens at Mid-level SWE and the model takes its track at once.
-    if (pickOpen(s)) s.build = pickedBuild(s.build, s.track)
-    // The leadership pick opens at Senior SWE and the model takes its line at once.
-    if (leadPickOpen(s)) s.build = leadPickedBuild(s.build, s.lead)
+    takePicks(s)
     any = true
   }
   return any

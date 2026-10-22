@@ -36,6 +36,7 @@ const rowById = (id: number) => JOB_TIERS.find((job) => job.id === id)!
 function toMid() {
   game.reset()
   game.keepProfile()
+  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) expect(game.buyJob(id), `job ${id}`).toBe(true)
@@ -54,6 +55,7 @@ describe("the pick", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("opens at Mid-level SWE and not before", () => {
@@ -150,6 +152,7 @@ describe("the switch", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("keeps money, gear and the trunk, drops the old track and starts at the new one", () => {
@@ -272,6 +275,7 @@ describe("old saves and the save block", () => {
   it("round-trips a pick and a switch through the save", () => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
     expect(JSON.parse(readCareerText() ?? "{}").build).toBeUndefined()
     toMid()
     game.pickSpecialization("backend")
@@ -290,6 +294,7 @@ describe("reset and the Exit", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("reset clears the build", () => {
@@ -376,6 +381,7 @@ describe("click and idle builds", () => {
     beforeEach(() => {
       game.reset()
       game.keepProfile()
+      game.setUsers("americas-east", 2_000_000)
     })
 
     function holdAll(spec: SpecId) {
@@ -485,6 +491,7 @@ describe("owning everything", () => {
   it("walks the next job of the career's own track", () => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
     toMid()
     game.pickSpecialization("infra")
     const next = nextUnlock(useGame.getState(), "C")

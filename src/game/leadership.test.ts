@@ -34,6 +34,7 @@ const SHARED_ABOVE = [25, 26, 27, 28, 29, 30, 31]
 function toMid() {
   game.reset()
   game.keepProfile()
+  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) expect(game.buyJob(id), `job ${id}`).toBe(true)
@@ -68,6 +69,7 @@ describe("the pick", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("is shut before Senior SWE and opens when a job of rank 14 is held", () => {
@@ -131,6 +133,7 @@ describe("the rows above rank 15", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("leaves rank 15 in the track and waits on the pick for everything above it", () => {
@@ -213,6 +216,7 @@ describe("hiring", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("is refused with no line picked and for an individual contributor, whatever the rank and the money", () => {
@@ -468,6 +472,7 @@ describe("old saves and the save block", () => {
   it("round-trips a pick through the save, and omits the line before it", () => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
     expect(JSON.parse(readCareerText() ?? "{}").build).toBeUndefined()
     toSenior()
     persistNow()
@@ -486,6 +491,7 @@ describe("reset and the Exit", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("reset clears the line", () => {
@@ -510,6 +516,7 @@ describe("the next step", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
   })
 
   it("names the pick once the track is held to its top, and the next row of the line after it", () => {
@@ -605,9 +612,9 @@ describe("the pace model", () => {
   })
 
   it("owns everything no later than before the manager rows left the IC's ladder", () => {
-    // The day the run owned everything before this step was 1.0 for this profile (docs/PACING.md); skipping four rows cannot make it later.
+    // The day the run owned everything before the user gates was 1.0 for this profile and one visit (a quarter day) later with them (docs/PACING.md); skipping four rows cannot make it later still.
     const run = simulatePace(profile, { maxDays: 30 })
     expect(run.ownedDays).not.toBeNull()
-    expect(run.ownedDays!).toBeLessThanOrEqual(1.01)
+    expect(run.ownedDays!).toBeLessThanOrEqual(1.26)
   })
 })

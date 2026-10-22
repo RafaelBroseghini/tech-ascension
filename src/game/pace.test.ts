@@ -81,11 +81,13 @@ describe("pace model", () => {
     for (const payback of [ONE_OF_EACH_PAYBACK_SECONDS, STACKER_PAYBACK_SECONDS]) {
       const run = simulatePace(profile(4, 5, 2), { maxDays: 30, paybackSeconds: payback })
       expect(run.complete).toBe(true)
-      expect(run.ownedDays!).toBeLessThanOrEqual(1.01) // the last visit buys a few minutes in
+      // The user gates (10,000 users for the pick, 1,000,000 for Senior) cost this player one visit: the product reaches
+      // each mark minutes after the visit that holds the job, so the pick and Senior wait for the next one (docs/PACING.md).
+      expect(run.ownedDays!).toBeLessThanOrEqual(1.26)
       expect(run.longestWaitVisits).toBeLessThanOrEqual(1)
       // The win is the finish and lands about a day and a half in: the capital tail and the product's gear share one
       // pot of money. Bringing it inside a day is step 8 of docs/BUILDS.md; this pins today's number so it cannot slip.
-      expect(run.days).toBeLessThanOrEqual(1.45)
+      expect(run.days).toBeLessThanOrEqual(1.55) // was 1.45 before the user gates took a visit
     }
   })
 

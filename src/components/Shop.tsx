@@ -10,10 +10,10 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
-import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
+import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, pickWaitsOnUsers, specOptions, usersOf } from "../game/build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
-import { isSpecId, SPECIALIZATIONS, specById } from "../data/specializations.ts"
+import { isSpecId, PICK_USERS, SPECIALIZATIONS, specById } from "../data/specializations.ts"
 import type { SpecId, SpecStyle } from "../data/specializations.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
@@ -434,7 +434,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
   const companyOpen = useFeatureOpen("studio")
-  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, build }
+  const company = useGame((state) => state.company)
+  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, build, company }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
@@ -506,7 +507,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
+    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build, company }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   useShopRows(listRef, narrow && tab !== "W", rowScope)
   // The phone sheet's expanded height in px, or null at three rows. Another tab, a dock or a new screen size starts over at three rows.
@@ -604,7 +605,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
       (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
         visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
     (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build }) || leadPickOpen({ jobs, build }))) ||
+    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build, company }) || leadPickOpen({ jobs, build }))) ||
     (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank))) ||
     (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0))
 
@@ -899,13 +900,13 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   index={index}
                   afford={afford}
                   flash={flashKey === key}
-                  locked={status === "locked"}
+                  locked={status === "locked" || status === "users"}
                   done={status === "owned"}
-                  unlock={["More XP"]}
+                  unlock={status === "users" ? ["More users"] : ["More XP"]}
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `${formatNumber(job.xpCost)} XP` : "Accept"}
+                      {status === "owned" ? "Hired" : status === "locked" || status === "users" ? "Locked" : job.xpCost > 0 ? `${formatNumber(job.xpCost)} XP` : "Accept"}
                     </button>
                   }
                 >
@@ -920,7 +921,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                 </Offer>
               )
             })}
-            {pickOpen({ jobs, build }) ? <SpecPick glow={tabGlow} /> : null}
+            {pickOpen({ jobs, build, company }) ? <SpecPick glow={tabGlow} /> : null}
+            {pickWaitsOnUsers({ jobs, build, company }) ? <LockPanel title="Pick a specialization" lines={[{ text: `${PICK_USERS.toLocaleString("en-US")} users (${Math.round(usersOf({ company }) ?? 0).toLocaleString("en-US")} now)`, met: false }]} /> : null}
             {leadPickOpen({ jobs, build }) ? <LeadPick glow={tabGlow} /> : null}
             {build.spec !== null && isSpecId(build.spec) ? <SpecSwitch spec={build.spec} switched={build.switched} glow={tabGlow} /> : null}
             </>

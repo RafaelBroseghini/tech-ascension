@@ -8,9 +8,10 @@ import { highestJobRank, firstJobAtRank, JOB_TIERS } from "../data/phases.ts"
 import type { JobTier } from "../data/phases.ts"
 import { isLeadId, LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
-import { isSpecId, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
+import { isSpecId, PICK_USERS, SENIOR_USERS, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
 import type { Hire, Hires } from "./globe/hires.ts"
+import { totalUsers } from "./globe/world.ts"
 
 const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
 
@@ -54,12 +55,35 @@ export function heldRank(p: HasBuild & { jobs: readonly number[] }): number {
   return Math.max(highestJobRank(p.jobs), p.build?.peakRank ?? 0)
 }
 
-/** The pick opens once a job of the trunk's top rank (Mid-level SWE) is held. */
-export function pickOpen(p: HasBuild & { jobs: readonly number[] }): boolean {
-  return specOf(p) === null && heldRank(p) >= TRUNK_TOP_RANK
+/** What the user gates read: the product's users by region. Left out, the gates are not tracked and stay open (pure callers and tests). */
+export type HasCompany = { company?: { users: Readonly<Record<string, number>> } }
+
+/** All users the product has now, or null when the caller does not carry a company. */
+export const usersOf = (p: HasCompany): number | null => (p.company ? totalUsers(p.company.users) : null)
+
+/** Users still missing for the pick: 0 when it is not tracked, or the career is already past the trunk (the gate latches). */
+export function pickUsersShort(p: HasBuild & { jobs: readonly number[] } & HasCompany): number {
+  const users = usersOf(p)
+  return users === null || heldRank(p) > TRUNK_TOP_RANK ? 0 : Math.max(0, PICK_USERS - users)
 }
 
-export function canPick(p: HasBuild & { jobs: readonly number[] }, id: unknown): id is SpecId {
+/** Users still missing for the Senior job: 0 when it is not tracked, or a job of that rank or higher was already held. */
+export function seniorUsersShort(p: HasBuild & { jobs: readonly number[] } & HasCompany): number {
+  const users = usersOf(p)
+  return users === null || heldRank(p) >= LEAD_OPEN_RANK ? 0 : Math.max(0, SENIOR_USERS - users)
+}
+
+/** The pick opens once a job of the trunk's top rank (Mid-level SWE) is held and the product has `PICK_USERS` users. */
+export function pickOpen(p: HasBuild & { jobs: readonly number[] } & HasCompany): boolean {
+  return specOf(p) === null && heldRank(p) >= TRUNK_TOP_RANK && pickUsersShort(p) === 0
+}
+
+/** Mid-level SWE is held and nothing is picked, but the product is short of users. */
+export function pickWaitsOnUsers(p: HasBuild & { jobs: readonly number[] } & HasCompany): boolean {
+  return specOf(p) === null && heldRank(p) >= TRUNK_TOP_RANK && pickUsersShort(p) > 0
+}
+
+export function canPick(p: HasBuild & { jobs: readonly number[] } & HasCompany, id: unknown): id is SpecId {
   return isSpecId(id) && pickOpen(p)
 }
 
@@ -110,7 +134,7 @@ export function hireLocked(p: HasBuild & { jobs: readonly number[] }, row: Pick<
 }
 
 /** The specializations the player could take right now: all of them to pick, the other five to switch, none otherwise. */
-export function specOptions(p: HasBuild & { jobs: readonly number[] }): SpecId[] {
+export function specOptions(p: HasBuild & { jobs: readonly number[] } & HasCompany): SpecId[] {
   if (pickOpen(p)) return SPECIALIZATIONS.map((row) => row.id)
   const spec = specOf(p)
   if (spec !== null && !p.build?.switched) return SPECIALIZATIONS.filter((row) => row.id !== spec).map((row) => row.id)

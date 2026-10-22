@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { flushSync } from "react-dom"
 import { afterEach, describe, expect, it } from "vitest"
 import { SPECIALIZATIONS } from "../data/specializations.ts"
+import { FRESH_COMPANY } from "../game/globe/growth.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { Shop } from "./Shop.tsx"
@@ -24,7 +25,7 @@ function renderShop(): HTMLDivElement {
 /** A Jobs tab with the trunk held up to Mid-level SWE. */
 function atMid(over: Partial<ReturnType<typeof useGame.getState>> = {}) {
   writeSavedShopTab("C")
-  useGame.setState({ xpTotal: 3_000_000, xp: 3_000_000, jobs: [1, 2, 3, 4, 5, 6, 7], gigs: [1, 2, 3, 4, 5, 6], ...over })
+  useGame.setState({ xpTotal: 3_000_000, xp: 3_000_000, jobs: [1, 2, 3, 4, 5, 6, 7], gigs: [1, 2, 3, 4, 5, 6], company: { ...FRESH_COMPANY, users: { "americas-east": 2_000_000 } }, ...over })
 }
 
 function press(host: ParentNode, label: string) {
@@ -48,6 +49,13 @@ describe("the Jobs tab and specializations", () => {
     atMid({ jobs: [1, 2, 3] })
     const host = renderShop()
     expect(host.querySelector("[data-row^='spec:']")).toBeNull()
+  })
+
+  it("waits on 10,000 users: a lock panel with the users it has, and no Pick buttons", () => {
+    atMid({ company: { ...FRESH_COMPANY, users: { "americas-east": 1234 } } })
+    const host = renderShop()
+    expect(host.querySelector("[data-row^='spec:']")).toBeNull()
+    expect(host.querySelector("[data-testid='lock-panel']")?.textContent).toContain("10,000 users (1,234 now)")
   })
 
   it("lists the six specializations with a style chip and a Pick button once Mid-level is held", () => {
