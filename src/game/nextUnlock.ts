@@ -4,7 +4,8 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { heldRank, needsPick, specOf } from "./build.ts"
+import { heldRank, needsPick, pickOpen, specOf } from "./build.ts"
+import { SPECIALIZATIONS } from "../data/specializations.ts"
 import { canAfford, capitalBase, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked } from "./phase.ts"
@@ -46,6 +47,7 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
   if (rowId(next.key, "skill:")) return { tab: "A", row: next.key }
   if (rowId(next.key, "gig:")) return { tab: "B", row: next.key }
   if (rowId(next.key, "job:")) return { tab: "C", row: next.key }
+  if (next.key === PICK_KEY) return { tab: "C", row: `spec:${SPECIALIZATIONS[0]!.id}` }
   if (rowId(next.key, "gear:")) return { tab: "G", row: next.key }
 
   const capitalId = rowId(next.key, "capital:")
@@ -136,11 +138,12 @@ function rowTarget(p: Progression, tab: ShopTab): NextUnlock | null {
     for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return gigTarget(p, gig)
   }
   if (tab === "C") {
-    // Before the pick the rows above Mid-level wait behind it, so the walk stops at the trunk.
+    // The rows above Mid-level wait behind the pick: once the trunk is held, the next step is to pick one.
     const spec = specOf(p)
     for (const job of visibleJobs(spec)) {
-      if (spec === null && needsPick(job)) break
-      if (!p.jobs.includes(job.id)) return jobTarget(p, job)
+      if (p.jobs.includes(job.id)) continue
+      if (spec === null && needsPick(job)) return pickOpen(p) ? pickTarget() : null
+      return jobTarget(p, job)
     }
   }
   if (tab === "G") {
@@ -180,6 +183,13 @@ export function nextUnlock(p: Progression, tab?: ShopTab): NextUnlock | null {
     if (row) return row
   }
   return null
+}
+
+/** Mid-level SWE is held and nothing is picked: any one of the specializations is the next step. */
+export const PICK_KEY = "spec:pick"
+
+function pickTarget(): NextUnlock {
+  return { key: PICK_KEY, name: "Pick a specialization", tab: "C", needs: SPECIALIZATIONS.map((row) => row.name), either: true }
 }
 
 function skillTarget(p: Progression, skill: SkillTier): NextUnlock {
