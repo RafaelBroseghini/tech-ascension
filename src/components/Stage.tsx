@@ -8,6 +8,7 @@ import type { IconName } from "../data/clickIcons.ts"
 import { ERA_ACCENT } from "../data/eraAccent.ts"
 import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
 import { hoverStepMs } from "../game/autoClick.ts"
+import type { ClickSource } from "../game/build.ts"
 import { hoverRate } from "../game/gold.ts"
 import { HOVER_MODES, getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
@@ -261,13 +262,13 @@ export function Stage() {
     )
   }
 
-  function fire(clientX: number | null, clientY: number | null, touch = false) {
+  function fire(clientX: number | null, clientY: number | null, touch = false, source: ClickSource = "manual") {
     const box = hitboxRef.current
     if (!box) return
     // Measure before any write below, so the read does not force a fresh style and layout pass.
     const rect = box.getBoundingClientRect()
     pokeDesk()
-    const gain = click()
+    const gain = click(source)
     heat.current = Math.min(1, heat.current + 0.14)
     box.style.setProperty("--heat", heat.current.toFixed(3))
     warmUp()
@@ -346,7 +347,7 @@ export function Stage() {
       const state = useGame.getState()
       if (state.event || state.review || !getDeskPrefs().hoverClick || hoverRate(state.gold, ownsEverything(state)) <= 0) return
       const point = pointRef.current
-      fireRef.current(point?.x ?? null, point?.y ?? null)
+      fireRef.current(point?.x ?? null, point?.y ?? null, false, "auto")
     }, hoverStepMs(hoverPerSec))
     return () => window.clearInterval(id)
   }, [autoClick, hoverPerSec])

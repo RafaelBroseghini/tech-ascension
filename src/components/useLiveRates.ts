@@ -11,6 +11,7 @@ export function useLiveRates() {
   const equipment = useGame((state) => state.equipment)
   const owned = useGame((state) => state.owned)
   const jobs = useGame((state) => state.jobs)
+  const build = useGame((state) => state.build)
   const gigs = useGame((state) => state.gigs)
   const activeBoost = useGame((state) => state.activeBoost)
   const now = useGame((state) => state.now)
@@ -18,7 +19,7 @@ export function useLiveRates() {
   const tempMults = useGame((state) => state.tempMults)
   const legacy = useGame((state) => state.legacy)
   const company = useGame((state) => state.company)
-  const rates = production({ skills, equipment, owned, jobs, gigs }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
+  const rates = production({ skills, equipment, owned, jobs, gigs, build }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
   const clickPays = clickPaysMoney({ jobs })
   const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, legacy.perks)
   return {

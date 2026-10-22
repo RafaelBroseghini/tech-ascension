@@ -3,9 +3,9 @@
  * held before a switch gave its old track up. Pure rules; the data is src/data/specializations.ts and the track rows
  * are in src/data/phases.ts. The store keeps the state, the save carries it as an optional `build` block.
  */
-import { highestJobRank, JOB_TIERS } from "../data/phases.ts"
+import { highestJobRank, JOB_TIERS, visibleJobs } from "../data/phases.ts"
 import type { JobTier } from "../data/phases.ts"
-import { isSpecId, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
+import { isSpecId, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
 
 const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
@@ -98,4 +98,51 @@ export function normalizeBuild(raw: unknown, jobs: readonly number[]): { build: 
   const kept = spec === null ? jobs.filter((id) => JOB_BY_ID.get(id)?.spec === undefined) : jobs.filter((id) => { const row = JOB_BY_ID.get(id); return row !== undefined && rowVisible(row, spec) })
   const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}) }
   return { build: isFreshBuild(build) ? undefined : build, jobs: kept }
+}
+
+/** Where a click comes from. Hover clicks and auto-click are "auto"; only a manual click earns a click build's multiple. */
+export type ClickSource = "manual" | "auto"
+
+/**
+ * A click build's promise: manual clicks at 2 a second pay 5 times the idle $/s while clicking, with every job the build
+ * can see held. 5 minutes of clicking are then worth about 30 minutes of idle (the other 5 of the 30 are the idle that
+ * keeps running). A click is therefore worth 2.5 times the idle $/s.
+ */
+export const MANUAL_CLICKS_PER_SEC = 2
+export const CLICK_BUILD_TARGET = 5
+const CLICK_BUILD_CLICK_WORTH = CLICK_BUILD_TARGET / MANUAL_CLICKS_PER_SEC
+
+/** The jobs' click share once every job a build can see is held: the sum of their `clickPct` as a fraction (0.68). Every track has the same rows' numbers, so every build gets the same. */
+const FULL_CLICK_SHARE = visibleJobs("frontend").reduce((sum, job) => sum + job.clickPct, 0) / 100
+
+/**
+ * The click build's multiplier on the jobs' click share. The plain ladder's share is 0.68, so 2.5 / 0.68 lifts a fully
+ * held build to a share of 2.5 per click (5 at 2 clicks a second).
+ */
+export const CLICK_BUILD_CLICK_MULT = CLICK_BUILD_CLICK_WORTH / FULL_CLICK_SHARE
+
+/** An idle build earns a quarter more while away and half the click share, so its clicks matter less. */
+export const IDLE_BUILD_IDLE_MULT = 1.25
+export const IDLE_BUILD_CLICK_MULT = 0.5
+
+/** What a build's style does to the plain ladder: a multiplier on idle $/s and one on the jobs' click share. */
+export type StyleFactors = { idle: number; click: number }
+
+const NO_STYLE: StyleFactors = { idle: 1, click: 1 }
+const CLICK_STYLE: StyleFactors = { idle: 1, click: CLICK_BUILD_CLICK_MULT }
+const IDLE_STYLE: StyleFactors = { idle: IDLE_BUILD_IDLE_MULT, click: IDLE_BUILD_CLICK_MULT }
+
+export function styleFactors(spec: SpecId | null): StyleFactors {
+  if (spec === null) return NO_STYLE
+  const style = specById(spec).style
+  return style === "click" ? CLICK_STYLE : style === "idle" ? IDLE_STYLE : NO_STYLE
+}
+
+/**
+ * The multiplier on the jobs' click share for one kind of click. Hover and auto clicks never get a click build's
+ * multiple; an idle build's penalty still applies to them.
+ */
+export function clickShareMult(spec: SpecId | null, source: ClickSource): number {
+  const mult = styleFactors(spec).click
+  return source === "manual" ? mult : Math.min(1, mult)
 }
