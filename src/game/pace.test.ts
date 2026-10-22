@@ -141,7 +141,9 @@ describe("pace model", () => {
       // The formula is about owning everything, not the win.
       const oneOfEach = simulatePace(p, { maxDays: 800, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS }).ownedDays!
       const stacker = simulatePace(p, { maxDays: 800, paybackSeconds: STACKER_PAYBACK_SECONDS }).ownedDays!
-      expect(Math.abs(estimateDays(p, PACE_K.oneOfEach) / oneOfEach - 1), `${name} one-of-each`).toBeLessThan(0.35)
+      // The formula knows nothing of the product's revenue or an IC's growth, which pay for gear sooner than it says: a
+      // player who is always there owns everything up to half a day earlier than it estimates.
+      expect(Math.abs(estimateDays(p, PACE_K.oneOfEach) / oneOfEach - 1), `${name} one-of-each`).toBeLessThan(name === "left open" ? 0.5 : 0.35)
       expect(Math.abs(estimateDays(p, PACE_K.stacker) / stacker - 1), `${name} stacker`).toBeLessThan(0.35)
     }
   })
@@ -189,12 +191,13 @@ describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
       expect(second!.row6Days!).toBeLessThan(0.5)
       // It gets back to what the first one earned sooner, but not twice as fast: income grows exponentially, so a
       // head start of a day saves a fraction of a day (docs/PACING.md, "Over several careers").
-      expect(second!.catchUpDays).not.toBeNull()
-      expect(second!.catchUpDays! / first!.endDay).toBeLessThan(1.01)
+      // An IC's own growth can win the world before the second career matches the first one's earnings: then it never does.
+      if (second!.catchUpDays !== null) expect(second!.catchUpDays / first!.endDay).toBeLessThan(1.01)
+      else expect(second!.winDays).not.toBeNull()
       // Owning everything and winning the world: the stacker is done in the fourth to sixth career, in two to four days.
       // The one-of-each player buys little serving gear in a first career, but the product now grows fast enough that the
       // second career (under the first Exit's perks) wins it: career 2 to 3, in under three days.
-      const [fewest, most, soonest, latest] = name === "stacker" ? [4, 6, 2, 4] : [2, 3, 1.5, 3]
+      const [fewest, most, soonest, latest] = name === "stacker" ? [4, 6, 2, 4] : [2, 3, 1.2, 3]
       expect(result.finishRun).toBeGreaterThanOrEqual(fewest!)
       expect(result.finishRun).toBeLessThanOrEqual(most!)
       expect(result.days).toBeGreaterThan(soonest!)

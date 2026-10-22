@@ -11,7 +11,7 @@ import type { TempMults } from "./mods.ts"
 import { normalizeSeenMilestones } from "./milestones.ts"
 import { creditMoney, emptyStats, normalizeStats } from "./stats.ts"
 import type { GameStats } from "./stats.ts"
-import { normalizeBuild } from "./build.ts"
+import { buildFactsOf, normalizeBuild } from "./build.ts"
 import type { BuildState } from "./build.ts"
 import { normalizeIdentity, randomIdentity } from "./identity.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, parseCompany, settleGrowth } from "./globe/growth.ts"
@@ -323,7 +323,7 @@ export function hydrate(rawText: string | null, now: number): Hydrated {
   )
   const credit = offlineCredit(idlePerSec(loaded) * fx.cps, loaded.savedAt, now, capMs)
   // The company keeps going while away: its growth is walked in steps, and drops cost what they cost.
-  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, productFactsOf(loaded.hires ?? {}, loaded.legacy ?? freshLegacy(), loaded.build?.leadership)), loaded.savedAt, loaded.savedAt + away, Math.random)
+  const grown = advanceCompany(loaded.company ?? FRESH_COMPANY, growthFacts(loaded.gigs, loaded.equipment, loaded.footprint, productFactsOf(loaded.hires ?? {}, loaded.legacy ?? freshLegacy(), buildFactsOf(loaded))), loaded.savedAt, loaded.savedAt + away, Math.random)
   const xpCredit = offlineCredit(xpPerSec(loaded) * fx.xpIdle, loaded.savedAt, now, capMs)
   const elapsed = now - loaded.savedAt
   const settled = settleGrowth(loaded.money + credit, loaded.foreverMult ?? 1, loaded.company?.won ?? false, grown)

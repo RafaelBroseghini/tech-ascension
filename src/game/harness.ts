@@ -6,7 +6,7 @@ import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { COMBOS } from "../data/combos.ts"
-import { leadOptions, specOptions } from "./build.ts"
+import { leadOptions, specOf, specOptions } from "./build.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
@@ -434,7 +434,7 @@ function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: numbe
     incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
     demand: serving.demand,
     capacity: serving.capacity,
-    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.legacy.perks),
+    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.legacy.perks, specOf(state)),
     won: company.won,
   }
 }

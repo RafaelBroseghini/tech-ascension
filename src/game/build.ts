@@ -35,6 +35,14 @@ export type HasBuild = { build?: BuildState }
 
 export const specOf = (p: HasBuild): SpecId | null => p.build?.spec ?? null
 
+/** What the product reads from the build: the specialization, the leadership line and the IC rows held. */
+export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number }
+
+/** Jobs held that belong to the IC line (ranks 16 to 24 carry a `lead`). */
+export const icRowsHeld = (jobs: readonly number[]): number => JOB_TIERS.filter((job) => job.lead === "ic" && jobs.includes(job.id)).length
+
+export const buildFactsOf = (p: HasBuild & { jobs: readonly number[] }): BuildFacts => ({ spec: specOf(p), lead: leadOf(p), icRows: icRowsHeld(p.jobs) })
+
 export const leadOf = (p: HasBuild): LeadId | null => p.build?.leadership ?? null
 
 export function isFreshBuild(build: BuildState | undefined): boolean {

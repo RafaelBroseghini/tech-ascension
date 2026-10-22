@@ -17,7 +17,7 @@ import { GEAR } from "../data/gear.ts"
 import { GIGS, SKILL_TIERS, highestJobRank, visibleJobs } from "../data/phases.ts"
 import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { leadPickedBuild, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
+import { buildFactsOf, leadPickedBuild, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
   capitalBase,
@@ -572,7 +572,7 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
     reach: HOME_REACH,
     live: HOME_LIVE,
     equipment: s.equipment,
-    product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }, s.build?.leadership),
+    product: productFactsOf({}, { perks: p.perks, prestigeTotal: p.prestigeTotal }, buildFactsOf(s)),
   }
   for (let at = fromSec; at < toSec; at += PRODUCT_CHUNK_SECONDS) {
     const end = Math.min(toSec, at + PRODUCT_CHUNK_SECONDS)

@@ -438,8 +438,8 @@ describe("click and idle builds", () => {
         const cps = game.getState().cps
         return { cps, credited: game.advanceOffline(3_600_000).credited }
       }
-      const plain = awayCredit("backend")
-      const idle = awayCredit("infra")
+      const plain = awayCredit("frontend")
+      const idle = awayCredit("ai")
       expect(plain.cps).toBeGreaterThan(0)
       expect(idle.cps / plain.cps).toBeCloseTo(1.25, 9)
       expect((idle.credited - plain.credited) / (plain.cps * 3600)).toBeCloseTo(0.25, 3)
