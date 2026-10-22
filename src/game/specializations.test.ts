@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
@@ -444,8 +444,11 @@ describe("click and idle builds", () => {
         const cps = game.getState().cps
         return { cps, credited: game.advanceOffline(3_600_000).credited }
       }
+      // No incident rolls while away: a block or a DDoS in one run and not the other would move the product's pay.
+      const calm = vi.spyOn(Math, "random").mockReturnValue(0.999)
       const plain = awayCredit("frontend")
       const idle = awayCredit("ai")
+      calm.mockRestore()
       expect(plain.cps).toBeGreaterThan(0)
       expect(idle.cps / plain.cps).toBeCloseTo(1.25, 9)
       expect((idle.credited - plain.credited) / (plain.cps * 3600)).toBeCloseTo(0.25, 3)
