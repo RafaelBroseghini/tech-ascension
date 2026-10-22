@@ -85,6 +85,12 @@ getState(): {
   leadership: string | null      // "ic" | "manager"; null before the pick after Senior
   leadershipOptions: string[]    // ["ic", "manager"] while the leadership pick is open, [] otherwise
  }
+ launch: {                       // Frontend's launches (src/game/launch.ts)
+  ships: boolean                 // the build ships them (Frontend)
+  charge: number                 // manual clicks banked towards the next launch
+  every: number                  // clicks one launch takes (25)
+  share: number                  // the share of the crowd one launch adds (0.03), at least 40 users, never past the serving gear or a milestone
+ }
 }
 
 click(): { money: number; xp: number }

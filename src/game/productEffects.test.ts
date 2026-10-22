@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest"
 import { HOME_REGION_ID } from "../data/regions.ts"
-import { effectsOf, NO_EFFECTS, SPECIALIZATIONS } from "../data/specializations.ts"
+import { effectsOf, gpuGrowthOf, NO_EFFECTS, SPECIALIZATIONS } from "../data/specializations.ts"
+import { GEAR } from "../data/gear.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { icRowsHeld } from "./build.ts"
+import { gpusHeld, icRowsHeld } from "./build.ts"
 import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import { FRESH_COMPANY, growthFacts, stepCompany } from "./globe/growth.ts"
 import type { GrowthFacts } from "./globe/growth.ts"
 import { IC_GROWTH_PER_ROW, NO_BUILD, productFactsOf, productRevenueOf } from "./globe/product.ts"
 import { incidentRate } from "./globe/world.ts"
 
-const build = (spec: SpecId | null, icRows = 0) => ({ ...NO_BUILD, spec, icRows })
+const build = (spec: SpecId | null, icRows = 0, gpus = 0) => ({ ...NO_BUILD, spec, icRows, gpus })
 const IC_ROWS = [16, 17, 19, 23, 24]
 
 describe("what a specialization does to the product", () => {
@@ -43,6 +44,33 @@ describe("what a specialization does to the product", () => {
     expect(productFactsOf({}, undefined, build("infra")).dropsMult).toBe(0.5)
     expect(productFactsOf({}, undefined, build("security")).incidentMult).toBe(0.6)
     expect(productFactsOf({}, undefined, build("fde")).seedMult).toBe(3)
+  })
+})
+
+describe("an AI build's growth needs GPUs", () => {
+  it("runs slow with none, climbs with each GPU and levels off, and is 1 for every other build", () => {
+    expect(gpuGrowthOf("ai", 0)).toBeCloseTo(0.6, 12)
+    expect(gpuGrowthOf("ai", 12)).toBeGreaterThan(gpuGrowthOf("ai", 4))
+    expect(gpuGrowthOf("ai", 500)).toBeCloseTo(1.5, 3)
+    expect(gpuGrowthOf("ai", 500)).toBeLessThan(1.5001)
+    for (const other of ["backend", "frontend", "infra", "fde", "security", null] as const) expect(gpuGrowthOf(other, 50)).toBe(1)
+  })
+
+  it("scales the product's growth and the team's with it, and leaves the revenue alone", () => {
+    const none = productFactsOf({ senior: 40 }, undefined, build("ai", 0, 0))
+    const many = productFactsOf({ senior: 40 }, undefined, build("ai", 0, 40))
+    expect(many.growthMult / none.growthMult).toBeCloseTo(gpuGrowthOf("ai", 40) / gpuGrowthOf("ai", 0), 9)
+    expect(many.hireBonus / many.growthMult).toBeCloseTo(none.hireBonus / none.growthMult, 9)
+    expect(many.revenueMult).toBe(none.revenueMult)
+    expect(productFactsOf({}, undefined, build("backend", 0, 40)).growthMult).toBe(productFactsOf({}, undefined, build("backend", 0, 0)).growthMult)
+  })
+
+  it("counts copies of the GPU gear rows, and nothing else", () => {
+    const gpuRows = GEAR.filter((row) => row.kind === "gpu")
+    expect(gpuRows.length).toBeGreaterThan(0)
+    expect(gpusHeld(undefined)).toBe(0)
+    expect(gpusHeld({})).toBe(0)
+    expect(gpusHeld({ [String(gpuRows[0]!.id)]: 3, [String(gpuRows[1]!.id)]: 2, "1": 9 })).toBe(5)
   })
 })
 

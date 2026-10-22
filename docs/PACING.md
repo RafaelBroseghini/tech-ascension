@@ -94,7 +94,8 @@ What they cost the pace:
 | Infra / SRE | what dropped requests cost (dollars and users who leave) | x0.5 |
 | Forward deployed | growth, users each cleared gig seeds | x0.9, x3 |
 | Security | incident rate and how hard a block or a law bleeds | x0.6 |
-| Frontend, AI | none yet (they need launches and GPUs) | 1 |
+| Frontend | launches: every 25 manual clicks adds 3% of the crowd in users (never past what the gear serves, never across a milestone) | see `src/game/launch.ts` |
+| AI engineer | growth that needs GPUs: x0.6 with none, towards x1.5 as GPU gear is bought (63% of the way at 12 copies) | `gpuGrowth` |
 | IC line | growth for each IC row held (five rows) | +3 each, scaled like the team, not counted as the team |
 
 The IC bonus is sized against `hireBonusOf`: a kind of hire at 100 heads adds about 3.5 to 5, so five IC rows (+15) are worth a mid-sized team with no payroll, and a Manager's team passes it with a few hundred heads. The pace model has no hires, so it can only say how the IC and the specializations move the default career: the default (Backend, IC) now wins the world on day 1.04 (stacker) and 1.26 (one-of-each) at 4 visits of 5 minutes, against 1.37 and 1.39 before, with everything owned on day 1.00. The win is no longer the finish for the stacker.
@@ -106,10 +107,10 @@ The target player (4 visits of 5 minutes) cannot tell builds apart: visits are a
 
 | Specialization | Style | IC, one-of-each | IC, stacker | Manager, one-of-each | Manager, stacker |
 | --- | --- | --- | --- | --- | --- |
-| Frontend | click | 0.42 / 0.13 | 0.63 / 0.11 | 0.42 / 0.09 | 0.63 / 0.09 |
+| Frontend | click | 0.42 / 0.10 | 0.63 / 0.10 | 0.42 / 0.09 | 0.63 / 0.09 |
 | Backend / Platform | balanced | 0.42 / 0.17 | 0.63 / 0.16 | 0.42 / 0.14 | 0.63 / 0.14 |
 | Infra / SRE | idle | 0.42 / 0.17 | 0.63 / 0.15 | 0.42 / 0.14 | 0.63 / 0.14 |
-| AI engineer | idle | 0.42 / 0.17 | 0.63 / 0.15 | 0.42 / 0.14 | 0.63 / 0.14 |
+| AI engineer | idle | 0.42 / 0.17 | 0.63 / 0.14 | 0.42 / 0.13 | 0.63 / 0.14 |
 | Forward deployed engineer | click | 0.42 / 0.13 | 0.63 / 0.11 | 0.42 / 0.09 | 0.63 / 0.09 |
 | Security | balanced | 0.42 / 0.17 | 0.63 / 0.15 | 0.42 / 0.14 | 0.63 / 0.14 |
 
@@ -117,8 +118,9 @@ What it says:
 
 - **The shop is the finish, on both lines.** The win comes at 0.09 to 0.17 days, long before everything is owned (0.42 and 0.63), so no specialization's growth factor and neither line changes the finish for this player. They only differ in when the world is won: a Manager wins about 0.03 days sooner than an IC, and a click build about 0.04 sooner than the rest.
 - **The Manager's gap was the hiring policy, not the game's numbers.** At a payroll share of 25% the Manager finished up to 40% later than the IC (Backend 0.59 against 0.42): the salaries eat the money the gear needs, and the win waits on serving gear, so the team made the win later. At 5% the lines are level (within 1%); at 10% still within 2%; with no hires at all a Manager is 60 to 90% slower than an IC (the IC's own growth carries it). Scaling the hires' `growth` from 1 to 5 times does not move it at any share. So a Manager who hires hard is a trap and one who hires lightly is a peer; no constant changed.
+- **Launches and GPUs.** Frontend's launches bring its win to 0.10 days (0.13 before them), and the finish stays the shop's on both lines; at 4% of the crowd per launch the collector owned everything a visit later, because the extra users took money for serving gear, so the share is 3%. A launch that crossed a milestone between growth steps left the win unlatched (the career never finished): launches now stop a user short of each milestone. AI's GPU growth barely moves its row (win 0.14 against 0.16 for Backend), because GPU rows are serving gear the pace model buys for the crowd anyway; the AI build feels it when it neglects GPUs, not when it plays like the others.
 - **The click and idle numbers have pace data now, but not a tuned target.** A click build's full multiple is near 4.2 (not 5) with the rows a line holds.
-- **Not modeled:** incidents (so Security's incident factor and Infra's drop factor are inert here, as is FDE's seed factor on the single home region), the kitchen's combos, and Frontend's and AI's mechanics (they have none yet).
+- **Not modeled:** incidents (so Security's incident factor and Infra's drop factor are inert here, as is FDE's seed factor on the single home region), the kitchen's combos, and incidents' effect on launches. Frontend's launches and AI's GPU growth are modeled: the pace model clicks at the profile's rate and counts the GPU copies it buys. The default player is a Backend IC, so they only show in `npm run pace -- builds`.
 
 ## Over several careers (the Exit)
 

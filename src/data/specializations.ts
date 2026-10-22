@@ -20,6 +20,12 @@ export type SpecStyle = "click" | "idle" | "balanced"
  */
 export type ProductEffects = { growth: number; revenue: number; drops: number; incidents: number; seeds: number }
 
+/**
+ * An AI product's growth needs GPUs: its growth runs at `base` with none, and climbs towards `base + bonus` as GPU gear
+ * is bought, closing 63% of the gap at `scale` copies (the same curve the hires use).
+ */
+export type GpuGrowth = { base: number; bonus: number; scale: number }
+
 export const NO_EFFECTS: ProductEffects = { growth: 1, revenue: 1, drops: 1, incidents: 1, seeds: 1 }
 
 export type Specialization = {
@@ -29,15 +35,17 @@ export type Specialization = {
   tag: Tag
   style: SpecStyle
   blurb: string
-  /** Left out where the effect needs a mechanic that is not built (Frontend's launches, AI's GPUs): no change for now. */
+  /** What the build does to the product; left out, nothing (Frontend's launches are their own mechanic, `src/game/launch.ts`). */
   product?: Partial<ProductEffects>
+  /** AI only: growth that depends on the GPUs owned. */
+  gpuGrowth?: GpuGrowth
 }
 
 export const SPECIALIZATIONS: readonly Specialization[] = [
-  { id: "frontend", name: "Frontend", tag: "frontend", style: "click", blurb: "Ship the interface people touch." },
+  { id: "frontend", name: "Frontend", tag: "frontend", style: "click", blurb: "Ship the interface people touch. Clicks ship launches." },
   { id: "backend", name: "Backend / Platform", tag: "backend", style: "balanced", blurb: "Own the services behind it.", product: { growth: 0.85, revenue: 1.3 } },
   { id: "infra", name: "Infra / SRE", tag: "infra", style: "idle", blurb: "Keep it up while everyone sleeps.", product: { drops: 0.5 } },
-  { id: "ai", name: "AI engineer", tag: "ai", style: "idle", blurb: "Wrangle models and agents." },
+  { id: "ai", name: "AI engineer", tag: "ai", style: "idle", blurb: "Wrangle models and agents. Growth needs GPUs.", gpuGrowth: { base: 0.6, bonus: 0.9, scale: 12 } },
   { id: "fde", name: "Forward deployed engineer", tag: "product", style: "click", blurb: "Sit with the customer and ship what they asked for.", product: { growth: 0.9, seeds: 3 } },
   { id: "security", name: "Security", tag: "security", style: "balanced", blurb: "Find the holes before anyone else does.", product: { incidents: 0.6 } },
 ]
@@ -46,6 +54,12 @@ const BY_ID = new Map<SpecId, Specialization>(SPECIALIZATIONS.map((row) => [row.
 
 export function specById(id: SpecId): Specialization {
   return BY_ID.get(id) as Specialization
+}
+
+/** The growth factor an AI build's GPUs give: `base` with none, towards `base + bonus` with many. 1 for any other build. */
+export function gpuGrowthOf(spec: SpecId | null, gpus: number): number {
+  const row = spec ? specById(spec).gpuGrowth : undefined
+  return row ? row.base + row.bonus * (1 - Math.exp(-Math.max(0, gpus) / row.scale)) : 1
 }
 
 /** The product effects of a build; every factor is 1 before the pick. */

@@ -6,6 +6,7 @@ import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { COMBOS } from "../data/combos.ts"
+import { LAUNCH_CLICKS, LAUNCH_SHARE, shipsLaunches } from "./launch.ts"
 import { leadOptions, specOf, specOptions } from "./build.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
@@ -171,6 +172,8 @@ export type GameSnapshot = {
    */
   build: { specialization: string | null; switched: boolean; options: string[]; leadership: string | null; leadershipOptions: string[] }
   /** The kitchen: combos found this career, in the order they turned up, and how many the table holds. */
+  /** Frontend's launches: whether the build ships them, the manual clicks banked, the clicks one launch takes and the share of the crowd it adds. */
+  launch: { ships: boolean; charge: number; every: number; share: number }
   combos: { found: { id: string; name: string; joke: string; effect: string }[]; total: number }
 }
 
@@ -516,6 +519,7 @@ export function installGameHarness(): GameHarness {
           leadership: state.build.leadership ?? null,
           leadershipOptions: leadOptions(state),
         },
+        launch: { ships: shipsLaunches(specOf(state)), charge: state.build.charge ?? 0, every: LAUNCH_CLICKS, share: LAUNCH_SHARE },
         combos: {
           found: state.combos.flatMap((id) => {
             const row = comboById(id)

@@ -12,6 +12,7 @@ import { isSpecId, PICK_USERS, SENIOR_USERS, specById, SPECIALIZATIONS, TRUNK_TO
 import type { SpecId } from "../data/specializations.ts"
 import type { Hire, Hires } from "./globe/hires.ts"
 import { totalUsers } from "./globe/world.ts"
+import { GEAR } from "../data/gear.ts"
 
 const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
 
@@ -27,6 +28,8 @@ export type BuildState = {
   peakRank?: number
   /** The leadership line picked after Senior (IC or Manager), or left out before the pick. Locked once picked. */
   leadership?: LeadId
+  /** Frontend's launch charge: manual clicks banked towards the next launch (`src/game/launch.ts`). Left out at 0. */
+  charge?: number
 }
 
 export const FRESH_BUILD: BuildState = { spec: null, switched: false }
@@ -37,17 +40,32 @@ export type HasBuild = { build?: BuildState }
 export const specOf = (p: HasBuild): SpecId | null => p.build?.spec ?? null
 
 /** What the product reads from the build: the specialization, the leadership line and the IC rows held. */
-export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number }
+export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number; gpus: number }
 
 /** Jobs held that belong to the IC line (ranks 16 to 24 carry a `lead`). */
 export const icRowsHeld = (jobs: readonly number[]): number => JOB_TIERS.filter((job) => job.lead === "ic" && jobs.includes(job.id)).length
 
-export const buildFactsOf = (p: HasBuild & { jobs: readonly number[] }): BuildFacts => ({ spec: specOf(p), lead: leadOf(p), icRows: icRowsHeld(p.jobs) })
+/** GPU gear copies held: what an AI build's growth reads. */
+export const gpusHeld = (equipment: Readonly<Record<string, number>> | undefined): number =>
+  equipment ? GEAR.reduce((sum, row) => (row.kind === "gpu" ? sum + (equipment[String(row.id)] ?? 0) : sum), 0) : 0
+
+export const buildFactsOf = (p: HasBuild & { jobs: readonly number[]; equipment?: Readonly<Record<string, number>> }): BuildFacts => ({
+  spec: specOf(p),
+  lead: leadOf(p),
+  icRows: icRowsHeld(p.jobs),
+  gpus: gpusHeld(p.equipment),
+})
 
 export const leadOf = (p: HasBuild): LeadId | null => p.build?.leadership ?? null
 
+/** The build without its launch charge (a full launch used it up). */
+export function omitCharge(build: BuildState): BuildState {
+  const { charge: _used, ...rest } = build
+  return rest
+}
+
 export function isFreshBuild(build: BuildState | undefined): boolean {
-  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership)
+  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership && !(build.charge && build.charge > 0))
 }
 
 /** The rank the career has reached: the highest job held now, or before a switch, whichever is higher. Rank gates read this. */
@@ -104,7 +122,9 @@ export function jobsAfterSwitch(jobs: readonly number[], from: SpecId): number[]
 
 /** The build after the switch. The rank reached so far is kept, so the gates it opened stay open, and so is the leadership line. */
 export function switchedBuild(p: HasBuild & { jobs: readonly number[] }, id: SpecId): BuildState {
-  return { ...(p.build ?? FRESH_BUILD), spec: id, switched: true, peakRank: heldRank(p) }
+  // A switch lets the old build's launch charge go.
+  const { charge: _gone, ...kept } = p.build ?? FRESH_BUILD
+  return { ...kept, spec: id, switched: true, peakRank: heldRank(p) }
 }
 
 /** The leadership pick opens once a Senior job (rank 14) is held, now or before a switch. */
@@ -175,11 +195,12 @@ export function normalizeBuild(raw: unknown, jobs: readonly number[], hires: Hir
   }
   const peak = typeof record.peakRank === "number" && Number.isFinite(record.peakRank) ? Math.floor(record.peakRank) : 0
   const peakRank = Math.min(Math.max(0, peak), 31)
+  const banked = typeof record.charge === "number" && Number.isFinite(record.charge) ? Math.max(0, Math.min(24.999, record.charge)) : 0
   const kept = jobs.filter((id) => {
     const row = JOB_BY_ID.get(id)
     return row !== undefined && rowVisible(row, spec, lead) && (lead !== null || row.lead === undefined)
   })
-  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}) }
+  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}), ...(spec === "frontend" && banked > 0 ? { charge: banked } : {}) }
   return { build: isFreshBuild(build) ? undefined : build, jobs: kept }
 }
 

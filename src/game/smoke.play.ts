@@ -257,6 +257,49 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
 })
 
+test("launches and GPUs: Frontend's clicks ship launches the gear can take, and an AI build's growth follows its GPUs", () => {
+  game.reset()
+  game.keepProfile()
+  game.setXp(1e9)
+  for (let id = 1; id <= 6; id++) game.forceGig(id)
+  for (let id = 1; id <= 7; id++) game.buyJob(id)
+  game.setUsers("americas-east", 10_000)
+  expect(game.pickSpecialization("frontend")).toBe(true)
+  game.setUsers("americas-east", 50)
+  game.setMoney(1e6)
+  for (let i = 0; i < 20; i++) game.buyEquipment(42)
+  expect(game.getState().launch).toMatchObject({ ships: true, charge: 0, every: 25 })
+
+  // Hover clicks charge nothing; manual clicks do, and the 25th ships a launch.
+  const before = game.getState().world.users
+  for (let i = 0; i < 24; i++) game.click()
+  expect(game.getState().launch.charge).toBe(24)
+  expect(game.getState().world.users).toBe(before)
+  game.click()
+  expect(game.getState().launch.charge).toBe(0)
+  expect(game.getState().world.users).toBeGreaterThan(before)
+
+  // An AI build grows slower with no GPUs and faster with them.
+  const growthWith = (gpus: number) => {
+    game.reset()
+    game.keepProfile()
+    game.setXp(1e9)
+    for (let id = 1; id <= 6; id++) game.forceGig(id)
+    for (let id = 1; id <= 7; id++) game.buyJob(id)
+    game.setUsers("americas-east", 10_000)
+    game.pickSpecialization("ai")
+    game.setUsers("americas-east", 500)
+    game.setMoney(1e9)
+    for (let i = 0; i < 30; i++) game.buyEquipment(42)
+    for (let i = 0; i < gpus; i++) game.buyEquipment(57)
+    const start = game.getState().world.users
+    game.tick(20_000)
+    return game.getState().world.users - start
+  }
+  expect(growthWith(40)).toBeGreaterThan(growthWith(0))
+  game.reset()
+})
+
 test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring is the Manager's, and the ending follows the line", () => {
   game.reset()
   game.keepProfile()
