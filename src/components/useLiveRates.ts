@@ -21,7 +21,7 @@ export function useLiveRates() {
   const company = useGame((state) => state.company)
   const rates = production({ skills, equipment, owned, jobs, gigs, build }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
   const clickPays = clickPaysMoney({ jobs })
-  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, legacy.perks)
+  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, legacy.perks, build?.spec ?? null)
   return {
     rates,
     /** Dollars a second: idle income plus what the product's served users pay. */

@@ -29,7 +29,7 @@ import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveR
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
-import { canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import { buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
 import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
@@ -906,7 +906,7 @@ export const useGame = create<GameState>((set, get) => ({
     const boosting = advanced.clock.activeBoost !== null
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy, state.build.leadership)), now - dt, now, Math.random)
+    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy, buildFactsOf(state))), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
@@ -1190,7 +1190,7 @@ useGame.subscribe((state, prev) => {
 
 /** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
 export function earnedPerSec(state: GameState, at = Date.now()): number {
-  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.legacy.perks)
+  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.legacy.perks, specOf(state))
 }
 
 // The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).

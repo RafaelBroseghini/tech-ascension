@@ -42,16 +42,16 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. Eac
 
 | Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: finish / owns everything / formula | One-of-each: finish / owns everything / formula | Hands-on to finish (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.29 | 0.7 / 0.6 / 0.7 days | 0.7 / 0.5 / 0.6 days | 4.0 h / 4.0 h | 1 / 1 |
-| Hardcore | 6/day | 20 | 3 | 1.00 | 1.14 | 0.8 / 0.8 / 0.8 days | 0.8 / 0.7 / 0.7 days | 100 min / 97 min | 0 / 0 |
-| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.3 / 1.0 / 0.9 days | 1.1 / 0.7 / 0.8 days | 58 min / 51 min | 0 / 0 |
-| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 2.2 / 1.5 / 1.3 days | 2.6 / 1.5 / 1.1 days | 43 min / 52 min | 0 / 0 |
-| Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 3.0 / 2.0 / 2.4 days | 3.1 / 3.0 / 2.1 days | 91 min / 94 min | 0 / 0 |
-| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 4.1 / 3.0 / 2.6 days | 5.0 / 3.0 / 2.3 days | 41 min / 50 min | 0 / 0 |
-| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.3 / 6.0 / n/a days | 6.2 / 6.0 / 4.2 days | 95 min / 92 min | 0 / 0 |
-| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 28.0 / 21.0 / n/a days | 35.0 / 35.0 / 14.8 days | 2.0 h / 2.5 h | 0 / 0 |
+| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.29 | 0.6 / 0.6 / 0.7 days | 0.4 / 0.4 / 0.6 days | 3.8 h / 2.5 h | 1 / 0 |
+| Hardcore | 6/day | 20 | 3 | 1.00 | 1.14 | 0.8 / 0.8 / 0.8 days | 0.7 / 0.7 / 0.7 days | 100 min / 80 min | 0 / 0 |
+| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.0 / 1.0 / 0.9 days | 1.0 / 0.7 / 0.8 days | 46 min / 45 min | 0 / 0 |
+| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 1.5 / 1.5 / 1.3 days | 2.0 / 1.5 / 1.1 days | 31 min / 40 min | 0 / 0 |
+| Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 2.1 / 2.0 / 2.4 days | 3.0 / 3.0 / 2.1 days | 62 min / 90 min | 0 / 0 |
+| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 3.1 / 3.0 / 2.6 days | 4.0 / 3.0 / 2.3 days | 31 min / 40 min | 0 / 0 |
+| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.0 / 6.0 / n/a days | 6.0 / 6.0 / 4.2 days | 90 min / 90 min | 0 / 0 |
+| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 21.0 / 21.0 / n/a days | 35.0 / 35.0 / 14.8 days | 90 min / 2.5 h | 0 / 0 |
 
-The finish is a whole number of visits, so a schedule with a long gap between visits reads in steps and the formula is only close, within about a third (the test allows 35%).
+The finish is a whole number of visits, so a schedule with a long gap between visits reads in steps and the formula is only close, within about a third (the test allows 35%, and half for the player who leaves it open all day: the formula knows nothing of the product's revenue or an IC's growth, which pay for gear sooner than it says).
 
 **Longest wait** is the most visits in a row that bought no first copy of anything (a skill, gig, job, gear or capital row) before the career owned everything. The model only buys at visits, so a wait is counted in visits. A career that ends in a day should never come back to nothing new: for the target player (4 visits a day of 5 minutes, 2 clicks a second) both players wait 0 visits and own everything on day 1.00, and `pace.test.ts` pins at most 1. The wait stops counting once everything is owned: after that the career waits on the product, not the shop.
 
@@ -65,8 +65,8 @@ The single run now models the product (an IC player, no hires, the free home reg
 
 ```
 Career gates (one visit is 0.25 days): users against the job each gate sits on, then the finish
-- oneOfEach: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.39, owns everything day 1.00, finish day 1.39
-- stacker: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.37, owns everything day 1.00, finish day 1.37
+- oneOfEach: Mid-level SWE day 0.25, 10k users day 0.25; Senior SWE day 0.25, 1M users day 0.25; win day 1.26, owns everything day 1.00, finish day 1.26
+- stacker: Mid-level SWE day 0.25, 10k users day 0.25; Senior SWE day 0.25, 1M users day 0.25; win day 1.04, owns everything day 1.00, finish day 1.04
 ```
 
 - **10,000 users land within a visit of Mid-level SWE and 1,000,000 within a visit of Senior SWE.** Both players take both jobs at their second visit (day 0.25), and the product reaches 10k and 1M a few minutes later, at every growth pace tried (`GROWTH_PER_SEC` 0.0125 to 0.1).
@@ -74,6 +74,21 @@ Career gates (one visit is 0.25 days): users against the job each gate sits on, 
 - **Buying ahead does not fix it by itself.** Sizing the serving shortfall for the crowd at the next visit (each region grown over the time away with `grownUsers`, keeping the two-day payback guard) changes nothing: the finish stayed at 1.39 and 1.40 (1.39 and 1.37 since the manager rows left the IC's ladder). At the day 0.75 visit the gear passes the guard (its payback is about 0.6 days) but loses the ordering, because first copies of the late capital rows pay back faster and take the whole $1.9e13. Giving needed serving gear priority over those (payback divided by 10) brings the win to 1.26, by 1000 to 1.12, and no higher pace gets below 1.02; and from a pace of 0.025 up the gear money delays owning everything to day 1.25. Past day 1.0 the crowd also needs hours to fill the regions the footprint does not reach (reach 0.15), so the win and the shop compete for the same money by day 1.0. Getting both inside a day is a trade between the capital tail and the product's gear, which is a later step (prices or the footprint), not a rule or a constant here.
 - **Growth is solved exactly.** `stepCompany` used to take one explicit step per minute. At the raised pace that is a factor of `GROWTH_PER_SEC x STEP_MS / 1000` = 0.05 x 0.25 x 60 = 0.75 per step (0.09 at the old 0.006), where the explicit step is no longer close to the curve: a tenth of a second at a time ended 41% above a minute at a time. A region now grows by the closed-form logistic over each piece, and a step is walked in pieces of at most `SUBSTEP_S` = 5 seconds so the crowd and the gear see each other: the factor is 0.06 per piece and one hour at 100 ms against 60 s steps differs by 1.4%.
 - **One pace.** The ladder's 0.25 (`GROWTH_BASE`) only existed to contrast with the removed founder fork. It is folded into `GROWTH_PER_SEC` = 0.0125 (what 0.05 x 0.25 was), the multiplier is 1 for the player's own pace, and the hires' `growth` is four times what it was so the team multiplies the player's pace by the same amount. Dropped users churn at `DROP_CHURN_PER_SEC` = 0.075, so a crowd the gear cannot serve still settles near its capacity (the growth would otherwise outrun the churn).
+
+## Specialization and leadership effects on the product
+
+`ProductFacts` (`src/game/globe/product.ts`) carries what the build does to the product; `productFactsOf(hires, legacy, build)` reads the specialization, the line and the IC rows held, and the tick, the offline credit and the pace model all go through it. A factor of 1 changes nothing, and so does no pick. The numbers are proposals (`docs/BUILDS.md`), not tuned per build:
+
+| Build | Effect | Factor |
+| --- | --- | --- |
+| Backend / Platform | growth, revenue | x0.85, x1.3 |
+| Infra / SRE | what dropped requests cost (dollars and users who leave) | x0.5 |
+| Forward deployed | growth, users each cleared gig seeds | x0.9, x3 |
+| Security | incident rate and how hard a block or a law bleeds | x0.6 |
+| Frontend, AI | none yet (they need launches and GPUs) | 1 |
+| IC line | growth for each IC row held (five rows) | +3 each, scaled like the team, not counted as the team |
+
+The IC bonus is sized against `hireBonusOf`: a kind of hire at 100 heads adds about 3.5 to 5, so five IC rows (+15) are worth a mid-sized team with no payroll, and a Manager's team passes it with a few hundred heads. The pace model has no hires, so it can only say how the IC and the specializations move the default career: the default (Backend, IC) now wins the world on day 1.04 (stacker) and 1.26 (one-of-each) at 4 visits of 5 minutes, against 1.37 and 1.39 before, with everything owned on day 1.00. The win is no longer the finish for the stacker.
 
 ## Over several careers (the Exit)
 

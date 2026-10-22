@@ -7,12 +7,12 @@ import type { LeadId } from "../data/leadership.ts"
 import { GIGS, JOB_TIERS, SKILL_TIERS, highestJobRank, jobRank, visibleJobs } from "../data/phases.ts"
 import { REGIONS } from "../data/regions.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { hireLocked, leadOptions, leadPickOpen, normalizeBuild } from "./build.ts"
+import { buildFactsOf, hireLocked, leadOptions, leadPickOpen, normalizeBuild } from "./build.ts"
 import { describeEntry } from "./careerLog.ts"
 import { advanceCompany, FRESH_COMPANY, growthFacts, stepCompany } from "./globe/growth.ts"
 import { HIRES, hireBonusOf, hirePayrollOf } from "./globe/hires.ts"
 import type { Hires } from "./globe/hires.ts"
-import { productFactsOf } from "./globe/product.ts"
+import { NO_BUILD, productFactsOf } from "./globe/product.ts"
 import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
 import { installGameHarness } from "./harness.ts"
 import { readCareerText } from "./ledger.ts"
@@ -297,7 +297,7 @@ describe("hiring", () => {
     expect(game.getState().hires).toEqual(held)
     expect(game.getState().headcount).toBe(4)
     // They still count in the growth facts and the payroll.
-    const facts = productFactsOf(held, undefined, "ic")
+    const facts = productFactsOf(held, undefined, { ...NO_BUILD, lead: "ic" })
     expect(facts.hireBonus).toBeGreaterThan(0)
     expect(facts.hireBonus).toBe(hireBonusOf(held))
     expect(facts.payroll).toBe(hirePayrollOf(held))
@@ -311,16 +311,16 @@ describe("the ending", () => {
   const nearWin = Object.fromEntries(REGIONS.map((r) => [r.id, ceilingOf(r.id) * (7.9999e9 / WORLD_CEILING)]))
   const everywhere = { regions: REGIONS.map((r) => r.id), pops: ["ashburn", "frankfurt", "tokyo", "saopaulo", "lagos", "sydney", "sf"], off: [], dark: [] }
   const never = () => 0.999
-  const winFacts = (hires: Hires, lead?: LeadId | null) => growthFacts([1, 2, 3, 4, 5, 6, 7, 8], { "110": 20 }, everywhere, productFactsOf(hires, undefined, lead))
+  const winFacts = (hires: Hires, lead?: LeadId | null) => growthFacts([1, 2, 3, 4, 5, 6, 7, 8], { "110": 20 }, everywhere, productFactsOf(hires, undefined, { ...NO_BUILD, lead: lead ?? null }))
   const team: Hires = Object.fromEntries(HIRES.slice(0, 6).map((row) => [row.id, 20]))
   const near = (hiredUsers = 0) => ({ ...FRESH_COMPANY, users: nearWin, hiredUsers })
   const wonWith = (hires: Hires, lead: LeadId | null | undefined, hiredShare: number) => stepCompany(near(7.9999e9 * hiredShare), winFacts(hires, lead), 60_000, 60_000, never).state
 
   it("comes from the line the facts carry", () => {
-    expect(productFactsOf({}, undefined, "ic").ending).toBe("nightOwl")
-    expect(productFactsOf({}, undefined, "manager").ending).toBe("sponsor")
+    expect(productFactsOf({}, undefined, { ...NO_BUILD, lead: "ic" }).ending).toBe("nightOwl")
+    expect(productFactsOf({}, undefined, { ...NO_BUILD, lead: "manager" }).ending).toBe("sponsor")
     expect(productFactsOf({}).ending).toBeUndefined()
-    expect(productFactsOf({}, undefined, null).ending).toBeUndefined()
+    expect(productFactsOf({}, undefined, NO_BUILD).ending).toBeUndefined()
     expect(LEADERSHIP.map((row) => row.ending)).toEqual(["nightOwl", "sponsor"])
   })
 
@@ -351,8 +351,8 @@ describe("the ending", () => {
   it("is not served from a stale cache after the pick", () => {
     const gigs = [1, 2, 3]
     const gear = { "110": 1 }
-    const before = growthFacts(gigs, gear, undefined, productFactsOf({}, undefined, null))
-    const after = growthFacts(gigs, gear, undefined, productFactsOf({}, undefined, "manager"))
+    const before = growthFacts(gigs, gear, undefined, productFactsOf({}, undefined, NO_BUILD))
+    const after = growthFacts(gigs, gear, undefined, productFactsOf({}, undefined, { ...NO_BUILD, lead: "manager" }))
     expect(before.product?.ending).toBeUndefined()
     expect(after.product?.ending).toBe("sponsor")
   })
@@ -367,7 +367,7 @@ describe("the ending", () => {
         gigs: [1, 2, 3, 4, 5, 6, 7, 8],
       })
       const store = useGame.getState()
-      const grown = advanceCompany(store.company, growthFacts(store.gigs, store.equipment, store.footprint, productFactsOf(store.hires, store.legacy, store.build.leadership)), store.now, store.now + 60_000, never)
+      const grown = advanceCompany(store.company, growthFacts(store.gigs, store.equipment, store.footprint, productFactsOf(store.hires, store.legacy, buildFactsOf(store))), store.now, store.now + 60_000, never)
       expect(grown.state.won).toBe(true)
       useGame.setState({ company: grown.state })
       expect(useGame.getState().company.ending).toBe(ending)

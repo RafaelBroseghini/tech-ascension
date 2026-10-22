@@ -142,6 +142,9 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   const teamShare = hireShareOfGrowth(facts.product?.hireBonus ?? 0, growthMult)
   const payroll = facts.product?.payroll ?? 0
   const revenueMult = facts.product?.revenueMult ?? 1
+  const dropsMult = facts.product?.dropsMult ?? 1
+  const incidentMult = facts.product?.incidentMult ?? 1
+  const seedMult = facts.product?.seedMult ?? 1
   let hiredAdded = 0
   let earned = 0
   let lost = 0
@@ -167,17 +170,17 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
       const stalling = biting(incidents, region.id, "stall", hasPop)
       const stalled = stalling.length > 0
       const rival = multiplierOf(incidents, region.id, "drag")
-      const seed = (facts.seeds[region.id] ?? 0) + SPILL * now * (populationOf(region.id) / WORLD_POPULATION)
+      const seed = (facts.seeds[region.id] ?? 0) * seedMult + SPILL * now * (populationOf(region.id) / WORLD_POPULATION)
       const rate = stalled ? 0 : GROWTH_PER_SEC * (facts.reach[region.id] ?? 0) * served * drag * rival * growthMult
       const grown = grownUsers(here, seed, ceiling, rate, dt)
-      const bleed = stalling.reduce((sum, i) => sum + BLEED_PER_SEC * i.strength * (hasPop ? 0.5 : 1) * (1 + resistance / 100), 0)
-      const churn = Math.min(0.9, 1 - Math.exp(-(DROP_CHURN_PER_SEC * dropShare + bleed) * dt))
+      const bleed = stalling.reduce((sum, i) => sum + BLEED_PER_SEC * i.strength * (hasPop ? 0.5 : 1) * (1 + resistance / 100), 0) * incidentMult
+      const churn = Math.min(0.9, 1 - Math.exp(-(DROP_CHURN_PER_SEC * dropShare * dropsMult + bleed) * dt))
       const next = Math.min(ceiling, Math.max(0, grown * (1 - churn)))
       if (next > 0) nextUsers[region.id] = next
       hiredAdded += Math.max(0, next - here * (1 - churn)) * teamShare
     }
     users = nextUsers
-    lost += lostPerSec * dt
+    lost += lostPerSec * dropsMult * dt
     earned += revenuePerSec * revenueMult * dt
   }
   const total = totalUsers(users)
@@ -185,7 +188,7 @@ export function stepCompany(state: CompanyState, facts: GrowthFacts, ms: number,
   // Users lost in the step are lost from both sides alike; what the team added is carried over and never passes the crowd.
   const hiredUsers = Math.min(total, (before > 0 ? state.hiredUsers * Math.min(1, total / before) : 0) + hiredAdded)
 
-  if (incidents.length < MAX_INCIDENTS && total >= INCIDENT_MIN_USERS && rand() < incidentRate(resistance) * sec) {
+  if (incidents.length < MAX_INCIDENTS && total >= INCIDENT_MIN_USERS && rand() < incidentRate(resistance) * incidentMult * sec) {
     const incident = rollIncident(users, facts.live, resistance, seq + 1, at, rand)
     if (incident) {
       seq += 1
@@ -232,7 +235,7 @@ export function uptimePercent(uptime: string): number {
 let memo: { gigs: readonly number[]; equipment: Readonly<Record<string, number>>; footprint: Footprint; product: ProductFacts | undefined; facts: GrowthFacts } | null = null
 
 const sameProduct = (a: ProductFacts | undefined, b: ProductFacts | undefined): boolean =>
-  a === b || (a !== undefined && b !== undefined && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.payroll === b.payroll && a.ending === b.ending)
+  a === b || (a !== undefined && b !== undefined && a.growthMult === b.growthMult && a.hireBonus === b.hireBonus && a.revenueMult === b.revenueMult && a.dropsMult === b.dropsMult && a.incidentMult === b.incidentMult && a.seedMult === b.seedMult && a.payroll === b.payroll && a.ending === b.ending)
 
 /**
  * The growth facts the game has right now, for `stepCompany`. The game ticks ten times a second and reach walks every
