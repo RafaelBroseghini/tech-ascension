@@ -22,7 +22,7 @@ pace = idleShare + clicksPerWallSecond × s
 
   For visits evenly spaced `n` times a day, each lasting `a` hours, the gap is `24/n − a`.
 - **clicksPerWallSecond** is your clicking averaged over the whole day: clicks per second × (time at the game ÷ time in the cycle).
-- **s = 0.68** is what a click adds once every job is held: the sum of the jobs' `clickPct`, as a fraction of idle $/s (`FINAL_CLICK_SHARE`). Jobs are the only source of that share, so clicking is worth much more late in the game than early.
+- **s = 0.575** is what a click adds once every job the model's career can see is held: the sum of the jobs' `clickPct`, as a fraction of idle $/s (`FINAL_CLICK_SHARE`). The model plays an individual contributor, who skips the four manager rows (it was 0.68 with the whole ladder). Jobs are the only source of that share, so clicking is worth much more late in the game than early.
 - **K** is a constant in days that says how well you reinvest:
 
   | Player | K | Who they are |
@@ -32,9 +32,9 @@ pace = idleShare + clicksPerWallSecond × s
 
   Both are under a day because a career is about a day long now (the capital tail was cut, see "Changing the pace"), and the two are close because there is no longer time for a second copy to repay itself: the lifetime XP that the last skill waits on, a day in, sets the floor for both. The old constants were 9 and 4, when the last capital row took days.
 
-Worked example, three visits a day of 15 minutes, clicking twice a second. The cycle is 8 hours, so you are away 7.75 hours, under the cap, and `idleShare` is 1. You click 2 × 900 s × 3 visits = 5,400 times a day, which is 0.0625 clicks per wall-clock second. `pace = 1 + 0.0625 × 0.68 = 1.04`, so a reinvestor needs about 0.9 / 1.04 = 0.9 days and a collector about 0.8 / 1.04 = 0.8 days.
+Worked example, three visits a day of 15 minutes, clicking twice a second. The cycle is 8 hours, so you are away 7.75 hours, under the cap, and `idleShare` is 1. You click 2 × 900 s × 3 visits = 5,400 times a day, which is 0.0625 clicks per wall-clock second. `pace = 1 + 0.0625 × 0.575 = 1.04`, so a reinvestor needs about 0.9 / 1.04 = 0.9 days and a collector about 0.8 / 1.04 = 0.8 days.
 
-Once a day for 30 minutes: you are away 23.5 hours but only 8 count, so `idleShare = (0.5 + 8) / 24 = 0.35`. Clicking adds `2 × 0.5 / 24 × 0.68 = 0.03`. `pace = 0.38`, which is 2.4 days for a reinvestor and 2.1 for a collector.
+Once a day for 30 minutes: you are away 23.5 hours but only 8 count, so `idleShare = (0.5 + 8) / 24 = 0.35`. Clicking adds `2 × 0.5 / 24 × 0.575 = 0.02`. `pace = 0.38`, which is 2.4 days for a reinvestor and 2.1 for a collector.
 
 ## What it gives
 
@@ -42,20 +42,22 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. Eac
 
 | Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: finish / owns everything / formula | One-of-each: finish / owns everything / formula | Hands-on to finish (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.34 | 0.7 / 0.6 / 0.7 days | 0.7 / 0.5 / 0.6 days | 4.0 h / 4.0 h | 1 / 1 |
-| Hardcore | 6/day | 20 | 3 | 1.00 | 1.17 | 0.8 / 0.8 / 0.8 days | 0.8 / 0.7 / 0.7 days | 100 min / 97 min | 0 / 0 |
-| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.2 / 1.0 / 0.9 days | 1.1 / 0.7 / 0.8 days | 55 min / 51 min | 0 / 0 |
-| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 2.1 / 1.5 / 1.3 days | 2.2 / 1.5 / 1.1 days | 43 min / 43 min | 0 / 0 |
+| Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.29 | 0.7 / 0.6 / 0.7 days | 0.7 / 0.5 / 0.6 days | 4.0 h / 4.0 h | 1 / 1 |
+| Hardcore | 6/day | 20 | 3 | 1.00 | 1.14 | 0.8 / 0.8 / 0.8 days | 0.8 / 0.7 / 0.7 days | 100 min / 97 min | 0 / 0 |
+| Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.3 / 1.0 / 0.9 days | 1.1 / 0.7 / 0.8 days | 58 min / 51 min | 0 / 0 |
+| Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 2.2 / 1.5 / 1.3 days | 2.6 / 1.5 / 1.1 days | 43 min / 52 min | 0 / 0 |
 | Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 3.0 / 2.0 / 2.4 days | 3.1 / 3.0 / 2.1 days | 91 min / 94 min | 0 / 0 |
 | Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 4.1 / 3.0 / 2.6 days | 5.0 / 3.0 / 2.3 days | 41 min / 50 min | 0 / 0 |
-| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.3 / 6.0 / n/a days | 6.1 / 6.0 / 4.2 days | 94 min / 92 min | 0 / 0 |
-| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 28.0 / 21.0 / n/a days | 35.0 / 35.0 / 14.6 days | 2.0 h / 2.5 h | 0 / 0 |
+| Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.3 / 6.0 / n/a days | 6.2 / 6.0 / 4.2 days | 95 min / 92 min | 0 / 0 |
+| Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 28.0 / 21.0 / n/a days | 35.0 / 35.0 / 14.8 days | 2.0 h / 2.5 h | 0 / 0 |
 
 The finish is a whole number of visits, so a schedule with a long gap between visits reads in steps and the formula is only close, within about a third (the test allows 35%).
 
 **Longest wait** is the most visits in a row that bought no first copy of anything (a skill, gig, job, gear or capital row) before the career owned everything. The model only buys at visits, so a wait is counted in visits. A career that ends in a day should never come back to nothing new: for the target player (4 visits a day of 5 minutes, 2 clicks a second) both players wait 0 visits and own everything on day 1.00, and `pace.test.ts` pins at most 1. The wait stops counting once everything is owned: after that the career waits on the product, not the shop.
 
 To try your own: `npm run pace -- 3 15 2` takes visits per day, minutes per visit and clicks per second. It also prints the day each milestone is reached. The full table run ends with the best-fit `K` for each player, over the schedules that visit at least daily.
+
+**The leadership line.** The model picks a line when it first holds Senior SWE (`PaceOptions.leadership`, default `ic`; `DEFAULT_PACE_LEAD`). An IC holds 27 rows instead of 31 (the manager rows 18, 20, 21 and 22 are never bought), so the shop is a little cheaper and the click share at the end is 0.575 instead of 0.68. For the target player (4 visits a day of 5 minutes, 2 clicks a second) the day everything is owned stays 1.00 (the model buys at visits a quarter day apart) and the win moves from day 1.40 to 1.37 for the stacker and stays at 1.39 for the one-of-each player. The model has no hires, so `leadership: "manager"` only changes the ending.
 
 ## The product in the single run
 
@@ -64,12 +66,12 @@ The single run now models the product (an IC player, no hires, the free home reg
 ```
 Career gates (one visit is 0.25 days): users against the job each gate sits on, then the finish
 - oneOfEach: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.39, owns everything day 1.00, finish day 1.39
-- stacker: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.40, owns everything day 1.00, finish day 1.40
+- stacker: Mid-level SWE day 0.25, 10k users day 0.26; Senior SWE day 0.25, 1M users day 0.27; win day 1.37, owns everything day 1.00, finish day 1.37
 ```
 
 - **10,000 users land within a visit of Mid-level SWE and 1,000,000 within a visit of Senior SWE.** Both players take both jobs at their second visit (day 0.25), and the product reaches 10k and 1M a few minutes later, at every growth pace tried (`GROWTH_PER_SEC` 0.0125 to 0.1).
-- **The win is not inside a day.** The shop is done on day 1.00, but the 8B win lands on day 1.4 (hands-on 28 minutes). The growth pace is not what holds it: raising `GROWTH_PER_SEC` eight times only brings it to 1.06 (stacker) and 1.27 (one-of-each). The player buys serving gear for the crowd it has, once per visit, and spends everything else on rows that pay back in income. At the day 0.75 visit it holds $1.9e13 and the cheapest serving gear that would carry 8B users (about 1e9 requests a second, from what it already owns) costs $1.1e12, so it could afford it; it just does not buy ahead of the crowd. The crowd then sits at the gear's capacity (9e8 users) for the last quarter day, and the 8B follows once the visit at day 1.0 and the one at 1.25 buy the rest.
-- **Buying ahead does not fix it by itself.** Sizing the serving shortfall for the crowd at the next visit (each region grown over the time away with `grownUsers`, keeping the two-day payback guard) changes nothing: the finish stays at 1.39 and 1.40. At the day 0.75 visit the gear passes the guard (its payback is about 0.6 days) but loses the ordering, because first copies of the late capital rows pay back faster and take the whole $1.9e13. Giving needed serving gear priority over those (payback divided by 10) brings the win to 1.26, by 1000 to 1.12, and no higher pace gets below 1.02; and from a pace of 0.025 up the gear money delays owning everything to day 1.25. Past day 1.0 the crowd also needs hours to fill the regions the footprint does not reach (reach 0.15), so the win and the shop compete for the same money by day 1.0. Getting both inside a day is a trade between the capital tail and the product's gear, which is a later step (prices or the footprint), not a rule or a constant here.
+- **The win is not inside a day.** The shop is done on day 1.00, but the 8B win lands on day 1.4 (hands-on 27 minutes). The growth pace is not what holds it: raising `GROWTH_PER_SEC` eight times only brings it to 1.06 (stacker) and 1.27 (one-of-each). The player buys serving gear for the crowd it has, once per visit, and spends everything else on rows that pay back in income. At the day 0.75 visit it holds $1.9e13 and the cheapest serving gear that would carry 8B users (about 1e9 requests a second, from what it already owns) costs $1.1e12, so it could afford it; it just does not buy ahead of the crowd. The crowd then sits at the gear's capacity (9e8 users) for the last quarter day, and the 8B follows once the visit at day 1.0 and the one at 1.25 buy the rest.
+- **Buying ahead does not fix it by itself.** Sizing the serving shortfall for the crowd at the next visit (each region grown over the time away with `grownUsers`, keeping the two-day payback guard) changes nothing: the finish stayed at 1.39 and 1.40 (1.39 and 1.37 since the manager rows left the IC's ladder). At the day 0.75 visit the gear passes the guard (its payback is about 0.6 days) but loses the ordering, because first copies of the late capital rows pay back faster and take the whole $1.9e13. Giving needed serving gear priority over those (payback divided by 10) brings the win to 1.26, by 1000 to 1.12, and no higher pace gets below 1.02; and from a pace of 0.025 up the gear money delays owning everything to day 1.25. Past day 1.0 the crowd also needs hours to fill the regions the footprint does not reach (reach 0.15), so the win and the shop compete for the same money by day 1.0. Getting both inside a day is a trade between the capital tail and the product's gear, which is a later step (prices or the footprint), not a rule or a constant here.
 - **Growth is solved exactly.** `stepCompany` used to take one explicit step per minute. At the raised pace that is a factor of `GROWTH_PER_SEC x STEP_MS / 1000` = 0.05 x 0.25 x 60 = 0.75 per step (0.09 at the old 0.006), where the explicit step is no longer close to the curve: a tenth of a second at a time ended 41% above a minute at a time. A region now grows by the closed-form logistic over each piece, and a step is walked in pieces of at most `SUBSTEP_S` = 5 seconds so the crowd and the gear see each other: the factor is 0.06 per piece and one hour at 100 ms against 60 s steps differs by 1.4%.
 - **One pace.** The ladder's 0.25 (`GROWTH_BASE`) only existed to contrast with the removed founder fork. It is folded into `GROWTH_PER_SEC` = 0.0125 (what 0.05 x 0.25 was), the multiplier is 1 for the player's own pace, and the hires' `growth` is four times what it was so the team multiplies the player's pace by the same amount. Dropped users churn at `DROP_CHURN_PER_SEC` = 0.075, so a crowd the gear cannot serve still settles near its capacity (the growth would otherwise outrun the churn).
 
@@ -105,16 +107,16 @@ The stacker, career by career (users at the Exit, Prestige paid, the bonus after
 
 | Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Matched the last career's earnings after (days) | World won after (days) | Users | Perks held | Earned | Prestige paid (ending bonus) | Prestige total | Bonus |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 0.00 | 1.00 | 1.00 | 0.67 | - | - | 3.1B | 0 | 6.7e+17 | 110 | 110 | x4.30 |
-| 2 | 1.00 | 1.67 | 0.33 | 0.01 | 0.67 | 0.41 | 8.2B | 13 | 8.6e+18 | 159 (5) | 269 | x9.07 |
-| 3 | 1.67 | 2.00 | 0.33 | 0.00 | 0.33 | 0.05 | 8.2B | 13 | 1.6e+19 | 104 | 373 | x12.19 |
-| 4 | 2.00 | 2.33 | 0.33 | 0.00 | 0.33 | 0.04 | 8.2B | 13 | 2.4e+19 | 92 | 465 | x14.95 |
-| 5 | 2.33 | 2.67 | 0.33 | 0.00 | 0.33 | 0.03 | 8.2B | 13 | 3.1e+19 | 81 | 546 | x17.38 |
-| 6 | 2.67 | 3.33 (done) | 0.33 | 0.00 | 0.33 | 0.02 | 8.2B | 13 | 9.0e+19 | - | 546 | x17.38 |
+| 1 | 0.00 | 1.00 | 1.00 | 0.67 | - | - | 1.7B | 0 | 6.5e+17 | 108 | 108 | x4.24 |
+| 2 | 1.00 | 1.67 | 0.33 | 0.01 | 0.67 | 0.43 | 8.2B | 13 | 8.3e+18 | 158 (5) | 266 | x8.98 |
+| 3 | 1.67 | 2.00 | 0.33 | 0.00 | 0.33 | 0.05 | 8.2B | 13 | 1.4e+19 | 98 | 364 | x11.92 |
+| 4 | 2.00 | 2.33 | 0.33 | 0.00 | 0.33 | 0.04 | 8.2B | 13 | 2.3e+19 | 92 | 456 | x14.68 |
+| 5 | 2.33 | 2.67 | 0.33 | 0.00 | 0.33 | 0.03 | 8.2B | 13 | 3.0e+19 | 81 | 537 | x17.11 |
+| 6 | 2.67 | 3.33 (done) | 0.33 | 0.00 | 0.33 | 0.02 | 8.2B | 13 | 8.8e+19 | - | 537 | x17.11 |
 
-Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career. The stacker now wins the world in its first career (day 3.0, no Exit), and the one-of-each player in the 3rd on day 4.0.
+Long weekend only matters where the 8 hour cap binds: for a once-a-day player (`npm run pace -- exit 1 30 2`) it lifts the cap to 12 hours from the second career. The stacker now wins the world in its first career (day 3.0, no Exit), and the one-of-each player in the 3rd on day 5.0.
 
-The one-of-each player's run is shorter: one Exit on day 1.0 (6.5B users, 109 Prestige), then the world is won in career 2, done on day 1.67 (so no night owl ending bonus is paid).
+The one-of-each player's run is shorter: one Exit on day 1.0 (6.5B users, 108 Prestige), then the world is won in career 2, done on day 1.67 (so no night owl ending bonus is paid).
 
 Against the targets for the Regular player (all stale after the tail cut; the old results are kept for the record, and `pace.test.ts` now pins the model's own output):
 
