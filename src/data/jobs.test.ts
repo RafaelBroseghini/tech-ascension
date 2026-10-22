@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { jobArtId } from "./art.ts"
 import { emojiIdleUrl } from "./emojiAssets.ts"
 import { firstJobAtRank, highestJobRank, JOB_TIERS, jobRank, visibleJobs } from "./phases.ts"
+import { isLeadId, LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP, leadById } from "./leadership.ts"
 import { isSpecId, SPEC_ID_BASE, SPECIALIZATIONS, specById, TRACK_FIRST_RANK, TRACK_LAST_RANK, TRUNK_TOP_RANK } from "./specializations.ts"
 import type { SpecId } from "./specializations.ts"
 import { isTag } from "./tags.ts"
@@ -23,8 +24,10 @@ describe("job ranks", () => {
 
   it("never lowers a rank down the trunk, the shared rows or any one track", () => {
     for (const spec of SPECIALIZATIONS) {
-      const rows = visibleJobs(spec.id)
-      for (let i = 1; i < rows.length; i++) expect(rows[i]!.rank).toBeGreaterThanOrEqual(rows[i - 1]!.rank)
+      for (const lead of [null, ...LEADERSHIP.map((row) => row.id)]) {
+        const rows = visibleJobs(spec.id, lead)
+        for (let i = 1; i < rows.length; i++) expect(rows[i]!.rank).toBeGreaterThanOrEqual(rows[i - 1]!.rank)
+      }
     }
   })
 
@@ -132,20 +135,83 @@ describe("specializations", () => {
 })
 
 describe("visible jobs", () => {
-  it("shows the trunk, the career's track and the shared rows, in rank order", () => {
+  it("shows the trunk, the career's track, its line and the shared rows, in rank order", () => {
     for (const spec of SPECIALIZATIONS) {
-      const rows = visibleJobs(spec.id)
-      expect(rows).toHaveLength(31)
-      expect(rows.map((job) => job.rank)).toEqual(Array.from({ length: 31 }, (_, index) => index + 1))
-      for (const job of rows) expect(job.spec === undefined || job.spec === spec.id).toBe(true)
+      for (const lead of LEADERSHIP) {
+        const rows = visibleJobs(spec.id, lead.id)
+        expect(rows).toHaveLength(lead.id === "ic" ? 27 : 26)
+        expect(new Set(rows.map((job) => job.rank)).size).toBe(rows.length)
+        for (const job of rows) {
+          expect(job.spec === undefined || job.spec === spec.id).toBe(true)
+          expect(job.lead === undefined || job.lead === lead.id).toBe(true)
+        }
+      }
     }
-    expect(visibleJobs("backend").map((job) => job.id)).toEqual(Array.from({ length: 31 }, (_, index) => index + 1))
-    expect(visibleJobs("frontend").filter((job) => job.spec).map((job) => job.id)).toEqual([108, 109, 110, 111, 112, 113, 114, 115])
+    expect(visibleJobs("backend", "ic").map((job) => job.id)).toEqual([...Array.from({ length: 15 }, (_, index) => index + 1), 16, 17, 19, 23, 24, 25, 26, 27, 28, 29, 30, 31])
+    expect(visibleJobs("backend", "manager").map((job) => job.id)).toEqual([...Array.from({ length: 15 }, (_, index) => index + 1), 18, 20, 21, 22, 25, 26, 27, 28, 29, 30, 31])
+    expect(visibleJobs("frontend", "ic").filter((job) => job.spec).map((job) => job.id)).toEqual([108, 109, 110, 111, 112, 113, 114, 115])
   })
 
   it("shows only the trunk and the shared rows before a pick", () => {
     const rows = visibleJobs(null)
-    expect(rows.map((job) => job.rank)).toEqual([...Array.from({ length: TRUNK_TOP_RANK }, (_, index) => index + 1), ...Array.from({ length: 16 }, (_, index) => index + 16)])
-    expect(rows.every((job) => job.spec === undefined)).toBe(true)
+    expect(rows.map((job) => job.rank)).toEqual([...Array.from({ length: TRUNK_TOP_RANK }, (_, index) => index + 1), ...Array.from({ length: 7 }, (_, index) => index + 25)])
+    expect(rows.every((job) => job.spec === undefined && job.lead === undefined)).toBe(true)
+  })
+
+  it("hides the line rows until a line is picked, whatever the specialization", () => {
+    const noLine = visibleJobs("infra")
+    expect(noLine.some((job) => job.lead !== undefined)).toBe(false)
+    expect(noLine.filter((job) => job.spec !== undefined)).toHaveLength(8)
+    expect(visibleJobs("infra", null)).toBe(noLine)
+  })
+
+  it("keeps one cached list per specialization and line", () => {
+    expect(visibleJobs("ai", "manager")).toBe(visibleJobs("ai", "manager"))
+    expect(visibleJobs("ai", "manager")).not.toBe(visibleJobs("ai", "ic"))
+  })
+})
+
+describe("leadership", () => {
+  it("lists the two lines, each with a name, a blurb and its ending", () => {
+    expect(LEADERSHIP.map((row) => row.id)).toEqual(["ic", "manager"])
+    expect(LEADERSHIP.map((row) => row.ending)).toEqual(["nightOwl", "sponsor"])
+    for (const row of LEADERSHIP) {
+      expect(row.name.length).toBeGreaterThan(0)
+      expect(row.blurb.length).toBeGreaterThan(0)
+      expect(leadById(row.id)).toBe(row)
+      expect(isLeadId(row.id)).toBe(true)
+    }
+    expect(new Set(LEADERSHIP.map((row) => row.name)).size).toBe(2)
+    expect(isLeadId("founder")).toBe(false)
+    expect(isLeadId(null)).toBe(false)
+  })
+
+  it("opens at Senior and covers every row above the specialization tracks", () => {
+    expect(LEAD_OPEN_RANK).toBe(14)
+    expect(LEAD_NEEDED_ABOVE_RANK).toBe(TRACK_LAST_RANK)
+    expect(firstJobAtRank(LEAD_OPEN_RANK)?.name).toBe("Senior SWE")
+  })
+
+  it("tags rows 16 to 24 with a line, and leaves the trunk, the tracks and rows 25 to 31 shared", () => {
+    const ic = [16, 17, 19, 23, 24]
+    const manager = [18, 20, 21, 22]
+    expect(JOB_TIERS.filter((job) => job.lead === "ic").map((job) => job.id)).toEqual(ic)
+    expect(JOB_TIERS.filter((job) => job.lead === "manager").map((job) => job.id)).toEqual(manager)
+    for (const job of JOB_TIERS) {
+      if (job.lead !== undefined) {
+        expect(job.rank).toBeGreaterThan(LEAD_NEEDED_ABOVE_RANK)
+        expect(job.rank).toBeLessThanOrEqual(24)
+        expect(job.spec).toBeUndefined()
+      }
+      if (job.rank <= LEAD_NEEDED_ABOVE_RANK || job.rank >= 25) expect(job.lead).toBeUndefined()
+    }
+  })
+
+  it("keeps ids and ranks as they were, so old saves mean the same thing", () => {
+    for (const id of [...Array.from({ length: 16 }, (_, index) => index + 16)]) expect(jobRank(id)).toBe(id)
+    expect(firstJobAtRank(18)?.name).toBe("Engineering manager")
+    expect(firstJobAtRank(20)?.name).toBe("Director of Eng")
+    expect(firstJobAtRank(21)?.name).toBe("VP Engineering")
+    expect(firstJobAtRank(22)?.name).toBe("CTO (startup)")
   })
 })
