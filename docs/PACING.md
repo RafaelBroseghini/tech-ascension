@@ -89,6 +89,28 @@ Career gates (one visit is 0.25 days): users against the job each gate sits on, 
 | IC line | growth for each IC row held (five rows) | +3 each, scaled like the team, not counted as the team |
 
 The IC bonus is sized against `hireBonusOf`: a kind of hire at 100 heads adds about 3.5 to 5, so five IC rows (+15) are worth a mid-sized team with no payroll, and a Manager's team passes it with a few hundred heads. The pace model has no hires, so it can only say how the IC and the specializations move the default career: the default (Backend, IC) now wins the world on day 1.04 (stacker) and 1.26 (one-of-each) at 4 visits of 5 minutes, against 1.37 and 1.39 before, with everything owned on day 1.00. The win is no longer the finish for the stacker.
+## Pace by build
+
+`npm run pace -- builds [visits minutes clicks]` plays every specialization on each leadership line. The Manager now has hires in the model (`HIRE_CASH_SHARE`, `HIRE_PAYROLL_SHARE` in `src/game/pace.ts`): it hires the cheapest open kind (the ranks the line has reached open the kinds, `hireLocked`) whenever the copy costs at most 5% of its cash and the payroll with that head stays within 25% of what the product's served users pay. Salaries come out of the balance, and the team's growth is the game's own (`hireBonusOf`). That policy is an assumption; it is not tuned. Cells read "owns everything / wins the world" in days.
+
+The target player (4 visits of 5 minutes) cannot tell builds apart: visits are a quarter day apart, so every cell lands on 1.00 or 1.25. The player who leaves it open (24 visits a day of 15 minutes, 2 clicks a second) has an hour of resolution:
+
+| Specialization | Style | IC, one-of-each | IC, stacker | Manager, one-of-each | Manager, stacker |
+| --- | --- | --- | --- | --- | --- |
+| Frontend | click | 0.42 / 0.13 | 0.63 / 0.11 | 0.46 / 0.27 | 0.67 / 0.26 |
+| Backend / Platform | balanced | 0.42 / 0.17 | 0.63 / 0.16 | 0.59 / 0.59 | 0.71 / 0.56 |
+| Infra / SRE | idle | 0.42 / 0.17 | 0.63 / 0.15 | 0.46 / 0.22 | 0.67 / 0.21 |
+| AI engineer | idle | 0.42 / 0.17 | 0.63 / 0.15 | 0.46 / 0.21 | 0.67 / 0.21 |
+| Forward deployed engineer | click | 0.42 / 0.13 | 0.63 / 0.11 | 0.46 / 0.30 | 0.67 / 0.30 |
+| Security | balanced | 0.42 / 0.17 | 0.63 / 0.15 | 0.51 / 0.51 | 0.71 / 0.48 |
+
+What it says:
+
+- **The shop is the finish for an IC.** The win comes at 0.11 to 0.17 days, long before everything is owned (0.42 and 0.63), so no specialization's growth factor changes an IC's finish. The specializations only differ in when the world is won.
+- **A Manager is slower than an IC, most of all on Backend and Security.** The one-of-each Manager finishes at 0.46 to 0.59 against the IC's 0.42 (up to 40% later); the stacker at 0.67 to 0.71 against 0.63 (up to 13%). For Backend, Security and (a little) FDE the win is the finish: the team's growth is slower than the IC's +15. `pace.test.ts` pins that the two lines stay within a day of each other. This is the gap to close if the Manager should be a peer; raising the payroll share does not close it (at 0.5 and 1 the Manager finishes later, because the salaries cost more than the team earns back), so the lever is the hires' growth or salaries, or something the Manager gets that the IC does not.
+- **Click builds win the world first.** Frontend and FDE win at 0.11 to 0.13 days against 0.15 to 0.17 for the rest (an IC), and 0.21 to 0.30 for the Manager lines that are not Backend or Security. Their clicks pay 2.5 times idle, which buys gear sooner. Infra and AI (idle) sit with Backend as an IC.
+- **The click and idle numbers have pace data now, but not a tuned target.** A click build's full multiple is near 4.2 (not 5) with the rows a line holds.
+- **Not modeled:** incidents (so Security's incident factor and Infra's drop factor are inert here, as is FDE's seed factor on the single home region), the kitchen's combos, and Frontend's and AI's mechanics (they have none yet).
 
 ## Over several careers (the Exit)
 

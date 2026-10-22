@@ -3,6 +3,7 @@
 //
 //   npm run pace                          the table in the docs
 //   npm run pace -- 3 15 2                one profile: visits per day, minutes per visit, clicks per second
+//   npm run pace -- builds [4 5 2]       every specialization on each leadership line: the day it owns everything and wins
 //   npm run pace -- exit [3 15 2] [falling]   the same player over several careers, leaving through the Exit
 //                                         (docs/PRESTIGE.md); "falling" leaves when Prestige per hour starts to fall
 //
@@ -10,9 +11,12 @@
 import { CAPITAL } from "../src/data/capital.ts"
 import { ENDING_BONUS, PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
 import { GEAR } from "../src/data/gear.ts"
+import { LEADERSHIP } from "../src/data/leadership.ts"
+import { SPECIALIZATIONS } from "../src/data/specializations.ts"
 import { visibleJobs } from "../src/data/phases.ts"
 import {
   cadenceOf,
+  HIRE_CASH_SHARE,
   DEFAULT_PACE_LEAD,
   DEFAULT_PACE_SPEC,
   PACE_MILESTONES,
@@ -91,6 +95,28 @@ function printExits(profile, exitRule) {
       console.log(`| ${r.run} | ${r.startDay.toFixed(2)} | ${out} | ${at(r.exitOpenDays)} | ${at(r.row6Days)} | ${at(r.catchUpDays)} | ${at(r.winDays)} | ${users(r.users)} | ${r.perks} | ${r.earned.toExponential(1)} | ${paid} | ${r.prestigeTotal} | x${r.mult.toFixed(2)} |`)
     }
   }
+}
+
+if (process.argv[2] === "builds") {
+  const nums = process.argv.slice(3, 6).map(Number)
+  const given = nums.length === 3 && nums.every((n) => Number.isFinite(n) && n > 0)
+  const profile = given ? { visitsPerDay: nums[0], minutesPerVisit: nums[1], clicksPerSec: nums[2] } : { visitsPerDay: 4, minutesPerVisit: 5, clicksPerSec: 2 }
+  console.log(`Builds: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s. Each cell: owns everything / wins the world, in days (the finish is the later). A Manager hires when a kind costs at most ${HIRE_CASH_SHARE * 100}% of its cash.`)
+  console.log("")
+  console.log("| Specialization | Style | " + LEADERSHIP.flatMap((l) => PLAYERS.map((p) => `${l.id} ${p.name}`)).join(" | ") + " |")
+  console.log("| --- | --- | " + LEADERSHIP.flatMap((l) => PLAYERS.map(() => "---")).join(" | ") + " |")
+  for (const spec of SPECIALIZATIONS) {
+    const cells = LEADERSHIP.flatMap((lead) =>
+      PLAYERS.map((player) => {
+        const run = simulatePace(profile, { maxDays: 60, paybackSeconds: player.paybackSeconds, specialization: spec.id, leadership: lead.id })
+        const owned = run.ownedDays === null ? "never" : run.ownedDays.toFixed(2)
+        const won = run.milestones.won === undefined ? "never" : run.milestones.won.toFixed(2)
+        return `${owned} / ${won}`
+      }),
+    )
+    console.log(`| ${spec.name} | ${spec.style} | ${cells.join(" | ")} |`)
+  }
+  process.exit(0)
 }
 
 if (process.argv[2] === "exit") {
