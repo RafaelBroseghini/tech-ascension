@@ -1,4 +1,5 @@
-import { ArrowDown, BriefcaseBusiness, Check, ChevronRight, Circle, Lock, MousePointerClick, Trophy } from "lucide-react"
+import { Activity, ArrowDown, Bot, BriefcaseBusiness, Check, ChevronRight, Circle, Handshake, Lock, Monitor, MousePointerClick, Server, ShieldCheck, Trophy } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties, ReactNode } from "react"
@@ -9,7 +10,9 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
-import { heldRank, needsPick } from "../game/build.ts"
+import { heldRank, needsPick, pickOpen, specOptions } from "../game/build.ts"
+import { isSpecId, SPECIALIZATIONS, specById } from "../data/specializations.ts"
+import type { SpecId, SpecStyle } from "../data/specializations.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
 import type { GoldSkill } from "../data/gold.ts"
@@ -191,6 +194,155 @@ function LockPanel({ title, lines, either }: { title: string; lines: Requirement
   )
 }
 
+const SPEC_ICON: Record<SpecId, LucideIcon> = {
+  frontend: Monitor,
+  backend: Server,
+  infra: Activity,
+  ai: Bot,
+  fde: Handshake,
+  security: ShieldCheck,
+}
+
+const STYLE_LABEL: Record<SpecStyle, string> = { click: "Click", idle: "Idle", balanced: "Balanced" }
+const STYLE_HINT: Record<SpecStyle, string> = {
+  click: "Your clicks pay the most.",
+  idle: "Pays the most while you are away.",
+  balanced: "Clicks and idle pay the plain ladder.",
+}
+
+function SpecArt({ id }: { id: SpecId }) {
+  const Icon = SPEC_ICON[id]
+  return (
+    <span className="spec-art" role="img" aria-label={specById(id).name}>
+      <Icon size={34} strokeWidth={2.2} aria-hidden />
+    </span>
+  )
+}
+
+function StyleChip({ style }: { style: SpecStyle }) {
+  return (
+    <span className={`spec-chip is-${style}`} data-testid="spec-chip" title={STYLE_HINT[style]}>
+      {STYLE_LABEL[style]}
+    </span>
+  )
+}
+
+/** One specialization as a shop row: its name, a chip for how it earns, a line about it, and the button that takes it. */
+function SpecRow({ id, glow, index, action, label, note }: { id: SpecId; glow: string; index: number; action: () => void; label: string; note?: string }) {
+  const spec = specById(id)
+  return (
+    <Offer
+      kind="job"
+      id={0}
+      rowKey={`spec:${id}`}
+      glow={glow}
+      index={index}
+      afford
+      title={spec.name}
+      art={<SpecArt id={id} />}
+      actions={
+        <button type="button" onClick={action} aria-label={`${label} ${spec.name}`}>
+          {label}
+        </button>
+      }
+    >
+      <StyleChip style={spec.style} /> {note ?? spec.blurb}
+    </Offer>
+  )
+}
+
+/** The pick: opens at Mid-level SWE, made once. Every job above Mid-level waits behind it. */
+function SpecPick({ glow }: { glow: string }) {
+  const pick = useGame((s) => s.pickSpecialization)
+  return (
+    <>
+      <h3 className="shop-section">Pick a specialization</h3>
+      {SPECIALIZATIONS.map((spec, index) => (
+        <SpecRow key={spec.id} id={spec.id} glow={glow} index={index} label="Pick" action={() => pick(spec.id)} />
+      ))}
+    </>
+  )
+}
+
+/** After the pick: one row naming the specialization and, once per career, a switch with a confirm step that says what it keeps and drops. */
+function SpecSwitch({ spec, switched, glow }: { spec: SpecId; switched: boolean; glow: string }) {
+  const switchTo = useGame((s) => s.switchSpecialization)
+  const [step, setStep] = useState<{ kind: "closed" } | { kind: "choose" } | { kind: "confirm"; to: SpecId }>({ kind: "closed" })
+  const here = specById(spec)
+  const options = specOptions({ jobs: [], build: { spec, switched } })
+  const closed = () => setStep({ kind: "closed" })
+
+  if (step.kind === "choose") {
+    return (
+      <>
+        <h3 className="shop-section">Switch to</h3>
+        {options.map((id, index) => (
+          <SpecRow key={id} id={id} glow={glow} index={index} label="Choose" action={() => setStep({ kind: "confirm", to: id })} />
+        ))}
+        <article className="offer spec-switch" data-row="spec:switch-cancel" style={{ ["--offer-glow" as string]: glow }}>
+          <div className="offer-copy spec-switch-copy">
+            <p>Keep {here.name}.</p>
+          </div>
+          <div className="offer-actions">
+            <button type="button" className="ghost" onClick={closed}>
+              Cancel
+            </button>
+          </div>
+        </article>
+      </>
+    )
+  }
+
+  if (step.kind === "confirm") {
+    const target = specById(step.to)
+    return (
+      <article className="offer spec-switch afford" data-row="spec:switch-confirm" style={{ ["--offer-glow" as string]: glow }} role="group" aria-label="Confirm switch">
+        <div className="offer-art-col">
+          <SpecArt id={step.to} />
+        </div>
+        <div className="offer-copy spec-switch-copy">
+          <h3>Switch to {target.name}?</h3>
+          <p>
+            You can do this once a career. It keeps your money, gear and trunk jobs (and any shared senior jobs). It drops your {here.name} jobs, and you start again at the first {target.name} job.
+          </p>
+        </div>
+        <div className="offer-actions">
+          <button
+            type="button"
+            onClick={() => {
+              if (switchTo(step.to)) closed()
+            }}
+          >
+            Confirm
+          </button>
+          <button type="button" className="ghost" onClick={() => setStep({ kind: "choose" })}>
+            Back
+          </button>
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <article className="offer spec-switch" data-row="spec:current" style={{ ["--offer-glow" as string]: glow }}>
+      <div className="offer-art-col">
+        <SpecArt id={spec} />
+      </div>
+      <div className="offer-copy spec-switch-copy">
+        <h3>{here.name}</h3>
+        <p>
+          <StyleChip style={here.style} /> {switched ? "You have used your switch." : "One switch a career."}
+        </p>
+      </div>
+      <div className="offer-actions">
+        <button type="button" className="ghost" disabled={switched} onClick={() => setStep({ kind: "choose" })}>
+          Switch specialization
+        </button>
+      </div>
+    </article>
+  )
+}
+
 export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; docked: boolean; onDock: (docked: boolean) => void }) {
   const money = useGame((s) => s.money)
   const xp = useGame((s) => s.xp)
@@ -308,7 +460,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length : tab === "G" ? equipRows.length : capitalRows.length
+    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   useShopRows(listRef, narrow && tab !== "W", rowScope)
   // The phone sheet's expanded height in px, or null at three rows. Another tab, a dock or a new screen size starts over at three rows.
@@ -406,7 +558,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
       (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
         visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold }) && nextInFamily(gold, row)))) ||
     (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-    (id === "C" && jobRows.some((job) => jobState(gates, job) === "ready")) ||
+    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build }))) ||
     (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank))) ||
     (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0))
 
@@ -722,6 +874,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                 </Offer>
               )
             })}
+            {pickOpen({ jobs, build }) ? <SpecPick glow={tabGlow} /> : null}
+            {build.spec !== null && isSpecId(build.spec) ? <SpecSwitch spec={build.spec} switched={build.switched} glow={tabGlow} /> : null}
             </>
           ) : (
             <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />

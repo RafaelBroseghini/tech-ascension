@@ -3663,6 +3663,42 @@ img { -webkit-user-drag: none; user-select: none; }
 .offer.afford .gold-art { transform: translateY(-2px); }
 .offer.is-locked .gold-art { filter: grayscale(0.6); opacity: 0.7; }
 
+/* ---------- specializations: the pick rows and the switch row in the Jobs tab ---------- */
+
+.spec-art {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: var(--stroke) solid var(--ink);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--a, var(--accent)) 22%, var(--surface-1));
+  color: var(--a, var(--accent));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, white 14%, transparent), 0 3px 0 var(--ink);
+}
+
+.spec-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+.spec-chip.is-click { color: var(--ide-peach); background: color-mix(in srgb, var(--ide-peach) 14%, transparent); }
+.spec-chip.is-idle { color: var(--ide-sky); background: color-mix(in srgb, var(--ide-sky) 14%, transparent); }
+.spec-chip.is-balanced { color: var(--ide-green); background: color-mix(in srgb, var(--ide-green) 14%, transparent); }
+
+/* The switch row sits at the foot of the list; its copy may run long, so it keeps the room the buttons leave. */
+.offer.spec-switch .spec-switch-copy p { white-space: normal; }
+.offer.spec-switch:not(.afford) { grid-template-columns: var(--art) minmax(0, 1fr) auto; }
+.offer.spec-switch .spec-switch-copy:first-child { grid-column: 1 / 3; }
+
 .gold-family {
   color: var(--boost-gold);
   font-weight: 700;
