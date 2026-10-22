@@ -55,6 +55,10 @@ export function isSpecId(value: unknown): value is SpecId {
   return typeof value === "string" && BY_ID.has(value as SpecId)
 }
 
+/** Users the product needs before the specialization pick opens, and before the Senior job can be taken (docs/BUILDS.md). */
+export const PICK_USERS = 10_000
+export const SENIOR_USERS = 1_000_000
+
 /** The last rank every career shares. A job of this rank opens the pick. */
 export const TRUNK_TOP_RANK = 7
 /** The ranks a specialization has its own rows for. */

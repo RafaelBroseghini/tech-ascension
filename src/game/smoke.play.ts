@@ -183,8 +183,13 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   // Every job above Mid-level SWE needs a specialization, and the pick opens at Mid-level SWE.
   expect(game.buyJob(senior.id)).toBe(false)
   expect(game.buyJob(7)).toBe(true)
+  // The pick waits on 10,000 users and Senior SWE on 1,000,000.
+  expect(game.pickSpecialization("backend")).toBe(false)
+  game.setUsers("americas-east", 10_000)
   expect(game.pickSpecialization("backend")).toBe(true)
   game.setXp(senior.xpReq)
+  expect(game.buyJob(senior.id)).toBe(false)
+  game.setUsers("americas-east", 1_000_000)
   expect(game.buyJob(senior.id)).toBe(true)
   const d = game.getState()
   expect(d.unlocks.capital).toBe(true)
@@ -207,6 +212,10 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(game.buyJob(7)).toBe(true)
   for (const id of [8, 14, 16, 108]) expect(game.buyJob(id), `job ${id} before the pick`).toBe(false)
   expect(game.getState().unlocks.capital).toBe(false)
+  // Mid-level SWE is held, but the pick also waits on 10,000 users; the Jobs panel says so.
+  expect(game.getState().build.options).toEqual([])
+  expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "spec:users", tab: "C" })
+  game.setUsers("americas-east", 10_000)
   // The Jobs panel names the pick (the whole-game answer is still a skill while skills are unbought).
   expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "spec:pick", name: "Pick a specialization", tab: "C" })
   expect(game.getState().build.options).toHaveLength(6)
@@ -218,7 +227,8 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "spec:backend")).toBe(true)
   for (const id of [108, 208, 308, 408, 508]) expect(game.buyJob(id), `job ${id} on another track`).toBe(false)
 
-  // Past Senior: capital is open, and the one switch keeps it open.
+  // Past Senior: capital is open, and the one switch keeps it open. Senior waits on 1,000,000 users.
+  game.setUsers("americas-east", 1_000_000)
   for (let id = 8; id <= 14; id++) expect(game.buyJob(id), `job ${id}`).toBe(true)
   expect(game.getState().unlocks.capital).toBe(true)
   game.setMoney(5_000)
@@ -250,6 +260,7 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
 test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring is the Manager's, and the ending follows the line", () => {
   game.reset()
   game.keepProfile()
+  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
@@ -279,6 +290,7 @@ test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring i
   // A Manager hires from Engineering manager (rank 18), and each kind opens at its rank.
   game.reset()
   game.keepProfile()
+  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
@@ -309,6 +321,7 @@ test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring i
   for (const [lead, ending] of [["manager", "sponsor"], ["ic", "nightOwl"]] as const) {
     game.reset()
     game.keepProfile()
+    game.setUsers("americas-east", 2_000_000)
     game.setXp(1e9)
     for (let id = 1; id <= 6; id++) game.forceGig(id)
     for (let id = 1; id <= 7; id++) game.buyJob(id)
@@ -758,6 +771,9 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
   expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Eight billion users" })
 
   // What an incident costs is what the harness says: minutes of everything earned, the product's revenue and the win's multiplier in.
+  // The hours just ticked rolled real incidents (three live is the cap and refuses another): pay them off first.
+  game.setMoney(1e15)
+  for (const incident of game.getState().world.incidents) game.respondIncident(incident.id)
   expect(game.forceIncident("block")).toBe(true)
   game.setMoney(5e12)
   const open = game.getState().world.incidents.at(-1)!
@@ -771,6 +787,7 @@ test("the world: users per region, gear as the throttle, incidents, and the win"
 test("the world while away: the win is journaled and paid when it happens offline", () => {
   game.reset()
   game.keepProfile()
+  game.setUsers("americas-east", 2_000_000)
   game.forceGig(1)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
@@ -795,6 +812,7 @@ test("the world while away: the win is journaled and paid when it happens offlin
 test("prestige: selling the product pays Prestige, restarts the career and the product, keeps the Legacy, and perks start the next one", () => {
   game.reset()
   game.keepProfile()
+  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   expect(game.buyJob(1)).toBe(true)

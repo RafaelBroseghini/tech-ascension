@@ -76,7 +76,9 @@ for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job 
 game.buyJob(1) // free internship (needs 35K XP), salary $/s
 game.setXp(1e7) // enough spendable XP for the rest of the ladder
 for (let id = 2; id <= 7; id++) game.buyJob(id) // the trunk; Mid-level SWE (id 7) opens the pick
+game.setUsers("americas-east", 10_000) // the pick opens at 10,000 users (the product has none yet)
 game.pickSpecialization("backend") // every job above rank 7 needs a pick; Backend keeps ids 8-15
+game.setUsers("americas-east", 1_000_000) // Senior SWE needs 1,000,000 users
 for (let id = 8; id <= 14; id++) game.buyJob(id) // job 14 is Senior SWE: capital opens with no cash (holding $500,000 opens it too)
 game.buyJob(15) // the rest of the track
 game.pickLeadership("ic") // every job above rank 15 needs a line: "ic" (16, 17, 19, 23, 24) or "manager" (18, 20, 21, 22); 25-31 are shared

@@ -90,8 +90,8 @@ getState(): {
 click(): { money: number; xp: number }
 buy(tierId: number, amount?: 1 | 5 | 10 | "max"): boolean   // phase D capital row (ids 1-25)
 buySkill(skillId: number, amount?: 1 | 5 | 10 | "max"): boolean
-buyJob(jobId: number): boolean      // a job's lifetime XP and price gate it; every job above rank 7 also needs a pick, and a track row needs its own; every job above rank 15 needs a leadership line, and the line's own rows
-pickSpecialization(id: string): boolean   // opens once a job of rank 7 (Mid-level SWE) is held; once per career. False before that, once picked, or for an unknown id
+buyJob(jobId: number): boolean      // a job's lifetime XP and price gate it; Senior SWE (rank 14) also needs 1,000,000 users until a job of that rank has been held; every job above rank 7 also needs a pick, and a track row needs its own; every job above rank 15 needs a leadership line, and the line's own rows
+pickSpecialization(id: string): boolean   // opens once a job of rank 7 (Mid-level SWE) is held and the product has 10,000 users; once per career. False before that, once picked, or for an unknown id
 pickLeadership(id: string): boolean       // "ic" or "manager": opens once a job of rank 14 (Senior SWE) is held; once per career, locked. False before that, once picked, or for an unknown id
 switchSpecialization(id: string): boolean // the one switch: keeps money, gear and the trunk jobs, drops the old track's jobs. False without a pick, after the switch, or to the same one
 buyEquipment(equipId: number, amount?: 1 | 5 | 10 | "max"): boolean   // a Gear tab row

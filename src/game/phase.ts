@@ -5,7 +5,9 @@ import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, firstJobAtRank, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { heldRank, leadOf, needsLead, needsPick, rowVisible, specOf } from "./build.ts"
+import { heldRank, leadOf, needsLead, needsPick, rowVisible, seniorUsersShort, specOf } from "./build.ts"
+import type { HasCompany } from "./build.ts"
+import { LEAD_OPEN_RANK } from "../data/leadership.ts"
 import { formatNumber } from "./format.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
@@ -25,7 +27,7 @@ export const PHASE_NAME: Record<Phase, string> = {
   D: "Capital",
 }
 
-export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs"> & Partial<Pick<Progress, "build">>
+export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs"> & Partial<Pick<Progress, "build">> & HasCompany
 
 /**
  * Gates latch: each one also opens when the player already holds what it leads to (a gig done,
@@ -93,7 +95,7 @@ export function gigState(p: Gates, gig: Gig): GigState {
  * "hidden" is another track's or the other line's row, which this career never sees; "pick" is a row above the trunk
  * before a specialization is picked; "lead" is a row above rank 15 before a leadership line is picked.
  */
-export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "ready"
+export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "users" | "ready"
 
 export function jobState(p: Gates, job: JobTier): JobState {
   if (p.jobs.includes(job.id)) return "owned"
@@ -102,6 +104,7 @@ export function jobState(p: Gates, job: JobTier): JobState {
   if (needsPick(job) && specOf(p) === null) return "pick"
   if (needsLead(job) && leadOf(p) === null) return "lead"
   if (p.xpTotal < job.xpReq) return "locked"
+  if (job.rank === LEAD_OPEN_RANK && seniorUsersShort({ jobs: p.jobs, build: p.build, company: p.company }) > 0) return "users"
   return "ready"
 }
 
