@@ -29,7 +29,8 @@ CI (`.github/workflows/ci.yml`) runs lint, test, smoke and build on every PR and
 Drive state and mechanics through `window.__GAME__`. Never scrape buttons or guess DOM selectors for game logic. It is installed in dev and in `vite preview`, and `smoke:play` loads the same harness. Source of truth: `src/game/harness.ts`; full reference: `docs/HARNESS.md`.
 
 - Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, world, founder, legacy, features, ...).
-- Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`.
+- Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`, `pickSpecialization`, `switchSpecialization`.
+- Every job above rank 7 (Mid-level SWE, id 7) needs a picked specialization: buy job 7, `pickSpecialization("backend")`, then jobs 8 and up. Backend keeps ids 8-15 (`buyJob(14)` is Senior SWE); the other tracks are 108-115, 208-215, 308-315, 408-415, 508-515 (`docs/HARNESS.md`).
 - Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `forceIncident`, `setUsers`, `setPrestige`, `previewEra`.
 - Answer prompts: `acceptEvent`, `dismissEvent`, `answerReview`, `dismissReview`, `keepProfile`.
 - Company and prestige: `respondIncident`, `hire`, `fire`, `setPopActive`, `setRegionActive`, `exit`, `buyLegacy`.

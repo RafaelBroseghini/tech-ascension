@@ -1,6 +1,6 @@
 # Builds: origins, specializations and the kitchen
 
-Status: draft from a design pass on 2026-10-20. Nothing is built. The calls still open are at the end.
+Status: draft from a design pass on 2026-10-20. Built so far: tags, the kitchen, the product in the pace model, job ranks and the specializations (step 4b, below). The calls still open are at the end.
 
 ## Why
 
@@ -155,6 +155,9 @@ Each step ships and checks on its own.
 2. **The kitchen** with the first combos. Additive, no balance risk, and the jokes ship early.
 3. **The product in the pace model**, so its growth can be tuned before anything depends on it. Done: `simulatePace` walks the product (IC player, no hires, home region, no incidents; no kitchen combos yet), the finish is the later of owning everything and the win, and 10k and 1M users land within a visit of Mid-level SWE and Senior SWE. The win is still on day 1.4 for the target player: the player buys serving gear for the crowd it has, and buying ahead of the crowd does not help while late capital rows win the money by day 0.75, so it is the same money as the capital tail (`docs/PACING.md`, "The product in the single run"), for step 8.
 4. **Specializations and leadership**: the job tree, the click or idle split, how each grows the product, hires moved into the Manager branch, the fork removed.
+   - **4a, done:** jobs carry a `rank` apart from their `id`, and every ladder gate reads the rank.
+   - **4b, done:** six specializations (`src/data/specializations.ts`, `src/game/build.ts`). The trunk is ranks 1-7, each specialization has its own eight rows for ranks 8-15 (Backend keeps ids 8-15, the others sit at 108-115, 208-215, 308-315, 408-415, 508-515, with the numbers of the backend row at their rank), and ranks 16-31 are shared. The pick opens at Mid-level SWE and every job above rank 7 needs it; the one switch keeps money, gear and the trunk and keeps what was open (`build.peakRank`); the save has an optional `build` block and an old save that holds a job above Mid-level loads as Backend. A click build's manual click pays 2.5 times the idle $/s per click (5 times at 2 clicks a second with every visible job held), hover and auto clicks do not get that; an idle build earns 1.25 times idle and half the click share. The Jobs tab has the pick rows and the switch row, `nextUnlock` has a "pick one" step, the harness has `pickSpecialization`, `switchSpecialization` and `getState().build`, and the pace model takes a `specialization` (default Backend). Walks over all jobs (`ownsEverything`, the next-unlock walk, pace, the job shop, admin) read `visibleJobs`.
+   - **Still open:** each specialization's effect on how the product grows (the "product becomes" column above), leadership (IC and Manager after Senior), hires moved into the Manager branch, the fork removed, the 10,000 and 1,000,000 user gates on the pick and on Senior, a pace sim and tuning per specialization (the click and idle numbers have no pace data yet), and events and 1:1s that speak to a specialization.
 5. **Capital as company moves** that open regions, and the gates that read users.
 6. **The tagged gig board.**
 7. **Origins** and the start card.

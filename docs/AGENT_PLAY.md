@@ -9,7 +9,7 @@ Vitest + happy-dom, all through `__GAME__`:
 1. **Phase A.** Click until the first skill is affordable. Clicks pay XP only, money and $/s stay 0, `buySkill` spends XP and keeps `xpTotal`, skills study while idle.
 2. **A to B.** `setXp` and buy Portfolio and React: the Gig Board opens (not before both), `completeGig` is gated, the first clear pays the lump (clicks stay XP-only until a job), `lastPop` is large.
 3. **B.** The first retainer gig is the first `$/s`.
-4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash.
+4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash, after Mid-level SWE (id 7) and a `pickSpecialization`.
    **Gear.** Gear and `buyEquipment` stay shut until 10,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
 5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
@@ -18,7 +18,8 @@ Vitest + happy-dom, all through `__GAME__`:
 9. **Events and 1:1s.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, and a 1:1 waits for a job and its three replies pay, sit or bill you.
 10. **The world.** Users seed from gigs and grow per region while the gear serves them (a laptop alone settles near what it serves), a DDoS surge multiplies a region's demand, paying `cost` ends an incident and is refused when short, and eight billion users latch `won` once, pay the ×1.25 forever multiplier once, and write `world:won` to the journal; the game keeps ticking.
 11. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens Your company (logged and queued), the skills before Git + GitHug hygiene open nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return; the desk cat comes with the first job, not with time at the desk or a break.
-12. **Prestige.** The Exit is shut at the start; `setMoney` past the first Prestige opens it; `exit()` pays Prestige, and money, skills, gigs, jobs, capital, users, regions and hires are back to fresh, with a new product name and the handle kept; 10x dev skills survive; the multiplier is in `cps` and `xpPerClick`; `buyLegacy` enforces order and price, and `capital.offline` raises `offlineCapHours` by 4.
+12. **Specializations.** The pick is refused before Mid-level SWE and every job above rank 7 is refused without it; after it the other tracks are hidden and unbuyable, the switch works once, capital stays open after a switch past Senior, and a click build's manual click out-pays a hover or auto click.
+13. **Prestige.** The Exit is shut at the start; `setMoney` past the first Prestige opens it; `exit()` pays Prestige, and money, skills, gigs, jobs, capital, users, regions and hires are back to fresh, with a new product name and the handle kept; 10x dev skills survive; the multiplier is in `cps` and `xpPerClick`; `buyLegacy` enforces order and price, and `capital.offline` raises `offlineCapHours` by 4.
 
 ## Free play (`npm run play:agent`)
 
@@ -72,7 +73,10 @@ game.reset()
 game.setXp(200_000)
 for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job Board
 game.buyJob(1) // free internship (needs 35K XP), salary $/s
-game.buyJob(14) // 34,000 spendable XP: capital opens with no cash (holding $500,000 opens it too)
+game.setXp(1e7) // enough spendable XP for the rest of the ladder
+for (let id = 2; id <= 7; id++) game.buyJob(id) // the trunk; Mid-level SWE (id 7) opens the pick
+game.pickSpecialization("backend") // every job above rank 7 needs a pick; Backend keeps ids 8-15
+for (let id = 8; id <= 14; id++) game.buyJob(id) // job 14 is Senior SWE: capital opens with no cash (holding $500,000 opens it too)
 game.setMoney(85_000)
 game.buy(1) // $85,000 after the scale; buy(19) and up cost trillions
 ```

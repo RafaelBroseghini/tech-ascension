@@ -23,9 +23,10 @@
 | Boost rates by era | `src/data/boosts.ts` |
 | 10x dev skills, `gold` in the code (buy amounts, hover click rate, offline cap): table, then rules | `src/data/gold.ts`, `src/game/gold.ts` |
 | Hover click interval | `src/game/autoClick.ts` |
+| Specializations: the six, their job tracks and ids, the pick, the one switch, `heldRank`, the click and idle style factors, the save block's checks | `src/data/specializations.ts` (data), `src/data/phases.ts` (`visibleJobs`, track rows), `src/game/build.ts` (rules; the actions are in `src/game/store.ts`), the pick and switch rows in `src/components/Shop.tsx` (`SpecPick`, `SpecSwitch`) |
 | Cost, click power, idle, XP rates | `src/game/economy.ts` |
 | Gates, phase, shop tab order, stage | `src/game/phase.ts` |
-| Next banner target, per shop tab | `src/game/nextUnlock.ts` |
+| Next banner target, per shop tab (including the "pick a specialization" step) | `src/game/nextUnlock.ts` |
 | Number formatting (raw digits cutoff) | `src/game/format.ts` |
 | Save and offline credit | `src/game/save.ts` |
 | Prestige: the formula's constants, the perk table, the Hall of Fame list | `src/data/legacy.ts` (`PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `ENDING_BONUS`, `PERK`, `LEGACY_PERKS`, `HALL_OF_FAME`) |
