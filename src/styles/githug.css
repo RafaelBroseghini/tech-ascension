@@ -173,6 +173,28 @@
 .identity-dots i.is-on { opacity: 1; background: var(--ide-green); }
 .identity-reroll { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 
+/* The origin beat: three cards to pick from, the pick kept on screen until the first click. */
+.identity-origins { display: grid; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-2); text-align: left; }
+.identity-origin {
+  display: grid;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--ide-text) 6%, transparent);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.identity-origin:hover { background: color-mix(in srgb, var(--ide-green) 12%, transparent); }
+.identity-origin.is-on { border-color: var(--ide-green); background: color-mix(in srgb, var(--ide-green) 18%, transparent); }
+.identity-origin strong { font-family: var(--font-mono); font-size: var(--fs-md, 1rem); }
+.identity-origin span { font-size: var(--fs-sm, 0.9rem); }
+.identity-origin small { font-size: var(--fs-xs, 0.78rem); opacity: 0.85; }
+.identity-origin-up { color: var(--ide-green); }
+.identity-origin-cost { color: var(--accent-hi, var(--ide-text)); }
+.identity-origin-leans { opacity: 0.6; }
+
 @keyframes identity-in {
   from { opacity: 0.2; transform: translateY(6px) scale(0.96); }
 }

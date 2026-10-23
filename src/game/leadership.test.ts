@@ -498,7 +498,7 @@ describe("reset and the Exit", () => {
     toLine("manager")
     game.reset()
     expect(useGame.getState().build.leadership).toBeUndefined()
-    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
+    expect(game.getState().build).toEqual({ origin: null, specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
     expect(JSON.parse(readCareerText() ?? "{}").build).toBeUndefined()
   })
 
@@ -506,7 +506,7 @@ describe("reset and the Exit", () => {
     toLine("ic")
     game.setMoney(PRESTIGE_EARN_SCALE * 3)
     expect(game.exit()).toBeGreaterThan(0)
-    expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
+    expect(game.getState().build).toEqual({ origin: null, specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
     toSenior()
     expect(game.pickLeadership("manager")).toBe(true)
   })

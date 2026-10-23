@@ -8,7 +8,7 @@ You have a used laptop and an idea. The idea becomes a product. The product is y
 
 ## 1. First-run intro
 
-The start card (`IdentityPicker`) is the first modal. It is a short intro of three beats, with one card and a Next button, and no typing.
+The start card (`IdentityPicker`) is the first modal. It is a short intro of four beats (the handle, an origin, the product, the bet), with one card and a Next button, and no typing.
 
 1. **Who you are.** Your handle (`quiet-otter`), with Reroll. "High school. A used laptop. Big plans."
 2. **What you're building.** A product name drawn to match the handle (`Otterly`), with its own Reroll, and a small globe with one dot on it. "Every career here builds one product. Gigs and jobs pay for it. Its users are the score. The goal is eight billion."

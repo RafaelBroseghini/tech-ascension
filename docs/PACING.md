@@ -121,6 +121,18 @@ What it says:
 - **Launches and GPUs.** Frontend's launches bring its win to 0.10 days (0.13 before them), and the finish stays the shop's on both lines; at 4% of the crowd per launch the collector owned everything a visit later, because the extra users took money for serving gear, so the share is 3%. A launch that crossed a milestone between growth steps left the win unlatched (the career never finished): launches now stop a user short of each milestone. AI's GPU growth barely moves its row (win 0.14 against 0.16 for Backend), because GPU rows are serving gear the pace model buys for the crowd anyway; the AI build feels it when it neglects GPUs, not when it plays like the others.
 - **The click and idle numbers have pace data now, but not a tuned target.** A click build's full multiple is near 4.2 (not 5) with the rows a line holds.
 - **Not modeled:** incidents (so Security's incident factor and Infra's drop factor are inert here, as is FDE's seed factor on the single home region), the kitchen's combos, and incidents' effect on launches. Frontend's launches and AI's GPU growth are modeled: the pace model clicks at the profile's rate and counts the GPU copies it buys. The default player is a Backend IC, so they only show in `npm run pace -- builds`.
+## Origins
+
+`npm run pace -- origins [visits minutes clicks]` plays each origin against no origin (a Backend IC). They change the early order, not the finish, so the tables do not move: for the player who leaves it open (24 visits a day of 15 minutes) and the 4-visit target, every origin owns everything on the same day as no origin, and the win moves by at most a visit's fraction (Bootcamp and Dropout win a hair sooner for the target stacker, College a hair later).
+
+| Origin | oneOfEach | stacker |
+| --- | --- | --- |
+| none | 0.42 / 0.17 | 0.63 / 0.16 |
+| college | 0.42 / 0.17 | 0.63 / 0.16 |
+| bootcamp | 0.42 / 0.17 | 0.63 / 0.16 |
+| dropout | 0.42 / 0.17 | 0.63 / 0.16 |
+
+(Owns everything / wins the world, in days, left-open player.) The origins' prices and gates are in `src/data/origins.ts`; the effects are proposals.
 
 ## Over several careers (the Exit)
 

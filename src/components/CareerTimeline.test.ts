@@ -201,7 +201,16 @@ describe("the start card", () => {
     expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${second.handle}`)
     expect($("[data-testid='identity-keep']")).toBeNull()
     click($("[data-testid='identity-next']"))
-    // The second step names the product after the new animal; its Reroll changes only the suffix.
+    // The second step is the origin: the card cannot go on until one is picked.
+    expect($("[data-testid='identity-origins']")).not.toBeNull()
+    expect(($("[data-testid='identity-next']") as HTMLButtonElement | null)?.disabled).toBe(true)
+    click($("[data-testid='identity-origin-bootcamp']"))
+    expect(useGame.getState().build.origin).toBe("bootcamp")
+    click($("[data-testid='identity-origin-college']"))
+    expect(useGame.getState().build.origin).toBe("college")
+    expect(($("[data-testid='identity-next']") as HTMLButtonElement | null)?.disabled).toBe(false)
+    click($("[data-testid='identity-next']"))
+    // The third step names the product after the new animal; its Reroll changes only the suffix.
     expect($("[data-testid='identity-product']")?.textContent).toBe(second.product)
     click($("[data-testid='identity-product-reroll']"))
     const third = useGame.getState().profile
@@ -209,13 +218,17 @@ describe("the start card", () => {
     expect(third.product).not.toBe(second.product)
     expect($("[data-testid='identity-product']")?.textContent).toBe(third.product)
     click($("[data-testid='identity-back']"))
+    expect($("[data-testid='identity-origins']")).not.toBeNull()
+    click($("[data-testid='identity-back']"))
     expect($("[data-testid='identity-handle']")?.textContent).toBe(`@${third.handle}`)
+    click($("[data-testid='identity-next']"))
     click($("[data-testid='identity-next']"))
     click($("[data-testid='identity-next']"))
     expect($("[data-testid='identity-picker']")?.textContent).toContain(`build ${third.product} on nights and weekends`)
     expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${third.handle}`)
     click($("[data-testid='identity-keep']"))
     expect(useGame.getState().profile).toEqual({ ...third, chosen: true })
+    expect(useGame.getState().build.origin).toBe("college")
     expect($("[data-testid='identity-picker']")).toBeNull()
   })
 

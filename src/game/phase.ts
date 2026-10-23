@@ -5,7 +5,8 @@ import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, firstJobAtRank, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { heldRank, leadOf, needsLead, needsPick, rowVisible, seniorUsersShort, specOf } from "./build.ts"
+import { gigBoardXp, gigXpReq, jobBoardGigs, jobXpReq } from "./origin.ts"
+import { heldRank, leadOf, originOf, needsLead, needsPick, rowVisible, seniorUsersShort, specOf } from "./build.ts"
 import type { HasCompany } from "./build.ts"
 import { LEAD_OPEN_RANK } from "../data/leadership.ts"
 import { formatNumber } from "./format.ts"
@@ -36,14 +37,14 @@ export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" 
 export function gigBoardUnlocked(p: Gates): boolean {
   if (p.gigs.length > 0) return true
   return (
-    p.xpTotal >= GIG_BOARD_UNLOCK.minXp &&
+    p.xpTotal >= gigBoardXp(originOf(p)) &&
     GIG_BOARD_UNLOCK.requireOwnedSkills.every((id) => ownedCount(p.skills, id) > 0)
   )
 }
 
 export function jobBoardUnlocked(p: Gates): boolean {
   if (p.jobs.length > 0) return true
-  return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= JOB_BOARD_UNLOCK.minGigsCompleted
+  return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= jobBoardGigs(originOf(p))
 }
 
 /** A Senior job (rank 14) or higher, now or before a switch, OR $500K held at some point (peakMoney) OR any capital row already owned. */
@@ -87,7 +88,7 @@ export type GigState = "done" | "board-locked" | "locked" | "ready"
 export function gigState(p: Gates, gig: Gig): GigState {
   if (p.gigs.includes(gig.id)) return "done"
   if (!gigBoardUnlocked(p)) return "board-locked"
-  if (p.xpTotal < gig.xpReq || p.gigs.length < gig.priorGigs || gigSkillGap(p, gig) !== null) return "locked"
+  if (p.xpTotal < gigXpReq(originOf(p), gig) || p.gigs.length < gig.priorGigs || gigSkillGap(p, gig) !== null) return "locked"
   return "ready"
 }
 
@@ -103,7 +104,7 @@ export function jobState(p: Gates, job: JobTier): JobState {
   if (!rowVisible(job, specOf(p), leadOf(p))) return "hidden"
   if (needsPick(job) && specOf(p) === null) return "pick"
   if (needsLead(job) && leadOf(p) === null) return "lead"
-  if (p.xpTotal < job.xpReq) return "locked"
+  if (p.xpTotal < jobXpReq(originOf(p), job)) return "locked"
   if (job.rank === LEAD_OPEN_RANK && seniorUsersShort({ jobs: p.jobs, build: p.build, company: p.company }) > 0) return "users"
   return "ready"
 }
@@ -160,7 +161,7 @@ export type Requirement = { text: string; met: boolean }
 
 export function gigBoardRequirements(p: Gates): Requirement[] {
   return [
-    { text: `${formatNumber(GIG_BOARD_UNLOCK.minXp)} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= GIG_BOARD_UNLOCK.minXp },
+    { text: `${formatNumber(gigBoardXp(originOf(p)))} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= gigBoardXp(originOf(p)) },
     ...GIG_BOARD_UNLOCK.requireOwnedSkills.map((id) => ({
       text: `Own ${skillById(id)?.name ?? `skill ${id}`}`,
       met: ownedCount(p.skills, id) > 0,
@@ -175,7 +176,7 @@ export function gearRequirements(p: Pick<Progress, "xpTotal">): Requirement[] {
 export function jobBoardRequirements(p: Gates): Requirement[] {
   return [
     { text: `${formatNumber(JOB_BOARD_UNLOCK.minXp)} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= JOB_BOARD_UNLOCK.minXp },
-    { text: `${JOB_BOARD_UNLOCK.minGigsCompleted} gigs cleared (${p.gigs.length})`, met: p.gigs.length >= JOB_BOARD_UNLOCK.minGigsCompleted },
+    { text: `${jobBoardGigs(originOf(p))} gigs cleared (${p.gigs.length})`, met: p.gigs.length >= jobBoardGigs(originOf(p)) },
   ]
 }
 
