@@ -30,6 +30,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 
 - Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, world, founder, legacy, features, ...).
 - Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`, `pickSpecialization`, `switchSpecialization`, `pickLeadership`.
+- A career can pick an origin first (`pickOrigin("college" | "bootcamp" | "dropout")`, open until the career has earned anything; `keepProfile()` alone plays with none).
 - Every job above rank 7 (Mid-level SWE, id 7) needs a picked specialization, and the pick opens at 10,000 users: buy job 7, `setUsers("americas-east", 10_000)`, `pickSpecialization("backend")`, then jobs 8 and up. Senior SWE (rank 14) also needs 1,000,000 users. Backend keeps ids 8-15 (`buyJob(14)` is Senior SWE); the other tracks are 108-115, 208-215, 308-315, 408-415, 508-515 (`docs/HARNESS.md`).
 - Every job above rank 15 needs a picked leadership line: hold Senior SWE (rank 14), `pickLeadership("ic" | "manager")` once, then rows 16 and up of that line (IC 16, 17, 19, 23, 24; Manager 18, 20, 21, 22; 25-31 shared). Hiring is the Manager's, each kind from rank 18, 20, 21 or 22.
 - Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `forceIncident`, `setUsers`, `setPrestige`, `previewEra`.
