@@ -16,17 +16,25 @@ __GAME__.explain("job:14")         the same, for the career under way (agents)
 
 ## Status: what is built and what is not
 
-**Built (step 1):** a faithful model. `src/game/tree/graph.ts` reads today's tables once and writes the edges down
-explicitly. `gigState`, `jobState` and the three board gates in `src/game/phase.ts` now read the tree. A test
-(`treeEquivalence.test.ts`) runs the rules as they were written before the tree (`oracle.ts`) against the tree at
-every round of the shop, over every specialization, both leadership lines and all three origins, for two player
-profiles, and fails on the first row that differs. Nothing about play changed.
+**Built:** the model (`src/game/tree/`), the structure written by hand (`src/data/tree.ts`), and the check that they are
+the same game as before.
 
-**Not built yet (step 2):** moving the *authoring* into the tree. Today the tables still say `priorGigs: id - 1`,
-`skillsForGig(id)`, `unlockJobRank`, and the tree decodes them. Step 2 turns that round: the tree is written by hand,
-and the tables read their edges from it. Until then, adding a branch means touching the table and `graph.ts`; after,
-it means one entry here. The shop's `needs` text, `nextUnlock` and the career timeline's progress bars still have
-their own code and are the follow-ups (`explain` is the replacement for all three).
+- **`src/data/tree.ts` is where the structure is authored.** `GIG_PATH` lists the gigs in order and the skills each one
+  demands; `JOB_PATHS` lists each track's jobs and what the track hangs off. The tables (`phases.ts`) keep content
+  (names, payouts, XP, prices, art) and read `priorGigs` and `skillIds` off the path; `graph.ts` builds the nodes from
+  the paths. The id arithmetic is gone: no `priorGigs: id - 1`, no `skillsForGig(id)`, no job tracks decoded from `spec`
+  and `rank` fields.
+- **The tree reads the rest from the rows:** gear's `unlockMoney` and `unlockJobRank`, capital's price, a gig's and a
+  job's `xpReq`, the boards' constants (`GIG_BOARD_UNLOCK` and friends). These are per-row numbers, not structure.
+- `gigState`, `jobState` and the three board gates in `src/game/phase.ts` read the tree. The pre-tree rules are kept
+  word for word as `oracle.ts`, and `treeEquivalence.test.ts` runs both at every round of the shop, over every
+  specialization, both leadership lines and all three origins, for two player profiles, and fails on the first row that
+  differs. `tree.test.ts` checks the hand-written structure against the rows (every gig and job listed once, ranks
+  rising along a track, a track's `spec` and `lead` matching its jobs'). Nothing about play changed.
+
+**Not built yet:** the shop's `needs` text, `nextUnlock` and the career timeline's progress bars still have their own
+code; `explain` is meant to replace all three. The tagged gig board, which changes gameplay, is a data edit on this
+tree (below) and has not been made.
 
 **Left out on purpose:** the career timeline's features (`src/data/features.ts`, its own trigger system), hire kinds,
 and what things cost (affordability is not a gate: a row can be open and too dear).
@@ -100,35 +108,34 @@ of its first unmet leaf (`met` → board-locked, `track` → hidden, `picked` �
 
 ## Adding a branch
 
-The point of the tree is that these are edits in one place. Two examples as they will read once authoring moves in
-(step 2); today the same edit goes in the table and in `graph.ts`.
+The structure is in `src/data/tree.ts`; the content is a row in the table. Both edits, and nothing else.
 
-**A new specialization's job track.** A track of jobs that hangs off the trunk's top, each row on the shared gate:
+**A new gig.** Add its row to `GIG_ROWS` in `phases.ts` (name, XP, payout) and a step to `GIG_PATH` where it belongs in
+the order, with the skills it demands:
 
 ```ts
-track("jobs:quant", "Jobs: Quant", false, rows.map(jobNode), trunkTop)
+{ id: 66, skills: skills(1, 71) },
 ```
 
-Its rows get the board, the track check, the pick, the XP and (at rank 14) the users gate for free from `jobGate`.
+It sits under the step before it and needs every earlier gig cleared, because the gig path is strict.
+
+**A new specialization's job track.** Add its eight rows to `JOB_ROWS` (ids `600 + rank`, `spec: "quant"`), then one
+path:
+
+```ts
+{ id: "quant", under: "trunk", spec: "quant", jobs: [608, 609, 610, 611, 612, 613, 614, 615] },
+```
+
+The track hangs off the trunk's last row, and its rows get the board, the track check, the pick, the XP and (at rank
+14) the users gate from `jobGate` in `graph.ts`. `tree.test.ts` fails if a job is missing from every path, listed
+twice, out of rank order, or on a path whose `spec` is not its own.
 
 **A tagged gig** (the planned gig board). A gig stops asking for "every gig before it and the first n skills" and asks
-for what it is about:
+for what it is about. Its step in `GIG_PATH` carries tag counts where it now carries a skill list, and `graph.ts` writes
+`{ t: "tag", tag, min }` leaves instead of an `owns` leaf. The evaluator already counts tags, so nothing else changes:
+the shop, the state labels, `npm run tree` and `explain` read the same node.
 
-```ts
-{
-  ref: "gig:70", kind: "gig", id: 70, name: "Design-system migration",
-  requires: all(
-    { t: "met", ref: "board:gigs" },
-    { t: "xp", min: 30_000, mod: "gig" },
-    { t: "tag", tag: "frontend", min: 3 },
-    { t: "tag", tag: "backend", min: 1 },
-  ),
-}
-```
-
-Nothing else changes: the shop, the state labels, `npm run tree` and `explain` all read the same node.
-
-**A new gate on an existing row** is one leaf in its `all`, for example a row that waits on a pick:
+**A new gate on an existing row** is one leaf in its `all` in `graph.ts`, for example a row that waits on a pick:
 `{ t: "picked", of: "spec" }`.
 
 ## Two decisions this leaves open
@@ -136,5 +143,5 @@ Nothing else changes: the shop, the state labels, `npm run tree` and `explain` a
 1. **Should the job ladder be strict?** Today a Senior SWE needs XP, the board, the pick and the users, not the job
    before it. Making each rank need the one before it makes the ladder a path in the literal sense and gives the
    shop an unambiguous "next", at the cost of the forced-XP shortcuts in tests and agent recipes.
-2. **When does authoring move into the tree?** Step 2 is mechanical now that the equivalence test exists; it is the
-   step that makes "add a path" a one-entry change.
+2. **The tagged gig board**, the first gameplay change the tree is meant to carry. It replaces a gig's skill-id prefix
+   with tag counts and drops the strict chain, so two players who learned different skills meet different clients.

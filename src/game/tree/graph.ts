@@ -7,8 +7,9 @@
 import { CAPITAL } from "../../data/capital.ts"
 import { CAPITAL_UNLOCK, EQUIPMENT, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
-import { LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP } from "../../data/leadership.ts"
-import { PICK_USERS, SENIOR_USERS, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../../data/specializations.ts"
+import { LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK } from "../../data/leadership.ts"
+import { PICK_USERS, SENIOR_USERS, TRUNK_TOP_RANK } from "../../data/specializations.ts"
+import { GIG_PATH, JOB_PATHS } from "../../data/tree.ts"
 import type { Node, Ref, Req, Track } from "./types.ts"
 
 const NODES = new Map<Ref, Node>()
@@ -78,23 +79,27 @@ track(
   SKILL_TIERS.map((row) => ({ ref: `skill:${row.id}` as Ref, kind: "skill" as const, id: row.id, name: row.name, requires: { t: "xp", min: row.unlockAtXp } as Req })),
 )
 
-// Gigs: a strict chain. Each needs the board, the XP, every earlier gig cleared and the skills for it.
+// Gigs: a strict chain, in the order `GIG_PATH` (src/data/tree.ts) lists them. Each needs the board, the XP, every gig
+// before it cleared and the skills the path names.
 track(
   "gigs",
   "Gigs",
   true,
-  GIGS.map((gig) => ({
-    ref: `gig:${gig.id}` as Ref,
-    kind: "gig" as const,
-    id: gig.id,
-    name: gig.name,
-    requires: all(
-      { t: "met", ref: "board:gigs" },
-      { t: "xp", min: gig.xpReq, mod: "gig" },
-      { t: "count", of: "gigs", min: gig.priorGigs },
-      { t: "owns", kind: "skill", ids: gig.skillIds },
-    ),
-  })),
+  GIG_PATH.map((step, index) => {
+    const gig = GIGS.find((row) => row.id === step.id)!
+    return {
+      ref: `gig:${gig.id}` as Ref,
+      kind: "gig" as const,
+      id: gig.id,
+      name: gig.name,
+      requires: all(
+        { t: "met", ref: "board:gigs" },
+        { t: "xp", min: gig.xpReq, mod: "gig" },
+        { t: "count", of: "gigs", min: index },
+        { t: "owns", kind: "skill", ids: step.skills },
+      ),
+    } as Omit<Node, "track" | "index" | "after">
+  }),
 )
 
 // Picks: the specialization once a Mid-level job is held (and the product has its users), the leadership line at Senior.
@@ -128,22 +133,19 @@ function jobGate(job: (typeof JOB_TIERS)[number]): Req {
 
 const jobNode = (job: (typeof JOB_TIERS)[number]) => ({ ref: `job:${job.id}` as Ref, kind: "job" as const, id: job.id, name: job.name, requires: jobGate(job) })
 
-// Jobs: loose ladders (lifetime XP orders them, nothing demands the row before). The trunk, one track per specialization,
-// one per leadership line, and the rows both lines share.
-const byRank = (a: { rank: number }, b: { rank: number }) => a.rank - b.rank
-const trunk = JOB_TIERS.filter((job) => job.spec === undefined && job.lead === undefined && job.rank <= TRUNK_TOP_RANK).sort(byRank)
-track("jobs:trunk", "Jobs: the trunk", false, trunk.map(jobNode))
-const trunkTop: Ref = `job:${trunk[trunk.length - 1]!.id}`
-for (const spec of SPECIALIZATIONS) {
-  const rows = JOB_TIERS.filter((job) => job.spec === spec.id).sort(byRank)
-  track(`jobs:${spec.id}`, `Jobs: ${spec.name}`, false, rows.map(jobNode), trunkTop)
+// Jobs: loose ladders (lifetime XP orders them, nothing demands the row before), one track for each entry of
+// `JOB_PATHS` (src/data/tree.ts): the trunk, a track for each specialization, one for each leadership line, and the
+// rows both lines share. A track hangs off the trunk's last row or off the leadership pick, as the path says.
+const jobById = new Map(JOB_TIERS.map((job) => [job.id, job]))
+for (const path of JOB_PATHS) {
+  const rows = path.jobs.map((id) => {
+    const job = jobById.get(id)
+    if (!job) throw new Error(`job ${id} on path ${path.id} does not exist`)
+    return job
+  })
+  const trunkTop: Ref | undefined = path.under === "trunk" ? `job:${JOB_PATHS[0]!.jobs[JOB_PATHS[0]!.jobs.length - 1]}` : path.under
+  track(`jobs:${path.id}`, `Jobs: ${path.id}`, false, rows.map(jobNode), trunkTop)
 }
-for (const line of LEADERSHIP) {
-  const rows = JOB_TIERS.filter((job) => job.lead === line.id).sort(byRank)
-  track(`jobs:${line.id}`, `Jobs: ${line.name}`, false, rows.map(jobNode), "pick:lead")
-}
-const shared = JOB_TIERS.filter((job) => job.rank > LEAD_NEEDED_ABOVE_RANK && job.lead === undefined && job.spec === undefined).sort(byRank)
-track("jobs:shared", "Jobs: shared above the lines", false, shared.map(jobNode), "pick:lead")
 
 // Gear: the Gear tab, then the money held once and the rank held. Loose, by section.
 for (const kind of [...new Set(EQUIPMENT.map((row) => row.kind))]) {

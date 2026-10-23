@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { CAPITAL } from "../../data/capital.ts"
 import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
+import { GIG_PATH, JOB_PATHS } from "../../data/tree.ts"
 import { installGameHarness } from "../harness.ts"
 import { check, childrenOf, closure, dependents, describe as words, firstFail, holds, isOwned, mentions, NODE_MAP, NODES, nodeOf, prereqs, TRACK_LIST, trackOf } from "./index.ts"
 import type { Ref, TreeView } from "./index.ts"
@@ -48,6 +49,45 @@ describe("the tree's shape", () => {
   it("answers prerequisites and dependents the same way round", () => {
     for (const node of NODES) for (const before of prereqs(node.ref)) expect(dependents(before), `${before} opens ${node.ref}`).toContain(node.ref)
     for (const node of NODES) for (const child of childrenOf(node.ref)) expect(nodeOf(child)!.after).toBe(node.ref)
+  })
+})
+
+describe("the structure written by hand (src/data/tree.ts)", () => {
+  it("lists every gig once, and each gig's priorGigs and skills are read off the path", () => {
+    expect(GIG_PATH.map((step) => step.id).sort((a, b) => a - b)).toEqual(GIGS.map((gig) => gig.id).sort((a, b) => a - b))
+    expect(new Set(GIG_PATH.map((step) => step.id)).size).toBe(GIG_PATH.length)
+    GIG_PATH.forEach((step, index) => {
+      const gig = GIGS.find((row) => row.id === step.id)!
+      expect(gig.priorGigs, `gig ${gig.id}`).toBe(index)
+      expect(gig.skillIds).toBe(step.skills)
+      for (const id of step.skills) expect(SKILL_TIERS.some((skill) => skill.id === id), `gig ${gig.id} skill ${id}`).toBe(true)
+    })
+  })
+
+  it("lists every job once, lowest rank first, on a track that matches its own spec and line", () => {
+    const seen = new Set<number>()
+    for (const path of JOB_PATHS) {
+      let rank = 0
+      for (const id of path.jobs) {
+        const job = JOB_TIERS.find((row) => row.id === id)
+        expect(job, `job ${id} on ${path.id}`).toBeDefined()
+        expect(seen.has(id), `job ${id} twice`).toBe(false)
+        seen.add(id)
+        expect(job!.rank, `job ${id} rank`).toBeGreaterThan(rank)
+        rank = job!.rank
+        expect(job!.spec, `job ${id} spec`).toBe(path.spec)
+        expect(job!.lead, `job ${id} line`).toBe(path.lead)
+      }
+    }
+    expect(seen.size).toBe(JOB_TIERS.length)
+  })
+
+  it("hangs the trunk off nothing, a specialization off the trunk's top, and the lines and the shared rows off the pick", () => {
+    expect(JOB_PATHS[0]).toMatchObject({ id: "trunk" })
+    expect(JOB_PATHS[0]!.under).toBeUndefined()
+    for (const path of JOB_PATHS.slice(1)) expect(path.under, path.id).toBe(path.spec ? "trunk" : "pick:lead")
+    const trunkTop = Math.max(...JOB_PATHS[0]!.jobs.map((id) => JOB_TIERS.find((job) => job.id === id)!.rank))
+    for (const path of JOB_PATHS.filter((row) => row.under === "trunk")) expect(JOB_TIERS.find((job) => job.id === path.jobs[0])!.rank).toBe(trunkTop + 1)
   })
 })
 
