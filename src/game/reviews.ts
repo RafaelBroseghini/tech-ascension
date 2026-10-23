@@ -1,5 +1,6 @@
 import type { EventOffer } from "../data/events.ts"
 import { promptsForJob, reviewById } from "../data/reviews.ts"
+import type { ReviewBuild } from "../data/reviews.ts"
 import type { ReviewChoiceId, ReviewPrompt, ReviewReply } from "../data/reviews.ts"
 import { sampleWaitMs } from "./boosts.ts"
 import type { EventLine, EventResolution, EarningRates } from "./events.ts"
@@ -71,6 +72,8 @@ export type ReviewContext = {
   /** Highest job held. Null skips the clock entirely. */
   jobId: number | null
   blocked: boolean
+  /** The career's build: its own 1:1s join the pool. */
+  build?: ReviewBuild
 }
 
 export type ReviewAdvance = {
@@ -95,7 +98,7 @@ export function advanceReviewClock(
   }
   const dueAt = nextReviewAt ?? now + sampleWaitMs(REVIEW_MEAN_WAIT_MS, rng())
   if (now < dueAt) return { nextReviewAt: dueAt, fire: null }
-  const fire = pickPrompt(promptsForJob(ctx.jobId), rng())
+  const fire = pickPrompt(promptsForJob(ctx.jobId, ctx.build), rng())
   if (!fire) return { nextReviewAt: now + sampleWaitMs(REVIEW_MEAN_WAIT_MS, rng()), fire: null }
   return { nextReviewAt: null, fire }
 }

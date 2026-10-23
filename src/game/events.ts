@@ -5,11 +5,16 @@ import { highestJobRank } from "../data/phases.ts"
 import { sampleWaitMs } from "./boosts.ts"
 import { formatNumber } from "./format.ts"
 import type { TempTarget } from "./mods.ts"
+import type { LeadId } from "../data/leadership.ts"
+import type { SpecId } from "../data/specializations.ts"
 
 export { EVENT_MEAN_WAIT_MS, EVENTS }
 
 /** Jobs held, gigs cleared, and gear owned. Missing lists count as empty. */
 export type EventOwned = {
+  /** The career's specialization and leadership line, for the events that belong to a build. */
+  spec?: SpecId | null
+  lead?: LeadId | null
   jobs?: readonly number[]
   gigs?: readonly number[]
   equipment?: Readonly<Record<string, number>>
@@ -38,6 +43,8 @@ export function eventRequiresMet(event: { requires?: EventRequires }, owned: Eve
   const jobs = owned.jobs ?? []
   const gigs = owned.gigs ?? []
   const equipment = owned.equipment ?? {}
+  if (req.specs && req.specs.length > 0 && !(owned.spec && req.specs.includes(owned.spec))) return false
+  if (req.leads && req.leads.length > 0 && !(owned.lead && req.leads.includes(owned.lead))) return false
   if (typeof req.minJobRank === "number" && Number.isFinite(req.minJobRank)) {
     if (highestJobRank(jobs) < req.minJobRank) return false
   }

@@ -20,9 +20,11 @@ function def(partial: Partial<EventDef> = {}): EventDef {
 }
 
 describe("events table (v2)", () => {
-  it("ships the researcher's 110 rows with unique ids and sane fields", () => {
-    expect(EVENTS).toHaveLength(110)
-    expect(new Set(EVENTS.map((event) => event.id)).size).toBe(110)
+  it("ships the researcher's 110 rows and the builds' own, with unique ids and sane fields", () => {
+    expect(EVENTS.length).toBeGreaterThanOrEqual(110)
+    expect(new Set(EVENTS.map((event) => event.id)).size).toBe(EVENTS.length)
+    // The first 110 are the original table; the rows after them are a build's or a line's own.
+    expect(EVENTS.filter((event) => event.id > 110).every((event) => event.requires?.specs || event.requires?.leads)).toBe(true)
     expect(EVENT_MEAN_WAIT_MS).toBe(600_000)
     for (const event of EVENTS) {
       expect(event.weight).toBeGreaterThan(0)
@@ -384,5 +386,33 @@ describe("events in the store", () => {
     spy.mockRestore()
     expect(hydrate(text?.replace('"foreverMult":1.03', '"foreverMult":9999') ?? null, savedAt).save.foreverMult).toBe(FOREVER_MULT_MAX)
     expect(eventById(41)?.name).toBe("Angel intro coffee")
+  })
+
+  describe("a build's own events", () => {
+    const own = EVENTS.filter((event) => event.id > 110)
+
+    it("gives every specialization and both lines at least two events", () => {
+      for (const spec of ["frontend", "backend", "infra", "ai", "fde", "security"] as const) expect(own.filter((event) => event.requires?.specs?.includes(spec)).length).toBeGreaterThanOrEqual(2)
+      for (const lead of ["ic", "manager"] as const) expect(own.filter((event) => event.requires?.leads?.includes(lead)).length).toBeGreaterThanOrEqual(2)
+    })
+
+    it("only offers them to a career on that specialization or line", () => {
+      const frontend = own.find((event) => event.requires?.specs?.includes("frontend"))!
+      const manager = own.find((event) => event.requires?.leads?.includes("manager"))!
+      expect(eventRequiresMet(frontend, { spec: "frontend" })).toBe(true)
+      expect(eventRequiresMet(frontend, { spec: "backend" })).toBe(false)
+      expect(eventRequiresMet(frontend, {})).toBe(false)
+      expect(eventRequiresMet(manager, { lead: "manager" })).toBe(true)
+      expect(eventRequiresMet(manager, { lead: "ic" })).toBe(false)
+      expect(eventRequiresMet(manager, { spec: "frontend" })).toBe(false)
+    })
+
+    it("joins the pool for that build only, and not before a pick", () => {
+      const ids = (owned: Parameters<typeof eligibleEvents>[2]) => eligibleEvents("mid", true, owned).map((event) => event.id)
+      expect(ids({ spec: "infra", lead: "ic" })).toEqual(expect.arrayContaining([115, 116, 123, 124, 125]))
+      expect(ids({ spec: "infra", lead: "ic" })).not.toContain(113)
+      expect(ids({ spec: "infra", lead: "ic" })).not.toContain(126)
+      expect(ids({}).some((id) => id > 110)).toBe(false)
+    })
   })
 })

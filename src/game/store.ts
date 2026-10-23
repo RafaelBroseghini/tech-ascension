@@ -31,7 +31,7 @@ import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
 import { shipLaunches, shipsLaunches } from "./launch.ts"
 import { servableUsers } from "./globe/load.ts"
-import { omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import { leadOf, omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
 import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
@@ -850,7 +850,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const jobId = highestJobId(state.jobs)
     if (jobId == null) return false
-    const pool = promptsForJob(jobId)
+    const pool = promptsForJob(jobId, { spec: specOf(state), lead: leadOf(state) })
     const prompt = promptId == null ? pickPrompt(pool, Math.random()) : pool.find((row) => row.id === promptId) ?? null
     if (!prompt) return false
     const reviewSeq = state.reviewSeq + 1
@@ -932,7 +932,7 @@ export const useGame = create<GameState>((set, get) => ({
         era,
         paying: moneyMode(state),
         blocked: state.event !== null || state.review !== null || boosting,
-        owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment },
+        owned: { jobs: state.jobs, gigs: state.gigs, equipment: state.equipment, spec: specOf(state), lead: leadOf(state) },
       },
       now,
       Math.random,
@@ -946,6 +946,7 @@ export const useGame = create<GameState>((set, get) => ({
       state.nextReviewAt,
       {
         jobId: reviewJob,
+        build: { spec: specOf(state), lead: leadOf(state) },
         blocked: state.event !== null || state.review !== null || fired !== null || boosting,
       },
       now,

@@ -160,4 +160,25 @@ describe("reviews in the store", () => {
     expect(game().event).not.toBeNull()
     expect(game().nextReviewAt).toBeGreaterThan(game().now)
   })
+
+  it("asks a build its own questions, and only that build", () => {
+    // Rank 14 is a Senior SWE on any track; rank 18 a Manager's Engineering manager.
+    const asked = (jobId: number, build: Parameters<typeof promptsForJob>[1]) => promptsForJob(jobId, build).map((prompt) => prompt.id)
+    expect(asked(14, { spec: "frontend" })).toContain(14)
+    expect(asked(14, { spec: "backend" })).not.toContain(14)
+    expect(asked(14, { spec: "backend" })).toContain(15)
+    expect(asked(14, {})).not.toEqual(expect.arrayContaining([14]))
+    expect(asked(14, { spec: "frontend", lead: "ic" })).not.toContain(20)
+    expect(asked(18, { spec: "frontend", lead: "manager" })).toEqual(expect.arrayContaining([14, 21]))
+    expect(asked(18, { spec: "frontend", lead: "manager" })).not.toContain(20)
+    expect(asked(16, { spec: "security", lead: "ic" })).toEqual(expect.arrayContaining([19, 20]))
+  })
+
+  it("keeps the questions for everyone when no build is passed", () => {
+    expect(promptsForJob(14).every((prompt) => !prompt.specs && !prompt.leads)).toBe(true)
+    for (const prompt of REVIEWS.filter((row) => row.specs || row.leads)) {
+      expect(prompt.replies.map((reply) => reply.choice)).toEqual(["exceeds", "meets", "pip"])
+      expect(prompt.question).not.toBe("")
+    }
+  })
 })

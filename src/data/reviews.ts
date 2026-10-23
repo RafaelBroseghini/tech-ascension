@@ -4,7 +4,9 @@
  * exceeds pays a raise, meets changes nothing, and the plan is a trade priced like any other event.
  */
 
+import type { LeadId } from "./leadership.ts"
 import { jobRank } from "./phases.ts"
+import type { SpecId } from "./specializations.ts"
 
 export type ReviewChoiceId = "exceeds" | "meets" | "pip"
 
@@ -22,6 +24,10 @@ export type ReviewPrompt = {
   maxJobRank: number
   question: string
   replies: readonly ReviewReply[]
+  /** Only a career on one of these specializations is asked (the build's own questions). Left out, any. */
+  specs?: readonly SpecId[]
+  /** Only a career on one of these leadership lines is asked. Left out, any. */
+  leads?: readonly LeadId[]
 }
 
 function replies(exceeds: string, meets: string, pip: string): readonly ReviewReply[] {
@@ -124,6 +130,70 @@ export const REVIEWS: readonly ReviewPrompt[] = [
     question: "What's our moat on Mars?",
     replies: replies("The planet.", "Latency.", "I'll commission a study of the dust."),
   },
+  {
+    id: 14,
+    minJobRank: 8,
+    maxJobRank: 31,
+    specs: ["frontend"],
+    question: "Why does the button jump when the font loads?",
+    replies: replies("It doesn't. I have a screen recording.", "Layout shift is a feature.", "I'll write a manifesto on font loading."),
+  },
+  {
+    id: 15,
+    minJobRank: 8,
+    maxJobRank: 31,
+    specs: ["backend"],
+    question: "Why is the endpoint called /v2/final-FINAL?",
+    replies: replies("The deprecation notice went out. Six months ago.", "The v1 clients are loyal.", "I'll version the versioning."),
+  },
+  {
+    id: 16,
+    minJobRank: 8,
+    maxJobRank: 31,
+    specs: ["infra"],
+    question: "How many nines is this, exactly?",
+    replies: replies("As many as you can afford.", "We round up.", "I'll count them in a spreadsheet."),
+  },
+  {
+    id: 17,
+    minJobRank: 8,
+    maxJobRank: 31,
+    specs: ["ai"],
+    question: "Is the model hallucinating, or is the roadmap?",
+    replies: replies("Both, and the eval says so.", "Temperature is a state of mind.", "I'll put a disclaimer on the disclaimer."),
+  },
+  {
+    id: 18,
+    minJobRank: 8,
+    maxJobRank: 31,
+    specs: ["fde"],
+    question: "The customer wants it \"more intuitive\". What does that mean?",
+    replies: replies("I sat next to them. It means the blue one.", "We'll get a call.", "I'll fly out with a whiteboard."),
+  },
+  {
+    id: 19,
+    minJobRank: 8,
+    maxJobRank: 31,
+    specs: ["security"],
+    question: "Who has root on the coffee machine?",
+    replies: replies("Nobody. I rotated the beans.", "A shared account, probably.", "I'll threat-model the espresso."),
+  },
+  {
+    id: 20,
+    minJobRank: 16,
+    maxJobRank: 31,
+    leads: ["ic"],
+    question: "When did you last ship something yourself?",
+    replies: replies("This morning. It was small and it was right.", "Last quarter. It was a doc.", "I'll pair with the sticker on my laptop."),
+  },
+  {
+    id: 21,
+    minJobRank: 16,
+    maxJobRank: 31,
+    leads: ["manager"],
+    question: "Who owns this when you're on vacation?",
+    replies: replies("The team. Nobody paged me.", "Slack knows.", "I'll write a handoff doc for the handoff doc."),
+  },
 ]
 
 const REVIEW_BY_ID = new Map<number, ReviewPrompt>(REVIEWS.map((prompt) => [prompt.id, prompt]))
@@ -132,8 +202,20 @@ export function reviewById(id: number): ReviewPrompt | undefined {
   return REVIEW_BY_ID.get(id)
 }
 
-/** Prompts whose rank band includes this job's rank. */
-export function promptsForJob(jobId: number): ReviewPrompt[] {
+/** The career's build, which picks the 1:1s that are its own. */
+export type ReviewBuild = { spec?: SpecId | null; lead?: LeadId | null }
+
+/**
+ * Prompts whose rank band includes this job's rank. A prompt that names specializations or lines is only asked of a
+ * career on one of them (`build`); without a build only the prompts for everyone are left.
+ */
+export function promptsForJob(jobId: number, build: ReviewBuild = {}): ReviewPrompt[] {
   const rank = jobRank(jobId)
-  return REVIEWS.filter((prompt) => rank >= prompt.minJobRank && rank <= prompt.maxJobRank)
+  return REVIEWS.filter(
+    (prompt) =>
+      rank >= prompt.minJobRank &&
+      rank <= prompt.maxJobRank &&
+      (!prompt.specs || (build.spec != null && prompt.specs.includes(build.spec))) &&
+      (!prompt.leads || (build.lead != null && prompt.leads.includes(build.lead))),
+  )
 }

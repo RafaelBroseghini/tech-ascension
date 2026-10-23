@@ -6,10 +6,13 @@
  * from current earning rates, with a floor of 1% of the balance you hold.
  *
  * Optional `requires` gates a row on ownership. Omit it and the row stays eligible for its eras.
- * Fields are AND. Arrays are OR inside one field (any listed job, gig, or gear).
+ * Fields are AND. Arrays are OR inside one field (any listed job, gig, gear, specialization or line).
  * A missing or empty field is ignored. minJobRank is the highest rank among the jobs held. minGigs is cleared-gig
  * count. minGearOwned is the sum of owned gear copies.
  */
+
+import type { LeadId } from "./leadership.ts"
+import type { SpecId } from "./specializations.ts"
 
 export type EraGate = "early" | "mid" | "upper" | "q3" | "end" | "any"
 export type EventResource = "money" | "xp"
@@ -24,6 +27,10 @@ export type EventOffer = EventGift | EventTrade
 
 /** Optional progression gate — all listed fields are AND. Arrays are OR within the field. */
 export type EventRequires = {
+  /** The career's specialization is any one of these (a build's own events). */
+  specs?: SpecId[]
+  /** The career's leadership line is any one of these. */
+  leads?: LeadId[]
   minJobRank?: number
   jobIds?: number[]
   minGigs?: number
@@ -159,6 +166,25 @@ export const EVENTS: readonly GameEvent[] = [
   { id: 108, name: "Eye strain tax", eras: ["any"], weight: 7, offer: trade("xp", 6), flavor: "Buy the drops and the lamp. The next chapter is readable." },
   { id: 109, name: "Sidequest encyclopedia", eras: ["any"], weight: 9, offer: trade("xp", 4), flavor: "Buy the papers on Byzantine generals and actually finish them." },
   { id: 110, name: "Playlist discovery", eras: ["any"], weight: 7, offer: gift("xp", 6), flavor: "Lo-fi to deep house pipeline." },
+  // A build's own events: each specialization and each leadership line has some that only it meets.
+  { id: 111, name: "Pixel off by one", eras: ["mid", "upper"], weight: 5, offer: trade("xp", 8), flavor: "Pay the designer's overtime and learn the grid.", requires: { specs: ["frontend"] } },
+  { id: 112, name: "Lighthouse score of 100", eras: ["mid", "upper"], weight: 4, offer: gift("xp", 10), flavor: "The performance budget holds for a whole sprint.", requires: { specs: ["frontend"] } },
+  { id: 113, name: "Index finally used", eras: ["mid", "upper"], weight: 4, offer: gift("money", 8), flavor: "The query planner stops guessing.", requires: { specs: ["backend"] } },
+  { id: 114, name: "Cache invalidation incident", eras: ["mid", "upper"], weight: 5, offer: trade("xp", 10), flavor: "Pay for the extra node and learn which of the two hard things it was.", requires: { specs: ["backend"] } },
+  { id: 115, name: "Pager quiet for a week", eras: ["mid", "upper"], weight: 4, offer: gift("xp", 10), flavor: "Nothing paged. You check that the pager works.", requires: { specs: ["infra"] } },
+  { id: 116, name: "Surprise cloud bill", eras: ["mid", "upper"], weight: 5, offer: trade("xp", 10), flavor: "Pay it and learn what that autoscaler was up to.", requires: { specs: ["infra"] } },
+  { id: 117, name: "Eval score goes up", eras: ["mid", "upper"], weight: 4, offer: gift("xp", 10), flavor: "Same model, better prompt. Nobody asks why.", requires: { specs: ["ai"] } },
+  { id: 118, name: "GPU waitlist", eras: ["mid", "upper"], weight: 5, offer: trade("money", 8), flavor: "Take a side contract while the queue moves, and skip the reading.", requires: { specs: ["ai"] } },
+  { id: 119, name: "Demo goes sideways", eras: ["mid", "upper"], weight: 5, offer: trade("xp", 8), flavor: "Comp the customer and learn what they actually asked for.", requires: { specs: ["fde"] } },
+  { id: 120, name: "Customer champion", eras: ["mid", "upper"], weight: 4, offer: gift("money", 10), flavor: "They tell their whole org it was your idea.", requires: { specs: ["fde"] } },
+  { id: 121, name: "Bug bounty payout", eras: ["mid", "upper"], weight: 4, offer: gift("money", 10), flavor: "Responsible disclosure, irresponsibly large cheque.", requires: { specs: ["security"] } },
+  { id: 122, name: "Failed the phishing test", eras: ["mid", "upper"], weight: 5, offer: trade("xp", 6), flavor: "Pay for the training and read all of it this time.", requires: { specs: ["security"] } },
+  { id: 123, name: "Design doc approved", eras: ["mid", "upper", "q3"], weight: 4, offer: gift("xp", 15), flavor: "Nobody asked for changes. You check the permissions.", requires: { leads: ["ic"] } },
+  { id: 124, name: "Deep work Friday", eras: ["mid", "upper", "q3"], weight: 5, offer: gift("xp", 10), flavor: "The calendar is empty. The editor is not.", requires: { leads: ["ic"] } },
+  { id: 125, name: "Pulled into a meeting", eras: ["mid", "upper", "q3"], weight: 5, offer: trade("money", 6), flavor: "Bill the facilitation and skip the heads-down hour.", requires: { leads: ["ic"] } },
+  { id: 126, name: "Headcount approved", eras: ["mid", "upper", "q3"], weight: 3, offer: gift("money", 15), flavor: "Finance blinks first.", requires: { leads: ["manager"] } },
+  { id: 127, name: "Reorg rumor", eras: ["mid", "upper", "q3"], weight: 5, offer: trade("xp", 10), flavor: "Pay for the offsite and learn who reports to whom now.", requires: { leads: ["manager"] } },
+  { id: 128, name: "Skip-level goes well", eras: ["mid", "upper", "q3"], weight: 4, offer: gift("xp", 10), flavor: "They remember your name and spell it right.", requires: { leads: ["manager"] } },
 ]
 
 export function eventsForEra(era: Exclude<EraGate, "any">): GameEvent[] {
