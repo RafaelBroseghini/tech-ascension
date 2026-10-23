@@ -1,15 +1,12 @@
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS } from "../data/phases.ts"
+import { GEAR_TAB_UNLOCK, GIGS, JOB_TIERS } from "../data/phases.ts"
 import type { Gig, JobTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
-import { canAfford, capitalById, firstJobAtRank, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
+import { canAfford, capitalById, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { gigBoardXp, jobBoardGigs } from "./origin.ts"
-import { firstFail, holds, nodeOf } from "./tree/index.ts"
-import { heldRank, originOf } from "./build.ts"
+import { entry, firstFail, holds, nodeOf, skillGapText } from "./tree/index.ts"
 import type { HasCompany } from "./build.ts"
-import { formatNumber } from "./format.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
 export type Phase = "A" | "B" | "C" | "D"
@@ -70,10 +67,7 @@ export function clickPaysMoney(p: Pick<Progress, "jobs">): boolean {
 
 /** Skills still missing for a gig. One or two are named; a longer set is a count. */
 export function gigSkillGap(p: Pick<Gates, "skills">, gig: Gig): string | null {
-  const missing = gig.skillIds.filter((id) => ownedCount(p.skills, id) === 0)
-  if (missing.length === 0) return null
-  if (missing.length <= 2) return missing.map((id) => skillById(id)?.name ?? `skill ${id}`).join(" + ")
-  return `${missing.length} skills`
+  return skillGapText(gig.skillIds, p.skills)
 }
 
 export type GigState = "done" | "board-locked" | "locked" | "ready"
@@ -160,31 +154,22 @@ export function ownedArtIds(p: Pick<Progress, "skills" | "equipment" | "owned" |
 
 export type Requirement = { text: string; met: boolean }
 
+/** What each board asks, as its lock panel lists it: read off the board's node in the tree, with what the career has. */
+const lines = (ref: "board:gigs" | "board:jobs" | "board:capital", p: Gates): Requirement[] => entry(ref, p).lines.map(({ text, met }) => ({ text, met }))
+
 export function gigBoardRequirements(p: Gates): Requirement[] {
-  return [
-    { text: `${formatNumber(gigBoardXp(originOf(p)))} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= gigBoardXp(originOf(p)) },
-    ...GIG_BOARD_UNLOCK.requireOwnedSkills.map((id) => ({
-      text: `Own ${skillById(id)?.name ?? `skill ${id}`}`,
-      met: ownedCount(p.skills, id) > 0,
-    })),
-  ]
+  return lines("board:gigs", p)
 }
 
 export function gearRequirements(p: Pick<Progress, "xpTotal">): Requirement[] {
-  return [{ text: `${formatNumber(GEAR_TAB_UNLOCK.minXp)} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= GEAR_TAB_UNLOCK.minXp }]
+  return entry("board:gear", { xpTotal: p.xpTotal, peakMoney: 0, skills: {}, owned: {}, jobs: [], gigs: [] }).lines.map(({ text, met }) => ({ text, met }))
 }
 
 export function jobBoardRequirements(p: Gates): Requirement[] {
-  return [
-    { text: `${formatNumber(JOB_BOARD_UNLOCK.minXp)} lifetime XP (${formatNumber(Math.floor(p.xpTotal))})`, met: p.xpTotal >= JOB_BOARD_UNLOCK.minXp },
-    { text: `${jobBoardGigs(originOf(p))} gigs cleared (${p.gigs.length})`, met: p.gigs.length >= jobBoardGigs(originOf(p)) },
-  ]
+  return lines("board:jobs", p)
 }
 
 /** Either path opens capital, so the two lines are alternatives. */
 export function capitalRequirements(p: Gates): Requirement[] {
-  return [
-    { text: `A senior job (${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.name ?? "Senior SWE"} or higher)`, met: heldRank(p) >= CAPITAL_UNLOCK.minJobRank },
-    { text: `or hold $${formatNumber(CAPITAL_UNLOCK.minMoney)} at once`, met: canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney) },
-  ]
+  return lines("board:capital", p)
 }

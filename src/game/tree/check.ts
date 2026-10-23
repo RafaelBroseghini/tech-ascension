@@ -5,12 +5,14 @@
  * per-kind functions had, including the latches, the rank a switch kept, the origin's scaling and an untracked company
  * leaving the user gates open (docs/TREE.md).
  */
-import { SKILL_TIERS, highestJobRank } from "../../data/phases.ts"
+import { SKILL_TIERS, firstJobAtRank, highestJobRank } from "../../data/phases.ts"
 import { formatNumber } from "../format.ts"
 import { heldRank, leadOf, originOf, rowVisible, specOf, usersOf } from "../build.ts"
 import { gigBoardXp, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
 import { NODE_MAP } from "./graph.ts"
 import type { Check, Missing, Node, Ref, Req, TreeView } from "./types.ts"
+
+const jobNameAtRank = (rank: number): string => firstJobAtRank(rank)?.name ?? `job ${rank}`
 
 const owned = (map: Readonly<Record<string, number>> | undefined, id: number): number => {
   const value = map?.[String(id)]
@@ -99,15 +101,26 @@ function collect(req: Req, p: TreeView, into: Missing[]): void {
   if (!holds(req, p)) into.push({ req, text: describe(req, p) })
 }
 
-/** Words for one leaf, with what the career has when it is given a view. */
+/** The skills of a list the career does not own yet, said in a few words: one or two by name, more as a count. Null when it owns them all. */
+export function skillGapText(ids: readonly number[], skills: Readonly<Record<string, number>>): string | null {
+  const missing = ids.filter((id) => owned(skills, id) === 0)
+  if (missing.length === 0) return null
+  if (missing.length <= 2) return missing.map((id) => SKILL_NAMES.get(id) ?? `skill ${id}`).join(" + ")
+  return `${missing.length} skills`
+}
+
+const SKILL_NAMES = new Map(SKILL_TIERS.map((row) => [row.id, row.name]))
+
+/** Words for one leaf, with what the career has when it is given a view. A leaf with its own `label` says that. */
 export function describe(req: Req, p?: TreeView): string {
+  if (req.label) return req.label
   switch (req.t) {
     case "xp": {
       const need = p ? xpNeeded(req, p) : req.min
       return `${formatNumber(need)} lifetime XP${p ? ` (${formatNumber(Math.floor(p.xpTotal))})` : ""}`
     }
     case "owns":
-      return req.kind === "skill" ? `Own ${req.ids.length === 1 ? `skill ${req.ids[0]}` : `${req.ids.length} skills`}` : `Own ${req.ids.length} earlier perk${req.ids.length === 1 ? "" : "s"}`
+      return req.kind === "skill" ? `Own ${req.ids.length === 1 ? (SKILL_NAMES.get(req.ids[0]!) ?? `skill ${req.ids[0]}`) : `${req.ids.length} skills`}` : `Own ${req.ids.length} earlier perk${req.ids.length === 1 ? "" : "s"}`
     case "has":
       return `Own a ${req.kind} row`
     case "count": {
@@ -133,6 +146,61 @@ export function describe(req: Req, p?: TreeView): string {
     case "any":
       return req.of.map((child) => describe(child, p)).join(" or ")
   }
+}
+
+/**
+ * The phrase the "Next" banner uses for a leaf that does not hold: "more XP", "more gigs", "a bigger balance", the skills
+ * still missing, the job that is needed. Short on purpose (the shop's lock panels use `describe`, which has the numbers).
+ */
+export function short(req: Req, p: TreeView): string {
+  switch (req.t) {
+    case "xp":
+      return "more XP"
+    case "owns":
+      if (req.kind === "skill") return req.ids.length === 1 ? describe(req) : (skillGapText(req.ids, p.skills) ?? "")
+      return "an earlier perk"
+    case "count":
+      return req.of === "gigs" ? "more gigs" : "more jobs"
+    case "money":
+      return "a bigger balance"
+    case "rank":
+      return jobNameAtRank(req.min)
+    case "users":
+      return `${formatNumber(req.min)} users`
+    default:
+      return describe(req, p)
+  }
+}
+
+/** The leaves a career meets to open a node for the first time, without the latch that keeps it open once held. */
+export type EntryLine = { req: Req; text: string; met: boolean }
+
+/**
+ * What a board asks, as the lock panel lists it: the entering leaves, in order, each with what the career has and
+ * whether it holds. The latch (`has`: owning what the gate leads to) is not listed. When the entering branch is a choice
+ * of alternatives (the capital: a senior job, or money held) they come back as separate lines with `either` set.
+ */
+export function entry(ref: Ref, p: TreeView): { lines: EntryLine[]; either: boolean } {
+  const node = NODE_MAP.get(ref)
+  if (!node) return { lines: [], either: false }
+  const leaves = (req: Req): Req[] => (req.t === "all" ? req.of.flatMap(leaves) : [req])
+  const top = node.requires
+  const branches = top.t === "any" ? top.of.filter((child) => child.t !== "has") : [top]
+  const alternatives = branches.length > 1
+  const reqs = alternatives ? branches : branches.flatMap(leaves)
+  return { lines: reqs.map((req) => ({ req, text: describe(req, p), met: holds(req, p) })), either: alternatives }
+}
+
+/** What a board still asks, as banner phrases: the unmet entering leaves (not the latch). */
+export function entryPhrases(ref: Ref, p: TreeView): string[] {
+  return entry(ref, p).lines.filter((line) => !line.met).map((line) => short(line.req, p))
+}
+
+/** The node's own unmet leaves as banner phrases, skipping the kinds the caller handles itself. */
+export function neededPhrases(ref: Ref, p: TreeView, skip: readonly Req["t"][] = ["met", "track", "picked"]): string[] {
+  const out: string[] = []
+  for (const miss of check(ref, p).missing) if (!skip.includes(miss.req.t)) out.push(short(miss.req, p))
+  return out
 }
 
 /** The node's gate, leaf by leaf. */

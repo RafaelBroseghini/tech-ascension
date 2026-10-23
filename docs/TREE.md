@@ -32,9 +32,16 @@ the same game as before.
   differs. `tree.test.ts` checks the hand-written structure against the rows (every gig and job listed once, ranks
   rising along a track, a track's `spec` and `lead` matching its jobs'). Nothing about play changed.
 
-**Not built yet:** the shop's `needs` text, `nextUnlock` and the career timeline's progress bars still have their own
-code; `explain` is meant to replace all three. The tagged gig board, which changes gameplay, is a data edit on this
-tree (below) and has not been made.
+- **The words come from the tree too.** The shop's lock panels (`gigBoardRequirements` and the others in `phase.ts`) are
+  `entry(board)`: the board's entering leaves, in order, each with what the career has and whether it holds, with the
+  latch left out and the capital's two ways in returned as alternatives. The "Next" banner (`nextUnlock.ts`) says the
+  same leaves in its few words (`short`, `neededPhrases`, `entryPhrases`): "more XP", "more gigs", "a bigger balance",
+  the skills still missing, the job needed. A leaf can carry its own `label` where the default does not read right.
+  One fix came with it: the Gig Board's banner used the plain XP number, ignoring the career's origin; it now reads the
+  origin-scaled one like the gate does.
+
+**Not built yet:** the career timeline's progress bars (`features.ts`) weigh their own fills and still have their own
+code. The tagged gig board, which changes gameplay, is a data edit on this tree (below) and has not been made.
 
 **Left out on purpose:** the career timeline's features (`src/data/features.ts`, its own trigger system), hire kinds,
 and what things cost (affordability is not a gate: a row can be open and too dear).

@@ -5,7 +5,7 @@
  * docs/TREE.md says how to add a branch.
  */
 import { CAPITAL } from "../../data/capital.ts"
-import { CAPITAL_UNLOCK, EQUIPMENT, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
+import { CAPITAL_UNLOCK, EQUIPMENT, firstJobAtRank, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK } from "../../data/leadership.ts"
 import { PICK_USERS, SENIOR_USERS, TRUNK_TOP_RANK } from "../../data/specializations.ts"
@@ -52,7 +52,10 @@ track(
       kind: "board",
       id: "gigs",
       name: "Gig Board",
-      requires: any({ t: "has", kind: "gig" }, all({ t: "xp", min: GIG_BOARD_UNLOCK.minXp, mod: "gigBoard" }, { t: "owns", kind: "skill", ids: GIG_BOARD_UNLOCK.requireOwnedSkills })),
+      requires: any(
+        { t: "has", kind: "gig" },
+        all({ t: "xp", min: GIG_BOARD_UNLOCK.minXp, mod: "gigBoard" }, ...GIG_BOARD_UNLOCK.requireOwnedSkills.map((id): Req => ({ t: "owns", kind: "skill", ids: [id] }))),
+      ),
     },
     {
       ref: "board:jobs",
@@ -66,7 +69,11 @@ track(
       kind: "board",
       id: "capital",
       name: "Capital",
-      requires: any({ t: "rank", min: CAPITAL_UNLOCK.minJobRank }, { t: "money", peak: CAPITAL_UNLOCK.minMoney }, { t: "has", kind: "capital" }),
+      requires: any(
+        { t: "rank", min: CAPITAL_UNLOCK.minJobRank, label: `A senior job (${firstJobAtRank(CAPITAL_UNLOCK.minJobRank)?.name ?? "Senior SWE"} or higher)` },
+        { t: "money", peak: CAPITAL_UNLOCK.minMoney, label: `or hold $${CAPITAL_UNLOCK.minMoney.toLocaleString("en-US")} at once` },
+        { t: "has", kind: "capital" },
+      ),
     },
   ],
 )

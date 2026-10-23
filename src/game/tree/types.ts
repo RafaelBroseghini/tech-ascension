@@ -21,7 +21,10 @@ export type Ref = `${Kind}:${string | number}`
 /** Where lifetime XP and board gates are scaled by the career's origin, by the same rule the origin module gives. */
 export type XpMod = "gig" | "job" | "gigBoard"
 
-export type Req =
+/** Words a leaf says about itself when the default does not read right (the capital board's two alternatives). */
+type Labelled = { label?: string }
+
+export type Req = (
   /** Lifetime XP at least `min` (scaled by `mod` for the career's origin; `rank` is the job's rank for the `job` rule). */
   | { t: "xp"; min: number; mod?: XpMod; rank?: number }
   /** Every one of these rows owned (a skill, a perk...). */
@@ -46,6 +49,8 @@ export type Req =
   | { t: "met"; ref: Ref }
   | { t: "all"; of: readonly Req[] }
   | { t: "any"; of: readonly Req[] }
+) &
+  Labelled
 
 export type Node = {
   ref: Ref
