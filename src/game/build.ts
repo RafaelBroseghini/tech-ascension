@@ -6,6 +6,8 @@
  */
 import { highestJobRank, firstJobAtRank, JOB_TIERS } from "../data/phases.ts"
 import type { JobTier } from "../data/phases.ts"
+import { isOriginId } from "../data/origins.ts"
+import type { OriginId } from "../data/origins.ts"
 import { isLeadId, LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
 import { isSpecId, PICK_USERS, SENIOR_USERS, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
@@ -28,6 +30,8 @@ export type BuildState = {
   peakRank?: number
   /** The leadership line picked after Senior (IC or Manager), or left out before the pick. Locked once picked. */
   leadership?: LeadId
+  /** Where the career started (`src/data/origins.ts`), picked on the start card; left out for none. Kept for the career, through a switch. */
+  origin?: OriginId
   /** Frontend's launch charge: manual clicks banked towards the next launch (`src/game/launch.ts`). Left out at 0. */
   charge?: number
 }
@@ -40,7 +44,7 @@ export type HasBuild = { build?: BuildState }
 export const specOf = (p: HasBuild): SpecId | null => p.build?.spec ?? null
 
 /** What the product reads from the build: the specialization, the leadership line and the IC rows held. */
-export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number; gpus: number }
+export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number; gpus: number; origin: OriginId | null }
 
 /** Jobs held that belong to the IC line (ranks 16 to 24 carry a `lead`). */
 export const icRowsHeld = (jobs: readonly number[]): number => JOB_TIERS.filter((job) => job.lead === "ic" && jobs.includes(job.id)).length
@@ -54,9 +58,22 @@ export const buildFactsOf = (p: HasBuild & { jobs: readonly number[]; equipment?
   lead: leadOf(p),
   icRows: icRowsHeld(p.jobs),
   gpus: gpusHeld(p.equipment),
+  origin: originOf(p),
 })
 
 export const leadOf = (p: HasBuild): LeadId | null => p.build?.leadership ?? null
+
+/** The origin pick is open until the career has earned anything (no XP, no gig, no job): the start card can change its mind until the first click, and it is locked after. */
+export function originPickOpen(p: { xpTotal: number; gigs: readonly number[]; jobs: readonly number[] }): boolean {
+  return p.xpTotal === 0 && p.gigs.length === 0 && p.jobs.length === 0
+}
+
+export function canPickOrigin(p: HasBuild & { xpTotal: number; gigs: readonly number[]; jobs: readonly number[] }, id: unknown): id is OriginId {
+  return isOriginId(id) && originPickOpen(p)
+}
+
+/** The career's origin, or null for none. */
+export const originOf = (p: HasBuild): OriginId | null => p.build?.origin ?? null
 
 /** The build without its launch charge (a full launch used it up). */
 export function omitCharge(build: BuildState): BuildState {
@@ -65,7 +82,7 @@ export function omitCharge(build: BuildState): BuildState {
 }
 
 export function isFreshBuild(build: BuildState | undefined): boolean {
-  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership && !(build.charge && build.charge > 0))
+  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership && !build.origin && !(build.charge && build.charge > 0))
 }
 
 /** The rank the career has reached: the highest job held now, or before a switch, whichever is higher. Rank gates read this. */
@@ -200,7 +217,7 @@ export function normalizeBuild(raw: unknown, jobs: readonly number[], hires: Hir
     const row = JOB_BY_ID.get(id)
     return row !== undefined && rowVisible(row, spec, lead) && (lead !== null || row.lead === undefined)
   })
-  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}), ...(spec === "frontend" && banked > 0 ? { charge: banked } : {}) }
+  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}), ...(isOriginId(record.origin) ? { origin: record.origin } : {}), ...(spec === "frontend" && banked > 0 ? { charge: banked } : {}) }
   return { build: isFreshBuild(build) ? undefined : build, jobs: kept }
 }
 

@@ -8,6 +8,7 @@ import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
+import { gigXpReq, skillPriceMult } from "../game/origin.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { TeamPanel } from "./Team.tsx"
@@ -760,7 +761,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
           <>
             {skillRows.map((row, index) => {
               const have = ownedCount(skills, row.id)
-              const cost = skillCost(row, have)
+              const cost = skillCost(row, have, build.origin ?? null)
               const revealed = isSkillRevealed(row, skills, xpTotal)
               const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
@@ -782,7 +783,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id))}>
-                        {!revealed && have === 0 ? "Locked" : buyLabel("xp", row.baseXpCost, have, row.firstXpCost)}
+                        {!revealed && have === 0 ? "Locked" : buyLabel("xp", row.baseXpCost * skillPriceMult(build.origin ?? null, row), have, row.firstXpCost)}
                       </button>
                     </>
                   }
@@ -858,7 +859,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               const status = gigState(gates, gig)
               const key = `gig:${gig.id}`
               const gap = [
-                xpTotal < gig.xpReq ? "More XP" : "",
+                xpTotal < gigXpReq(build.origin ?? null, gig) ? "More XP" : "",
                 gigs.length < gig.priorGigs ? "Earlier gigs cleared" : "",
                 gigSkillGap(gates, gig) !== null ? "More skills" : "",
               ].filter(Boolean)

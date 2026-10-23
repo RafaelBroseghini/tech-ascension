@@ -206,7 +206,7 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
 
   // Refused before Mid-level SWE; every job above it needs the pick.
   expect(game.pickSpecialization("frontend")).toBe(false)
-  expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
+  expect(game.getState().build).toEqual({ origin: null, specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
   for (let id = 1; id <= 6; id++) expect(game.buyJob(id)).toBe(true)
   expect(game.pickSpecialization("frontend")).toBe(false)
   expect(game.buyJob(7)).toBe(true)
@@ -255,6 +255,30 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(manual).toBeGreaterThan(auto)
   expect(game.getState().clickShare).toBeCloseTo(2.5, 6)
   expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
+})
+
+test("origins: picked on the start card until the first click, kept for the career, each one prices the early game its own way", () => {
+  game.reset()
+  expect(game.getState().build.origin).toBeNull()
+  expect(game.pickOrigin("wizard")).toBe(false)
+  expect(game.pickOrigin("college")).toBe(true)
+  expect(game.pickOrigin("bootcamp")).toBe(true)
+  expect(game.getState().build.origin).toBe("bootcamp")
+  expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "origin:bootcamp")).toBe(true)
+
+  // The pick is locked once the career has earned anything.
+  game.keepProfile()
+  game.setXp(10)
+  expect(game.pickOrigin("dropout")).toBe(false)
+  expect(game.getState().build.origin).toBe("bootcamp")
+
+  // A career with no origin plays the plain ladder: nothing is priced or opened differently.
+  game.reset()
+  game.keepProfile()
+  expect(game.getState().build.origin).toBeNull()
+  game.setXp(1e9)
+  expect(game.buySkill(1)).toBe(true)
+  game.reset()
 })
 
 test("launches and GPUs: Frontend's clicks ship launches the gear can take, and an AI build's growth follows its GPUs", () => {

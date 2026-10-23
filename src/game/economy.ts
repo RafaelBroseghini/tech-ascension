@@ -1,4 +1,6 @@
 import { BASE_XP_PER_CLICK, COST_GROWTH, EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS, firstJobAtRank, highestJobRank, jobRank } from "../data/phases.ts"
+import { originXpPerSec, skillPriceMult } from "./origin.ts"
+import type { OriginId } from "../data/origins.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import type { ActiveBoost } from "../data/boosts.ts"
@@ -117,8 +119,9 @@ export function quotePurchase(
 }
 
 /** A skill's next copy, in XP. The first copy can sit below the curve (`firstXpCost`: the used laptop). */
-export function skillCost(row: Pick<SkillTier, "baseXpCost" | "firstXpCost">, owned: number): number {
-  return owned === 0 && row.firstXpCost !== undefined ? row.firstXpCost : nextCost(row.baseXpCost, owned)
+export function skillCost(row: Pick<SkillTier, "baseXpCost" | "firstXpCost"> & Partial<Pick<SkillTier, "tags">>, owned: number, origin: OriginId | null = null): number {
+  const base = row.tags ? row.baseXpCost * skillPriceMult(origin, { tags: row.tags }) : row.baseXpCost
+  return owned === 0 && row.firstXpCost !== undefined ? row.firstXpCost : nextCost(base, owned)
 }
 
 /** XP per click from skills, before any boost. Base 1 plus every owned copy's xpPerClick. */
@@ -128,9 +131,9 @@ export function xpPerClick(skills: OwnedMap): number {
   return sum
 }
 
-/** Idle XP/s: skills (study time, in every phase) plus the jobs held that teach on the job. */
-export function xpPerSec(p: Pick<Progress, "skills" | "jobs">): number {
-  let sum = 0
+/** Idle XP/s: skills (study time, in every phase), the jobs held that teach on the job, and the origin's lectures. */
+export function xpPerSec(p: Pick<Progress, "skills" | "jobs"> & Partial<Pick<Progress, "build">>): number {
+  let sum = originXpPerSec(p.build?.origin)
   for (const row of SKILL_TIERS) sum += ownedCount(p.skills, row.id) * row.xpPerSec
   for (const id of p.jobs) sum += jobById(id)?.xpPerSec ?? 0
   return sum
