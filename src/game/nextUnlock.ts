@@ -7,10 +7,11 @@ import type { Capital, Era } from "../data/capital.ts"
 import { heldRank, leadOf, leadPickOpen, needsLead, needsPick, pickOpen, pickWaitsOnUsers, specOf, usersOf } from "./build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
 import { PICK_USERS, SENIOR_USERS, SPECIALIZATIONS } from "../data/specializations.ts"
-import { canAfford, capitalBase, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
+import { canAfford, capitalBase, firstJobAtRank, gearBase, nextCost, ownedCount, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigSkillGap, jobBoardUnlocked, jobState } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, jobState } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
+import { entryPhrases, firstFail, neededPhrases, nodeOf, short } from "./tree/index.ts"
 
 export type NextUnlock = {
   key: string
@@ -79,7 +80,6 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
 const xpLeft = () => "more XP"
 /** A balance to reach once. Spending afterwards does not close the gate, so this names the goal, not a gap. */
 const balanceGoal = () => "a bigger balance"
-const gigsLeft = () => "more gigs"
 const cashShort = () => "more money"
 const xpShort = () => "more XP"
 
@@ -99,23 +99,15 @@ const study = (p: Progression) => (typeof p.xp === "number" && Number.isFinite(p
 /** The closed board a tab sits behind, with what is still missing. Null once the tab is open (and always for Skills). */
 function boardTarget(p: Progression, tab: ShopTab): NextUnlock | null {
   if (tab === "G" && !equipmentOpen(p)) {
-    return { key: "board:gear", name: "Gear", tab: "G", needs: [xpLeft()], either: false }
+    return { key: "board:gear", name: "Gear", tab: "G", needs: entryPhrases("board:gear", p), either: false }
   }
 
   if (tab === "B" && !gigBoardUnlocked(p)) {
-    const needs: string[] = []
-    if (p.xpTotal < GIG_BOARD_UNLOCK.minXp) needs.push(xpLeft())
-    for (const id of GIG_BOARD_UNLOCK.requireOwnedSkills) {
-      if (ownedCount(p.skills, id) === 0) needs.push(`Own ${skillById(id)?.name ?? `skill ${id}`}`)
-    }
-    return { key: "board:gig", name: "Gig Board", tab: "B", needs, either: false }
+    return { key: "board:gig", name: "Gig Board", tab: "B", needs: entryPhrases("board:gigs", p), either: false }
   }
 
   if (tab === "C" && !jobBoardUnlocked(p)) {
-    const needs: string[] = []
-    if (p.xpTotal < JOB_BOARD_UNLOCK.minXp) needs.push(xpLeft())
-    if (p.gigs.length < JOB_BOARD_UNLOCK.minGigsCompleted) needs.push(gigsLeft())
-    return { key: "board:job", name: "Job Board", tab: "C", needs, either: false }
+    return { key: "board:job", name: "Job Board", tab: "C", needs: entryPhrases("board:jobs", p), either: false }
   }
 
   if (tab === "D" && !capitalUnlocked(p)) {
@@ -214,30 +206,24 @@ function leadPickTarget(): NextUnlock {
 }
 
 function skillTarget(p: Progression, skill: SkillTier): NextUnlock {
-  const needs: string[] = []
-  if (p.xpTotal < skill.unlockAtXp) needs.push(xpLeft())
-  else {
+  const needs = neededPhrases(`skill:${skill.id}`, p)
+  if (needs.length === 0) {
     const cost = skillCost(skill, 0)
-    if (!canAfford(study(p), cost)) needs.push(xpShort())
-    else needs.push("to buy it")
+    needs.push(canAfford(study(p), cost) ? "to buy it" : xpShort())
   }
   return { key: `skill:${skill.id}`, name: skill.name, tab: "A", needs, either: false }
 }
 
 function gigTarget(p: Progression, gig: Gig): NextUnlock {
-  const needs: string[] = []
-  if (p.xpTotal < gig.xpReq) needs.push(xpLeft())
-  if (p.gigs.length < gig.priorGigs) needs.push(gigsLeft())
-  const skills = gigSkillGap(p, gig)
-  if (skills) needs.push(skills)
+  const needs = neededPhrases(`gig:${gig.id}`, p)
   if (needs.length === 0) needs.push("to clear it")
   return { key: `gig:${gig.id}`, name: gig.name, tab: "B", needs, either: false }
 }
 
 function jobTarget(p: Progression, job: JobTier): NextUnlock {
-  if (p.xpTotal < job.xpReq) {
-    return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }
-  }
+  // The picks and the board are named by their own steps; here the gate is the XP, then the users.
+  const gate = firstFail(nodeOf(`job:${job.id}`)!.requires, p)
+  if (gate?.t === "xp") return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [short(gate, p)], either: false }
   if (jobState(p, job) === "users") return usersTarget(`job:${job.id}`, job.name, SENIOR_USERS, p)
   if (job.xpCost > 0 && !canAfford(study(p), job.xpCost)) {
     return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }
@@ -246,11 +232,8 @@ function jobTarget(p: Progression, job: JobTier): NextUnlock {
 }
 
 function gearTarget(p: Progression, row: GearItem): NextUnlock {
-  const needs: string[] = []
-  if (!isGearRevealed(row, p.equipment, p.peakMoney, p.jobs, p.build?.peakRank)) {
-    if (p.peakMoney < row.unlockMoney) needs.push(balanceGoal())
-    if (row.unlockJobRank > 0 && heldRank(p) < row.unlockJobRank) needs.push(firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`)
-  }
+  // The gear tab is its own step; here the row's own gate: the money held once, then the job rank.
+  const needs = neededPhrases(`gear:${row.id}`, p, ["met"])
   if (needs.length === 0) {
     const cost = nextCost(gearBase(row, p), 0)
     if (!canAfford(wallet(p), cost)) needs.push(cashShort())

@@ -5,7 +5,8 @@
 import { childrenOf, NODE_MAP, nodeOf, TRACK_LIST } from "./graph.ts"
 import type { Node, Ref, Req, Track } from "./types.ts"
 
-export { check, describe, firstFail, holds, isOwned, revealed } from "./check.ts"
+export { check, describe, entry, entryPhrases, firstFail, holds, isOwned, neededPhrases, revealed, short, skillGapText } from "./check.ts"
+export type { EntryLine } from "./check.ts"
 export { childrenOf, NODE_MAP, nodeOf, TRACK_LIST }
 export type { Check, Kind, Missing, Node, Ref, Req, Track, TreeView, XpMod } from "./types.ts"
 

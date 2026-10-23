@@ -4,7 +4,7 @@ import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { GIG_PATH, JOB_PATHS } from "../../data/tree.ts"
 import { installGameHarness } from "../harness.ts"
-import { check, childrenOf, closure, dependents, describe as words, firstFail, holds, isOwned, mentions, NODE_MAP, NODES, nodeOf, prereqs, TRACK_LIST, trackOf } from "./index.ts"
+import { check, childrenOf, closure, dependents, describe as words, entry, entryPhrases, firstFail, neededPhrases, short, skillGapText, holds, isOwned, mentions, NODE_MAP, NODES, nodeOf, prereqs, TRACK_LIST, trackOf } from "./index.ts"
 import type { Ref, TreeView } from "./index.ts"
 
 const game = installGameHarness()
@@ -161,6 +161,41 @@ describe("reading a node", () => {
     expect(holds({ t: "tag", tag: "frontend", min: 2 }, have)).toBe(true)
     expect(holds({ t: "tag", tag: "frontend", min: 3 }, have)).toBe(false)
     expect(holds({ t: "tag", tag: "security", min: 1 }, have)).toBe(false)
+  })
+})
+
+describe("the words the shop reads off the tree", () => {
+  it("lists a board's entering leaves for its lock panel, without the latch, and says whether each holds", () => {
+    const gigs = entry("board:gigs", view({ xpTotal: 9_000, skills: { "15": 1 } }))
+    expect(gigs.either).toBe(false)
+    expect(gigs.lines.map((line) => line.text)).toEqual(["14,000 lifetime XP (9,000)", "Own Portfolio site live", "Own React / one framework"])
+    expect(gigs.lines.map((line) => line.met)).toEqual([false, true, false])
+    expect(entry("board:jobs", view({ gigs: [1, 2, 3] })).lines.map((line) => line.text)).toEqual(["40,000 lifetime XP (0)", "6 gigs cleared (3)"])
+    expect(entry("board:gear", view({ xpTotal: 10 })).lines.map((line) => line.text)).toEqual(["10,000 lifetime XP (10)"])
+  })
+
+  it("lists the capital board's two ways in as alternatives", () => {
+    const capital = entry("board:capital", view({ peakMoney: 100 }))
+    expect(capital.either).toBe(true)
+    expect(capital.lines.map((line) => line.text)).toEqual(["A senior job (Senior SWE or higher)", "or hold $500,000 at once"])
+    expect(capital.lines.map((line) => line.met)).toEqual([false, false])
+  })
+
+  it("says what a closed row still needs in the banner's few words", () => {
+    expect(neededPhrases("gig:3", view({ xpTotal: 100 }))).toEqual(["more XP", "more gigs", "8 skills"])
+    // Gig 1 needs skills 1 to 6; with four of them owned the two missing ones are named.
+    const two = neededPhrases("gig:1", view({ xpTotal: 1e9, skills: { "1": 1, "2": 1, "3": 1, "4": 1 } }), ["met"])
+    expect(two).toEqual(["Intro-CS lectures"].map((name) => `Git + GitHug hygiene + ${name}`))
+    expect(neededPhrases("gear:44", view({}), ["met"])[0]).toBe("a bigger balance")
+    expect(entryPhrases("board:jobs", view({ xpTotal: 50_000, gigs: [1] }))).toEqual(["more gigs"])
+    expect(short({ t: "rank", min: 14 }, view())).toBe("Senior SWE")
+  })
+
+  it("names one or two missing skills and counts more", () => {
+    expect(skillGapText([1, 2, 3], { "1": 1, "2": 1, "3": 1 })).toBeNull()
+    expect(skillGapText([1, 2, 3], { "1": 1, "2": 1 })).toBe("FreeCodeChamp streak")
+    expect(skillGapText([2, 3], {})).toBe("Stack Overblow lurker + FreeCodeChamp streak")
+    expect(skillGapText([1, 2, 3, 4], {})).toBe("4 skills")
   })
 })
 
