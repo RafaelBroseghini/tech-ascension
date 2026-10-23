@@ -76,7 +76,7 @@ test("phase A: clicks are XP only, skills cost XP, there is no $/s", () => {
   expect(idleAfter.cps).toBe(0)
 })
 
-test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gig still needs its skills", () => {
+test("A → B: Portfolio + React and 14K XP open the Gig Board, and a late gig still needs its skills", () => {
   game.reset()
   game.setXp(1_000_000)
   expect(game.getState().unlocks.gigBoard).toBe(false)
@@ -93,12 +93,12 @@ test("A → B: Portfolio + React and 14K XP open the Gig Board, and the first gi
   expect(open.lastPop).toMatchObject({ kind: "unlock", size: "large" })
 
   const gig1 = GIGS[0]
-  const gig2 = GIGS[1]
-  if (!gig1 || !gig2) throw new Error("missing gigs")
+  const lastGig = GIGS[GIGS.length - 1]
+  if (!gig1 || !lastGig) throw new Error("missing gigs")
   const primed = game.click()
   expect(primed.money).toBe(0)
   expect(primed.xp).toBeGreaterThan(0)
-  expect(game.completeGig(gig2.id)).toBe(false)
+  expect(game.completeGig(lastGig.id)).toBe(false)
   expect(game.completeGig(gig1.id)).toBe(true)
   expect(game.completeGig(gig1.id)).toBe(false)
   const cleared = game.getState()
@@ -125,11 +125,13 @@ test("B: a retainer gig is the first $/s", () => {
   const retainer = GIGS.find((gig) => gig.retainerCps > 0)
   if (!retainer) throw new Error("missing retainer gig")
   game.setXp(1_000_000)
-  const furthest = Math.max(16, ...retainer.skillIds)
-  for (let id = 1; id <= furthest; id++) expect(game.buySkill(id)).toBe(true)
-  for (let id = 1; id < retainer.id; id++) expect(game.completeGig(id)).toBe(true)
-  expect(game.getState().cps).toBe(0)
-  expect(game.completeGig(retainer.id)).toBe(true)
+  // Learn in catalog order until the retainer's tags are covered; the board needs skills 15 and 16 first.
+  let cleared = false
+  for (let id = 1; id <= SKILL_TIERS.length && !cleared; id++) {
+    expect(game.buySkill(id)).toBe(true)
+    if (id >= 16) cleared = game.completeGig(retainer.id)
+  }
+  expect(cleared).toBe(true)
   expect(game.getState().cps).toBe(retainer.retainerCps)
   const before = game.getState()
   const storeBefore = useGame.getState()

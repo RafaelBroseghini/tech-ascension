@@ -6,14 +6,16 @@ import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { bandForTier } from "../data/idePacks.ts"
 import { GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, CAPITAL_UNLOCK } from "../data/phases.ts"
-import { heldRank } from "./build.ts"
+import { heldRank, originOf, specOf } from "./build.ts"
 import { canAfford, equipById, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { goldSectionOpen, hoverRate } from "./gold.ts"
 import { prestigeTotalFor } from "./legacy.ts"
+import { gigTagMin } from "./origin.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, moneyMode, stageOf } from "./phase.ts"
+import { tagCount } from "./tree/index.ts"
 
 /** What the gates read: progress, the 10x dev skills, and the two things progress alone cannot say. */
 export type FeatureProgress = Progress & {
@@ -155,9 +157,15 @@ function firstGigProgress(p: FeatureProgress): TriggerProgress {
   if (!gigBoardUnlocked(p)) return { fill: gigBoardProgress(p).fill * 0.9, left: gigBoardProgress(p).left }
   const gig = GIGS[0]
   if (!gig) return { fill: 1, left: "" }
-  const skills = gig.skillIds.filter((id) => ownedCount(p.skills, id) > 0).length
+  let asked = 0
+  let held = 0
+  for (const need of gig.needs) {
+    const min = gigTagMin(originOf(p), specOf(p), need.tag, need.min)
+    asked += min
+    held += Math.min(min, tagCount(p.skills, need.tag))
+  }
   const xpFill = ratio(p.xpTotal, gig.xpReq)
-  const skillFill = ratio(skills, gig.skillIds.length)
+  const skillFill = ratio(held, asked)
   if (xpFill >= 1 && skillFill >= 1) return { fill: 0.99, left: "clear it on the Gig Board" }
   return xpFill <= skillFill
     ? { fill: 0.9 + xpFill * 0.09, left: xpLeft() }

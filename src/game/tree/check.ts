@@ -8,8 +8,10 @@
 import { SKILL_TIERS, firstJobAtRank, highestJobRank } from "../../data/phases.ts"
 import { formatNumber } from "../format.ts"
 import { heldRank, leadOf, originOf, rowVisible, specOf, usersOf } from "../build.ts"
-import { gigBoardXp, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
+import { gigBoardXp, gigTagMin, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
+import { tagLabel } from "../../data/tags.ts"
 import { NODE_MAP } from "./graph.ts"
+import type { Tag } from "../../data/tags.ts"
 import type { Check, Missing, Node, Ref, Req, TreeView } from "./types.ts"
 
 const jobNameAtRank = (rank: number): string => firstJobAtRank(rank)?.name ?? `job ${rank}`
@@ -39,6 +41,16 @@ export function xpNeeded(req: Extract<Req, { t: "xp" }>, p: Pick<TreeView, "buil
   return req.min
 }
 
+/** Owned skills that carry a tag. */
+export function tagCount(skills: Readonly<Record<string, number>> | undefined, tag: Tag): number {
+  let have = 0
+  for (const [id, tags] of SKILL_TAGS) if (owned(skills, id) > 0 && tags.includes(tag)) have += 1
+  return have
+}
+
+/** The owned skills a tag leaf asks for under the career's specialization and origin. */
+export const tagNeeded = (req: Extract<Req, { t: "tag" }>, p: Pick<TreeView, "build">): number => (req.mod === "gig" ? gigTagMin(originOf(p), specOf(p), req.tag, req.min) : req.min)
+
 /** Gigs or jobs a count leaf asks for under the career's origin. */
 export const countNeeded = (req: Extract<Req, { t: "count" }>, p: Pick<TreeView, "build">): number => (req.mod === "jobBoard" ? jobBoardGigs(originOf(p)) : req.min)
 
@@ -53,11 +65,8 @@ export function holds(req: Req, p: TreeView): boolean {
       return req.kind === "gig" ? p.gigs.length > 0 : req.kind === "job" ? p.jobs.length > 0 : req.kind === "capital" ? anyOwned(p.owned) : anyOwned(p.equipment)
     case "count":
       return (req.of === "gigs" ? p.gigs.length : p.jobs.length) >= countNeeded(req, p)
-    case "tag": {
-      let have = 0
-      for (const [id, tags] of SKILL_TAGS) if (owned(p.skills, id) > 0 && tags.includes(req.tag)) have += 1
-      return have >= req.min
-    }
+    case "tag":
+      return tagCount(p.skills, req.tag) >= tagNeeded(req, p)
     case "rank":
       return heldRank(p) >= req.min
     case "users": {
@@ -127,8 +136,10 @@ export function describe(req: Req, p?: TreeView): string {
       const need = p ? countNeeded(req, p) : req.min
       return `${need} ${req.of === "gigs" ? "gigs cleared" : "jobs held"}${p ? ` (${req.of === "gigs" ? p.gigs.length : p.jobs.length})` : ""}`
     }
-    case "tag":
-      return `${req.min} ${req.tag} skill${req.min === 1 ? "" : "s"}`
+    case "tag": {
+      const need = p ? tagNeeded(req, p) : req.min
+      return `${need} ${tagLabel(req.tag)} skill${need === 1 ? "" : "s"}${p ? ` (${tagCount(p.skills, req.tag)})` : ""}`
+    }
     case "rank":
       return `A job of rank ${req.min}`
     case "users":
@@ -161,6 +172,8 @@ export function short(req: Req, p: TreeView): string {
       return "an earlier perk"
     case "count":
       return req.of === "gigs" ? "more gigs" : "more jobs"
+    case "tag":
+      return `${tagNeeded(req, p) - tagCount(p.skills, req.tag)} more ${tagLabel(req.tag)} skill${tagNeeded(req, p) - tagCount(p.skills, req.tag) === 1 ? "" : "s"}`
     case "money":
       return "a bigger balance"
     case "rank":

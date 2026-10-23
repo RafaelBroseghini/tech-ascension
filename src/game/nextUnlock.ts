@@ -9,7 +9,7 @@ import { LEADERSHIP } from "../data/leadership.ts"
 import { PICK_USERS, SENIOR_USERS, SPECIALIZATIONS } from "../data/specializations.ts"
 import { canAfford, capitalBase, firstJobAtRank, gearBase, nextCost, ownedCount, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, jobState } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, gigBoard, gigBoardUnlocked, jobBoardUnlocked, jobState } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
 import { entryPhrases, firstFail, neededPhrases, nodeOf, short } from "./tree/index.ts"
 
@@ -66,7 +66,7 @@ export function shopFocus(p: Progression, next: NextUnlock): ShopFocus | null {
 
   if (next.key === "board:job") {
     if (p.gigs.length >= JOB_BOARD_UNLOCK.minGigsCompleted) return null
-    const gig = GIGS.find((row) => !p.gigs.includes(row.id))
+    const gig = nextGig(p)
     return gig ? { tab: "B", row: `gig:${gig.id}` } : null
   }
 
@@ -129,7 +129,8 @@ function rowTarget(p: Progression, tab: ShopTab): NextUnlock | null {
     for (const skill of SKILL_TIERS) if (ownedCount(p.skills, skill.id) === 0) return skillTarget(p, skill)
   }
   if (tab === "B") {
-    for (const gig of GIGS) if (!p.gigs.includes(gig.id)) return gigTarget(p, gig)
+    const gig = nextGig(p)
+    if (gig) return gigTarget(p, gig)
   }
   if (tab === "C") {
     // The rows above Mid-level wait behind the pick: once the trunk is held, the next step is to pick one. The rows
@@ -212,6 +213,12 @@ function skillTarget(p: Progression, skill: SkillTier): NextUnlock {
     needs.push(canAfford(study(p), cost) ? "to buy it" : xpShort())
   }
   return { key: `skill:${skill.id}`, name: skill.name, tab: "A", needs, either: false }
+}
+
+/** The gig to work on next: the first the career can clear, else the nearest locked one the board shows. Null once every gig is cleared. */
+function nextGig(p: Progression): Gig | null {
+  const board = gigBoard(p)
+  return board.open[0] ?? board.locked[0] ?? null
 }
 
 function gigTarget(p: Progression, gig: Gig): NextUnlock {

@@ -178,14 +178,13 @@ export type Gig = {
   name: string
   tags: readonly Tag[]
   xpReq: number
-  priorGigs: number
-  /** Every skill this gig demands. Each gig's list contains the previous gig's list plus one more. */
-  skillIds: readonly number[]
+  /** The owned skills of each of the gig's tags it demands, read off `GIG_PATH` (src/data/tree.ts) before the build's bonuses. */
+  needs: readonly { tag: Tag; min: number }[]
   lump: number
   retainerCps: number
 }
 
-const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
+const GIG_ROWS: readonly Omit<Gig, "needs">[] = [
   { id: 1, name: "Fix broken login / blog-engine bug", tags: ["backend", "frontend"], xpReq: 12000, lump: 40, retainerCps: 0 },
   { id: 2, name: "Local biz landing page", tags: ["frontend", "product"], xpReq: 13500, lump: 120, retainerCps: 0 },
   { id: 3, name: "Design-mock-to-HTML slice", tags: ["frontend"], xpReq: 14500, lump: 90, retainerCps: 0 },
@@ -253,12 +252,11 @@ const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
   { id: 65, name: "Legacy empire handoff", tags: ["product"], xpReq: 1000000, lump: 50000, retainerCps: 0 },
 ]
 
-/** Each gig requires every earlier gig, and a skill set that only grows. */
-/** The gigs, each with its place in the path and its skills read from `GIG_PATH` (src/data/tree.ts), where the chain is written. */
+/** The gigs, each with the skills it demands read from `GIG_PATH` (src/data/tree.ts), where the counts are written. */
 export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => {
-  const at = GIG_PATH.findIndex((step) => step.id === row.id)
-  if (at < 0) throw new Error(`gig ${row.id} is not on the gig path (src/data/tree.ts)`)
-  return { ...row, priorGigs: at, skillIds: GIG_PATH[at]!.skills }
+  const step = GIG_PATH.find((entry) => entry.id === row.id)
+  if (!step) throw new Error(`gig ${row.id} is not on the gig path (src/data/tree.ts)`)
+  return { ...row, needs: step.needs }
 })
 
 /**

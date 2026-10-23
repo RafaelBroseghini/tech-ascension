@@ -6,8 +6,8 @@
  * add a branch.
  *
  * Two things stay apart. `requires` is a hard gate. Order (`after`, a track's position) is layout: what the row sits
- * under, and which row the shop shows next. A track is `strict` when its order is also a gate (the gigs: each needs
- * every earlier one cleared) and loose when it is not (the jobs and the skills, where lifetime XP does the ordering).
+ * under, and which row the shop shows next. A track is `strict` when its order is also a gate and loose when it is not
+ * (the gigs, which ask for skills by tag, the jobs and the skills, where lifetime XP does the ordering).
  */
 import type { LeadId } from "../../data/leadership.ts"
 import type { SpecId } from "../../data/specializations.ts"
@@ -33,8 +33,8 @@ export type Req = (
   | { t: "has"; kind: "gig" | "job" | "capital" | "gear" }
   /** At least `min` gigs cleared or jobs held (the Job Board's gig count is scaled by `mod` for the origin). */
   | { t: "count"; of: "gigs" | "jobs"; min: number; mod?: "jobBoard" }
-  /** At least `min` owned skills carry this tag. */
-  | { t: "tag"; tag: Tag; min: number }
+  /** At least `min` owned skills carry this tag (a gig's `mod` lowers it by the career's specialization and origin). */
+  | { t: "tag"; tag: Tag; min: number; mod?: "gig" }
   /** The job rank held now or before a switch is at least `min`. */
   | { t: "rank"; min: number }
   /** The product has at least `min` users. A caller with no company leaves this open. */

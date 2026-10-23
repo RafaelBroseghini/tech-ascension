@@ -19,9 +19,9 @@ __GAME__.explain("job:14")         the same, for the career under way (agents)
 **Built:** the model (`src/game/tree/`), the structure written by hand (`src/data/tree.ts`), and the check that they are
 the same game as before.
 
-- **`src/data/tree.ts` is where the structure is authored.** `GIG_PATH` lists the gigs in order and the skills each one
+- **`src/data/tree.ts` is where the structure is authored.** `GIG_PATH` lists the gigs in order and the skills (by tag) each one
   demands; `JOB_PATHS` lists each track's jobs and what the track hangs off. The tables (`phases.ts`) keep content
-  (names, payouts, XP, prices, art) and read `priorGigs` and `skillIds` off the path; `graph.ts` builds the nodes from
+  (names, payouts, XP, prices, art) and read `needs` off the path; `graph.ts` builds the nodes from
   the paths. The id arithmetic is gone: no `priorGigs: id - 1`, no `skillsForGig(id)`, no job tracks decoded from `spec`
   and `rank` fields.
 - **The tree reads the rest from the rows:** gear's `unlockMoney` and `unlockJobRank`, capital's price, a gig's and a
@@ -41,7 +41,7 @@ the same game as before.
   origin-scaled one like the gate does.
 
 **Not built yet:** the career timeline's progress bars (`features.ts`) weigh their own fills and still have their own
-code. The tagged gig board, which changes gameplay, is a data edit on this tree (below) and has not been made.
+code. The tagged gig board, the first gameplay change on this tree, is made: gigs are loose and ask for skills by tag.
 
 **Left out on purpose:** the career timeline's features (`src/data/features.ts`, its own trigger system), hire kinds,
 and what things cost (affordability is not a gate: a row can be open and too dear).
@@ -61,9 +61,8 @@ A **node** is one row of the game.
 
 A **track** is an ordered list of nodes with a `strict` flag.
 
-- **Strict:** the order is also a gate. The gigs are strict (each needs every earlier gig cleared), and so is each
-  10x dev family (a perk needs the ones before it).
-- **Loose:** the order is only layout. The jobs, the skills, the gear and the capital are loose: nothing demands the
+- **Strict:** the order is also a gate. Each 10x dev family is strict (a perk needs the ones before it).
+- **Loose:** the order is only layout. The gigs, the jobs, the skills, the gear and the capital are loose: nothing demands the
   row before it; lifetime XP, money and the picks do the ordering.
 
 Making a loose track strict is one flag plus an `owns` leaf per row. It would change play (the forced-XP recipes that
@@ -79,7 +78,7 @@ Making a loose track strict is one flag plus an `owns` leaf per row. It would ch
 | `owns` | every listed skill (or 10x dev perk) is owned |
 | `has` | the career owns at least one row of a kind. **This is the latch**: holding what a gate leads to keeps it open |
 | `count` | gigs cleared or jobs held ≥ `min` (the Job Board's gig count is scaled by origin) |
-| `tag` | at least `min` owned skills carry a tag (the tagged gig board is written with this) |
+| `tag` | at least `min` owned skills carry a tag; a gig's leaf has `mod: "gig"`, which lowers `min` for the career's specialization and origin (`gigTagMin`) |
 | `rank` | the job rank held now **or before a switch** is ≥ `min` |
 | `users` | the product has ≥ `min` users; a caller that carries no company leaves it open |
 | `money` | the balance has reached `peak` at some point |
@@ -104,7 +103,7 @@ of its first unmet leaf (`met` → board-locked, `track` → hidden, `picked` �
 | Kind | Gate |
 | --- | --- |
 | `skill` | lifetime XP at the row's `unlockAtXp` (the chain's computed value, not the raw table) |
-| `gig` | its board; the XP (origin-scaled); `priorGigs` gigs cleared; the skills for it |
+| `gig` | its board; the XP (origin-scaled); owned skills of each of its tags |
 | `job` | the Job Board; the career's track and line; a picked specialization above rank 7; a picked line above rank 15; the XP (origin-scaled); for rank 14, a job of rank 14 already held or 1,000,000 users |
 | `gear` | the Gear tab; the money held once; a job rank when the row has one |
 | `capital` | Capital (rank 14, $500,000 held, or any capital row owned); the row's price held once to show it |
@@ -118,13 +117,13 @@ of its first unmet leaf (`met` → board-locked, `track` → hidden, `picked` �
 The structure is in `src/data/tree.ts`; the content is a row in the table. Both edits, and nothing else.
 
 **A new gig.** Add its row to `GIG_ROWS` in `phases.ts` (name, XP, payout) and a step to `GIG_PATH` where it belongs in
-the order, with the skills it demands:
+the order, with the skills it demands per tag (the tags are the row's own):
 
 ```ts
-{ id: 66, skills: skills(1, 71) },
+{ id: 66, needs: [{ tag: "infra", min: 10 }, { tag: "product", min: 12 }] },
 ```
 
-It sits under the step before it and needs every earlier gig cleared, because the gig path is strict.
+It needs no other gig: the order is how the board lists ties, nothing more.
 
 **A new specialization's job track.** Add its eight rows to `JOB_ROWS` (ids `600 + rank`, `spec: "quant"`), then one
 path:
@@ -137,18 +136,15 @@ The track hangs off the trunk's last row, and its rows get the board, the track 
 14) the users gate from `jobGate` in `graph.ts`. `tree.test.ts` fails if a job is missing from every path, listed
 twice, out of rank order, or on a path whose `spec` is not its own.
 
-**A tagged gig** (the planned gig board). A gig stops asking for "every gig before it and the first n skills" and asks
-for what it is about. Its step in `GIG_PATH` carries tag counts where it now carries a skill list, and `graph.ts` writes
-`{ t: "tag", tag, min }` leaves instead of an `owns` leaf. The evaluator already counts tags, so nothing else changes:
+**A tagged gig** is how every gig reads. Its step in `GIG_PATH` carries tag counts, and `graph.ts` writes `{ t: "tag", tag, min, mod: "gig" }`
+leaves for them. The evaluator counts owned skills per tag and lowers `min` for the career's specialization and origin, so
 the shop, the state labels, `npm run tree` and `explain` read the same node.
 
 **A new gate on an existing row** is one leaf in its `all` in `graph.ts`, for example a row that waits on a pick:
 `{ t: "picked", of: "spec" }`.
 
-## Two decisions this leaves open
+## One decision this leaves open
 
-1. **Should the job ladder be strict?** Today a Senior SWE needs XP, the board, the pick and the users, not the job
-   before it. Making each rank need the one before it makes the ladder a path in the literal sense and gives the
-   shop an unambiguous "next", at the cost of the forced-XP shortcuts in tests and agent recipes.
-2. **The tagged gig board**, the first gameplay change the tree is meant to carry. It replaces a gig's skill-id prefix
-   with tag counts and drops the strict chain, so two players who learned different skills meet different clients.
+**Should the job ladder be strict?** Today a Senior SWE needs XP, the board, the pick and the users, not the job
+before it. Making each rank need the one before it makes the ladder a path in the literal sense and gives the
+shop an unambiguous "next", at the cost of the forced-XP shortcuts in tests and agent recipes.
