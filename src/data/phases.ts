@@ -7,6 +7,7 @@
  * Gear lives in src/data/gear.ts and is re-exported below as EQUIPMENT.
  * Skill unlockAtXp in the raw rows is ignored: earlyGrind, scalePurchaseCost and the unlock chain recompute it.
  */
+import { GIG_PATH } from "./tree.ts"
 import { scalePurchaseCost } from "./costs.ts"
 import type { LeadId } from "./leadership.ts"
 import { SPEC_ID_BASE, SPECIALIZATIONS, TRACK_FIRST_RANK } from "./specializations.ts"
@@ -184,12 +185,6 @@ export type Gig = {
   retainerCps: number
 }
 
-/** Gig 1 needs the first six skills. Each later gig adds the next skill, capped at the skill table. */
-function skillsForGig(id: number): readonly number[] {
-  const count = Math.min(SKILL_ROWS.length, 5 + id)
-  return Array.from({ length: count }, (_, index) => index + 1)
-}
-
 const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
   { id: 1, name: "Fix broken login / blog-engine bug", tags: ["backend", "frontend"], xpReq: 12000, lump: 40, retainerCps: 0 },
   { id: 2, name: "Local biz landing page", tags: ["frontend", "product"], xpReq: 13500, lump: 120, retainerCps: 0 },
@@ -259,11 +254,12 @@ const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [
 ]
 
 /** Each gig requires every earlier gig, and a skill set that only grows. */
-export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => ({
-  ...row,
-  priorGigs: row.id - 1,
-  skillIds: skillsForGig(row.id),
-}))
+/** The gigs, each with its place in the path and its skills read from `GIG_PATH` (src/data/tree.ts), where the chain is written. */
+export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => {
+  const at = GIG_PATH.findIndex((step) => step.id === row.id)
+  if (at < 0) throw new Error(`gig ${row.id} is not on the gig path (src/data/tree.ts)`)
+  return { ...row, priorGigs: at, skillIds: GIG_PATH[at]!.skills }
+})
 
 /**
  * `clickBonus` adds flat dollars to every click. `clickPct` adds that percent of your idle $/s to every click, so
