@@ -6,6 +6,8 @@ import { noteToast } from "./offlineNote.ts"
 import { previewReviewChoice, reviewById } from "./reviews.ts"
 import type { ReviewChoiceId } from "./reviews.ts"
 import { COMBOS } from "../data/combos.ts"
+import { check, dependents, describe, holds, isOwned, nodeOf, trackOf } from "./tree/index.ts"
+import type { Ref, Req } from "./tree/index.ts"
 import { LAUNCH_CLICKS, LAUNCH_SHARE, shipsLaunches } from "./launch.ts"
 import { leadOptions, specOf, specOptions } from "./build.ts"
 import { comboById, effectLabel } from "./combos.ts"
@@ -42,6 +44,27 @@ import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
 import type { FeatureTease } from "./features.ts"
+
+/** One row of the progression tree, read for the current career (docs/TREE.md). */
+export type ExplainRow = {
+  ref: string
+  name: string
+  track: string
+  /** True when the track's order is a gate too (the gigs, the 10x dev chains). */
+  strict: boolean
+  /** The row it sits under. */
+  after: string | null
+  /** The career holds the row now (a gig cleared, a job held, a perk owned, something bought once). */
+  owned: boolean
+  /** The row's own gate holds. */
+  open: boolean
+  /** The gate, leaf by leaf, with what the career has. */
+  needs: { text: string; met: boolean }[]
+  /** The leaves that do not hold. */
+  missing: string[]
+  /** What it directly opens. */
+  opens: string[]
+}
 
 export type PopSnapshot = { kind: "click" | "gigClear" | "unlock"; size: "medium" | "large"; amount: number; label: string }
 
@@ -230,6 +253,8 @@ export type GameHarness = {
    * (Mid-level SWE) is held and is made once. False before that, once picked, or for an unknown id. Every job above rank 7 needs it.
    */
   pickOrigin: (id: string) => boolean
+  /** Why a row is open or shut: its gate in words, what is missing for this career, what sits under it and what it opens (docs/TREE.md). Null for an unknown row. */
+  explain: (ref: string) => ExplainRow | null
   pickSpecialization: (id: string) => boolean
   /**
    * Pick the career's leadership line (`ic` or `manager`). It opens once a Senior job (rank 14) is held and is made once. False
@@ -549,6 +574,25 @@ export function installGameHarness(): GameHarness {
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
 
     pickOrigin: (id) => useGame.getState().pickOrigin(id),
+    explain: (ref) => {
+      const node = nodeOf(ref as Ref)
+      if (!node) return null
+      const state = useGame.getState()
+      const leaves = (req: Req): Req[] => (req.t === "all" ? req.of.flatMap(leaves) : [req])
+      const track = trackOf(node.ref)
+      return {
+        ref: node.ref,
+        name: node.name,
+        track: node.track,
+        strict: track?.strict ?? false,
+        after: node.after ?? null,
+        owned: isOwned(node.ref, state),
+        open: holds(node.requires, state),
+        needs: leaves(node.requires).map((req) => ({ text: describe(req, state), met: holds(req, state) })),
+        missing: check(node.ref, state).missing.map((row) => row.text),
+        opens: dependents(node.ref),
+      }
+    },
     pickSpecialization: (id) => useGame.getState().pickSpecialization(id),
 
     pickLeadership: (id) => useGame.getState().pickLeadership(id),

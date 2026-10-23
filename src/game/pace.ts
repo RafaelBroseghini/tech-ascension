@@ -22,6 +22,7 @@ import { shipLaunches, shipsLaunches } from "./launch.ts"
 import { servableUsers } from "./globe/load.ts"
 import { gigLump } from "./origin.ts"
 import type { OriginId } from "../data/origins.ts"
+import type { TreeView } from "./tree/index.ts"
 import { buildFactsOf, hireLocked, originOf, leadPickedBuild, specOf, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
@@ -186,6 +187,8 @@ type Sim = Omit<Progress, "jobs" | "gigs"> & {
   track: SpecId
   /** The leadership line the run picks the first time it holds Senior SWE. */
   lead: LeadId
+  /** A test's probe, called at every round of the shop (`PaceOptions.inspect`). */
+  inspect?: (career: PaceCareer) => void
   /** The product's company, which the user gates read: the pick opens at 10,000 users and Senior at 1,000,000. Left out when the run has no product, and the gates stay open. */
   readonly company?: CompanyState
 }
@@ -419,6 +422,7 @@ function spendXp(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
 /** Buy until nothing more is worth buying, since each buy can open the next. */
 function shop(s: Sim, cad: Cadence, paybackSeconds: number) {
   for (let round = 0; round < 40; round++) {
+    s.inspect?.(s)
     const moved = [clearGigs(s), takeJobs(s), spendMoney(s, cad, paybackSeconds), spendXp(s, cad, paybackSeconds)]
     if (!moved.some(Boolean)) return
   }
@@ -440,7 +444,12 @@ export type PaceOptions = {
   leadership?: LeadId
   /** Where the career started (`src/data/origins.ts`). Default none: the plain ladder. */
   origin?: OriginId
+  /** Called with the career at every round of the shop, so a test can check the whole game's rules against it. Never set in play. */
+  inspect?: (career: PaceCareer) => void
 }
+
+/** What a probe sees of the career: the same shape the shop and the tree read. */
+export type PaceCareer = TreeView & { equipment: Record<string, number> }
 
 /**
  * Two players the docs quote. The one-of-each player takes what the shop lists and re-buys only what pays for itself
@@ -459,6 +468,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   const cad = cadenceOf(profile)
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
   const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD, options.origin ?? null)
+  if (options.inspect) s.inspect = options.inspect
   if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, hires: {}, winSeconds: null, marks: {}, skipped: 0 }
   const milestones: Partial<Record<PaceMilestone, number>> = {}
   let t = 0

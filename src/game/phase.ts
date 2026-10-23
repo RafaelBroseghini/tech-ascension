@@ -1,14 +1,14 @@
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS } from "../data/phases.ts"
 import type { Gig, JobTier } from "../data/phases.ts"
 import { artFor, EQUIP_ART, GIG_ART, jobArtId, SKILL_ART } from "../data/art.ts"
 import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, firstJobAtRank, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById, ownedCount, skillById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { gigBoardXp, gigXpReq, jobBoardGigs, jobXpReq } from "./origin.ts"
-import { heldRank, leadOf, originOf, needsLead, needsPick, rowVisible, seniorUsersShort, specOf } from "./build.ts"
+import { gigBoardXp, jobBoardGigs } from "./origin.ts"
+import { firstFail, holds, nodeOf } from "./tree/index.ts"
+import { heldRank, originOf } from "./build.ts"
 import type { HasCompany } from "./build.ts"
-import { LEAD_OPEN_RANK } from "../data/leadership.ts"
 import { formatNumber } from "./format.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
@@ -35,23 +35,16 @@ export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" 
  * a job taken, a capital row owned), so forced progress never sits behind a closed board.
  */
 export function gigBoardUnlocked(p: Gates): boolean {
-  if (p.gigs.length > 0) return true
-  return (
-    p.xpTotal >= gigBoardXp(originOf(p)) &&
-    GIG_BOARD_UNLOCK.requireOwnedSkills.every((id) => ownedCount(p.skills, id) > 0)
-  )
+  return holds(BOARD_GIGS, p)
 }
 
 export function jobBoardUnlocked(p: Gates): boolean {
-  if (p.jobs.length > 0) return true
-  return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= jobBoardGigs(originOf(p))
+  return holds(BOARD_JOBS, p)
 }
 
 /** A Senior job (rank 14) or higher, now or before a switch, OR $500K held at some point (peakMoney) OR any capital row already owned. */
 export function capitalUnlocked(p: Gates): boolean {
-  if (heldRank(p) >= CAPITAL_UNLOCK.minJobRank) return true
-  if (canAfford(p.peakMoney, CAPITAL_UNLOCK.minMoney)) return true
-  return Object.values(p.owned).some((count) => count > 0)
+  return holds(BOARD_CAPITAL, p)
 }
 
 export function phaseOf(p: Gates): Phase {
@@ -85,11 +78,18 @@ export function gigSkillGap(p: Pick<Gates, "skills">, gig: Gig): string | null {
 
 export type GigState = "done" | "board-locked" | "locked" | "ready"
 
+/** The tree's gates for every gig and job, looked up once (the shop asks about every row on every render). */
+const GIG_GATE = new Map(GIGS.map((gig) => [gig.id, nodeOf(`gig:${gig.id}`)!.requires]))
+const JOB_GATE = new Map(JOB_TIERS.map((job) => [job.id, nodeOf(`job:${job.id}`)!.requires]))
+const BOARD_GIGS = nodeOf("board:gigs")!.requires
+const BOARD_JOBS = nodeOf("board:jobs")!.requires
+const BOARD_CAPITAL = nodeOf("board:capital")!.requires
+
+/** A gig's state: cleared, behind its board, locked on anything else (XP, the gigs before it, its skills), or ready. */
 export function gigState(p: Gates, gig: Gig): GigState {
   if (p.gigs.includes(gig.id)) return "done"
-  if (!gigBoardUnlocked(p)) return "board-locked"
-  if (p.xpTotal < gigXpReq(originOf(p), gig) || p.gigs.length < gig.priorGigs || gigSkillGap(p, gig) !== null) return "locked"
-  return "ready"
+  const fail = firstFail(GIG_GATE.get(gig.id) ?? { t: "all", of: [] }, p)
+  return fail === null ? "ready" : fail.t === "met" ? "board-locked" : "locked"
 }
 
 /**
@@ -98,15 +98,16 @@ export function gigState(p: Gates, gig: Gig): GigState {
  */
 export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "users" | "ready"
 
+/** A job's state, read off the first unmet leaf of its gate in the order the gate lists them (board, track, picks, XP, users). */
 export function jobState(p: Gates, job: JobTier): JobState {
   if (p.jobs.includes(job.id)) return "owned"
-  if (!jobBoardUnlocked(p)) return "board-locked"
-  if (!rowVisible(job, specOf(p), leadOf(p))) return "hidden"
-  if (needsPick(job) && specOf(p) === null) return "pick"
-  if (needsLead(job) && leadOf(p) === null) return "lead"
-  if (p.xpTotal < jobXpReq(originOf(p), job)) return "locked"
-  if (job.rank === LEAD_OPEN_RANK && seniorUsersShort({ jobs: p.jobs, build: p.build, company: p.company }) > 0) return "users"
-  return "ready"
+  const fail = firstFail(JOB_GATE.get(job.id) ?? { t: "all", of: [] }, p)
+  if (fail === null) return "ready"
+  if (fail.t === "met") return "board-locked"
+  if (fail.t === "track") return "hidden"
+  if (fail.t === "picked") return fail.of === "spec" ? "pick" : "lead"
+  if (fail.t === "xp") return "locked"
+  return "users"
 }
 
 export function canBuyJob(p: Gates & Pick<Progress, "xp">, job: JobTier): boolean {
