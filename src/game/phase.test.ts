@@ -6,8 +6,12 @@ import { clickFlat, clickPower, gigById, idlePerSec, jobById, nextCost, ownedCou
 import {
   canBuyJob,
   capitalUnlocked,
+  gigBoard,
   gigBoardUnlocked,
+  gigShortfall,
+  gigSkillGaps,
   gigState,
+  LOCKED_GIGS_SHOWN,
   jobBoardUnlocked,
   jobState,
   clickPaysMoney,
@@ -22,6 +26,15 @@ import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
 function productNet(gigs: readonly number[], from: number, to: number): number {
   const grown = advanceCompany(FRESH_COMPANY, growthFacts(gigs, {}), from, to, () => 0.999)
   return grown.earned - grown.lost
+}
+
+/** Owned skills (by id) that cover what a gig asks by tag: the first skills of each tag, as many as it needs. */
+function skillsFor(gig: (typeof GIGS)[number]): Record<string, number> {
+  const owned: Record<string, number> = {}
+  for (const need of gig.needs) {
+    for (const skill of SKILL_TIERS.filter((row) => row.tags.includes(need.tag)).slice(0, need.min)) owned[String(skill.id)] = 1
+  }
+  return owned
 }
 
 const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as number[], gigs: [] as number[] }
@@ -72,34 +85,56 @@ describe("phase gates", () => {
     expect(clickPaysMoney({ jobs: [1] })).toBe(true)
   })
 
-  it("gates each gig on XP, earlier gigs, and a skill set that grows with the gig", () => {
+  it("gates each gig on XP and on the owned skills of each tag it asks for, not on other gigs", () => {
     const gig = gigById(4)
     if (!gig) throw new Error("missing gig 4")
-    const skills = { "15": 1, "16": 1, ...Object.fromEntries(gig.skillIds.map((id) => [String(id), 1])) }
-    const open = { ...EMPTY, xpTotal: gig.xpReq, skills }
-    const cleared = [1, 2, 3]
+    const board = { "15": 1, "16": 1 }
+    const open = { ...EMPTY, xpTotal: gig.xpReq, skills: { ...board, ...skillsFor(gig) } }
     expect(gigState(EMPTY, gig)).toBe("board-locked")
-    expect(gigState(open, gig)).toBe("locked")
-    expect(gigState({ ...open, gigs: [1, 2] }, gig)).toBe("locked")
-    expect(gigState({ ...open, gigs: cleared }, gig)).toBe("ready")
-    expect(gigState({ ...open, xpTotal: gig.xpReq - 1, gigs: cleared }, gig)).toBe("locked")
-    expect(gigState({ ...open, skills: { "15": 1, "16": 1 }, gigs: cleared }, gig)).toBe("locked")
-    expect(gigState({ ...open, gigs: [...cleared, 4] }, gig)).toBe("done")
+    expect(gigState(open, gig)).toBe("ready")
+    expect(gigState({ ...open, gigs: [9] }, gig)).toBe("ready")
+    expect(gigState({ ...open, xpTotal: gig.xpReq - 1 }, gig)).toBe("locked")
+    expect(gigState({ ...open, skills: board }, gig)).toBe("locked")
+    expect(gigState({ ...open, gigs: [4] }, gig)).toBe("done")
   })
 
-  it("makes each gig strictly harder than the one before it", () => {
-    for (let index = 1; index < GIGS.length; index++) {
-      const prev = GIGS[index - 1]
-      const gig = GIGS[index]
-      if (!prev || !gig) throw new Error("missing gig")
-      expect(gig.xpReq).toBeGreaterThan(prev.xpReq)
-      expect(gig.xpReq).toBeGreaterThan(0)
-      expect(gig.priorGigs).toBe(gig.id - 1)
-      expect(gig.skillIds.length).toBeGreaterThanOrEqual(prev.skillIds.length)
-      for (const id of prev.skillIds) expect(gig.skillIds).toContain(id)
-      if (prev.skillIds.length < SKILL_TIERS.length) expect(gig.skillIds.length).toBe(prev.skillIds.length + 1)
+  it("names what a gig still wants by tag, and shows the open gigs before the next two locked ones", () => {
+    const first = GIGS[0]!
+    const p = { ...EMPTY, xpTotal: GIGS[3]!.xpReq, skills: { "15": 1, "16": 1 } }
+    expect(gigSkillGaps(p, first)).toEqual(["1 more Backend skill"])
+    const board = gigBoard({ ...p, gigs: [1] })
+    expect(board.cleared.map((gig) => gig.id)).toEqual([1])
+    expect(board.locked).toHaveLength(LOCKED_GIGS_SHOWN)
+    // Locked gigs rank by skills short, then XP, then id.
+    const shorts = board.locked.map((gig) => gigShortfall(p, gig))
+    expect(shorts).toEqual([...shorts].sort((a, b) => a - b))
+    const all = new Set([...board.cleared, ...board.open, ...board.locked].map((gig) => gig.id))
+    expect(all.size).toBe(board.cleared.length + board.open.length + board.locked.length)
+  })
+
+  it("asks less of a career that specialized or came from an origin that fits the gig", () => {
+    const gig = gigById(36)
+    if (!gig) throw new Error("missing gig 36")
+    const backend = gig.needs.find((need) => need.tag === "backend")!
+    const none = { ...EMPTY, xpTotal: gig.xpReq }
+    expect(gigShortfall(none, gig)).toBe(gig.needs.reduce((sum, need) => sum + need.min, 0))
+    const spec = { ...none, build: { spec: "backend" as const, switched: false } }
+    expect(gigShortfall(spec, gig)).toBe(gigShortfall(none, gig) - (backend.min - Math.ceil(backend.min / 2)))
+    const bootcamp = { ...none, build: { spec: null, switched: false, origin: "bootcamp" as const } }
+    expect(gigShortfall(bootcamp, gig)).toBe(gigShortfall(none, gig) - gig.needs.length)
+  })
+
+  it("keeps the gig table in order of XP, with tag counts the catalog can meet", () => {
+    for (let index = 0; index < GIGS.length; index++) {
+      const gig = GIGS[index]!
+      if (index > 0) expect(gig.xpReq).toBeGreaterThan(GIGS[index - 1]!.xpReq)
+      expect(gig.needs.map((need) => need.tag), `gig ${gig.id}`).toEqual(gig.tags)
+      for (const need of gig.needs) {
+        const catalog = SKILL_TIERS.filter((skill) => skill.tags.includes(need.tag)).length
+        expect(need.min, `gig ${gig.id} ${need.tag}`).toBeGreaterThanOrEqual(1)
+        expect(need.min, `gig ${gig.id} ${need.tag}`).toBeLessThanOrEqual(catalog)
+      }
     }
-    expect(GIGS[0]?.skillIds.length).toBeGreaterThanOrEqual(6)
   })
 
   it("gates jobs on the board, lifetime XP and the price", () => {
@@ -141,7 +176,7 @@ describe("phase tables", () => {
   it("has exactly one first idle source among the gigs, and it is a retainer", () => {
     const retainers = GIGS.filter((gig) => gig.retainerCps > 0)
     expect(retainers[0]?.id).toBe(8)
-    expect(GIGS.filter((gig) => gig.priorGigs < 3).every((gig) => gig.retainerCps === 0)).toBe(true)
+    expect(GIGS.slice(0, 3).every((gig) => gig.retainerCps === 0)).toBe(true)
   })
 
   it("makes large pops for gig clear and unlock, and a medium pop for a click", () => {

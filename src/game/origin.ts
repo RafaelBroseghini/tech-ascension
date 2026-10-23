@@ -4,6 +4,9 @@
  */
 import { GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } from "../data/phases.ts"
 import type { Gig, JobTier, SkillTier } from "../data/phases.ts"
+import type { SpecId } from "../data/specializations.ts"
+import { specById } from "../data/specializations.ts"
+import type { Tag } from "../data/tags.ts"
 import { isOriginId, originById } from "../data/origins.ts"
 import type { OriginEffects, OriginId } from "../data/origins.ts"
 
@@ -23,6 +26,17 @@ export const originXpPerSec = (origin: OriginId | null | undefined): number => e
 
 /** A gig's lifetime XP requirement under the origin. */
 export const gigXpReq = (origin: OriginId | null | undefined, gig: Pick<Gig, "xpReq">): number => Math.round(gig.xpReq * (effectsOfOrigin(origin).gigXp ?? 1))
+
+/**
+ * The owned skills of a tag a gig asks for. The specialization halves the count on its own tag (rounded up) and the
+ * origin takes some off its tags; the ask never goes below one.
+ */
+export function gigTagMin(origin: OriginId | null | undefined, spec: SpecId | null | undefined, tag: Tag, min: number): number {
+  const halved = spec && specById(spec).tag === tag ? Math.ceil(min / 2) : min
+  const rule = effectsOfOrigin(origin).gigTags
+  const minus = rule && rule.tags.includes(tag) ? rule.minus : 0
+  return Math.max(1, halved - minus)
+}
 
 /** Lifetime XP that opens the Gig Board under the origin. */
 export const gigBoardXp = (origin: OriginId | null | undefined): number => Math.round(GIG_BOARD_UNLOCK.minXp * (effectsOfOrigin(origin).gigBoardXp ?? 1))

@@ -5,7 +5,8 @@ import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { entry, firstFail, holds, nodeOf, skillGapText } from "./tree/index.ts"
+import { check, entry, firstFail, holds, nodeOf, short, tagCount } from "./tree/index.ts"
+import { gigTagMin } from "./origin.ts"
 import type { HasCompany } from "./build.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
@@ -65,9 +66,18 @@ export function clickPaysMoney(p: Pick<Progress, "jobs">): boolean {
   return p.jobs.length > 0
 }
 
-/** Skills still missing for a gig. One or two are named; a longer set is a count. */
-export function gigSkillGap(p: Pick<Gates, "skills">, gig: Gig): string | null {
-  return skillGapText(gig.skillIds, p.skills)
+/** The skills a gig still wants, one phrase per tag ("2 more Frontend skills"). Empty when the career has them. */
+export function gigSkillGaps(p: Gates, gig: Gig): string[] {
+  const out: string[] = []
+  for (const miss of check(`gig:${gig.id}`, p).missing) if (miss.req.t === "tag") out.push(short(miss.req, p))
+  return out
+}
+
+/** How many owned skills short of a gig's tag counts the career is, all tags together. */
+export function gigShortfall(p: Gates, gig: Gig): number {
+  let short = 0
+  for (const need of gig.needs) short += Math.max(0, gigTagMin(p.build?.origin ?? null, p.build?.spec ?? null, need.tag, need.min) - tagCount(p.skills, need.tag))
+  return short
 }
 
 export type GigState = "done" | "board-locked" | "locked" | "ready"
@@ -79,11 +89,32 @@ const BOARD_GIGS = nodeOf("board:gigs")!.requires
 const BOARD_JOBS = nodeOf("board:jobs")!.requires
 const BOARD_CAPITAL = nodeOf("board:capital")!.requires
 
-/** A gig's state: cleared, behind its board, locked on anything else (XP, the gigs before it, its skills), or ready. */
+/** A gig's state: cleared, behind its board, locked on anything else (XP, its skills by tag), or ready. */
 export function gigState(p: Gates, gig: Gig): GigState {
   if (p.gigs.includes(gig.id)) return "done"
   const fail = firstFail(GIG_GATE.get(gig.id) ?? { t: "all", of: [] }, p)
   return fail === null ? "ready" : fail.t === "met" ? "board-locked" : "locked"
+}
+
+/** How many locked gigs the board shows after the ones the career can act on. */
+export const LOCKED_GIGS_SHOWN = 2
+
+/**
+ * The gig rows in the order the board lists them: cleared, then open, then the next locked gigs. Locked gigs rank by
+ * how few skills the career is short of, then by the lower XP requirement, then by id, so the list never flickers.
+ */
+export function gigBoard(p: Gates): { cleared: Gig[]; open: Gig[]; locked: Gig[] } {
+  const cleared: Gig[] = []
+  const open: Gig[] = []
+  const waiting: { gig: Gig; short: number }[] = []
+  for (const gig of GIGS) {
+    const state = gigState(p, gig)
+    if (state === "done") cleared.push(gig)
+    else if (state === "ready") open.push(gig)
+    else waiting.push({ gig, short: gigShortfall(p, gig) })
+  }
+  waiting.sort((a, b) => a.short - b.short || a.gig.xpReq - b.gig.xpReq || a.gig.id - b.gig.id)
+  return { cleared, open, locked: waiting.slice(0, LOCKED_GIGS_SHOWN).map((row) => row.gig) }
 }
 
 /**

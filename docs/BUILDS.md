@@ -6,7 +6,7 @@ Status: draft from a design pass on 2026-10-20. Built so far: tags, the kitchen,
 
 Every career walks the same line, and the rules make it so, not the content:
 
-- Gigs are a chain. Each needs every earlier gig (`priorGigs: row.id - 1`) and a skill list that only grows (`skillsForGig` in `src/data/phases.ts`).
+- Gigs were a chain. Each needed every earlier gig and a skill list that only grew; the tagged gig board (below) replaced that.
 - Jobs are one ladder, and all 31 are held at once.
 - Gear and capital open in table order, by money and job.
 - The finish is owning everything (`ownsEverything` in `src/game/nextUnlock.ts`), so every player ends in the same place and the only choice is what to buy first.
@@ -83,7 +83,7 @@ Gating the career on users makes the product's growth a blocker, and it was only
 
 Every skill, gig, job and gear row carries one or more tags: `frontend`, `backend`, `infra`, `data`, `ai`, `security`, `product`, `hardware`. This is a data edit; most skill names already say their tag ("CUDA / GPU programming 101", "Threat modeling habit").
 
-Gigs drop the chain. Each one asks for tag counts ("2 frontend, 1 backend") instead of every earlier gig and a skill prefix. The board shows the few gigs your tags fit best and refills when you clear one, so two players who learned different skills meet different clients. The origin and the specialization add to the tag counts.
+Gigs drop the chain. Each one asks for tag counts ("2 frontend, 1 backend") on its own tags instead of every earlier gig and a skill prefix, so two players who learned different skills meet different clients. A count is half of what the old prefix held of that tag (rounded up), at least one and at most what the catalog has; `GIG_PATH` in `src/data/tree.ts` writes them. The specialization halves the count on its own tag (rounded up), College takes one off the theory tags and Bootcamp one off the web tags, and no ask goes below one (`gigTagMin` in `src/game/origin.ts`). The board lists the cleared gigs, the gigs the career can clear now, and the next two locked ones (`gigBoard` in `src/game/phase.ts`), ranked by skills short, then lower XP, then id.
 
 ## 5. The kitchen
 
@@ -168,7 +168,7 @@ Each step ships and checks on its own.
    - **4l, done (the progression tree, a faithful model):** `docs/TREE.md`, `src/game/tree/`. One node per row of the game (skills, gigs, jobs, gear, capital, boards, picks, 10x dev perks) with `requires` (a small expression over XP, rows owned, counts, tags, rank, users, money and picks), `after` (layout) and a strict or loose track. The gig, job and board states read it; the old rules are kept as a test oracle and agree on whole careers for every build and origin. `npm run tree` prints it and `explain(ref)` asks it. The structure is authored in `src/data/tree.ts` (the gig path with its skills, the job paths and what each hangs off); the tables keep content and read `priorGigs` and `skillIds` off the path. The shop's lock panels and the "Next" banner read their words off the tree (`entry`, `short`); the tagged gig board as a data edit is next; whether the job ladder becomes strict is open.
    - **Still open:** an IC growth effect that is more than a flat step per row, a leadership switch, tuning each build against a target (the pace sim per build exists, `docs/PACING.md`; a click build's fully held multiple lands near 4.2 times, not 5, because a line holds 27 rows or fewer of the 31 it was calibrated on). The fork was removed earlier.
 5. **Capital as company moves** that open regions, and the gates that read users.
-6. **The tagged gig board.**
+6. **The tagged gig board, done.** See section 4 above and `docs/TREE.md`.
 7. **Origins** and the start card.
 8. **Pacing** to half a day or a day, with a pace sim per build.
 9. **Save slots**, opened by the first finished career.

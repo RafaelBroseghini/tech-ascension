@@ -53,14 +53,13 @@ describe("the tree's shape", () => {
 })
 
 describe("the structure written by hand (src/data/tree.ts)", () => {
-  it("lists every gig once, and each gig's priorGigs and skills are read off the path", () => {
+  it("lists every gig once, with the tag counts of its own tags read off the path", () => {
     expect(GIG_PATH.map((step) => step.id).sort((a, b) => a - b)).toEqual(GIGS.map((gig) => gig.id).sort((a, b) => a - b))
     expect(new Set(GIG_PATH.map((step) => step.id)).size).toBe(GIG_PATH.length)
-    GIG_PATH.forEach((step, index) => {
+    GIG_PATH.forEach((step) => {
       const gig = GIGS.find((row) => row.id === step.id)!
-      expect(gig.priorGigs, `gig ${gig.id}`).toBe(index)
-      expect(gig.skillIds).toBe(step.skills)
-      for (const id of step.skills) expect(SKILL_TIERS.some((skill) => skill.id === id), `gig ${gig.id} skill ${id}`).toBe(true)
+      expect(gig.needs).toBe(step.needs)
+      expect(step.needs.map((need) => need.tag), `gig ${gig.id}`).toEqual(gig.tags)
     })
   })
 
@@ -92,15 +91,15 @@ describe("the structure written by hand (src/data/tree.ts)", () => {
 })
 
 describe("the chains the tree models", () => {
-  it("makes the gigs one strict chain, each under the one before and asking for every gig before it", () => {
+  it("keeps the gigs loose: each asks for the board, XP and skills by tag, and no gig waits on another", () => {
     const track = TRACK_LIST.find((row) => row.id === "gigs")!
-    expect(track.strict).toBe(true)
-    track.nodes.forEach((ref, index) => {
+    expect(track.strict).toBe(false)
+    for (const ref of track.nodes) {
       const node = nodeOf(ref)!
-      expect(node.after).toBe(index === 0 ? undefined : track.nodes[index - 1])
-      const needsCount = JSON.stringify(node.requires).includes(`"count","of":"gigs","min":${index}`)
-      expect(needsCount, ref).toBe(true)
-    })
+      expect(mentions(node.requires).filter((named) => named.startsWith("gig:")), ref).toEqual([])
+      expect(JSON.stringify(node.requires)).not.toContain('"count"')
+      expect(JSON.stringify(node.requires)).toContain('"t":"tag"')
+    }
   })
 
   it("hangs each specialization's jobs off the trunk's top and the leadership lines off the pick", () => {
@@ -137,7 +136,7 @@ describe("reading a node", () => {
   it("lists every missing leaf with words and what the career has", () => {
     const result = check("gig:3", view({ xpTotal: 5_000 }))
     expect(result.met).toBe(false)
-    expect(result.missing.map((row) => row.req.t)).toEqual(["met", "xp", "count", "owns"])
+    expect(result.missing.map((row) => row.req.t)).toEqual(["met", "xp", "tag"])
     expect(result.missing[1]!.text).toContain("5,000")
     expect(words({ t: "users", min: 10_000 })).toBe("10,000 users")
     expect(check("board:capital", view({ peakMoney: 500_000 })).met).toBe(true)
@@ -182,10 +181,10 @@ describe("the words the shop reads off the tree", () => {
   })
 
   it("says what a closed row still needs in the banner's few words", () => {
-    expect(neededPhrases("gig:3", view({ xpTotal: 100 }))).toEqual(["more XP", "more gigs", "8 skills"])
-    // Gig 1 needs skills 1 to 6; with four of them owned the two missing ones are named.
-    const two = neededPhrases("gig:1", view({ xpTotal: 1e9, skills: { "1": 1, "2": 1, "3": 1, "4": 1 } }), ["met"])
-    expect(two).toEqual(["Intro-CS lectures"].map((name) => `Git + GitHug hygiene + ${name}`))
+    expect(neededPhrases("gig:3", view({ xpTotal: 100 }))).toEqual(["more XP", "1 more Frontend skill"])
+    // Gig 1 asks for a backend and a frontend skill; with the frontend one owned the backend one is what is left.
+    const frontend = SKILL_TIERS.find((row) => row.tags.includes("frontend"))!.id
+    expect(neededPhrases("gig:1", view({ xpTotal: 1e9, skills: { [String(frontend)]: 1 } }), ["met"])).toEqual(["1 more Backend skill"])
     expect(neededPhrases("gear:44", view({}), ["met"])[0]).toBe("a bigger balance")
     expect(entryPhrases("board:jobs", view({ xpTotal: 50_000, gigs: [1] }))).toEqual(["more gigs"])
     expect(short({ t: "rank", min: 14 }, view())).toBe("Senior SWE")
@@ -205,7 +204,7 @@ describe("asking the harness", () => {
   it("explains a row for the career under way", () => {
     game.keepProfile()
     const shut = game.explain("gig:1")!
-    expect(shut).toMatchObject({ ref: "gig:1", track: "gigs", strict: true, after: null, owned: false, open: false })
+    expect(shut).toMatchObject({ ref: "gig:1", track: "gigs", strict: false, after: null, owned: false, open: false })
     expect(shut.missing.length).toBeGreaterThan(0)
     expect(shut.opens).toContain("gig:2")
     game.setXp(60_000)

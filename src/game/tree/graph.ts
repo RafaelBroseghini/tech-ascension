@@ -86,13 +86,13 @@ track(
   SKILL_TIERS.map((row) => ({ ref: `skill:${row.id}` as Ref, kind: "skill" as const, id: row.id, name: row.name, requires: { t: "xp", min: row.unlockAtXp } as Req })),
 )
 
-// Gigs: a strict chain, in the order `GIG_PATH` (src/data/tree.ts) lists them. Each needs the board, the XP, every gig
-// before it cleared and the skills the path names.
+// Gigs: listed in the order `GIG_PATH` (src/data/tree.ts) lists them, but loose. Each needs the board, the XP and the
+// owned skills of each tag the path names; no gig waits on another.
 track(
   "gigs",
   "Gigs",
-  true,
-  GIG_PATH.map((step, index) => {
+  false,
+  GIG_PATH.map((step) => {
     const gig = GIGS.find((row) => row.id === step.id)!
     return {
       ref: `gig:${gig.id}` as Ref,
@@ -102,8 +102,7 @@ track(
       requires: all(
         { t: "met", ref: "board:gigs" },
         { t: "xp", min: gig.xpReq, mod: "gig" },
-        { t: "count", of: "gigs", min: index },
-        { t: "owns", kind: "skill", ids: step.skills },
+        ...step.needs.map((need): Req => ({ t: "tag", tag: need.tag, min: need.min, mod: "gig" })),
       ),
     } as Omit<Node, "track" | "index" | "after">
   }),

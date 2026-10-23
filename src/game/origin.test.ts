@@ -4,7 +4,7 @@ import type { OriginId } from "../data/origins.ts"
 import { GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { canPickOrigin, normalizeBuild, originPickOpen } from "./build.ts"
 import { installGameHarness } from "./harness.ts"
-import { gigBoardXp, gigLump, gigXpReq, jobBoardGigs, jobXpReq, originSeedMult, originXpPerSec, skillPriceMult } from "./origin.ts"
+import { gigBoardXp, gigLump, gigTagMin, gigXpReq, jobBoardGigs, jobXpReq, originSeedMult, originXpPerSec, skillPriceMult } from "./origin.ts"
 import { skillCost, xpPerSec } from "./economy.ts"
 import { gigBoardUnlocked, gigState, jobBoardUnlocked, jobState } from "./phase.ts"
 import { productFactsOf } from "./globe/product.ts"
@@ -79,12 +79,26 @@ describe("what each origin does", () => {
     expect(jobState({ ...base, build: { spec: null, switched: false, origin: "dropout" } }, mid)).toBe("locked")
   })
 
+  it("lowers the skills a gig asks for by tag: the specialization halves its own tag, an origin takes one off its tags, never below one", () => {
+    expect(gigTagMin(null, null, "backend", 8)).toBe(8)
+    expect(gigTagMin(null, "backend", "backend", 8)).toBe(4)
+    expect(gigTagMin(null, "backend", "backend", 5)).toBe(3)
+    expect(gigTagMin(null, "backend", "frontend", 8)).toBe(8)
+    expect(gigTagMin(null, "fde", "product", 6)).toBe(3)
+    expect(gigTagMin("college", null, "data", 4)).toBe(3)
+    expect(gigTagMin("college", null, "backend", 4)).toBe(4)
+    expect(gigTagMin("bootcamp", null, "frontend", 4)).toBe(3)
+    expect(gigTagMin("bootcamp", null, "ai", 4)).toBe(4)
+    expect(gigTagMin("bootcamp", "backend", "backend", 1)).toBe(1)
+    expect(gigTagMin("bootcamp", "backend", "backend", 8)).toBe(3)
+  })
+
   it("College's gigs open later in the gig state too", () => {
     const gig = GIGS[0]!
     // Past the plain requirement and the board's, but short of College's 30% more.
     const xpTotal = Math.max(GIG_BOARD_UNLOCK.minXp, gig.xpReq) + 1
     expect(xpTotal).toBeLessThan(gigXpReq("college", gig))
-    const p = { skills: Object.fromEntries([...gig.skillIds, ...GIG_BOARD_UNLOCK.requireOwnedSkills].map((id) => [String(id), 1])), owned: {}, jobs: [], gigs: [], peakMoney: 0, xpTotal }
+    const p = { skills: Object.fromEntries([...gig.needs.flatMap((need) => SKILL_TIERS.filter((row) => row.tags.includes(need.tag)).slice(0, need.min).map((row) => row.id)), ...GIG_BOARD_UNLOCK.requireOwnedSkills].map((id) => [String(id), 1])), owned: {}, jobs: [], gigs: [], peakMoney: 0, xpTotal }
     expect(gigState({ ...p, build: undefined }, gig)).toBe("ready")
     expect(gigState({ ...p, build: { spec: null, switched: false, origin: "college" } }, gig)).toBe("locked")
   })

@@ -3,13 +3,13 @@
  * runs these and the tree side by side over whole careers (every build and origin) and fails on the first row that
  * differs. Nothing in the game imports this file.
  */
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK } from "../../data/phases.ts"
+import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK, SKILL_TIERS } from "../../data/phases.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../../data/phases.ts"
 import type { Capital } from "../../data/capital.ts"
 import { LEAD_OPEN_RANK } from "../../data/leadership.ts"
 import { canAfford, ownedCount } from "../economy.ts"
 import { heldRank, leadOf, needsLead, needsPick, originOf, rowVisible, seniorUsersShort, specOf } from "../build.ts"
-import { gigBoardXp, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
+import { gigBoardXp, gigTagMin, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
 import type { Gates } from "../phase.ts"
 
 export function gigBoardUnlocked(p: Gates): boolean {
@@ -37,8 +37,11 @@ export type OracleGigState = "done" | "board-locked" | "locked" | "ready"
 export function gigState(p: Gates, gig: Gig): OracleGigState {
   if (p.gigs.includes(gig.id)) return "done"
   if (!gigBoardUnlocked(p)) return "board-locked"
-  const missing = gig.skillIds.filter((id) => ownedCount(p.skills, id) === 0)
-  if (p.xpTotal < gigXpReq(originOf(p), gig) || p.gigs.length < gig.priorGigs || missing.length > 0) return "locked"
+  if (p.xpTotal < gigXpReq(originOf(p), gig)) return "locked"
+  for (const need of gig.needs) {
+    const have = SKILL_TIERS.filter((skill) => skill.tags.includes(need.tag) && ownedCount(p.skills, skill.id) > 0).length
+    if (have < gigTagMin(originOf(p), specOf(p), need.tag, need.min)) return "locked"
+  }
   return "ready"
 }
 

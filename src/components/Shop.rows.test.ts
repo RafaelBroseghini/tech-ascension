@@ -67,11 +67,11 @@ describe("shop rows", () => {
     expect(price?.disabled).toBe(true)
   })
 
-  it("says a gig still needs skills, without a count", () => {
+  it("says which tag a gig still wants skills in", () => {
     writeSavedShopTab("B")
     useGame.setState({ xp: 0, xpTotal: 20_000, skills: { "15": 1, "16": 1 }, gigs: [] })
     const unlock = renderShop().querySelector("[data-row='gig:1'] [data-testid='offer-unlock']")
-    expect(unlock?.textContent).toBe("More skills")
+    expect(unlock?.textContent).toBe("1 more Backend skill")
   })
 
   it("lists a job's idle XP and its one-time XP lump on the row", () => {

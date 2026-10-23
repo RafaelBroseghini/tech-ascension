@@ -10,7 +10,7 @@ import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
 import { gigXpReq, skillPriceMult } from "../game/origin.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
-import { EQUIPMENT, GIG_BOARD_UNLOCK, GIGS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
+import { EQUIPMENT, GIG_BOARD_UNLOCK, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { TeamPanel } from "./Team.tsx"
 import { headcountOf } from "../game/globe/hires.ts"
 import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, pickWaitsOnUsers, specOptions, usersOf } from "../game/build.ts"
@@ -32,7 +32,8 @@ import {
   gigBoardRequirements,
   gearRequirements,
   gigBoardUnlocked,
-  gigSkillGap,
+  gigBoard,
+  gigSkillGaps,
   gigState,
   jobBoardRequirements,
   jobBoardUnlocked,
@@ -476,7 +477,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     SKILL_TIERS,
     (row) => ownedCount(skills, row.id) > 0,
   )
-  const gigRows = visibleShopRows(GIGS, (gig) => gigs.includes(gig.id))
+  const board = unlocked.B ? gigBoard(gates) : null
+  const gigRows = board ? [...board.cleared, ...board.open, ...board.locked] : []
   // A career sees its own track and line only. Before the picks, the rows above Mid-level and above rank 15 wait behind them.
   const jobRows = visibleShopRows(
     visibleJobs(build.spec, build.leadership ?? null).filter((job) => (build.spec !== null || !needsPick(job)) && (build.leadership !== undefined || !needsLead(job))),
@@ -860,8 +862,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               const key = `gig:${gig.id}`
               const gap = [
                 xpTotal < gigXpReq(build.origin ?? null, gig) ? "More XP" : "",
-                gigs.length < gig.priorGigs ? "Earlier gigs cleared" : "",
-                gigSkillGap(gates, gig) !== null ? "More skills" : "",
+                ...gigSkillGaps(gates, gig),
               ].filter(Boolean)
               return (
                 <Offer

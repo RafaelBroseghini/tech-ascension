@@ -164,8 +164,8 @@ function main() {
   let phases = readFileSync(PHASES, "utf8")
   const gigs = reorderGigs(parseGigRows(phases))
   const gigOldToNew = new Map(parseGigRows(phases).map((row) => [row.id, gigs.find((g) => g.name === row.name)?.id]))
-  const gigBlock = `const GIG_ROWS: readonly Omit<Gig, "priorGigs" | "skillIds">[] = [\n${gigs.map(formatGigRow).join("\n")}\n]`
-  phases = phases.replace(/const GIG_ROWS: readonly Omit<Gig, "priorGigs" \| "skillIds">\[\] = \[[\s\S]*?\]\n/, `${gigBlock}\n`)
+  const gigBlock = `const GIG_ROWS: readonly Omit<Gig, "needs">[] = [\n${gigs.map(formatGigRow).join("\n")}\n]`
+  phases = phases.replace(/const GIG_ROWS: readonly Omit<Gig, "needs">\[\] = \[[\s\S]*?\]\n/, `${gigBlock}\n`)
   writeFileSync(PHASES, phases)
 
   phases = readFileSync(PHASES, "utf8")
