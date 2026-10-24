@@ -151,6 +151,18 @@
 
 /* The start card (src/components/IdentityPicker.tsx): the drawn handle, big, with a reroll. */
 .identity-card { text-align: center; }
+/* The origin card is the tall one (three paths, four lines each): it scrolls inside the screen, and its button stays in view. */
+.identity-card:has(.identity-origins) {
+  max-height: calc(100dvh - var(--sp-4) * 2);
+  overflow-y: auto;
+}
+.identity-card:has(.identity-origins) .event-actions {
+  position: sticky;
+  bottom: calc(var(--sp-5) * -1);
+  margin-bottom: calc(var(--sp-5) * -1);
+  padding: var(--sp-3) 0 var(--sp-5);
+  background: var(--surface-1);
+}
 .identity-draw {
   display: grid;
   justify-items: center;
