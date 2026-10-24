@@ -111,11 +111,6 @@
   to { transform: translate(-50%, 0) scale(1); opacity: 1; }
 }
 
-/* Dialogs stay centred: a small scale-up, no translate. */
-@keyframes modal-in {
-  from { transform: scale(0.96); opacity: 0; }
-}
-
 @keyframes era-sweep {
   0% { transform: translateX(-105%); opacity: 0.85; }
   100% { transform: translateX(105%); opacity: 0; }

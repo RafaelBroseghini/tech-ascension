@@ -9,6 +9,7 @@ import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin, useExitState, useExitVisible } from "./useExit.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 const times = (mult: number) => `×${Number(mult.toFixed(2))}`
 
@@ -79,7 +80,7 @@ function ExitConfirm({ step, first, gain, product, onNext, onCancel }: { step: 1
   }, [step, onCancel])
 
   return createPortal(
-    <div className="event-backdrop" data-testid="exit-backdrop" onClick={onCancel}>
+    <ModalBackdrop className="event-backdrop" data-testid="exit-backdrop" onClick={onCancel}>
       <div
         ref={dialogRef}
         key={step}
@@ -129,7 +130,7 @@ function ExitConfirm({ step, first, gain, product, onNext, onCancel }: { step: 1
           </button>
         </div>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }
@@ -154,7 +155,7 @@ export function ExitHeadline() {
   if (!card || !admin) return null
   const entry = card.newEnding ? HALL_OF_FAME.find((row) => row.id === card.newEnding) : undefined
   return createPortal(
-    <div className="event-backdrop exit-headline-backdrop" data-testid="exit-headline" onClick={dismiss}>
+    <ModalBackdrop className="event-backdrop exit-headline-backdrop" data-testid="exit-headline" onClick={dismiss}>
       <div ref={headlineRef} className="event-modal exit-headline" role="dialog" aria-modal="true" aria-labelledby="exit-headline-text" onClick={(click) => click.stopPropagation()}>
         <p className="event-kicker">Career {card.run} closed</p>
         <h2 id="exit-headline-text" className="event-title">
@@ -173,7 +174,7 @@ export function ExitHeadline() {
           </button>
         </div>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }
@@ -259,7 +260,7 @@ export function PrestigePanel({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
   return createPortal(
-    <div className="event-backdrop" data-testid="prestige-backdrop" onClick={onClose}>
+    <ModalBackdrop className="event-backdrop" data-testid="prestige-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         className="event-modal prestige-panel"
@@ -287,7 +288,7 @@ export function PrestigePanel({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

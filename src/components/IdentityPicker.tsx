@@ -6,6 +6,7 @@ import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin } from "./useExit.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 const STEPS = 3
 
@@ -46,7 +47,7 @@ function IdentityCard() {
 
   const last = step === STEPS - 1
   return createPortal(
-    <div className="event-backdrop" data-testid="identity-backdrop" onClick={keep}>
+    <ModalBackdrop className="event-backdrop" data-testid="identity-backdrop" onClick={keep}>
       <div
         ref={dialogRef}
         className="event-modal identity-card"
@@ -133,7 +134,7 @@ function IdentityCard() {
           )}
         </div>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

@@ -5,6 +5,7 @@ import { modsOf } from "../game/mods.ts"
 import { useGame } from "../game/store.ts"
 import type { ActiveEvent } from "../game/store.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 /**
  * One random event at a time. Nothing is applied until Yes. No, the backdrop, and Escape
@@ -74,7 +75,7 @@ function EventDialog({ event }: { event: ActiveEvent }) {
   if (!view) return null
 
   return (
-    <div className="event-backdrop" data-testid="event-backdrop" onClick={dismiss}>
+    <ModalBackdrop className="event-backdrop" data-testid="event-backdrop" onClick={dismiss}>
       <div
         ref={dialogRef}
         key={event.id}
@@ -116,6 +117,6 @@ function EventDialog({ event }: { event: ActiveEvent }) {
           </button>
         </div>
       </div>
-    </div>
+    </ModalBackdrop>
   )
 }

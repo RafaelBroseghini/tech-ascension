@@ -5,6 +5,7 @@ import { previewReviewChoice, reviewById } from "../game/reviews.ts"
 import { useGame } from "../game/store.ts"
 import type { ActiveReview } from "../game/store.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 /**
  * One 1:1 at a time. Nothing is applied until a reply is chosen. Escape and the backdrop
@@ -68,7 +69,7 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
   if (!view) return null
 
   return (
-    <div className="event-backdrop" data-testid="review-backdrop" onClick={dismiss}>
+    <ModalBackdrop className="event-backdrop" data-testid="review-backdrop" onClick={dismiss}>
       <div
         ref={dialogRef}
         key={review.id}
@@ -115,6 +116,6 @@ function ReviewDialog({ review }: { review: ActiveReview }) {
           ))}
         </ul>
       </div>
-    </div>
+    </ModalBackdrop>
   )
 }
