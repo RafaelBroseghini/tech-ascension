@@ -94,7 +94,8 @@ describe("what each origin does", () => {
   })
 
   it("College's gigs open later in the gig state too", () => {
-    const gig = GIGS[0]!
+    // A gig that asks for more than the board does, so the board is not what holds it.
+    const gig = GIGS[5]!
     // Past the plain requirement and the board's, but short of College's 30% more.
     const xpTotal = Math.max(GIG_BOARD_UNLOCK.minXp, gig.xpReq) + 1
     expect(xpTotal).toBeLessThan(gigXpReq("college", gig))

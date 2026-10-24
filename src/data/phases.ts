@@ -8,17 +8,17 @@
  * Skill unlockAtXp in the raw rows is ignored: earlyGrind, scalePurchaseCost and the unlock chain recompute it.
  */
 import { GIG_PATH } from "./tree.ts"
-import { OPENING_XP_KNEE, OPENING_XP_SHARE, openingXp, scalePurchaseCost } from "./costs.ts"
+import { onJobStairs, OPENING_LUMP_SHARE, openingGigXp, openingJobXp, scalePurchaseCost } from "./costs.ts"
 import type { LeadId } from "./leadership.ts"
 import { SPEC_ID_BASE, SPECIALIZATIONS, TRACK_FIRST_RANK } from "./specializations.ts"
 import type { SpecId } from "./specializations.ts"
 import type { Tag } from "./tags.ts"
 
 export const COST_GROWTH = 1.15 as const;
-export const GIG_BOARD_UNLOCK = { minXp: openingXp(14000), requireOwnedSkills: [15, 16] as const };
-export const JOB_BOARD_UNLOCK = { minXp: openingXp(40000), minGigsCompleted: 6 } as const;
+export const GIG_BOARD_UNLOCK = { minXp: openingGigXp(14000), requireOwnedSkills: [15, 16] as const };
+export const JOB_BOARD_UNLOCK = { minXp: openingJobXp(40000), minGigsCompleted: 6 } as const;
 export const CAPITAL_UNLOCK = { minJobRank: 14, minMoney: 500000 } as const;
-export const GEAR_TAB_UNLOCK = { minXp: openingXp(10000) } as const;
+export const GEAR_TAB_UNLOCK = { minXp: 3000 } as const;
 
 export { GEAR as EQUIPMENT } from "./gear.ts";
 export type { GearItem as Equip } from "./gear.ts";
@@ -256,7 +256,7 @@ const GIG_ROWS: readonly Omit<Gig, "needs">[] = [
 export const GIGS: readonly Gig[] = GIG_ROWS.map((row) => {
   const step = GIG_PATH.find((entry) => entry.id === row.id)
   if (!step) throw new Error(`gig ${row.id} is not on the gig path (src/data/tree.ts)`)
-  return { ...row, xpReq: openingXp(row.xpReq), needs: step.needs }
+  return { ...row, xpReq: openingGigXp(row.xpReq), needs: step.needs }
 })
 
 /**
@@ -396,11 +396,11 @@ const ALL_JOB_ROWS: readonly JobRow[] = [
 
 export const JOB_TIERS: readonly JobTier[] = ALL_JOB_ROWS.map(({ baseCost, ...row }) => ({
   ...row,
-  xpReq: openingXp(row.xpReq),
-  xpCost: baseCost > 0 ? Math.round(scalePurchaseCost(openingXp(row.xpReq) * JOB_XP_COST_SHARE)) : 0,
+  xpReq: openingJobXp(row.xpReq),
+  xpCost: baseCost > 0 ? Math.round(scalePurchaseCost(openingJobXp(row.xpReq) * JOB_XP_COST_SHARE)) : 0,
   xpPerSec: row.xpPerSec ?? 0,
   // A lump closes the gap to the next gate, so it shrinks with the gates it sits under.
-  xpLump: row.xpReq <= OPENING_XP_KNEE ? Math.round((row.xpLump ?? 0) * OPENING_XP_SHARE) : (row.xpLump ?? 0),
+  xpLump: onJobStairs(row.xpReq) ? Math.round((row.xpLump ?? 0) * OPENING_LUMP_SHARE) : (row.xpLump ?? 0),
 }))
 
 const JOB_RANK_BY_ID = new Map<number, number>(JOB_TIERS.map((row) => [row.id, row.rank]))
