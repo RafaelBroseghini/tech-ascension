@@ -3,7 +3,7 @@ import { act, createElement } from "react"
 import { createRoot } from "react-dom/client"
 import type { Root } from "react-dom/client"
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { bump, rowEnter, sweepRef, useOnChange } from "./shopMotion.ts"
+import { bump, rowEnter, springSheet, sweepRef, useOnChange } from "./shopMotion.ts"
 import { loadMotion } from "./useMotion.ts"
 
 const reduced = (on: boolean) => {
@@ -140,5 +140,82 @@ describe("useOnChange", () => {
     expect(play).not.toHaveBeenCalled()
     act(() => root.render(createElement(Count, { value: 2 })))
     expect(play).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("the phone sheet settling after a drag", () => {
+  beforeAll(async () => {
+    await loadMotion()
+  })
+
+  beforeEach(() => reduced(false))
+
+  afterEach(() => {
+    document.body.replaceChildren()
+  })
+
+  /** A sheet the finger left at 158px, with the class that says it rests at `rest` px. */
+  function sheet(rest: number): HTMLElement {
+    const el = document.createElement("aside")
+    el.className = "shop is-docked is-dragging is-expanding"
+    el.style.maxHeight = "158px"
+    el.style.height = "158px"
+    document.body.append(el)
+    // The layout the stylesheet would give it: the inline height while it is set, the resting height once it is not.
+    el.getBoundingClientRect = () => ({ height: el.style.maxHeight ? parseFloat(el.style.maxHeight) : rest }) as DOMRect
+    return el
+  }
+
+  it("carries the sheet from where the finger left it to where its class rests, then hands it back to the stylesheet", async () => {
+    const el = sheet(46)
+    springSheet(el, 158, 0)
+    await vi.waitFor(() => expect(el.style.maxHeight).not.toBe("158px"), { timeout: 3000 })
+    // On the way: both heights move together, and the drag's class holds the transition off.
+    expect(parseFloat(el.style.height)).toBeCloseTo(parseFloat(el.style.maxHeight), 1)
+    expect(el.classList.contains("is-dragging")).toBe(true)
+    await vi.waitFor(() => expect(el.style.maxHeight).toBe(""), { timeout: 3000 })
+    expect(el.style.height).toBe("")
+    expect(el.classList.contains("is-dragging")).toBe(false)
+    expect(el.classList.contains("is-expanding")).toBe(false)
+  })
+
+  it("never goes past either end, whatever speed the finger had", async () => {
+    const el = sheet(46)
+    const seen: number[] = []
+    const watch = new MutationObserver(() => seen.push(parseFloat(el.style.maxHeight)))
+    watch.observe(el, { attributes: true, attributeFilter: ["style"] })
+    springSheet(el, 158, -50_000)
+    await vi.waitFor(() => expect(el.style.maxHeight).toBe(""), { timeout: 3000 })
+    watch.disconnect()
+    for (const height of seen.filter((h) => !Number.isNaN(h))) {
+      expect(height).toBeGreaterThanOrEqual(46)
+      expect(height).toBeLessThanOrEqual(158)
+    }
+  })
+
+  it("leaves a sheet that is already where it rests alone, and clears the drag at once", async () => {
+    const el = sheet(158)
+    springSheet(el, 158, 0)
+    await vi.waitFor(() => expect(el.classList.contains("is-dragging")).toBe(false), { timeout: 3000 })
+    expect(el.style.maxHeight).toBe("")
+  })
+
+  it("clears the drag at once under reduced motion, for the stylesheet to settle", async () => {
+    reduced(true)
+    const el = sheet(46)
+    springSheet(el, 158, 0)
+    await vi.waitFor(() => expect(el.classList.contains("is-dragging")).toBe(false), { timeout: 3000 })
+    expect(el.style.maxHeight).toBe("")
+  })
+
+  it("stops where it is when a finger takes the sheet back", async () => {
+    const el = sheet(46)
+    const run = springSheet(el, 158, 0)
+    await vi.waitFor(() => expect(el.style.maxHeight).not.toBe("158px"), { timeout: 3000 })
+    run.stop()
+    const held = el.style.maxHeight
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    expect(el.style.maxHeight).toBe(held)
+    expect(el.classList.contains("is-dragging")).toBe(true)
   })
 })

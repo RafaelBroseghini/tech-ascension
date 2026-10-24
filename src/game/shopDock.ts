@@ -43,6 +43,22 @@ export function settleDock({ docked, dy, ms, travel }: DockDrag): boolean {
   return moved >= Math.max(travel, 0) * DOCK_SETTLE_SHARE ? !docked : docked
 }
 
+/** How much of the newest move counts toward the finger's speed; the rest is what it was doing before, so one jittery sample does not decide a release. */
+export const SPEED_NEW_SHARE = 0.4
+/** A finger that rested this long before it lifted is letting go, not flicking: it releases at rest. */
+export const SPEED_STALE_MS = 80
+
+/** The finger's speed in px/ms (positive is down) after a move of `dy` px over `dt` ms. */
+export function smoothSpeed(speed: number, dy: number, dt: number): number {
+  if (!(dt > 0)) return speed
+  return speed * (1 - SPEED_NEW_SHARE) + (dy / dt) * SPEED_NEW_SHARE
+}
+
+/** The speed the sheet is released with, in px/s of its height (a finger moving down shrinks it), or 0 for a finger that had stopped. */
+export function releaseSpeed(speed: number, sinceLastMove: number): number {
+  return sinceLastMove > SPEED_STALE_MS || speed === 0 ? 0 : -speed * 1000
+}
+
 export type SheetMode = "docked" | "rows" | "expanded"
 
 /** A sheet dragged up by less than this many px beyond the three rows is not an expansion; it springs back. */

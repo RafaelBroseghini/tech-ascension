@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { SheetDrag } from "./shopDock.ts"
-import { clampExpanded, DOCK_FLICK_SPEED, DOCK_SETTLE_SHARE, DOCK_TAP_SLOP, dockOffset, EXPAND_FLOOR_SHARE, EXPAND_MIN, isDockTap, settleDock, settleSheet, sheetHeight } from "./shopDock.ts"
+import { clampExpanded, DOCK_FLICK_SPEED, DOCK_SETTLE_SHARE, DOCK_TAP_SLOP, dockOffset, EXPAND_FLOOR_SHARE, EXPAND_MIN, isDockTap, releaseSpeed, settleDock, settleSheet, sheetHeight, SPEED_NEW_SHARE, SPEED_STALE_MS, smoothSpeed } from "./shopDock.ts"
 
 const travel = 300
 const slow = (dy: number) => Math.ceil(Math.abs(dy) / DOCK_FLICK_SPEED) * 4
@@ -112,5 +112,24 @@ describe("shop sheet expansion", () => {
     expect(clampExpanded(700, rowsHeight, 500)).toBe(500)
     expect(clampExpanded(200, rowsHeight, 500)).toBe(rowsHeight)
     expect(clampExpanded(400, rowsHeight, 250)).toBe(rowsHeight)
+  })
+})
+
+describe("the speed a sheet is released with", () => {
+  it("blends each move into the finger's speed, so one jittery sample does not decide a flick", () => {
+    expect(smoothSpeed(0, 20, 10)).toBeCloseTo(2 * SPEED_NEW_SHARE, 9)
+    expect(smoothSpeed(1, 0, 10)).toBeCloseTo(1 - SPEED_NEW_SHARE, 9)
+    // A move with no time between it and the last changes nothing.
+    expect(smoothSpeed(1.5, 30, 0)).toBe(1.5)
+  })
+
+  it("is the sheet's height speed: a finger moving down shrinks it", () => {
+    expect(releaseSpeed(1.2, 5)).toBe(-1200)
+    expect(releaseSpeed(-0.8, 5)).toBe(800)
+  })
+
+  it("is zero for a finger that had stopped before it lifted", () => {
+    expect(releaseSpeed(2, SPEED_STALE_MS + 1)).toBe(0)
+    expect(releaseSpeed(0, 5)).toBe(0)
   })
 })
