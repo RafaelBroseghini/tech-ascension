@@ -53,8 +53,8 @@ import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { CompanyTab } from "./globe/CompanyTab.tsx"
-import { bump, listEnter, rowEnter, sweepRef, useOnChange, useTabBar } from "./shopMotion.ts"
-import { tickUp } from "./useMotion.ts"
+import { bump, listEnter, rowEnter, sweepRef, useTabBar } from "./shopMotion.ts"
+import { tickUp, useOnChange } from "./useMotion.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string; done: string }> = {

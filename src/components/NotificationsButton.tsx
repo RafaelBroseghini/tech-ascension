@@ -10,6 +10,10 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { useAdmin } from "./useFeature.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
 import { ModalBackdrop } from "./ModalBackdrop.tsx"
+import { pop, useOnChange, wiggle } from "./useMotion.ts"
+
+/** The bell rings only for a count that went up: opening one is not news. */
+const rose = (next: number, previous: number) => next > previous
 
 /** The unlock history, an activity-bar bell. It appears with the first unlock and counts the ones not used yet. */
 export function NotificationsButton() {
@@ -18,8 +22,13 @@ export function NotificationsButton() {
   const fresh = useGame((state) => state.fresh)
   const admin = useAdmin()
   const list = useMemo(() => notificationsOf(entries, admin), [entries, admin])
+  const unread = list.length === 0 ? 0 : unreadCount(list, fresh)
+  const bell = useRef<SVGSVGElement>(null)
+  const count = useRef<HTMLElement>(null)
+  // The badge jumps when its number changes (and when it first appears); the bell rings when it goes up.
+  useOnChange(count, unread, pop)
+  useOnChange(bell, unread, wiggle, rose)
   if (list.length === 0) return null
-  const unread = unreadCount(list, fresh)
   return (
     <>
       <button
@@ -32,9 +41,9 @@ export function NotificationsButton() {
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <Bell className="ide-activity-icon" {...UI_ICON} aria-hidden />
+        <Bell ref={bell} className="ide-activity-icon" {...UI_ICON} aria-hidden />
         {unread > 0 ? (
-          <i className="ide-activity-count" data-testid="notifications-count" aria-hidden>
+          <i ref={count} className="ide-activity-count" data-testid="notifications-count" aria-hidden>
             {unread > 9 ? "9+" : unread}
           </i>
         ) : null}

@@ -1,4 +1,10 @@
+import { useEffect, useRef } from "react"
+import type { RefObject } from "react"
+
 export type MotionModule = typeof import("motion")
+
+/** Anything with inline styles: an HTML element, or an SVG icon. */
+type Styled = HTMLElement | SVGElement
 
 export const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 
@@ -29,7 +35,7 @@ export function preloadMotion(): void {
 }
 
 /** Motion commits an animation's end values as inline styles; once the element is back at rest the stylesheet takes over again. */
-export function release(el: HTMLElement, names: readonly string[] = ["transform", "opacity", "text-shadow", "color"]) {
+export function release(el: Styled, names: readonly string[] = ["transform", "opacity", "text-shadow", "color"]) {
   for (const name of names) el.style.removeProperty(name)
 }
 
@@ -55,7 +61,7 @@ type Play = { finished: Promise<unknown>; complete: () => void }
  * or at once when finished early (a cancelled animation leaves its first frame behind, so they jump to their end instead), unless a newer animation has
  * claimed the element in between.
  */
-export function playing(el: HTMLElement, plays: readonly Play[], names?: readonly string[]): Playing {
+export function playing(el: Styled, plays: readonly Play[], names?: readonly string[]): Playing {
   const current = claim(el)
   const rest = () => {
     if (current()) release(el, names)
@@ -78,6 +84,37 @@ export function tickUp(el: HTMLElement): Playing | null {
   const roll = motion.animate(el, { y: ["45%", "0%"], opacity: [0.2, 1] }, { duration: 0.32, ease: "easeOut" })
   const flash = motion.animate(el, { color: ["var(--accent)", "var(--accent)", ""] }, { duration: 0.32, times: [0, 0.6, 1], ease: "linear" })
   return playing(el, [roll, flash], ["transform", "opacity", "color"])
+}
+
+/** Plays something on an element each time `value` changes (and `when` agrees), never on the first render. */
+export function useOnChange<T, E extends Styled>(ref: RefObject<E | null>, value: T, play: (el: E) => Playing | null, when?: (next: T, previous: T) => boolean) {
+  const last = useRef(value)
+  const running = useRef<Playing | null>(null)
+  useEffect(() => {
+    const previous = last.current
+    if (Object.is(previous, value)) return
+    last.current = value
+    const el = ref.current
+    if (!el || (when && !when(value, previous))) return
+    running.current?.finish()
+    running.current = play(el)
+  }, [ref, value, play, when])
+}
+
+/** When each list was first shown a child. Children that arrive with the list are part of its own entrance; later ones are new. */
+const listBirth = new WeakMap<Element, number>()
+/** Children that mount in one commit are one batch. One this much later than the first in its list has just arrived. */
+const SAME_BATCH_MS = 120
+
+/** Whether a child just mounted in `list` is a new arrival, not one of the batch the list mounted with. The first call for a list starts its batch. */
+export function arrivedLate(list: Element): boolean {
+  const now = performance.now()
+  const born = listBirth.get(list)
+  if (born === undefined) {
+    listBirth.set(list, now)
+    return false
+  }
+  return now - born >= SAME_BATCH_MS
 }
 
 type Move = { scale?: number; x?: number; y?: number }
@@ -204,6 +241,38 @@ export function enterRef(presence: Presence): (el: HTMLElement | null) => void {
   return (el) => {
     if (el) enter(el, presence)
   }
+}
+
+/** A small thing jumps up in size and springs back: a count that went up. */
+export function pop(el: Styled): Playing | null {
+  const motion = motionReady()
+  if (!motion || prefersReducedMotion()) return null
+  return playing(el, [motion.animate(el, { scale: [1.5, 1] }, { type: "spring", stiffness: 600, damping: 20 })], ["transform"])
+}
+
+/** An icon rings: a few quick swings about its top, each smaller than the last. */
+export function wiggle(el: Styled): Playing | null {
+  const motion = motionReady()
+  if (!motion || prefersReducedMotion()) return null
+  // An SVG turns about its own box, from near the top, where a bell hangs.
+  el.style.transformBox = "fill-box"
+  el.style.transformOrigin = "50% 15%"
+  const ring = motion.animate(el, { rotate: [0, -16, 13, -9, 5, 0] }, { duration: 0.6, ease: "easeOut" })
+  return playing(el, [ring], ["transform", "transform-origin", "transform-box"])
+}
+
+/** A NEW marker pops in with a little overshoot. */
+export const markPop = enterRef({
+  fade: { in: 0.12, out: 0 },
+  move: { from: { scale: 0.3 }, to: {}, spring: { stiffness: 620, damping: 18 } },
+})
+
+/** The ring that goes out from a NEW dot, over and over for as long as it is on screen. Stops when the dot goes. */
+export function pingRef(el: HTMLElement | null): (() => void) | void {
+  const motion = motionReady()
+  if (!el || !motion || prefersReducedMotion() || !laidOut(el)) return
+  const ping = motion.animate(el, { scale: [1, 2.8], opacity: [0.55, 0] }, { duration: 1.8, ease: "easeOut", repeat: Infinity, repeatDelay: 0.3 })
+  return () => ping.stop()
 }
 
 /** The card inside a dialog's backdrop. */

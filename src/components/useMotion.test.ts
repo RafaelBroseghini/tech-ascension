@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { dialogPresence, loadMotion, motionReady, playing, tickUp } from "./useMotion.ts"
+import { arrivedLate, dialogPresence, loadMotion, markPop, motionReady, pingRef, playing, pop, tickUp, wiggle } from "./useMotion.ts"
 
 const reduced = (on: boolean) => {
   window.matchMedia = ((query: string) => ({ matches: on && query.includes("reduce"), addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -133,5 +133,86 @@ describe("animations on one element", () => {
     reduced(true)
     const el = document.createElement("span")
     expect(tickUp(el)).toBeNull()
+  })
+})
+
+describe("small badges", () => {
+  beforeAll(async () => {
+    await loadMotion()
+  })
+
+  beforeEach(() => {
+    reduced(false)
+    layout(true)
+  })
+
+  afterEach(() => {
+    document.body.replaceChildren()
+    layout(false)
+    vi.useRealTimers()
+  })
+
+  it("pops a count up in size and gives its styles back", async () => {
+    const count = document.createElement("i")
+    document.body.append(count)
+    expect(pop(count)).not.toBeNull()
+    await vi.waitFor(() => expect(count.getAttribute("style") ?? "").toBe(""), { timeout: 3000 })
+  })
+
+  it("rings an icon about its top and gives its styles back", async () => {
+    const bell = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    document.body.append(bell)
+    const run = wiggle(bell)
+    expect(run).not.toBeNull()
+    expect(bell.style.transformOrigin).toBe("50% 15%")
+    await vi.waitFor(() => expect(bell.getAttribute("style") ?? "").toBe(""), { timeout: 3000 })
+  })
+
+  it("neither pops nor rings for reduced motion", () => {
+    reduced(true)
+    expect(pop(document.createElement("i"))).toBeNull()
+    expect(wiggle(document.createElement("i"))).toBeNull()
+  })
+
+  it("pings for as long as the dot is on screen, and stops when it goes", () => {
+    const ring = document.createElement("span")
+    document.body.append(ring)
+    const stop = pingRef(ring)
+    expect(stop).toBeTypeOf("function")
+    ;(stop as () => void)()
+    reduced(true)
+    expect(pingRef(ring)).toBeUndefined()
+    reduced(false)
+    layout(false)
+    expect(pingRef(ring)).toBeUndefined()
+  })
+
+  it("lets a new mark pop in and nothing else is left on it", async () => {
+    const mark = document.createElement("i")
+    document.body.append(mark)
+    markPop(mark)
+    expect(mark.style.opacity).toBe("0")
+    await vi.waitFor(() => expect(mark.getAttribute("style") ?? "").toBe(""), { timeout: 3000 })
+  })
+})
+
+describe("telling a new arrival from the batch a list mounted with", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("is not an arrival for the first child of a list or any that mount with it, and is one after that", () => {
+    vi.useFakeTimers()
+    const list = document.createElement("ol")
+    vi.setSystemTime(1_000)
+    vi.spyOn(performance, "now").mockImplementation(() => Date.now())
+    expect(arrivedLate(list)).toBe(false)
+    vi.setSystemTime(1_010)
+    expect(arrivedLate(list)).toBe(false)
+    vi.setSystemTime(1_500)
+    expect(arrivedLate(list)).toBe(true)
+    // Another list has a batch of its own.
+    expect(arrivedLate(document.createElement("ol"))).toBe(false)
+    vi.restoreAllMocks()
   })
 })
