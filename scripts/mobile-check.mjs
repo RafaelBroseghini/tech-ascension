@@ -199,7 +199,8 @@ function check(vp, state, m) {
 }
 
 const STATES = {
-  "phase-a": `g.reset(); g.keepProfile(); g.setXp(2000); for (const id of [1,2,3,4]) g.buySkill(id); g.clearReveals(); g.tick(1000); return 1`,
+  "origin-pick": `g.reset(); g.keepProfile(); g.setXp(200); g.clearReveals(); g.tick(1000); return 1`,
+  "phase-a": `g.reset(); g.keepProfile(); g.pickOrigin("college"); g.setXp(2000); for (const id of [1,2,3,4]) g.buySkill(id); g.clearReveals(); g.tick(1000); return 1`,
   "phase-b": `g.reset(); g.keepProfile(); g.setXp(200000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 3; id++) g.forceGig(id); g.clearReveals(); g.tick(1000); return 1`,
   "phase-c": `g.reset(); g.keepProfile(); g.setXp(200000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); g.buyJob(1); g.setMoney(60000); g.clearReveals(); g.tick(1000); return 1`,
   "jobs-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 2e6); g.clearReveals(); g.tick(1000); return 1`,
