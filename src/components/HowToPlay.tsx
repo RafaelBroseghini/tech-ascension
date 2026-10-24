@@ -5,6 +5,7 @@ import { GOLD_SKILLS } from "../data/gold.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 const LAST_TROPHY = GOLD_SKILLS[GOLD_SKILLS.length - 1]?.name ?? "the last 10x dev skill"
 
@@ -46,7 +47,7 @@ export function HowToPlay() {
       </button>
       {open
         ? createPortal(
-            <div className="event-backdrop" data-wipe-modal data-testid="howto-backdrop" onClick={() => setOpen(false)}>
+            <ModalBackdrop className="event-backdrop" data-wipe-modal data-testid="howto-backdrop" onClick={() => setOpen(false)}>
               <div
                 ref={dialogRef}
                 className="event-modal howto-modal"
@@ -77,7 +78,7 @@ export function HowToPlay() {
                   </button>
                 </div>
               </div>
-            </div>,
+            </ModalBackdrop>,
             document.body,
           )
         : null}

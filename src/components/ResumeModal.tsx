@@ -10,6 +10,7 @@ import type { ResumeDoc, ResumeEntry, ResumeGroup } from "../game/resumeDoc.ts"
 import { LINKEDOUT_TAGLINE } from "./icons/LinkedOut.tsx"
 import { LinkedOut } from "./LinkedOut.tsx"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 function Entry({ entry, heading }: { entry: ResumeEntry; heading: "h3" | "h4" }) {
   const Title = heading
@@ -71,7 +72,7 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
   }, [onClose])
 
   return createPortal(
-    <div className="resume-backdrop" data-testid="resume-backdrop" onClick={onClose}>
+    <ModalBackdrop className="resume-backdrop" data-testid="resume-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         className="resume-modal"
@@ -160,7 +161,7 @@ export function ResumeModal({ doc, onClose }: { doc: ResumeDoc | null; onClose: 
           </footer>
         ) : null}
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

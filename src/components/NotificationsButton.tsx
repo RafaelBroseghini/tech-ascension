@@ -9,6 +9,7 @@ import { openSurface } from "../game/surfaces.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { useAdmin } from "./useFeature.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 /** The unlock history, an activity-bar bell. It appears with the first unlock and counts the ones not used yet. */
 export function NotificationsButton() {
@@ -60,7 +61,7 @@ function NotificationsModal({ list, onClose }: { list: ReturnType<typeof notific
   }, [onClose])
 
   return createPortal(
-    <div className="stats-backdrop" data-testid="notifications-backdrop" onClick={onClose}>
+    <ModalBackdrop className="stats-backdrop" data-testid="notifications-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         className="stats-modal notifications-modal"
@@ -113,7 +114,7 @@ function NotificationsModal({ list, onClose }: { list: ReturnType<typeof notific
           })}
         </ol>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

@@ -2190,7 +2190,6 @@ img { -webkit-user-drag: none; user-select: none; }
   place-items: center;
   padding: var(--sp-4);
   background: color-mix(in srgb, var(--ink) 72%, transparent);
-  animation: event-fade 200ms var(--ease-out);
 }
 
 .stats-modal {
@@ -2278,10 +2277,6 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .stats-backdrop { animation: none; }
 }
 
 /* ---------- fun metrics modal ---------- */
@@ -2294,7 +2289,6 @@ img { -webkit-user-drag: none; user-select: none; }
   place-items: center;
   padding: var(--sp-4);
   background: color-mix(in srgb, var(--ink) 72%, transparent);
-  animation: event-fade 200ms var(--ease-out);
 }
 
 .stats-modal {
@@ -2382,10 +2376,6 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .stats-backdrop { animation: none; }
 }
 
 /* ---------- rosters: a character select screen in the editor theme ---------- */
@@ -2400,7 +2390,6 @@ img { -webkit-user-drag: none; user-select: none; }
   place-items: center;
   padding: var(--sp-4);
   background: color-mix(in srgb, var(--ide-crust) 80%, transparent);
-  animation: event-fade 200ms var(--ease-out);
 }
 
 .roster {
@@ -2770,7 +2759,7 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .roster-backdrop, .roster-feature img { animation: none; }
+  .roster-feature img { animation: none; }
   .roster-cell { transition: none; }
 }
 
@@ -2784,7 +2773,6 @@ img { -webkit-user-drag: none; user-select: none; }
   place-items: center;
   padding: var(--sp-4);
   background: color-mix(in srgb, var(--ink) 72%, transparent);
-  animation: event-fade 200ms var(--ease-out);
 }
 
 .resume-modal {
@@ -3037,10 +3025,6 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 600;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .resume-backdrop { animation: none; }
-}
-
 /* ---------- generated resume modal ---------- */
 
 .resume-backdrop {
@@ -3051,7 +3035,6 @@ img { -webkit-user-drag: none; user-select: none; }
   place-items: center;
   padding: var(--sp-4);
   background: color-mix(in srgb, var(--ink) 72%, transparent);
-  animation: event-fade 200ms var(--ease-out);
 }
 
 .resume-modal {
@@ -3228,10 +3211,6 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 700;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .resume-backdrop { animation: none; }
-}
-
 /* ---------- random event modal ---------- */
 
 .event-backdrop {
@@ -3242,7 +3221,6 @@ img { -webkit-user-drag: none; user-select: none; }
   place-items: center;
   padding: var(--sp-4);
   background: color-mix(in srgb, var(--ink) 62%, transparent);
-  animation: event-fade 200ms var(--ease-out);
 }
 
 .event-modal {
@@ -3257,13 +3235,7 @@ img { -webkit-user-drag: none; user-select: none; }
   box-shadow: var(--lift-3), inset 0 0 0 2px var(--line);
   text-align: center;
   outline: none;
-  animation: modal-in 200ms var(--ease-out);
 }
-
-/* Every dialog panel grows in with its backdrop fade. toast-in is no good here: it carries the toast centring translate(-50%). */
-.stats-modal,
-.resume-modal,
-.roster { animation: modal-in 200ms var(--ease-out); }
 
 .event-kicker {
   margin: 0;
@@ -3501,7 +3473,6 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 700;
 }
 
-@keyframes event-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .review-choices {
   display: flex;
@@ -3560,10 +3531,6 @@ img { -webkit-user-drag: none; user-select: none; }
 .review-stake .is-good { color: var(--ide-green); }
 .review-stake .is-bad { color: var(--ide-red); }
 .review-stake .is-quiet { color: var(--text-dim); font-weight: 500; }
-
-@media (prefers-reduced-motion: reduce) {
-  .event-backdrop, .event-modal, .stats-modal, .resume-modal, .roster { animation: none; }
-}
 
 /* ---------- admin settings (admin mode only) ---------- */
 

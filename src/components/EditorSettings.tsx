@@ -26,6 +26,7 @@ import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
 import type { FeatureId } from "../data/features.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 const GROUPS = [
   { kind: "dark", label: "Dark" },
@@ -104,7 +105,7 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
       </button>
       {confirming
         ? createPortal(
-            <div className="event-backdrop" data-wipe-modal data-testid="wipe-backdrop" onClick={() => setConfirming(false)}>
+            <ModalBackdrop className="event-backdrop" data-wipe-modal data-testid="wipe-backdrop" onClick={() => setConfirming(false)}>
               <div
                 ref={dialogRef}
                 className="event-modal"
@@ -138,7 +139,7 @@ function WipeSave({ onWiped }: { onWiped: () => void }) {
                   </button>
                 </div>
               </div>
-            </div>,
+            </ModalBackdrop>,
             document.body,
           )
         : null}

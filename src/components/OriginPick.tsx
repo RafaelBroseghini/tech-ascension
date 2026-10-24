@@ -5,6 +5,7 @@ import type { OriginId } from "../data/origins.ts"
 import { originDue } from "../game/build.ts"
 import { useGame } from "../game/store.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 /**
  * The career's first real choice: a minute in, once the first skill is learned and a pick means something, where you
@@ -29,7 +30,7 @@ function OriginCard() {
 
   const pick = ORIGINS.find((row) => row.id === chosen)
   return createPortal(
-    <div className="event-backdrop" data-testid="origin-backdrop">
+    <ModalBackdrop className="event-backdrop" data-testid="origin-backdrop">
       <div
         ref={dialogRef}
         className="event-modal identity-card"
@@ -76,7 +77,7 @@ function OriginCard() {
           </button>
         </div>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

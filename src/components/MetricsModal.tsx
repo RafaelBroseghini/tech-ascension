@@ -9,6 +9,7 @@ import type { GameStats } from "../game/stats.ts"
 import { useGame } from "../game/store.ts"
 import { useLiveRates } from "./useLiveRates.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 type Row = { label: string; value: string }
 
@@ -51,7 +52,7 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   return createPortal(
-    <div className="stats-backdrop" data-testid="stats-backdrop" onClick={onClose}>
+    <ModalBackdrop className="stats-backdrop" data-testid="stats-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         className="stats-modal"
@@ -96,7 +97,7 @@ export function MetricsModal({ onClose }: { onClose: () => void }) {
           </div>
         </dl>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

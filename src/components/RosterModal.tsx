@@ -14,6 +14,7 @@ import { createPortal } from "react-dom"
 import { formatNumber } from "../game/format.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 /** Theme palette keys a roster can take its color from. */
 export type RosterAccent = "mauve" | "green" | "blue" | "peach" | "sky" | "rosewater" | "red"
@@ -202,7 +203,7 @@ export function RosterModal({
 
   return createPortal(
     // React bubbles portal events to the opener. Stop them here so a pick never counts as a desk click.
-    <div
+    <ModalBackdrop
       className="roster-backdrop"
       data-testid="roster-backdrop"
       style={{ ["--rs-accent" as string]: `var(--ide-${accent})` } as CSSProperties}
@@ -291,7 +292,7 @@ export function RosterModal({
           </p>
         )}
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

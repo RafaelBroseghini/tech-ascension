@@ -8,6 +8,7 @@ import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 export const REPO = "https://github.com/RafaelBroseghini/tech-ascension"
 
@@ -57,7 +58,7 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
   }, [onClose])
 
   return createPortal(
-    <div className="resume-backdrop" data-testid="githug-backdrop" onClick={onClose}>
+    <ModalBackdrop className="resume-backdrop" data-testid="githug-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         className="resume-modal githug-modal"
@@ -169,7 +170,7 @@ export function GitHugModal({ stars, onClose }: { stars: number | null; onClose:
           </a>
         </footer>
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }

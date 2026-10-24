@@ -6,6 +6,7 @@ import { UI_ICON } from "./icons/ui.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 import { useFocusTrap } from "./useFocusTrap.ts"
+import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 /** On a narrow screen the owned list and skill icons do not fit under the art, so an inventory button in the activity bar opens them in a modal. */
 export function OwnedButton() {
@@ -46,7 +47,7 @@ function OwnedModal({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   return createPortal(
-    <div className="stats-backdrop" data-testid="owned-backdrop" onClick={onClose}>
+    <ModalBackdrop className="stats-backdrop" data-testid="owned-backdrop" onClick={onClose}>
       <div
         ref={dialogRef}
         className="stats-modal owned-modal"
@@ -71,7 +72,7 @@ function OwnedModal({ onClose }: { onClose: () => void }) {
         <OwnedStrip />
         <Skills />
       </div>
-    </div>,
+    </ModalBackdrop>,
     document.body,
   )
 }
