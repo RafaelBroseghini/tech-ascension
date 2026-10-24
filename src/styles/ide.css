@@ -33,10 +33,16 @@
   background: var(--ide-crust);
   pointer-events: auto;
   /* With every button unlocked the bar can outgrow a short stage: it scrolls, and the foot (settings) stays pinned. */
+  overflow-x: hidden;
   overflow-y: auto;
+  /* Vertical only: the icons never slide sideways, and a scroll here does not drag the page behind. */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   scrollbar-width: none;
 }
 .ide-activity > * { flex-shrink: 0; }
+/* Only what is unlocked stands in the bar; the outline of the next unlock waits in the shop's banner. */
+.ide-activity .ul-ghost { display: none; }
 
 .ide-activity-btn {
   display: flex;
@@ -476,8 +482,9 @@
 /* The notification bell's count of unlocks not used yet. */
 .ide-activity-count {
   position: absolute;
-  top: 1px;
-  right: 1px;
+  /* Inset so the badge and its 2px ring stay inside the 44px bar, never under its edge. */
+  top: 3px;
+  right: 3px;
   min-width: 14px;
   padding: 0 3px;
   border-radius: 7px;
