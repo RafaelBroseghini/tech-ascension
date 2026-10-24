@@ -100,7 +100,7 @@ const RESTING = { scale: 1, x: 0, y: 0 }
 const GHOST_LIMIT_MS = 700
 
 /** Whether the element is laid out at all. Without a layout (a test DOM, a hidden tab) there is nothing to animate. */
-const laidOut = (el: Element) => el.getClientRects().length > 0
+export const laidOut = (el: Element) => el.getClientRects().length > 0
 
 const movement = (presence: Presence) => (presence.move && !prefersReducedMotion() ? presence.move : null)
 

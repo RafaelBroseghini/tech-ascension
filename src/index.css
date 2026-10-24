@@ -1623,8 +1623,6 @@ img { -webkit-user-drag: none; user-select: none; }
   .era-tab:hover { color: var(--text); }
 }
 
-.era-tab.has-fresh { animation: tab-pulse 1.4s var(--ease-in-out) infinite; }
-
 
 .era-tab.active {
   color: var(--text);
@@ -1717,8 +1715,6 @@ img { -webkit-user-drag: none; user-select: none; }
   padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4);
   border-bottom: var(--stroke) solid var(--surface-1);
   background: transparent;
-  animation: row-in 360ms var(--ease-out) backwards;
-  animation-delay: calc(min(var(--i, 0), 10) * 32ms);
   transition: background-color var(--dur-base) var(--ease-out);
 }
 
@@ -1826,15 +1822,17 @@ img { -webkit-user-drag: none; user-select: none; }
   font-weight: 700;
 }
 
-.offer.flash::after {
-  content: "";
+/* The sweep of a purchase: the element exists while the row flashes, and Motion moves it (shopMotion.ts). Invisible until it does. */
+.offer-sweep {
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent 10%, var(--accent-hi) 50%, transparent 90%);
-  opacity: 0.6;
+  opacity: 0;
   pointer-events: none;
-  animation: buy-sweep 420ms var(--ease-out) forwards;
 }
+
+/* A price, a few digits in a button: inline-block so the roll-up can move it. */
+.offer .price { display: inline-block; }
 
 .offer-actions {
   display: flex;
@@ -1919,8 +1917,6 @@ img { -webkit-user-drag: none; user-select: none; }
   cursor: pointer;
   box-shadow: var(--lift-3);
 }
-
-.tick-up { display: inline-block; animation: tick-up 320ms var(--ease-out); }
 
 /* Offline return, stuck to the editor pane. */
 .sticky-note {
