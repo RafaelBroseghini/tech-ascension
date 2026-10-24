@@ -38,6 +38,9 @@
 
 /* ---------- activity bar: real buttons now ---------- */
 
+/* The NEW dot sits inside the bar's edge: its 2px ring would otherwise be clipped by the bar. */
+.ide-activity .ul-dot { top: 4px; right: 4px; }
+
 .ide-activity > .ide-activity-btn {
   position: relative;
   color: var(--ide-overlay);
