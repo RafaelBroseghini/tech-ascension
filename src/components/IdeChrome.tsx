@@ -133,8 +133,8 @@ export const IdeChrome = memo(function IdeChrome() {
         <NotificationsButton />
         <div className="ide-activity-foot">
           <GitHugStar />
-          {/* The bare desk hides this bar, so settings wait in the stage's corner until the company opens it. */}
-          {studioOpen ? <EditorSettings /> : null}
+          {/* The bare desk hides this bar, so settings wait in the stage's corner until GitHug opens it. */}
+          {githugOpen ? <EditorSettings /> : null}
         </div>
       </nav>
       {prestigeVisible && prestigeOpen ? <PrestigePanel onClose={closePrestige} /> : null}

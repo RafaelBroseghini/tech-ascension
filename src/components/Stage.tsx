@@ -209,8 +209,8 @@ export function Stage() {
 
   const stage = stageOf({ skills, owned, jobs, gigs })
   const accent = ERA_ACCENT[eraOf({ owned })]
-  // Before the first laptop the desk is bare: no activity bar, no sidebar.
-  const studioOpen = useFeatureOpen("studio")
+  // Until GitHug unlocks the desk is bare: no activity bar, no sidebar, and the settings gear sits in the stage's corner.
+  const barOpen = useFeatureOpen("githug")
   const logOpen = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView) === "log"
   const stageName = stage?.name ?? "High school"
 
@@ -427,11 +427,11 @@ export function Stage() {
   return (
     <section
       ref={stagePanelRef}
-      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : "", studioOpen ? "" : "is-bare", logOpen ? "is-log-open" : ""].filter(Boolean).join(" ")}
+      className={["stage-panel", boosted ? "is-boosted" : "", gold ? "is-boost-gold" : "", barOpen ? "" : "is-bare", logOpen ? "is-log-open" : ""].filter(Boolean).join(" ")}
       aria-label="Click stage"
     >
       <IdeChrome />
-      {studioOpen ? null : (
+      {barOpen ? null : (
         <div className="stage-corner">
           <EditorSettings place="corner" />
         </div>
