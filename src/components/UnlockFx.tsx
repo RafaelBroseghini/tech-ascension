@@ -4,6 +4,7 @@ import type confettiFn from "canvas-confetti"
 import { ERA_ACCENT } from "../data/eraAccent.ts"
 import { eraOf } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
+import { loadMotion, prefersReducedMotion } from "./useMotion.ts"
 
 type FxKind = "unlock" | "clear"
 type Palette = { accent: string; light: string; dark: boolean }
@@ -13,12 +14,9 @@ type Confetti = import("canvas-confetti").CreateTypes
 const SAME_MOMENT_MS = 300
 /** The sprite crouches this long before the burst leaves it. */
 const ANTICIPATION_S = 0.1
-const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 // Both libraries are their own chunks: nothing downloads them until the first celebration, or the idle moment before it.
-let motionLoad: Promise<typeof import("motion")> | null = null
 let confettiLoad: Promise<typeof confettiFn> | null = null
-const loadMotion = () => (motionLoad ??= import("motion"))
 const loadConfetti = () => (confettiLoad ??= import("canvas-confetti").then((module) => module.default))
 
 let swatch: CanvasRenderingContext2D | null | undefined

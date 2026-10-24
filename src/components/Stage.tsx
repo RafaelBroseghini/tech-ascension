@@ -23,6 +23,7 @@ import { GifParade } from "./GifParade.tsx"
 import { DeskCat } from "./DeskCat.tsx"
 import { UnlockFx } from "./UnlockFx.tsx"
 import { StickyNote } from "./StickyNote.tsx"
+import { motionReady, prefersReducedMotion } from "./useMotion.ts"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { MiniGlobe } from "./globe/MiniGlobe.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
@@ -50,7 +51,6 @@ function without<T extends { id: number }>(gone: ReadonlySet<number>) {
 
 const hoverClickPref = () => getDeskPrefs().hoverClick
 const hoverModePref = () => getDeskPrefs().hoverMode
-const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
 function clickSparks(x: number, y: number, color: string, count: number): Spark[] {
   return Array.from({ length: count }, () => {
@@ -174,7 +174,7 @@ export function Stage() {
   const tiltRef = useRef<HTMLSpanElement>(null)
   const heat = useRef(0)
   const heatTimer = useRef(0)
-  const impact = useRef<Animation | null>(null)
+  const impact = useRef<{ complete: () => void } | null>(null)
   const lastSide = useRef(1)
 
   // Resting: a mouse over the stage. Pressed: any pointer holding the stage down. Auto-click runs on whichever the mode allows.
@@ -207,7 +207,13 @@ export function Stage() {
     }, 80)
   }
 
-  useEffect(() => () => window.clearInterval(heatTimer.current), [])
+  useEffect(
+    () => () => {
+      window.clearInterval(heatTimer.current)
+      impact.current?.complete()
+    },
+    [],
+  )
 
   const stageEmoji = stageEmojiSource(stage?.source)
 
@@ -215,36 +221,34 @@ export function Stage() {
 
   function playImpact(nx: number, ny: number) {
     const tilt = tiltRef.current
-    if (!tilt || typeof tilt.animate !== "function") return
-    // Only the last bump can still be running. getAnimations() would flush style on every click.
-    const last = impact.current
-    if (last) {
-      last.finished.catch(() => {})
-      last.cancel()
-    }
+    // Never waits for Motion: a click before its chunk lands just goes without the bump.
+    const motion = motionReady()
+    if (!tilt || !motion) return
+    // Only the last bump can still be running; the new one takes the sprite over.
+    impact.current?.complete()
     if (prefersReducedMotion()) {
-      impact.current = tilt.animate([{ opacity: 0.8 }, { opacity: 1 }], { duration: 120 })
+      impact.current = motion.animate(tilt, { opacity: [0.8, 1] }, { duration: 0.12 })
       return
     }
-    // A bump: the sprite pops up and tips slightly away from the click, then settles
-    // with a tiny jitter. Fast clicking (heat) and boosts make it a little bigger.
+    // A bump: the click throws the sprite up and tips it away from the pointer, and a Motion spring carries the
+    // amount (1 to 0) back. The spring's own overshoot is the settle: a small tip the other way, then rest.
+    // Fast clicking (heat) and boosts make it a little bigger.
     const power = 1 + heat.current * 0.5 + (boosted ? 0.25 : 0)
     const dir = Math.abs(nx) > 0.08 ? Math.sign(nx) : (lastSide.current = -lastSide.current)
-    const frame = (scale: number, rx: number, ry: number, rz: number, tx: number, ty: number) =>
-      `perspective(700px) translate(${tx}px, ${ty}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${scale})`
-    impact.current = tilt.animate(
-      [
-        { transform: frame(1, 0, 0, 0, 0, 0), offset: 0 },
-        {
-          transform: frame(1 + 0.06 * power, -ny * 5 * power, nx * 5 * power, dir * 1.2 * power, 0, -5 * power),
-          offset: 0.22,
-        },
-        { transform: frame(0.985, 0, 0, -dir * 0.8, 1.5 * power, 1), offset: 0.45 },
-        { transform: frame(1.01, 0, 0, dir * 0.4, -1 * power, 0), offset: 0.68 },
-        { transform: frame(1, 0, 0, 0, 0, 0), offset: 1 },
-      ],
-      { duration: 260, easing: "cubic-bezier(0.25, 0.9, 0.3, 1)" },
-    )
+    const pose = (k: number) =>
+      `perspective(700px) translate(0px, ${(-5 * power * k).toFixed(2)}px) rotateX(${(-ny * 5 * power * k).toFixed(2)}deg) rotateY(${(nx * 5 * power * k).toFixed(2)}deg) rotateZ(${(dir * 1.2 * power * k).toFixed(2)}deg) scale(${(1 + 0.06 * power * k).toFixed(4)})`
+    tilt.style.transform = pose(1)
+    impact.current = motion.animate(1, 0, {
+      type: "spring",
+      stiffness: 1100,
+      damping: 26,
+      restDelta: 0.002,
+      restSpeed: 0.02,
+      onUpdate: (k) => {
+        tilt.style.transform = pose(k)
+      },
+      onComplete: () => tilt.style.removeProperty("transform"),
+    })
   }
 
   function fire(clientX: number | null, clientY: number | null, touch = false, source: ClickSource = "manual") {
