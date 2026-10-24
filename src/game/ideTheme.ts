@@ -65,7 +65,9 @@ type FadingDocument = Document & { startViewTransition?: (update: () => void) =>
 function canFade(): boolean {
   if (typeof document === "undefined" || typeof window === "undefined") return false
   if (typeof (document as FadingDocument).startViewTransition !== "function") return false
-  return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  // The motion setting (src/game/desk.ts) puts its choice on the document; this file stays free of the desk's audio.
+  const full = document.documentElement.dataset.motion === "full"
+  return full || !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
 }
 
 /** Puts `theme` on screen: cross-faded when `smooth` and the browser can, else at once. Nothing happens when it is already there. */

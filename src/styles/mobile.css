@@ -145,7 +145,7 @@
   .shop-grip-bar .deal-dot { top: 50%; right: 0; margin-top: -3px; }
 }
 @media (max-width: 860px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
-  .shop { transition: none; }
+  :root:not([data-motion="full"]) .shop { transition: none; }
 }
 
 /* A phone on its side has no room to stack: stage and shop go side by side. */

@@ -321,7 +321,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ide-status-music-icon.is-on { animation: none; opacity: 1; }
+  :root:not([data-motion="full"]) .ide-status-music-icon.is-on { animation: none; opacity: 1; }
 }
 
 .desk-cat {
@@ -358,7 +358,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desk-cat, .desk-cat-z { animation: none; }
+  :root:not([data-motion="full"]) .desk-cat,
+  :root:not([data-motion="full"]) .desk-cat-z { animation: none; }
 }
 
 .desk-cat {
@@ -456,7 +457,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desk-cat, .desk-cat-img, .desk-cat-z, .desk-cat-new { animation: none; }
+  :root:not([data-motion="full"]) .desk-cat,
+  :root:not([data-motion="full"]) .desk-cat-img,
+  :root:not([data-motion="full"]) .desk-cat-z,
+  :root:not([data-motion="full"]) .desk-cat-new { animation: none; }
 }
 
 @media (max-width: 860px) {

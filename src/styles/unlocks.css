@@ -545,14 +545,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage-panel {
+  :root:not([data-motion="full"]) .stage-panel {
     transition: none;
   }
-  .ul-lit,
-  .ul-glow {
+  :root:not([data-motion="full"]) .ul-lit,
+  :root:not([data-motion="full"]) .ul-glow {
     animation: none;
   }
-  .ul-lit {
+  :root:not([data-motion="full"]) .ul-lit {
     box-shadow: 0 0 0 2px var(--ide-green);
   }
 }

@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react"
 import type { RefObject } from "react"
+import { reducedMotion } from "../game/desk.ts"
 
 export type MotionModule = typeof import("motion")
 
 /** Anything with inline styles: an HTML element, or an SVG icon. */
 type Styled = HTMLElement | SVGElement
 
-export const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+export const prefersReducedMotion = reducedMotion
 
 // Motion is its own chunk. Nothing waits on it: a caller that needs it right now asks `motionReady()` and, when the
 // chunk has not landed (or never will, offline), plays no animation and changes state all the same.

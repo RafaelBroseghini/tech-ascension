@@ -20,7 +20,7 @@ import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
-import { HoverModeList, ParadeSourceList, ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
+import { HoverModeList, MotionModeList, ParadeSourceList, ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
 import { useParadeProgress } from "./useParadeProgress.ts"
 import { RosterButtons } from "./IdeStatusDock.tsx"
 import { setOpenRoster } from "../game/rosterModal.ts"
@@ -317,6 +317,14 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                 ))}
               </ul>
               {hoverPerSec > 0 && desk.hoverClick ? <HoverModeList desk={desk} /> : null}
+            </div>
+          </section>
+          <section className="ide-settings-section" aria-labelledby={`${menuId}-motion`}>
+            <p className="ide-theme-heading" id={`${menuId}-motion`}>
+              Motion
+            </p>
+            <div className="ide-settings-section-panel">
+              <MotionModeList desk={desk} />
             </div>
           </section>
           {paradeOpen && paradeCounts.all > 0 && desk.parade ? (

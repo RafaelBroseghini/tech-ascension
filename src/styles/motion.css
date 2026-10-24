@@ -112,9 +112,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
     animation-duration: 0.01ms !important;
     animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
@@ -123,37 +123,37 @@
     scroll-behavior: auto !important;
   }
 
-  .sprite-bob,
-  .sprite canvas {
+  :root:not([data-motion="full"]) .sprite-bob,
+  :root:not([data-motion="full"]) .sprite canvas {
     animation: none !important;
     transform: none !important;
   }
 
-  .unlock-fx,
-  .ring,
-  .spark,
-  .era-sweep,
-  .rim::before {
+  :root:not([data-motion="full"]) .unlock-fx,
+  :root:not([data-motion="full"]) .ring,
+  :root:not([data-motion="full"]) .spark,
+  :root:not([data-motion="full"]) .era-sweep,
+  :root:not([data-motion="full"]) .rim::before {
     display: none !important;
   }
 
   /* Click loot still falls. The global 0.01ms duration would erase it. (The logos play a plain fall from Stage.tsx.) */
-  .loot {
+  :root:not([data-motion="full"]) .loot {
     animation-duration: 900ms !important;
     animation-iteration-count: 1 !important;
   }
 
   /* Opacity-only readout so pops still clear themselves. */
-  .pop {
+  :root:not([data-motion="full"]) .pop {
     animation: pop-fade 700ms linear forwards !important;
     transform: translate(-50%, -50%) !important;
   }
 
-  .rim {
+  :root:not([data-motion="full"]) .rim {
     box-shadow: 0 0 0 3px var(--accent);
   }
 
-  .is-boost-gold .rim {
+  :root:not([data-motion="full"]) .is-boost-gold .rim {
     box-shadow: 0 0 0 3px var(--boost-gold);
   }
 }
@@ -165,7 +165,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .first-click { animation: none !important; }
+  :root:not([data-motion="full"]) .first-click { animation: none !important; }
 }
 
 /* A theme change cross-fades the whole page (ideTheme.ts, View Transitions) instead of snapping colour by colour. */
