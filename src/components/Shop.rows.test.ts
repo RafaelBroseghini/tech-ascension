@@ -209,8 +209,8 @@ describe("shop rows", () => {
   it("shows a locked job's missing XP in the unlock line", () => {
     writeSavedShopTab("C")
     useGame.setState({
-      xpTotal: 40_000,
-      xp: 40_000,
+      xpTotal: JOB_TIERS.find((job) => job.id === 5)!.xpReq - 1,
+      xp: JOB_TIERS.find((job) => job.id === 5)!.xpReq - 1,
       money: 10_000_000,
       peakMoney: 10_000_000,
       gigs: [1, 2, 3, 4, 5, 6],
@@ -240,7 +240,7 @@ describe("shop rows", () => {
 
     it("says a job's XP requirement in words while it is locked", () => {
       writeSavedShopTab("C")
-      useGame.setState({ xpTotal: 40_000, xp: 40_000, money: 1_000, peakMoney: 1_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [1, 2, 3, 4] })
+      useGame.setState({ xpTotal: JOB_TIERS.find((job) => job.id === 5)!.xpReq - 1, xp: JOB_TIERS.find((job) => job.id === 5)!.xpReq - 1, money: 1_000, peakMoney: 1_000, gigs: [1, 2, 3, 4, 5, 6], jobs: [1, 2, 3, 4] })
       const row = job5(renderShop())
       expect(row?.querySelector("[data-testid='offer-unlock']")?.textContent).toBe("More XP")
       expect(row?.querySelector(".offer-actions button")?.textContent).toBe("Locked")

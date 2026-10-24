@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { CAPITAL } from "../../data/capital.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
+import { EQUIPMENT, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { GIG_PATH, JOB_PATHS } from "../../data/tree.ts"
 import { installGameHarness } from "../harness.ts"
@@ -134,10 +134,10 @@ describe("reading a node", () => {
   })
 
   it("lists every missing leaf with words and what the career has", () => {
-    const result = check("gig:3", view({ xpTotal: 5_000 }))
+    const result = check("gig:3", view({ xpTotal: GIGS[0]!.xpReq }))
     expect(result.met).toBe(false)
     expect(result.missing.map((row) => row.req.t)).toEqual(["met", "xp", "tag"])
-    expect(result.missing[1]!.text).toContain("5,000")
+    expect(result.missing[1]!.text).toContain(GIGS[0]!.xpReq.toLocaleString("en-US"))
     expect(words({ t: "users", min: 10_000 })).toBe("10,000 users")
     expect(check("board:capital", view({ peakMoney: 500_000 })).met).toBe(true)
   })
@@ -165,12 +165,12 @@ describe("reading a node", () => {
 
 describe("the words the shop reads off the tree", () => {
   it("lists a board's entering leaves for its lock panel, without the latch, and says whether each holds", () => {
-    const gigs = entry("board:gigs", view({ xpTotal: 9_000, skills: { "15": 1 } }))
+    const gigs = entry("board:gigs", view({ xpTotal: 900, skills: { "15": 1 } }))
     expect(gigs.either).toBe(false)
-    expect(gigs.lines.map((line) => line.text)).toEqual(["14,000 lifetime XP (9,000)", "Own Portfolio site live", "Own React / one framework"])
+    expect(gigs.lines.map((line) => line.text)).toEqual([`${GIG_BOARD_UNLOCK.minXp.toLocaleString("en-US")} lifetime XP (900)`, "Own Portfolio site live", "Own React / one framework"])
     expect(gigs.lines.map((line) => line.met)).toEqual([false, true, false])
-    expect(entry("board:jobs", view({ gigs: [1, 2, 3] })).lines.map((line) => line.text)).toEqual(["40,000 lifetime XP (0)", "6 gigs cleared (3)"])
-    expect(entry("board:gear", view({ xpTotal: 10 })).lines.map((line) => line.text)).toEqual(["10,000 lifetime XP (10)"])
+    expect(entry("board:jobs", view({ gigs: [1, 2, 3] })).lines.map((line) => line.text)).toEqual([`${JOB_BOARD_UNLOCK.minXp.toLocaleString("en-US")} lifetime XP (0)`, "6 gigs cleared (3)"])
+    expect(entry("board:gear", view({ xpTotal: 10 })).lines.map((line) => line.text)).toEqual([`${GEAR_TAB_UNLOCK.minXp.toLocaleString("en-US")} lifetime XP (10)`])
   })
 
   it("lists the capital board's two ways in as alternatives", () => {

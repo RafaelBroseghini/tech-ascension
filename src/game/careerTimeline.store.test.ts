@@ -8,10 +8,10 @@ import { persistNow, useGame } from "./store.ts"
 
 const types = () => useGame.getState().journal.entries.map((entry) => `${entry.type}:${entry.ref}`)
 
-/** Enough XP to buy skills 1..n without tripping the 8,000 XP gates (10x dev, Gear). */
+/** Enough XP to buy skills 1..n without tripping the XP gates (10x dev, Gear). */
 function learn(...ids: number[]) {
   for (const id of ids) {
-    useGame.setState((state) => ({ xp: state.xp + 5_000, xpTotal: Math.max(state.xpTotal, 2_300) }))
+    useGame.setState((state) => ({ xp: state.xp + 5_000, xpTotal: Math.max(state.xpTotal, 1_000) }))
     useGame.getState().buySkill(id)
   }
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR, GEAR_KINDS, gearSections } from "../data/gear.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
+import { EQUIPMENT, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { formatNumber, HERO_RAW_DIGITS_BELOW } from "./format.ts"
 import { visibleShopRows } from "./economy.ts"
 import { nextUnlock, ownsEverything, shopFocus } from "./nextUnlock.ts"
@@ -43,14 +43,14 @@ describe("next unlock teaser", () => {
       needs: ["more XP"],
       either: false,
     })
-    const gigBoard = nextUnlock({ ...EMPTY, xpTotal: 12_000, skills: ALL_SKILLS })
+    const gigBoard = nextUnlock({ ...EMPTY, xpTotal: GEAR_TAB_UNLOCK.minXp, skills: ALL_SKILLS })
     expect(gigBoard).toMatchObject({ key: "board:gig", name: "Gig Board", tab: "B" })
   })
 
   it("moves to the Job Board with the XP and gig gaps, then to Capital", () => {
-    const gigs = { ...EMPTY, xpTotal: 20_000, skills: ALL_SKILLS, gigs: [1, 2, 3] }
+    const gigs = { ...EMPTY, xpTotal: JOB_BOARD_UNLOCK.minXp - 1, skills: ALL_SKILLS, gigs: [1, 2, 3] }
     expect(nextUnlock(gigs)).toMatchObject({ key: "board:job", name: "Job Board", tab: "C", needs: ["more XP", "more gigs"] })
-    expect(nextUnlock({ ...gigs, xpTotal: 40_000, gigs: [1, 2, 3, 4, 5] })?.needs).toEqual(["more gigs"])
+    expect(nextUnlock({ ...gigs, xpTotal: JOB_BOARD_UNLOCK.minXp, gigs: [1, 2, 3, 4, 5] })?.needs).toEqual(["more gigs"])
 
     const capital = nextUnlock({ ...EMPTY, xpTotal: 100_000, skills: ALL_SKILLS, gigs: [1, 2, 3, 4, 5, 6], peakMoney: 120_000 })
     expect(capital).toMatchObject({ key: "board:capital", tab: "D", either: true })
@@ -217,7 +217,7 @@ describe("next click focus", () => {
     const gear = nextUnlock(gearProgress)
     expect(gear?.key).toBe("board:gear")
     expect(gear && shopFocus(gearProgress, gear)).toBeNull()
-    const jobs = { ...EMPTY, xpTotal: 20_000, skills: ALL_SKILLS, gigs: [1, 2, 3, 4, 5, 6] }
+    const jobs = { ...EMPTY, xpTotal: JOB_BOARD_UNLOCK.minXp - 1, skills: ALL_SKILLS, gigs: [1, 2, 3, 4, 5, 6] }
     const jobNext = nextUnlock(jobs)
     expect(jobNext?.key).toBe("board:job")
     expect(jobNext && shopFocus(jobs, jobNext)).toBeNull()
@@ -225,10 +225,10 @@ describe("next click focus", () => {
 })
 
 describe("gear tab", () => {
-  it("sits between Jobs and Capital and opens at 10,000 lifetime XP", () => {
+  it("sits between Jobs and Capital and opens at its lifetime XP", () => {
     expect(SHOP_TABS).toEqual(["A", "B", "C", "G", "D", "W"])
-    expect(equipmentOpen({ xpTotal: 9_999, equipment: {} })).toBe(false)
-    expect(equipmentOpen({ xpTotal: 10_000, equipment: {} })).toBe(true)
+    expect(equipmentOpen({ xpTotal: GEAR_TAB_UNLOCK.minXp - 1, equipment: {} })).toBe(false)
+    expect(equipmentOpen({ xpTotal: GEAR_TAB_UNLOCK.minXp, equipment: {} })).toBe(true)
     expect(equipmentOpen({ xpTotal: 0, equipment: { "1": 1 } })).toBe(true)
   })
 
