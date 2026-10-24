@@ -17,8 +17,13 @@ An incremental game: React 19, TypeScript, Vite, Zustand, three.js (globe), Tone
 
 CI (`.github/workflows/ci.yml`) runs lint, test, smoke and build on every PR and push to main. Run the same four before you push.
 
+## Before you change anything
+
+- Explore the code base first. Read the code you are about to change and what calls it (start at `docs/CODEMAP.md`) before you edit.
+
 ## Before you finish
 
+- Never assume the code works just because you wrote it. Run it, test it, and verify the fix before calling it done.
 - Run `npm run lint`, `npm test` and `npm run build`. Add `npm run smoke:play` when you touched anything the harness reads (store, economy, phases, gates).
 - UI, CSS or layout change: `npm run check:mobile`, then read the screenshots. Do not call a visual change fine without looking.
 - Run the smoke test first when you start, so you know the baseline is green.
