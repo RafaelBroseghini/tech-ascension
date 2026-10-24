@@ -117,6 +117,21 @@ describe("gif parade", () => {
     expect(radius(3)).toBeCloseTo(inner)
   })
 
+  it("throws a fountain cat up from the bottom middle and down to its own side", () => {
+    const left = [0.5, 0, 0.1, 1] as const
+    const right = [0.5, 0, 0.9, 1] as const
+    const slot = { slot: 0, count: 10 }
+    const W = BOX.width - PARADE_SIZE
+    const H = BOX.height - PARADE_SIZE
+    const start = paradeAt("fountain", left, slot, 0, BOX)
+    expect(start.x).toBeCloseTo(W / 2)
+    expect(start.y).toBeCloseTo(H)
+    const lap = 1.8 + 0.5 * 1.2
+    expect(paradeAt("fountain", left, slot, lap / 2, BOX).y).toBeLessThan(H / 2)
+    expect(paradeAt("fountain", left, slot, lap * 0.9, BOX).x).toBeLessThan(W / 2)
+    expect(paradeAt("fountain", right, slot, lap * 0.9, BOX).x).toBeGreaterThan(W / 2)
+  })
+
   it("keeps the snake's cats nose to tail", () => {
     for (let slot = 1; slot < 30; slot += 1) {
       const head = paradeAt("snake", [0, 0, 0, 0], { slot: slot - 1, count: 30 }, 12, BOX)

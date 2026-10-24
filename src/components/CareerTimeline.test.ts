@@ -114,11 +114,13 @@ describe("the desk before and after its unlocks", () => {
     const skills = Object.fromEntries(SKILL_TIERS.slice(0, 10).map((row) => [String(row.id), 1]))
     flushSync(() => useGame.setState({ skills, unlocked: ["studio", "careerLog"], fresh: ["careerLog"] }))
     expect($("[data-testid='ide-view-log'] [data-testid='new-mark']")).not.toBeNull()
+    // GitHug unlocks with the log, and the sidebar opens itself with it.
+    expect($("[data-testid='career-log']")).not.toBeNull()
+    click($("[data-testid='ide-view-log']"))
+    expect($("[data-testid='career-log']")).toBeNull()
     click($("[data-testid='ide-view-log']"))
     expect($("[data-testid='career-log']")).not.toBeNull()
     expect(useGame.getState().fresh).not.toContain("careerLog")
-    click($("[data-testid='ide-view-log']"))
-    expect($("[data-testid='career-log']")).toBeNull()
   })
 })
 

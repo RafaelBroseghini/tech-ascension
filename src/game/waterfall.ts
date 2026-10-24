@@ -140,9 +140,9 @@ export function dropPath(rise: number, dx: number, fall: number, rot: number): D
 /** How long a path takes, ms. */
 export const pathMs = (frames: readonly DropFrame[]): number => frames[frames.length - 1]?.t ?? 0
 
-/** One thumb per click; a boost adds one or two more. */
+/** A pair per click, one thrown each way like a fountain's two jets; a boost adds one or two more pairs. */
 export function waterfallCount(boosted: boolean, random: () => number = Math.random): number {
-  return boosted ? 2 + Math.floor(random() * 2) : 1
+  return boosted ? 4 + 2 * Math.floor(random() * 2) : 2
 }
 
 /** Newest wins: once the cap is hit the oldest thumbs are dropped from the list. */
