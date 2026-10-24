@@ -43,7 +43,10 @@
 | Time-to-finish model and its formula (`npm run pace`) | `src/game/pace.ts` (`simulatePace`, and `simulateExits` over several careers, with the product), `scripts/pace.mjs`, [PACING.md](PACING.md) |
 | Loop, purchases, money pops | `src/game/store.ts` |
 | Shop panel, rows and banner | `src/components/Shop.tsx` |
-| Hero squash | `src/components/HeroMoney.tsx` |
+| Hero squash, tick and count-up (Motion) | `src/components/HeroMoney.tsx` |
+| Motion in the interface: the lazy loader, the presence ref (a spring in, a still copy fading out), the click-path helpers, the small badges | `src/components/useMotion.ts` (rules in `docs/GAMEPLAY.md`, Motion in the interface) |
+| Every dialog's backdrop and its entrance and exit | `src/components/ModalBackdrop.tsx` |
+| The shop's motion: owned count, price, row sweep, rows opening, the sliding tab bar, the list entrance, the phone sheet's release spring | `src/components/shopMotion.ts`, used by `src/components/Shop.tsx` and `src/components/ShopGrip.tsx`; the pure drag rules and release speed are in `src/game/shopDock.ts` |
 | Career timeline: what unlocks, its trigger and reveal size (a drop-in table) | `src/data/features.ts` |
 | Timeline gates, tease progress, Up next, the dim outline, earned cosmetics | `src/game/features.ts` |
 | Career journal: entries, JSON lines, the career log's rows | `src/game/careerLog.ts` |
