@@ -259,7 +259,7 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
 })
 
-test("origins: picked on the start card until the first click, kept for the career, each one prices the early game its own way", () => {
+test("origins: picked a minute in until the first gig, kept for the career, each one prices the early game its own way", () => {
   game.reset()
   expect(game.getState().build.origin).toBeNull()
   expect(game.pickOrigin("wizard")).toBe(false)
@@ -268,9 +268,10 @@ test("origins: picked on the start card until the first click, kept for the care
   expect(game.getState().build.origin).toBe("bootcamp")
   expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "origin:bootcamp")).toBe(true)
 
-  // The pick is locked once the career has earned anything.
+  // The pick is locked once the career has cleared a gig.
   game.keepProfile()
   game.setXp(10)
+  game.forceGig(1)
   expect(game.pickOrigin("dropout")).toBe(false)
   expect(game.getState().build.origin).toBe("bootcamp")
 

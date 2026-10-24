@@ -1,7 +1,7 @@
 import type { Tag } from "./tags.ts"
 
 /**
- * Where a career starts. Picked once on the start card, after the handle, and kept for the career: each origin makes a
+ * Where a career started. Picked a minute in, on a card that opens after the first skill, and kept for the career: each origin makes a
  * kind of skill cheaper, opens one part of the early game sooner and charges for it somewhere else. The numbers are
  * proposals (docs/BUILDS.md); the rules are in src/game/origin.ts. A career with no origin (an agent's `keepProfile`, an
  * old save) plays the plain ladder.
@@ -76,6 +76,9 @@ export const ORIGINS: readonly Origin[] = [
     effects: { gigPay: 1.3, seeds: 1.5, jobXp: { fromRank: 7, mult: 1.25 } },
   },
 ]
+
+/** Lifetime XP at which a career that kept its handle is asked where it came from: a minute in, after the first skill, once a pick means something. */
+export const ORIGIN_ASK_XP = 150
 
 const BY_ID = new Map<OriginId, Origin>(ORIGINS.map((row) => [row.id, row]))
 

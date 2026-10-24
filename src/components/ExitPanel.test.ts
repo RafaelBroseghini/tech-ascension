@@ -142,11 +142,8 @@ describe("the Sell button", () => {
     expect($("[data-testid='exit-headline']")).not.toBeNull()
     click($("[data-testid='exit-headline-done']"))
     expect($("[data-testid='exit-headline']")).toBeNull()
-    // The start card opens on the origin beat: no handle to draw. The product beat is one step on, and it can be rerolled.
+    // The start card opens on the product beat: no handle to draw, and the product can be rerolled.
     expect($("[data-testid='identity-picker']")).not.toBeNull()
-    expect($("[data-testid='identity-origins']")).not.toBeNull()
-    click($("[data-testid='identity-origin-dropout']"))
-    click($("[data-testid='identity-next']"))
     expect($("[data-testid='identity-product']")?.textContent).toBe(useGame.getState().profile.product)
     expect($("[data-testid='identity-handle']")).toBeNull()
     expect($("[data-testid='identity-product-reroll']")).not.toBeNull()

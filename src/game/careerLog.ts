@@ -6,6 +6,7 @@ import { BALANCE_MILESTONES } from "./milestones.ts"
 import { capitalById, equipById, gigById, jobById, skillById } from "./economy.ts"
 import { isLeadId, leadById } from "../data/leadership.ts"
 import { isSpecId, specById } from "../data/specializations.ts"
+import { markById } from "./careerYear.ts"
 import { eventById } from "./events.ts"
 import { featureById, triggerLabel } from "./features.ts"
 import { formatNumber } from "./format.ts"
@@ -42,6 +43,7 @@ export const CAREER_TYPES = [
   "combo",
   "pick",
   "switch",
+  "year",
 ] as const
 
 export type CareerType = (typeof CAREER_TYPES)[number]
@@ -222,6 +224,8 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
     case "pick":
     case "switch":
       return specName(entry.ref)
+    case "year":
+      return markById(entry.ref.slice("year:".length))?.title ?? entry.ref
     case "start":
     case "return":
     case "exit":
@@ -332,6 +336,10 @@ export function describeEntry(entry: CareerEntry): CareerRow {
     case "switch": {
       const from = typeof data.from === "string" && isSpecId(data.from) ? specById(data.from).name : ""
       return { title: `Switched to ${name}`, detail: from ? `left ${from}` : "specialization", tone: "career" }
+    }
+    case "year": {
+      const year = typeof data.year === "number" ? data.year : 1
+      return { title: `Year ${year}: ${name}`, detail: markById(entry.ref.slice("year:".length))?.blurb ?? "career", tone: "career" }
     }
     case "combo": {
       const combo = comboById(entry.ref.slice("combo:".length))

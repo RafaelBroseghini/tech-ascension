@@ -109,7 +109,7 @@ describe("picking an origin", () => {
     game.reset()
   })
 
-  it("is open until the career has earned anything, and can be changed until then", () => {
+  it("is open until the first gig or job, and can be changed until then", () => {
     expect(originPickOpen(useGame.getState())).toBe(true)
     expect(game.pickOrigin("wizard")).toBe(false)
     expect(game.pickOrigin("bootcamp")).toBe(true)
@@ -117,6 +117,8 @@ describe("picking an origin", () => {
     expect(game.pickOrigin("dropout")).toBe(true)
     expect(game.getState().build.origin).toBe("dropout")
     game.setXp(10)
+    expect(canPickOrigin(useGame.getState(), "college")).toBe(true)
+    game.forceGig(1)
     expect(canPickOrigin(useGame.getState(), "college")).toBe(false)
     expect(game.pickOrigin("college")).toBe(false)
     expect(game.getState().build.origin).toBe("dropout")
