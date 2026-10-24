@@ -1595,6 +1595,7 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 .era-tabs {
+  position: relative;
   display: flex;
   overflow-x: auto;
   padding: 0 var(--sp-4);
@@ -1626,7 +1627,17 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .era-tab.active {
   color: var(--text);
-  border-bottom-color: var(--tab-glow, var(--accent));
+}
+
+/* The underline of the active tab is one bar that slides between tabs (shopMotion.ts); the tabs only keep the room it sits in. */
+.era-tab-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 4px;
+  background: var(--accent);
+  pointer-events: none;
 }
 
 
