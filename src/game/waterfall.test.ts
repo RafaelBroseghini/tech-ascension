@@ -28,9 +28,9 @@ describe("click fountain toss", () => {
     expect(Math.sign(toss(-1, () => 0.5).dx)).toBe(-1)
   })
 
-  it("tosses far above the old 34-56 px peak, and then the old 60-100 px one", () => {
-    expect(RISE_MIN).toBeGreaterThanOrEqual(100 * 1.4)
-    expect(RISE_MIN + RISE_SPAN).toBeGreaterThanOrEqual(100 * 2.2)
+  it("tosses higher than the old 34-56 px peak, but well short of the old 150-240 px one", () => {
+    expect(RISE_MIN).toBeGreaterThan(56)
+    expect(RISE_MIN + RISE_SPAN).toBeLessThan(150)
   })
 
   it("lands a logo on the viewport's bottom edge from anywhere, and never backwards", () => {
@@ -100,7 +100,7 @@ describe("a logo's path", () => {
     const fall = 600
     const frames = path(200, 150, fall)
     expect(frames[frames.length - 1]!.x).toBeGreaterThan(150 * 0.8)
-    for (const f of frames) expect(f.y).toBeLessThanOrEqual(fall + 36 + 0.01)
+    for (const f of frames) expect(f.y).toBeLessThanOrEqual(fall + 40 + 0.01)
   })
 
   it("rests, then sinks through the floor and fades to nothing", () => {

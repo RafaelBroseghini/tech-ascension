@@ -2,14 +2,14 @@
 
 export const WATERFALL_CAP = 24
 /** The toss peaks between RISE_MIN and RISE_MIN + RISE_SPAN px above the start. */
-export const RISE_MIN = 150
-export const RISE_SPAN = 90
+export const RISE_MIN = 80
+export const RISE_SPAN = 50
 /** Sideways reach of a logo, px: a landing zone each side, so a burst fans out instead of stacking. */
 export const REACH_MIN = 50
 export const REACH_SPAN = 190
 /** Payout text: a lower arc and a reach of its own, wider than the logos' (the money goes one way and the XP the other). */
-export const LOOT_RISE_MIN = 44
-export const LOOT_RISE_SPAN = 36
+export const LOOT_RISE_MIN = 30
+export const LOOT_RISE_SPAN = 30
 export const LOOT_REACH_MIN = 90
 export const LOOT_REACH_SPAN = 150
 /** How long the payout text lives (its CSS animation), ms. */
@@ -23,7 +23,7 @@ export const RESTITUTION = 0.52
 export const REST_SPEED = 150
 /** At rest the logo waits, then sinks through the floor while it fades. */
 export const REST_MS = 220
-export const SINK_MS = 380
+export const SINK_MS = 700
 /** The logo stays this far above the viewport's bottom edge while it bounces (its centre is size / 2 more), px. */
 export const GROUND_MARGIN = 2
 
@@ -127,10 +127,12 @@ export function dropPath(rise: number, dx: number, fall: number, rot: number): D
   for (let i = 1; i <= sinkFrames; i += 1) {
     const u = i / sinkFrames
     t += STEP_S * SAMPLE_EVERY
-    y = rest.y + u * u * 36
+    // Smoothstep for both the sink and the fade, so it melts away instead of dropping and snapping out.
+    const ease = u * u * (3 - 2 * u)
+    y = rest.y + ease * 40
     angle = base.angle
     x = base.x
-    frames.push({ t: Math.round(t * 1000), x, y, rot: angle, sx: 1, sy: 1 - 0.15 * u, o: 1 - u })
+    frames.push({ t: Math.round(t * 1000), x, y, rot: angle, sx: 1, sy: 1 - 0.35 * ease, o: 1 - ease })
   }
   return frames
 }
