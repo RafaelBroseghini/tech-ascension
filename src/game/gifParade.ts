@@ -193,6 +193,15 @@ export function paradeAt(
       const scale = Math.min(cx / 16, cy / 15) * 0.95
       return { x: cx + hx * scale, y: clamp(cy - (hy + 2.5) * scale, H) }
     }
+    case "fountain": {
+      // Each cat is one throw from the nozzle at the bottom middle: up, over to its side and down, then again.
+      const lap = t / (1.8 + s0 * 1.2) + s1
+      const u = lap - Math.floor(lap)
+      const side = s2 < 0.5 ? -1 : 1
+      const reach = cx * (0.2 + 0.8 * s3)
+      const peak = H * (0.45 + 0.4 * s0)
+      return { x: cx + side * reach * u, y: H - 4 * peak * u * (1 - u) }
+    }
     case "snake": {
       // Every cat follows the same lissajous path, each a beat behind the one ahead.
       const at = t * 0.5 - slot * 0.07

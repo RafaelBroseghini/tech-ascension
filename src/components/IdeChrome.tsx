@@ -1,5 +1,5 @@
 import { Crown, GitBranch, Globe } from "lucide-react"
-import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
 import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
@@ -50,6 +50,13 @@ export const IdeChrome = memo(function IdeChrome() {
     seeFeature("careerLog")
   }
   useSurface("careerLog", openLog)
+  // The sidebar opens by itself the moment GitHug unlocks; a save that loads with it already unlocked keeps the sidebar as it was left.
+  const githugOpen = useFeatureOpen("githug")
+  const githugWas = useRef(githugOpen)
+  useEffect(() => {
+    if (githugOpen && !githugWas.current) setSidebarView("log")
+    githugWas.current = githugOpen
+  }, [githugOpen])
   const openCompany = () => {
     seeFeature("studio")
     // The company lives on the shop's Company tab: show the shop (it mounts on the saved tab), or tell the open one.

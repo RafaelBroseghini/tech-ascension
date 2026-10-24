@@ -128,6 +128,7 @@ function DropIcon({ drop, children }: { drop: Drop; children: ReactNode }) {
 /** One random owned logo per spray, tossed up from just above the pointer. */
 function fountain(x: number, y: number, icons: readonly IconName[], count: number): Drop[] {
   if (icons.length === 0) return []
+  // The jets alternate, so every pair fans out both ways and an odd one out starts on the side the last click ended on.
   return Array.from({ length: count }, () => {
     const icon = pickClickIcon(icons) ?? icons[0] ?? "Git"
     const { dx, rise } = toss(flipSide())

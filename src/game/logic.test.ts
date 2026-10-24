@@ -486,9 +486,9 @@ describe("pixel sprites", () => {
 
 describe("click waterfall", () => {
   it("spawns one thumb per click and one or two more during a boost", () => {
-    expect(waterfallCount(false)).toBe(1)
-    expect(waterfallCount(true, () => 0)).toBe(2)
-    expect(waterfallCount(true, () => 0.99)).toBe(3)
+    expect(waterfallCount(false)).toBe(2)
+    expect(waterfallCount(true, () => 0)).toBe(4)
+    expect(waterfallCount(true, () => 0.99)).toBe(6)
   })
 
   it("keeps a bounded number of concurrent thumbs and evicts the oldest", () => {

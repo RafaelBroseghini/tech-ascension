@@ -15,6 +15,7 @@ export type ParadeStyleId =
   | "tornado"
   | "heart"
   | "snake"
+  | "fountain"
 
 export type ParadeStyle = { id: ParadeStyleId; label: string; blurb: string }
 
@@ -33,6 +34,7 @@ export const PARADE_STYLES: readonly ParadeStyle[] = [
   { id: "tornado", label: "Tornado", blurb: "Get swept up a widening funnel" },
   { id: "heart", label: "Heart", blurb: "Trace a heart, round and round" },
   { id: "snake", label: "Snake", blurb: "One long cat train winding about" },
+  { id: "fountain", label: "Fountain", blurb: "Shoot up from the bottom middle and fall away left and right" },
 ]
 
 export const DEFAULT_PARADE_STYLE: ParadeStyleId = "bounce"
