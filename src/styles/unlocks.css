@@ -4,7 +4,7 @@
  * in a diff. Colors come from the editor theme.
  */
 
-/* ---------- the bare desk: no activity bar or sidebar until the first laptop ---------- */
+/* ---------- the bare desk: no activity bar or sidebar until GitHug unlocks ---------- */
 
 @property --ide-activity {
   syntax: "<length>";
@@ -548,11 +548,15 @@
 /* Narrow screens hide the sidebar column. The career log takes one while it is open. */
 @media (max-width: 860px) {
   .stage-panel.is-log-open:not(.is-bare) {
-    --ide-tree: min(250px, 62vw);
+    --ide-tree: min(210px, 52vw);
     --ide-rail: calc(var(--ide-activity) + var(--ide-tree));
   }
   .stage-panel.is-log-open .ide-tree {
     display: block;
+  }
+  /* The log leaves the balance little room: it shrinks to fit rather than running out of its box. */
+  .stage-panel.is-log-open .hero-money-value {
+    font-size: clamp(1.1rem, 5.5vw, 1.6rem);
   }
 }
 
