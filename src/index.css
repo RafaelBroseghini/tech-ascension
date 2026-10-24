@@ -762,14 +762,6 @@ img { -webkit-user-drag: none; user-select: none; }
   animation: ring-out 420ms var(--ease-out) forwards;
 }
 
-.ring-big {
-  width: 60px;
-  height: 60px;
-  margin: -30px 0 0 -30px;
-  border-width: 5px;
-  animation: ring-big 800ms var(--ease-out) forwards;
-}
-
 .spark {
   position: absolute;
   z-index: 2;
@@ -879,14 +871,14 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .loot-xp { color: var(--accent-hi); font-size: 0.85rem; }
 
-.confetti {
+/* The unlock celebration's canvas (UnlockFx.tsx): over the sprite, under the money pops, never takes a click. */
+.unlock-fx {
   position: absolute;
-  z-index: 5;
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--ink);
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  animation: shard 720ms var(--ease-out) forwards;
 }
 
 .plate {

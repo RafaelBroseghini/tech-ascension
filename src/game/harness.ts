@@ -40,6 +40,7 @@ import { exitOpen, prestigeOnExit } from "./legacy.ts"
 import type { HallEnding } from "../data/legacy.ts"
 import { earnedPerSec, persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
+import { setFxSlowdown } from "./unlockFx.ts"
 import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
 import { isFeatureId, nextGhost, upNext } from "./features.ts"
@@ -332,6 +333,8 @@ export type GameHarness = {
   dismissReview: () => void
   /** Preview an era as the shop's era tab does, or null to snap back to the owned one. */
   previewEra: (era: Era | null) => void
+  /** Play the unlock celebration over the stage now. `slowdown` stretches it (4 is a quarter speed) for a frame-by-frame look and stays until the next call; 1 is real time. */
+  forceCelebration: (slowdown?: number) => void
   /** Every career journal entry, oldest first, one flat JSON object each. */
   careerLog: () => CareerLogLine[]
   /** Clear a NEW marker, as using the feature does. False for an unknown id. */
@@ -714,6 +717,11 @@ export function installGameHarness(): GameHarness {
     dismissReview: () => useGame.getState().dismissReview(),
 
     previewEra: (era) => useGame.getState().setPreviewEra(era),
+
+    forceCelebration: (slowdown = 1) => {
+      setFxSlowdown(slowdown)
+      useGame.setState((state) => ({ celebrationNonce: state.celebrationNonce + 1 }))
+    },
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
     rerollProfile: () => useGame.getState().rerollProfile(),

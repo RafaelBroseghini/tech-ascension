@@ -108,11 +108,15 @@ Every career builds one product. Selling it is the **Exit**: it pays **Prestige*
 
 The stage shows the highest capital tier you own, else the furthest job, gig or skill, in pixel art, in front of the desk: an activity bar, the career log sidebar, a status bar that names the career's band (see [ART.md](ART.md)). Before the first purchase it shows the opening attic scene (art 0) and the stage name stays High school. Buying a new top item plays a reveal burst.
 
+## The unlock celebration
+
+A large pop (a cleared gig, a board) and every unlock or pick (`celebrationNonce`) play one celebration over the stage (`src/components/UnlockFx.tsx`, the simulation in `src/game/unlockFx.ts`). Four beats: the sprite crouches for a tenth of a second, then a flash with thin rays, two shockwaves (a bright edge with its glow trailing behind), pixel-sized shards that arc and fall and sparks that streak and fade leave it, while the sprite springs back past its size with a pulse of light and a small shake runs through the desk. A cleared gig gets the smaller version (half the particles, one wave, no shake). The sprite's crouch, spring, light pulse and shake are Motion (`motion`, loaded as its own chunk on first use); the burst is a single canvas with one frame loop that only runs while a burst is alive. On a dark desk the glow adds light; on a light one the same shapes are drawn solid. A phone gets a short buzz on an unlock. `prefers-reduced-motion` plays none of it. Two announcements of one moment (an unlock sets the nonce and a pop together) play once. To look at it frame by frame: `__GAME__.forceCelebration(10)` plays it at a tenth of the speed (`docs/HARNESS.md`).
+
 ## Money pops (Balatro feel)
 
 - **Raw digits first.** `formatNumber` keeps whole numbers as raw digits with separators (`1,234,567`) up to 9,999,999, then abbreviates (`10M`, `1.5B`, ... `Qa`). The hero balance has more room and keeps its digits up to $999,999,999,999 (`HERO_RAW_DIGITS_BELOW`), shrinking the font a notch once it is long. `formatNumber(v, 1000)` / `formatCompact` give the old tight K/M form.
 - **Medium on a click** once money exists: the hero total squashes and rebounds (about 190ms).
-- **Large** on a gig clear: a centered slam-in pop (a phase unlock no longer pops; its NEW marks say so) (`+$1,200`, `Gig cleared`) with a chromatic red/cyan split that converges, a bigger squash on the hero total, a count-up of the running total that overshoots then settles, plus the confetti burst and ring.
+- **Large** on a gig clear: a centered slam-in pop (a phase unlock no longer pops; its NEW marks say so) (`+$1,200`, `Gig cleared`) with a chromatic red/cyan split that converges, a bigger squash on the hero total, a count-up of the running total that overshoots then settles, plus the celebration over the sprite (see below).
 - **Never per idle tick.** Idle income just moves the number. `prefers-reduced-motion` turns the pops into a plain fade.
 - The pop kinds are `MONEY_POP` in `src/data/phases.ts`; the last one is exposed as `__GAME__.getState().lastPop`.
 

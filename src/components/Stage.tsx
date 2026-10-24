@@ -13,7 +13,6 @@ import { hoverRate } from "../game/gold.ts"
 import { HOVER_MODES, getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { eraOf, stageOf } from "../game/phase.ts"
-import type { Era } from "../data/capital.ts"
 import { formatNumber } from "../game/format.ts"
 import { useGame } from "../game/store.ts"
 import { capDrops, dropPath, fallDistance, fountainLift, LOOT_MS, pathMs, toss, tossLoot, waterfallCount } from "../game/waterfall.ts"
@@ -22,6 +21,7 @@ import { SpriteStage, usePreloadEmoji } from "./SpriteView.tsx"
 import { HeroMoney } from "./HeroMoney.tsx"
 import { GifParade } from "./GifParade.tsx"
 import { DeskCat } from "./DeskCat.tsx"
+import { UnlockFx } from "./UnlockFx.tsx"
 import { StickyNote } from "./StickyNote.tsx"
 import { IdeChrome } from "./IdeChrome.tsx"
 import { MiniGlobe } from "./globe/MiniGlobe.tsx"
@@ -31,9 +31,8 @@ import { useFeatureOpen } from "./useFeature.ts"
 import { getSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 
 type Loot = { id: number; x: number; y: number; dx: number; rise: number; text: string; kind: "money" | "xp" }
-type Bit = { id: number; x: number; dx: number; dy: number; rot: number; color: string }
 type Spark = { id: number; x: number; y: number; dx: number; dy: number; size: number; color: string }
-type Ring = { id: number; x: number; y: number; big: boolean }
+type Ring = { id: number; x: number; y: number }
 
 let seq = 1
 
@@ -41,8 +40,6 @@ let seq = 1
 // animationend. Each wait is its CSS animation plus a frame of slack (index.css).
 const SPARK_MS = 480 + 60
 const RING_MS = 420 + 60
-const RING_BIG_MS = 800 + 60
-const CONFETTI_MS = 720 + 60
 
 function without<T extends { id: number }>(gone: ReadonlySet<number>) {
   return (current: T[]) => {
@@ -54,23 +51,6 @@ function without<T extends { id: number }>(gone: ReadonlySet<number>) {
 const hoverClickPref = () => getDeskPrefs().hoverClick
 const hoverModePref = () => getDeskPrefs().hoverMode
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
-
-function burstBits(era: Era): Bit[] {
-  const glow = ERA_ACCENT[era].glow
-  const colors = [glow, glow, "var(--text)"]
-  return Array.from({ length: 20 }, () => {
-    const angle = Math.random() * Math.PI * 2
-    const dist = 70 + Math.random() * 130
-    return {
-      id: seq++,
-      x: 40 + Math.random() * 20,
-      dx: Math.cos(angle) * dist,
-      dy: Math.sin(angle) * dist - 20,
-      rot: Math.random() * 360 - 180,
-      color: colors[Math.floor(Math.random() * colors.length)] ?? glow,
-    }
-  })
-}
 
 function clickSparks(x: number, y: number, color: string, count: number): Spark[] {
   return Array.from({ length: count }, () => {
@@ -184,7 +164,6 @@ export function Stage() {
   const mult = useGame((state) => state.activeBoost?.mult ?? 1)
   const click = useGame((state) => state.click)
   const [loot, setLoot] = useState<Loot[]>([])
-  const [bits, setBits] = useState<Bit[]>([])
   const [sparks, setSparks] = useState<Spark[]>([])
   const [rings, setRings] = useState<Ring[]>([])
   const [drops, setDrops] = useState<Drop[]>([])
@@ -213,34 +192,6 @@ export function Stage() {
   const barOpen = useFeatureOpen("githug")
   const logOpen = useSyncExternalStore(subscribeSidebarView, getSidebarView, getSidebarView) === "log"
   const stageName = stage?.name ?? "High school"
-
-  useEffect(() => {
-    return useGame.subscribe((state, previous) => {
-      if (state.celebrationNonce === previous.celebrationNonce || state.celebrationNonce === 0) return
-      if (prefersReducedMotion()) return
-      const born = burstBits(eraOf(state))
-      const ring = { id: seq++, x: 50, y: 50, big: true }
-      setBits(born)
-      setRings((current) => [...current, ring].slice(-12))
-      window.setTimeout(() => setBits(without(new Set(born.map((bit) => bit.id)))), CONFETTI_MS)
-      window.setTimeout(() => setRings(without(new Set([ring.id]))), RING_BIG_MS)
-    })
-  }, [])
-
-  // Large pops (gig clear, phase unlock) get a confetti burst; idle ticks and plain clicks never do.
-  useEffect(() => {
-    return useGame.subscribe((state, previous) => {
-      const pop = state.pop
-      if (!pop || pop === previous.pop || pop.size !== "large") return
-      if (prefersReducedMotion()) return
-      const born = burstBits(eraOf(state))
-      const ring = { id: seq++, x: 50, y: 46, big: true }
-      setBits((current) => [...current, ...born].slice(-40))
-      setRings((current) => [...current, ring].slice(-12))
-      window.setTimeout(() => setBits(without(new Set(born.map((bit) => bit.id)))), CONFETTI_MS)
-      window.setTimeout(() => setRings(without(new Set([ring.id]))), RING_BIG_MS)
-    })
-  }, [])
 
   // Heat cools on a timer that only runs while there is heat left, so an idle stage wakes nothing.
   function warmUp() {
@@ -358,7 +309,7 @@ export function Stage() {
       }, lasts + 60)
     }
     if (prefersReducedMotion()) return
-    const ring = { id: seq++, x, y, big: false }
+    const ring = { id: seq++, x, y }
     const bornSparks = clickSparks(x, y, accent.glow, boosted ? 14 : 9)
     setRings((current) => [...current, ring].slice(-14))
     setSparks((current) => [...current, ...bornSparks].slice(-90))
@@ -441,6 +392,7 @@ export function Stage() {
       <GifParadeMemo />
       <MiniGlobe />
       <span className="era-sweep" aria-hidden="true" />
+      <UnlockFx panelRef={stagePanelRef} hitboxRef={hitboxRef} />
       <HeroMoneyMemo stagePanelRef={stagePanelRef} />
       <button
         ref={hitboxRef}
@@ -481,7 +433,7 @@ export function Stage() {
         {rings.map((ring) => (
           <i
             key={ring.id}
-            className={ring.big ? "ring ring-big" : "ring"}
+            className="ring"
             style={{ left: `${ring.x}%`, top: `${ring.y}%` }}
           />
         ))}
@@ -497,20 +449,6 @@ export function Stage() {
               background: spark.color,
               ["--dx" as string]: `${spark.dx}px`,
               ["--dy" as string]: `${spark.dy}px`,
-            }}
-          />
-        ))}
-        {bits.map((bit) => (
-          <i
-            key={bit.id}
-            className="confetti"
-            style={{
-              left: `${bit.x}%`,
-              top: "46%",
-              background: bit.color,
-              ["--dx" as string]: `${bit.dx}px`,
-              ["--dy" as string]: `${bit.dy}px`,
-              ["--rot" as string]: `${bit.rot}deg`,
             }}
           />
         ))}

@@ -122,6 +122,7 @@ forceReview(promptId?: number): boolean // 1:1 for the highest job. False with n
 answerReview(choice: "exceeds" | "meets" | "pip"): boolean // meets changes nothing; pip is refused when the cost cannot be paid
 dismissReview(): void
 previewEra(era: "early" | "mid" | "upper" | "q3" | "end" | null): void
+forceCelebration(slowdown?: number): void  // play the unlock celebration over the stage; slowdown 4 is quarter speed (it stays until the next call), 1 real time
 careerLog(): Record<string, number | string | boolean>[]  // every journal entry, oldest first, one flat JSON object each
 seeFeature(id: string): boolean   // clear a NEW marker, as using the feature does; false for an unknown id
 clearReveals(): void              // drop the reveals waiting to play (NEW markers stay)
