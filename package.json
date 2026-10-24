@@ -25,6 +25,7 @@
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/pixelify-sans": "^5.3.0",
     "@fontsource/space-grotesk": "^5.3.0",
+    "canvas-confetti": "^1.9.4",
     "developer-icons": "^7.1.0",
     "dexie": "^4.4.6",
     "flag-icons": "^7.5.0",
@@ -37,6 +38,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
