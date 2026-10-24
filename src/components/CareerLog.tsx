@@ -5,6 +5,17 @@ import { markById, upcomingMarks, yearNumber } from "../game/careerYear.ts"
 import { upNext } from "../game/features.ts"
 import { useGame } from "../game/store.ts"
 import { useAdmin } from "./useFeature.ts"
+import { arrivedLate, enterRef, laidOut } from "./useMotion.ts"
+
+/** A commit that lands at the head of the log drops in from above. Only a new head does: the list as it opens, and older history, do not. */
+const headIn = enterRef({
+  fade: { in: 0.22, out: 0 },
+  move: { from: { y: -14 }, to: {}, spring: { stiffness: 520, damping: 30, mass: 0.8 } },
+})
+const newHead = (el: HTMLElement | null) => {
+  const list = el?.parentElement
+  if (el && list && laidOut(el) && arrivedLate(list)) headIn(el)
+}
 
 type Tease = { id: string; name: string; via: string; left: string; mystery: boolean }
 
@@ -101,7 +112,7 @@ export function CareerLog() {
             {shown.map((entry, index) => {
               const row = describeEntry(entry)
               return (
-                <li key={entry.seq} data-tone={row.tone} className={index === 0 ? "is-head" : undefined}>
+                <li key={entry.seq} ref={index === 0 ? newHead : undefined} data-tone={row.tone} className={index === 0 ? "is-head" : undefined}>
                   <b>
                     {row.tone === "unlock" ? <em>+</em> : null}
                     {row.title}

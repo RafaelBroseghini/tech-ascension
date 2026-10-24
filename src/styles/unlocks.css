@@ -347,10 +347,15 @@
   border-radius: 50%;
   background: var(--ide-green);
   box-shadow: 0 0 0 2px var(--ide-crust);
-  animation: ul-dot 1.8s ease-in-out infinite;
 }
-@keyframes ul-dot {
-  50% { box-shadow: 0 0 0 2px var(--ide-crust), 0 0 0 6px color-mix(in srgb, var(--ide-green) 25%, transparent); }
+/* The ring that goes out from the dot: Motion scales and fades it (useMotion.ts), so it is invisible until that runs. */
+.ul-ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ide-green) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
 }
 .ul-pill {
   position: absolute;
@@ -544,8 +549,7 @@
     transition: none;
   }
   .ul-lit,
-  .ul-glow,
-  .ul-dot {
+  .ul-glow {
     animation: none;
   }
   .ul-lit {

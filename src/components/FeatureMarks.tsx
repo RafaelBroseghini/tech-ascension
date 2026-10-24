@@ -6,18 +6,19 @@ import type { FeatureId } from "../data/features.ts"
 import { featureById } from "../game/features.ts"
 import { FALLBACK_ICON, FEATURE_ICON } from "./featureIcons.ts"
 import { useFresh, useGhost } from "./useFeature.ts"
-import { presenceRef } from "./useMotion.ts"
+import { markPop, pingRef, presenceRef } from "./useMotion.ts"
 
 /** The NEW marker: a dot on an icon, or a pill on a wider control. It stays until the thing is used once. */
 export function NewMark({ id, pill = false }: { id: FeatureId | `${string}:`; pill?: boolean }) {
   const fresh = useFresh(id)
   if (!fresh) return null
   return pill ? (
-    <i className="ul-pill" data-testid="new-mark" data-new={id}>
+    <i ref={markPop} className="ul-pill" data-testid="new-mark" data-new={id}>
       New
     </i>
   ) : (
-    <i className="ul-dot" data-testid="new-mark" data-new={id}>
+    <i ref={markPop} className="ul-dot" data-testid="new-mark" data-new={id}>
+      <span ref={pingRef} className="ul-ping" aria-hidden="true" />
       <span className="sr-only">New</span>
     </i>
   )

@@ -3,8 +3,8 @@ import { act, createElement } from "react"
 import { createRoot } from "react-dom/client"
 import type { Root } from "react-dom/client"
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { bump, rowEnter, springSheet, sweepRef, useOnChange } from "./shopMotion.ts"
-import { loadMotion } from "./useMotion.ts"
+import { bump, rowEnter, springSheet, sweepRef } from "./shopMotion.ts"
+import { loadMotion, useOnChange } from "./useMotion.ts"
 
 const reduced = (on: boolean) => {
   window.matchMedia = ((query: string) => ({ matches: on && query.includes("reduce"), addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -139,6 +139,21 @@ describe("useOnChange", () => {
     act(() => root.render(createElement(Count, { value: 1 })))
     expect(play).not.toHaveBeenCalled()
     act(() => root.render(createElement(Count, { value: 2 })))
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
+  it("can be held to the changes it cares about, like a count that went up", () => {
+    const play = vi.fn(() => null)
+    const rose = (next: number, previous: number) => next > previous
+    const held: { current: HTMLSpanElement | null } = { current: null }
+    function Count({ value }: { value: number }) {
+      useOnChange(held, value, play, rose)
+      return createElement("span", { ref: held }, value)
+    }
+    act(() => root.render(createElement(Count, { value: 3 })))
+    act(() => root.render(createElement(Count, { value: 2 })))
+    expect(play).not.toHaveBeenCalled()
+    act(() => root.render(createElement(Count, { value: 5 })))
     expect(play).toHaveBeenCalledTimes(1)
   })
 })
