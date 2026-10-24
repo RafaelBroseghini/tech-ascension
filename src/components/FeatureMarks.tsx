@@ -6,6 +6,7 @@ import type { FeatureId } from "../data/features.ts"
 import { featureById } from "../game/features.ts"
 import { FALLBACK_ICON, FEATURE_ICON } from "./featureIcons.ts"
 import { useFresh, useGhost } from "./useFeature.ts"
+import { presenceRef } from "./useMotion.ts"
 
 /** The NEW marker: a dot on an icon, or a pill on a wider control. It stays until the thing is used once. */
 export function NewMark({ id, pill = false }: { id: FeatureId | `${string}:`; pill?: boolean }) {
@@ -24,10 +25,19 @@ export function NewMark({ id, pill = false }: { id: FeatureId | `${string}:`; pi
 
 type TipPlace = "right" | "below" | "above"
 
+// The individual `translate` property places the tip, so Motion's own transform (the nudge on its way in and out) composes with it.
 function tipStyle(rect: DOMRect, place: TipPlace): React.CSSProperties {
-  if (place === "right") return { left: rect.right + 12, top: rect.top + rect.height / 2, transform: "translateY(-50%)" }
-  if (place === "below") return { left: Math.max(8, rect.right), top: rect.bottom + 10, transform: "translateX(-100%)" }
-  return { left: rect.left + rect.width / 2, top: rect.top - 10, transform: "translate(-50%, -100%)" }
+  if (place === "right") return { left: rect.right + 12, top: rect.top + rect.height / 2, translate: "0 -50%" }
+  if (place === "below") return { left: Math.max(8, rect.right), top: rect.bottom + 10, translate: "-100% 0" }
+  return { left: rect.left + rect.width / 2, top: rect.top - 10, translate: "-50% -100%" }
+}
+
+/** A tip fades in nudged a few pixels from the side it sits on, so it seems to come out of the thing it names. */
+const NUDGE = { right: { x: -5 }, below: { y: -5 }, above: { y: 5 } } as const
+const tipPresence = {
+  right: presenceRef({ fade: { in: 0.14, out: 0.1 }, move: { from: NUDGE.right, to: NUDGE.right, spring: { stiffness: 600, damping: 36 } } }),
+  below: presenceRef({ fade: { in: 0.14, out: 0.1 }, move: { from: NUDGE.below, to: NUDGE.below, spring: { stiffness: 600, damping: 36 } } }),
+  above: presenceRef({ fade: { in: 0.14, out: 0.1 }, move: { from: NUDGE.above, to: NUDGE.above, spring: { stiffness: 600, damping: 36 } } }),
 }
 
 /**
@@ -59,7 +69,7 @@ function useTip<T extends HTMLElement>() {
   const tip = (place: TipPlace, body: ReactNode) =>
     rect && typeof document !== "undefined"
       ? createPortal(
-          <span className="ul-tip" role="tooltip" style={tipStyle(rect, place)}>
+          <span ref={tipPresence[place]} className="ul-tip" role="tooltip" style={tipStyle(rect, place)}>
             {body}
           </span>,
           document.body,
