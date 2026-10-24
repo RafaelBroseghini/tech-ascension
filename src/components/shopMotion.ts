@@ -1,7 +1,87 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
 import type { RefObject } from "react"
-import { laidOut, motionReady, playing, prefersReducedMotion } from "./useMotion.ts"
+import { enterRef, laidOut, motionReady, playing, prefersReducedMotion } from "./useMotion.ts"
 import type { Playing } from "./useMotion.ts"
+
+/**
+ * A shop list slides and fades in from the side the tab it replaces lies on (its `data-slide` is 1 when that tab is
+ * further along the bar, -1 when it is behind). The shop's own scrolling and measuring act at once; this only moves it.
+ */
+export const listEnter = enterRef({
+  fade: { in: 0.16, out: 0 },
+  move: { from: (el) => ({ x: 12 * (el.dataset.slide === "-1" ? -1 : 1) }), to: {}, spring: { stiffness: 520, damping: 34, mass: 0.8 } },
+})
+
+type Placed = { x: number; width: number; color: string }
+type BarState = { placed: Placed | null; running: Playing | null }
+
+/** Puts the bar under the strip's active tab (see `useTabBar`), and keeps it there while the strip changes. Returns its cleanup. */
+function slideBar(el: HTMLElement, state: BarState): (() => void) | undefined {
+  const strip = el.parentElement
+  if (!strip) return
+  const measure = (): Placed | null => {
+    const tab = strip.querySelector<HTMLElement>(".era-tab.active")
+    if (!tab || !laidOut(tab)) return null
+    // The tab's own colour, resolved: Motion cannot read a var().
+    el.style.backgroundColor = tab.style.getPropertyValue("--tab-glow") || "var(--accent)"
+    return { x: tab.offsetLeft, width: tab.offsetWidth, color: getComputedStyle(el).backgroundColor }
+  }
+  const put = (to: Placed) => {
+    el.style.transform = `translateX(${to.x}px)`
+    el.style.width = `${to.width}px`
+    el.style.backgroundColor = to.color
+    state.placed = to
+  }
+  // A strip that is not laid out yet (the docked sheet) has nothing to place: the observers below place the bar once it is.
+  const to = measure()
+  const from = state.placed
+  const motion = motionReady()
+  state.running?.finish()
+  state.running = null
+  if (to && (!from || !motion || prefersReducedMotion() || (from.x === to.x && from.width === to.width))) {
+    put(to)
+  } else if (to && motion) {
+    el.style.backgroundColor = from!.color
+    const slide = motion.animate(el, { x: [from!.x, to.x], width: [from!.width, to.width], backgroundColor: [from!.color, to.color] }, { type: "spring", stiffness: 520, damping: 38, mass: 0.9 })
+    state.placed = to
+    // The play leaves the end values in place, which is where the bar rests.
+    state.running = { finish: () => slide.complete() }
+  }
+  // A strip that changes (the window resizes, a label gains a badge, a tab opens before this one) re-places the bar where
+  // its tab now is. A resize observer reports once as it starts, which is not a change.
+  const replace = () => {
+    const now = measure()
+    if (!now) return
+    state.running?.finish()
+    put(now)
+  }
+  let first = true
+  const size = new ResizeObserver(() => {
+    if (first) first = false
+    else replace()
+  })
+  const tabs = new MutationObserver(replace)
+  size.observe(strip)
+  for (const tab of strip.querySelectorAll(".era-tab")) size.observe(tab)
+  tabs.observe(strip, { childList: true })
+  return () => {
+    size.disconnect()
+    tabs.disconnect()
+  }
+}
+
+/**
+ * The bar under a tab strip slides (a spring) to whichever tab is active, taking that tab's colour with it. `mark` is the
+ * bar's element, inside the strip, which is its positioned parent; the active tab is the one with the `active` class.
+ * It is placed at once on the first render, on a resize and under reduced motion, and without Motion it simply jumps.
+ */
+export function useTabBar(mark: RefObject<HTMLElement | null>, active: string) {
+  const state = useRef<BarState>({ placed: null, running: null })
+  useLayoutEffect(() => {
+    const el = mark.current
+    return el ? slideBar(el, state.current) : undefined
+  }, [mark, active])
+}
 
 /** When each shop list first showed a row. Rows that arrive with the list are part of its own entrance; later ones are new. */
 const listBirth = new WeakMap<Element, number>()

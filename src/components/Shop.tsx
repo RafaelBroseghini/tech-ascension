@@ -1,6 +1,6 @@
 import { Activity, ArrowDown, Bot, BriefcaseBusiness, Check, ChevronRight, Circle, Handshake, Keyboard, Lock, Monitor, MousePointerClick, Server, ShieldCheck, Trophy, Users } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties, ReactNode } from "react"
 import { ERA_ACCENT } from "../data/eraAccent.ts"
@@ -53,7 +53,7 @@ import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { CompanyTab } from "./globe/CompanyTab.tsx"
-import { bump, rowEnter, sweepRef, useOnChange } from "./shopMotion.ts"
+import { bump, listEnter, rowEnter, sweepRef, useOnChange, useTabBar } from "./shopMotion.ts"
 import { tickUp } from "./useMotion.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
@@ -75,6 +75,13 @@ function OwnedCount({ value }: { value: number }) {
       {formatNumber(value)}
     </span>
   )
+}
+
+/** The bar under a tab strip, which slides to the active tab. It is the strip's last child, so the strip is its positioned parent. */
+function TabBar({ active }: { active: string }) {
+  const ref = useRef<HTMLElement>(null)
+  useTabBar(ref, active)
+  return <i ref={ref} className="era-tab-bar" aria-hidden="true" />
 }
 
 /** The price on a buy button. When it changes (you bought one, so the next costs more) its digits roll up from below. */
@@ -539,6 +546,15 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build, company }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   useShopRows(listRef, narrow && tab !== "W", rowScope)
+  // A new list slides in from the side its tab lies on: forward along the bar from the right, back from the left.
+  const scopeRank = SHOP_TABS.indexOf(tab) * 10 + (tenx ? 1 : tab === "D" ? Math.max(0, eraTabs.findIndex((section) => section.id === era)) : 0)
+  const [slide, setSlide] = useState({ scope: rowScope, rank: scopeRank, dir: 1 })
+  if (slide.scope !== rowScope) setSlide({ scope: rowScope, rank: scopeRank, dir: scopeRank >= slide.rank ? 1 : -1 })
+  // The list is scrolled and measured through listRef; its entrance rides on the same ref callback.
+  const attachList = useCallback((el: HTMLDivElement | HTMLUListElement | null) => {
+    listRef.current = el as HTMLDivElement | null
+    listEnter(el)
+  }, [])
   // The phone sheet's expanded height in px, or null at three rows. Another tab, a dock or a new screen size starts over at three rows.
   const [expanded, setExpanded] = useState<number | null>(null)
   const [sheetKey, setSheetKey] = useState(`${tab}:${docked}`)
@@ -711,6 +727,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
             </button>
           )
         })}
+        <TabBar active={tab} />
       </div>
 
 
@@ -745,6 +762,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
             {visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold, jobs, build }) && nextInFamily(gold, row)) ? <i className="deal-dot" aria-label="Something new to buy" /> : null}
             <NewMark id="tenx" pill />
           </button>
+          <TabBar active={tenx ? "tenx" : "skills"} />
         </div>
       ) : null}
 
@@ -763,6 +781,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               {section.label}
             </button>
           ))}
+          <TabBar active={era} />
         </div>
       ) : null}
 
@@ -770,7 +789,8 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
         key={rowScope}
         wrapClassName={tab === "W" ? "shop-list-wrap" : "shop-list-wrap is-capped"}
         className="shop-list"
-        scrollRef={listRef}
+        scrollRef={attachList}
+        data-slide={slide.dir}
         showArrow={false}
         onOverflowChange={setListOverflows}
       >

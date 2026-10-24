@@ -199,6 +199,13 @@ export function presenceRef(presence: Presence): (el: HTMLElement | null) => (()
   }
 }
 
+/** A ref callback for a thing that only needs an entrance: it springs in on mount and simply goes when it unmounts. */
+export function enterRef(presence: Presence): (el: HTMLElement | null) => void {
+  return (el) => {
+    if (el) enter(el, presence)
+  }
+}
+
 /** The card inside a dialog's backdrop. */
 const dialogCard = (backdrop: HTMLElement) =>
   backdrop.querySelector<HTMLElement>("[role='dialog'], [role='alertdialog'], [aria-modal='true']") ?? (backdrop.firstElementChild as HTMLElement | null)
