@@ -53,6 +53,8 @@ import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { CompanyTab } from "./globe/CompanyTab.tsx"
+import { bump, rowEnter, sweepRef, useOnChange } from "./shopMotion.ts"
+import { tickUp } from "./useMotion.ts"
 
 /** A ready row reads "to buy it"; a gap still reads "need 10,000 more XP". */
 const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; glow: string; done: string }> = {
@@ -64,11 +66,24 @@ const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; g
   W: { label: "Company", title: "Run the company", hint: "Users, team, uptime", glow: "var(--ide-teal, var(--ide-green))", done: "" },
 }
 
+/** How many of a row you hold. It jumps in size and flashes the accent each time the count changes. */
 function OwnedCount({ value }: { value: number }) {
-  const [initial] = useState(value)
+  const ref = useRef<HTMLSpanElement>(null)
+  useOnChange(ref, value, bump)
   return (
-    <span key={value} className={value !== initial ? "own tick-up" : "own"}>
+    <span ref={ref} className="own">
       {formatNumber(value)}
+    </span>
+  )
+}
+
+/** The price on a buy button. When it changes (you bought one, so the next costs more) its digits roll up from below. */
+function Price({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useOnChange(ref, text, tickUp)
+  return (
+    <span ref={ref} className="price">
+      {text}
     </span>
   )
 }
@@ -130,6 +145,7 @@ type OfferProps = {
 function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, unlock, title, children, actions, art, gold, unlocks }: OfferProps) {
   return (
     <article
+      ref={rowEnter}
       data-row={rowKey}
       className={[
         "offer",
@@ -164,6 +180,7 @@ function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, do
         ) : null}
       </div>
       <div className="offer-actions">{actions}</div>
+      {flash ? <i ref={sweepRef} className="offer-sweep" aria-hidden="true" /> : null}
     </article>
   )
 }
@@ -785,7 +802,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id))}>
-                        {!revealed && have === 0 ? "Locked" : buyLabel("xp", row.baseXpCost * skillPriceMult(build.origin ?? null, row), have, row.firstXpCost)}
+                        {!revealed && have === 0 ? "Locked" : <Price text={buyLabel("xp", row.baseXpCost * skillPriceMult(build.origin ?? null, row), have, row.firstXpCost)} />}
                       </button>
                     </>
                   }
@@ -983,7 +1000,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                           actions={
                             <>
                               <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id))}>
-                                {!revealed && have === 0 ? "Locked" : buyLabel("money", gearBase(row, perksHeld), have)}
+                                {!revealed && have === 0 ? "Locked" : <Price text={buyLabel("money", gearBase(row, perksHeld), have)} />}
                               </button>
                             </>
                           }
@@ -1032,7 +1049,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                     actions={
                       <>
                         <button type="button" disabled={!afford} onClick={() => act(key, () => buy(tier.id))}>
-                          {buyLabel("money", capitalBase(tier, perksHeld), have)}
+                          <Price text={buyLabel("money", capitalBase(tier, perksHeld), have)} />
                         </button>
                       </>
                     }

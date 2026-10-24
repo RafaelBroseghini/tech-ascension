@@ -74,31 +74,9 @@
   to { transform: none; opacity: 1; }
 }
 
-/* Number tick: new digits roll up from below and flash the accent. */
-@keyframes tick-up {
-  0% { transform: translateY(45%); opacity: 0.2; color: var(--accent); }
-  60% { color: var(--accent); }
-  100% { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes buy-sweep {
-  from { transform: translateX(-120%) skewX(-18deg); opacity: 0.9; }
-  to { transform: translateX(120%) skewX(-18deg); opacity: 0; }
-}
-
-@keyframes row-in {
-  from { transform: translateX(14px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
 @keyframes bar-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
-}
-
-@keyframes tab-pulse {
-  0%, 100% { border-bottom-color: var(--tab-glow); }
-  50% { border-bottom-color: transparent; }
 }
 
 @keyframes panel-in {
