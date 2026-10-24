@@ -140,7 +140,7 @@ describe("the career log", () => {
 describe("the shop teases what is next", () => {
   it("hides closed boards except the next one, and names what a row unlocks", () => {
     writeSavedShopTab("A")
-    useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 4).map((row) => [String(row.id), 1])), xpTotal: 2_300, xp: 50 })
+    useGame.setState({ skills: Object.fromEntries(SKILL_TIERS.slice(0, 4).map((row) => [String(row.id), 1])), xpTotal: 1_000, xp: 50 })
     render(Shop, { onCollapse: () => {}, docked: false, onDock: () => {} })
     const tabs = $$(".era-tabs:not(.era-sub) [role='tab']").map((tab) => tab.dataset.phase)
     // The studio waits for the first job, so there is no Company tab yet.

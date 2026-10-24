@@ -729,7 +729,7 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.careerLog().slice(-1).map((line) => `${line.type}:${line.ref}`)).toEqual(["learn:skill:1"])
 
   // Skills 2 to 4 open nothing either. Skill 5 opens the career log, marked NEW until used.
-  game.setXp(2_300)
+  game.setXp(1_000)
   for (let id = 2; id <= 4; id++) game.buySkill(id)
   expect(game.getState().features.open).toEqual([])
   game.buySkill(5)

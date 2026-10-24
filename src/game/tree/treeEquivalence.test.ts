@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { CAPITAL } from "../../data/capital.ts"
-import { EQUIPMENT, GIGS, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
+import { EQUIPMENT, GEAR_TAB_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { LEADERSHIP } from "../../data/leadership.ts"
 import { ORIGINS } from "../../data/origins.ts"
@@ -80,8 +80,8 @@ describe("the tree and the rules it replaced", () => {
     expect(capitalUnlocked(gates({ peakMoney: 500_000 }))).toBe(true)
     expect(capitalUnlocked(gates({ peakMoney: 499_999 }))).toBe(false)
     expect(holds(node("board:gear").requires, base({ equipment: { "7": 1 } }))).toBe(true)
-    expect(holds(node("board:gear").requires, base({ xpTotal: 9_999 }))).toBe(false)
-    expect(holds(node("board:gear").requires, base({ xpTotal: 10_000 }))).toBe(true)
+    expect(holds(node("board:gear").requires, base({ xpTotal: GEAR_TAB_UNLOCK.minXp - 1 }))).toBe(false)
+    expect(holds(node("board:gear").requires, base({ xpTotal: GEAR_TAB_UNLOCK.minXp }))).toBe(true)
   })
 
   it("count the rank a switch kept, and leave the user gates open for a caller with no company", () => {

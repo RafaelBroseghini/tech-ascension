@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { openingXp } from "../data/costs.ts"
 import { describe, expect, it } from "vitest"
 import { BOOST_BY_ERA, BOOST_PITY_FACTOR, BOOST_WAIT_MIN_FACTOR } from "../data/boosts.ts"
 import { spriteForTier, thumbForTier } from "../data/sprites.ts"
@@ -330,18 +331,18 @@ describe("catalog tables", () => {
 
   it("doubles purchase prices and leaves payouts and gig lumps alone", () => {
     const scale = PURCHASE_COST_SCALE
-    expect(SKILL_TIERS[0]?.baseXpCost).toBe(Math.ceil(120 * scale))
+    expect(SKILL_TIERS[0]?.baseXpCost).toBe(Math.ceil(40 * scale))
     expect(SKILL_TIERS[0]?.firstXpCost).toBe(90)
     expect(SKILL_TIERS[0]?.xpPerClick).toBe(1)
     expect(JOB_TIERS[0]?.xpCost).toBe(0)
-    expect(JOB_TIERS[1]?.xpCost).toBe(Math.round(45_000 * 0.25 * scale))
+    expect(JOB_TIERS[1]?.xpCost).toBe(Math.round(openingXp(45_000) * 0.25 * scale))
     expect(JOB_TIERS[1]?.cps).toBe(25)
     expect(EQUIPMENT[0]?.baseCost).toBeCloseTo(200 * scale)
     expect(EQUIPMENT[0]?.clickBonus).toBe(2)
     expect(CAPITAL[0]?.baseCost).toBeCloseTo(100_000 * scale)
     expect(CAPITAL[0]?.cps).toBe(50)
     expect(GIGS[0]?.lump).toBe(40)
-    expect(GEAR_TAB_UNLOCK.minXp).toBe(10_000)
+    expect(GEAR_TAB_UNLOCK.minXp).toBe(openingXp(10_000))
   })
 
   it("keeps every row paid for: positive costs, and an income or click bonus", () => {
