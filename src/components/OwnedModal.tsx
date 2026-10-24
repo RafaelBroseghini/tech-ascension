@@ -1,6 +1,7 @@
 import { Boxes, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
@@ -9,6 +10,9 @@ import { useFocusTrap } from "./useFocusTrap.ts"
 /** On a narrow screen the owned list and skill icons do not fit under the art, so an inventory button in the activity bar opens them in a modal. */
 export function OwnedButton() {
   const [open, setOpen] = useState(false)
+  // Like the rest of the bar it waits to be earned: nothing is worth an inventory until the first job.
+  const hired = useGame((state) => state.jobs.length > 0)
+  if (!hired) return null
   return (
     <>
       <button
