@@ -1,5 +1,13 @@
 import { useEffect } from "react"
 import { useGame } from "../game/store.ts"
+import { presenceRef } from "./useMotion.ts"
+
+/** Up from the foot of the screen, or down from the top where a phone keeps it (it would cover the shop buttons). */
+const fromEdge = (el: HTMLElement) => ({ scale: 0.94, y: el.getBoundingClientRect().top < window.innerHeight / 2 ? -18 : 18 })
+const toastPresence = presenceRef({
+  fade: { in: 0.16, out: 0.16 },
+  move: { from: fromEdge, to: (el) => ({ scale: 0.97, y: fromEdge(el).y / 3 }), spring: { stiffness: 480, damping: 26, mass: 0.8 } },
+})
 
 export function Toast() {
   const toast = useGame((state) => state.toast)
@@ -20,7 +28,8 @@ export function Toast() {
   return (
     <div role="status" aria-live="polite" aria-atomic="true">
       {shown ? (
-        <button type="button" className="toast" data-testid="toast" onClick={dismissToast}>
+        // Keyed by the toast so a new one replaces the old with its own entrance rather than changing text in place.
+        <button key={shown.id} ref={toastPresence} type="button" className="toast" data-testid="toast" onClick={dismissToast}>
           {shown.text}
         </button>
       ) : null}

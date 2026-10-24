@@ -120,7 +120,6 @@
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
   font: 500 11.5px/1.45 var(--font-mono);
   pointer-events: none;
-  animation: ul-tip-in 140ms var(--ease-out);
 }
 .ul-tip b {
   font-weight: 700;
@@ -134,9 +133,6 @@
   margin-top: 2px;
   opacity: 0.72;
   font-size: 10.5px;
-}
-@keyframes ul-tip-in {
-  from { opacity: 0; }
 }
 
 /* The next closed board waits in the tab bar, dimmed. */
@@ -202,7 +198,6 @@
     var(--lift-3),
     inset 0 0 0 1px color-mix(in srgb, var(--ide-green) 55%, transparent);
   pointer-events: auto;
-  animation: ul-card-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards;
 }
 .ul-card.is-measuring {
   visibility: hidden;
@@ -241,25 +236,6 @@
   left: calc(50% - 6px);
   border-right-width: 2px;
   border-bottom-width: 2px;
-}
-.ul-card.from-right { --ul-from: translateX(-12px); }
-.ul-card.from-left { --ul-from: translateX(12px); }
-.ul-card.from-below { --ul-from: translateY(-10px); }
-.ul-card.from-above { --ul-from: translateY(10px); }
-@keyframes ul-card-in {
-  from {
-    opacity: 0;
-    transform: var(--ul-from, none) scale(0.96);
-  }
-}
-.ul-card.is-leaving {
-  animation: ul-card-out 200ms var(--ease-out) forwards;
-}
-@keyframes ul-card-out {
-  to {
-    opacity: 0;
-    transform: var(--ul-from, none) scale(0.9);
-  }
 }
 .ul-kicker {
   display: flex;

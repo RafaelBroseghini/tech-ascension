@@ -1,11 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { featureById } from "../game/features.ts"
 import { useGame } from "../game/store.ts"
 import { openSurface } from "../game/surfaces.ts"
+import { presenceRef } from "./useMotion.ts"
 
 /** How long a card stays up when nobody touches it. */
 const CARD_MS = 8_000
+
+/** The card rises a little and settles with a touch of overshoot; closing is a shorter fade down. */
+const cardPresence = presenceRef({
+  fade: { in: 0.2, out: 0.16 },
+  move: { from: { scale: 0.92, y: 10 }, to: { scale: 0.94, y: 6 }, spring: { stiffness: 420, damping: 24, mass: 0.8 } },
+})
 
 type Placement = { left: number; top: number; side: "left" | "right" | "above" | "below" }
 
@@ -55,11 +62,15 @@ export function RevealCard({
   const ref = useRef<HTMLDivElement>(null)
   const [spot, setSpot] = useState<Placement | null>(null)
   const [held, setHeld] = useState(false)
-  const [leaving, setLeaving] = useState<false | "closed" | "timedOut">(false)
   const closeRef = useRef(onClose)
   useEffect(() => {
     closeRef.current = onClose
   })
+  // One stable callback: the card is measured through `ref`, and the presence (its entrance, and its exit once it is gone) rides along.
+  const attach = useCallback((el: HTMLDivElement | null) => {
+    ref.current = el
+    return cardPresence(el)
+  }, [])
 
   useLayoutEffect(() => {
     const anchor = anchorId ? anchorFor(anchorId) : null
@@ -78,23 +89,17 @@ export function RevealCard({
     }
   }, [anchorId])
 
+  // Closing unmounts at once; the exit is a copy that fades where the card was (useMotion.ts).
   useEffect(() => {
-    if (held || leaving) return
-    const id = window.setTimeout(() => setLeaving("timedOut"), CARD_MS)
+    if (held) return
+    const id = window.setTimeout(() => closeRef.current(true), CARD_MS)
     return () => window.clearTimeout(id)
-  }, [held, leaving])
-
-  // Unmounts just after ul-card-out (200ms in unlocks.css) ends.
-  useEffect(() => {
-    if (!leaving) return
-    const id = window.setTimeout(() => closeRef.current(leaving === "timedOut"), 220)
-    return () => window.clearTimeout(id)
-  }, [leaving])
+  }, [held])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || document.querySelector("[aria-modal='true']")) return
-      setLeaving("closed")
+      closeRef.current(false)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -102,8 +107,8 @@ export function RevealCard({
 
   return createPortal(
     <div
-      ref={ref}
-      className={["ul-card", leaving ? "is-leaving" : "", spot ? `from-${spot.side}` : "is-measuring"].filter(Boolean).join(" ")}
+      ref={attach}
+      className={["ul-card", spot ? `from-${spot.side}` : "is-measuring"].join(" ")}
       style={spot ? { left: spot.left, top: spot.top } : undefined}
       role="status"
       aria-live="polite"
@@ -128,13 +133,13 @@ export function RevealCard({
             data-testid="unlock-card-action"
             onClick={() => {
               onAction()
-              setLeaving("closed")
+              closeRef.current(false)
             }}
           >
             {copy.action}
           </button>
         ) : null}
-        <button type="button" className="ul-btn" data-testid="unlock-card-close" onClick={() => setLeaving("closed")}>
+        <button type="button" className="ul-btn" data-testid="unlock-card-close" onClick={() => closeRef.current(false)}>
           {onAction && copy.action ? "Later" : "Got it"}
         </button>
         <span className="ul-key" aria-hidden="true">

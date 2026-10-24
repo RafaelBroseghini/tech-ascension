@@ -81,6 +81,8 @@ export function tickUp(el: HTMLElement): Playing | null {
 }
 
 type Move = { scale?: number; x?: number; y?: number }
+/** A fixed movement, or one worked out from the element when it arrives or leaves (a toast at the top of the screen comes from above). */
+type MoveOf = Move | ((el: HTMLElement) => Move)
 type Spring = { stiffness: number; damping: number; mass?: number }
 
 /**
@@ -90,7 +92,7 @@ type Spring = { stiffness: number; damping: number; mass?: number }
  */
 export type Presence = {
   fade: { in: number; out: number }
-  move?: { part?: (root: HTMLElement) => HTMLElement | null; from: Move; to: Move; spring: Spring }
+  move?: { part?: (root: HTMLElement) => HTMLElement | null; from: MoveOf; to: MoveOf; spring: Spring }
 }
 
 const RESTING = { scale: 1, x: 0, y: 0 }
@@ -113,7 +115,8 @@ function enter(el: HTMLElement, presence: Presence): Playing | null {
   const fade = motion.animate(el, { opacity: [0, 1] }, { duration: presence.fade.in, ease: "easeOut" })
   const runs: Playing[] = []
   if (move && part) {
-    const from = Object.fromEntries(Object.entries(move.from).map(([key, value]) => [key, [value, RESTING[key as keyof Move]]]))
+    const start = typeof move.from === "function" ? move.from(part) : move.from
+    const from = Object.fromEntries(Object.entries(start).map(([key, value]) => [key, [value, RESTING[key as keyof Move]]]))
     const slide = motion.animate(part, from, { type: "spring", ...move.spring })
     if (part === el) runs.push(playing(el, [fade, slide]))
     else runs.push(playing(el, [fade]), playing(part, [slide]))
@@ -166,7 +169,7 @@ function exit(el: HTMLElement, presence: Presence): () => void {
       const move = movement(presence)
       const part = move ? (move.part?.(ghost) ?? ghost) : null
       const plays = [motion.animate(ghost, { opacity: 0 }, { duration: presence.fade.out, ease: "easeIn" })]
-      if (move && part) plays.push(motion.animate(part, { ...move.to }, { duration: presence.fade.out, ease: "easeIn" }))
+      if (move && part) plays.push(motion.animate(part, { ...(typeof move.to === "function" ? move.to(part) : move.to) }, { duration: presence.fade.out, ease: "easeIn" }))
       void Promise.all(plays.map((play) => play.finished)).then(gone, gone)
     } catch {
       gone()

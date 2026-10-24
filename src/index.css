@@ -1905,7 +1905,8 @@ img { -webkit-user-drag: none; user-select: none; }
   z-index: 9;
   left: 50%;
   bottom: var(--sp-5);
-  transform: translateX(-50%);
+  /* The individual property, so Motion's own transform (the entrance) composes with the centring instead of replacing it. */
+  translate: -50% 0;
   max-width: min(520px, calc(100% - 24px));
   border: var(--stroke) solid var(--ink);
   border-radius: var(--radius);
@@ -1917,7 +1918,6 @@ img { -webkit-user-drag: none; user-select: none; }
   letter-spacing: 0.01em;
   cursor: pointer;
   box-shadow: var(--lift-3);
-  animation: toast-in 280ms var(--ease-pop);
 }
 
 .tick-up { display: inline-block; animation: tick-up 320ms var(--ease-out); }
