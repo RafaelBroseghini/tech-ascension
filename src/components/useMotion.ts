@@ -57,9 +57,9 @@ export function claim(el: Element): () => boolean {
 type Play = { finished: Promise<unknown>; complete: () => void }
 
 /**
- * Keeps hold of animations running on an element. They clear the element's inline styles when the last of them ends,
- * or at once when finished early (a cancelled animation leaves its first frame behind, so they jump to their end instead), unless a newer animation has
- * claimed the element in between.
+ * Keeps hold of animations running on an element. They clear the element's inline styles when the last of them ends, or
+ * at once when finished early (a cancelled animation leaves its first frame behind, so they jump to their end instead),
+ * unless a newer animation has claimed the element in between.
  */
 export function playing(el: Styled, plays: readonly Play[], names?: readonly string[]): Playing {
   const current = claim(el)
