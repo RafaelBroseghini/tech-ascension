@@ -143,3 +143,60 @@ export function useOnChange<T>(ref: RefObject<HTMLElement | null>, value: T, pla
     running.current = play(el)
   }, [ref, value, play])
 }
+
+/** The settle never starts faster than this many sheet-travels a second, whatever the finger did. */
+const SETTLE_SPEED_CAP = 10
+
+/**
+ * After a drag, springs the phone shop sheet from the height the finger left it at to the height its class rests at,
+ * carrying the finger's speed (px/s of height; a finger moving up is positive). The inline heights and the `is-dragging`
+ * and `is-expanding` classes the drag set are cleared when it arrives. With no Motion, or under reduced motion, the
+ * classes and heights go at once and the stylesheet's transition does the settling. `stop` leaves the sheet where it is.
+ */
+export function springSheet(sheet: HTMLElement, from: number, speed: number): { stop: () => void } {
+  let run: { stop: () => void } | null = null
+  const rest = () => {
+    sheet.style.removeProperty("max-height")
+    sheet.style.removeProperty("height")
+    sheet.classList.remove("is-dragging", "is-expanding")
+  }
+  // After React has committed the class the release chose, which is what says where the sheet rests.
+  const frame = requestAnimationFrame(() => {
+    const motion = motionReady()
+    if (!motion || prefersReducedMotion()) {
+      rest()
+      return
+    }
+    // The commit may have replaced the class list; no transition may run while the target is read.
+    sheet.classList.add("is-dragging")
+    sheet.style.removeProperty("max-height")
+    sheet.style.removeProperty("height")
+    sheet.classList.remove("is-expanding")
+    const to = sheet.getBoundingClientRect().height
+    if (Math.abs(to - from) < 1) {
+      rest()
+      return
+    }
+    const lo = Math.min(from, to)
+    const hi = Math.max(from, to)
+    // Never past either end: a spring that overshot would push the sheet off the screen or under its own bar.
+    const write = (height: number) => {
+      const h = Math.min(Math.max(height, lo), hi)
+      sheet.style.maxHeight = `${h}px`
+      sheet.style.height = `${h}px`
+    }
+    write(from)
+    // Shrinking toward the three rows or the bar, the list keeps filling the sheet until it has arrived.
+    if (from > to) sheet.classList.add("is-expanding")
+    // A hard flick would cross the whole distance inside a frame or two; capping the speed keeps the settle readable.
+    const cap = Math.abs(to - from) * SETTLE_SPEED_CAP
+    const velocity = Math.min(Math.max(speed, -cap), cap)
+    run = motion.animate(from, to, { type: "spring", stiffness: 520, damping: 38, velocity, restDelta: 0.5, restSpeed: 8, onUpdate: write, onComplete: rest })
+  })
+  return {
+    stop: () => {
+      cancelAnimationFrame(frame)
+      run?.stop()
+    },
+  }
+}

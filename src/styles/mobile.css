@@ -95,6 +95,8 @@
    portrait phone stacks the shop under the stage, so only there does it dock; on its side the shop is a column again. */
 .shop-grip { display: none; }
 @media (max-width: 860px) and (orientation: portrait) {
+  /* A drag's release is a Motion spring (`springSheet`, which holds `is-dragging` for its length). This transition settles the
+     rest: a tap on the bar, a keyboard step, a tab switch, and a release when Motion has not loaded. */
   .shop { --shop-grip-h: 24px; --shop-dock-h: 46px; transition: max-height var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out); }
   /* The grip adds to the cap rather than taking from a tab's three rows; the Company tab scrolls and keeps its share. */
   .shop:not([data-phase="W"]) { --shop-cap-extra: var(--shop-grip-h); }

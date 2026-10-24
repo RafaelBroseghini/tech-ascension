@@ -1,9 +1,10 @@
 import { ChevronUp } from "lucide-react"
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import type { PointerEvent } from "react"
 import { UI_ICON_SM } from "./icons/ui.tsx"
-import { isDockTap, settleSheet, sheetHeight } from "../game/shopDock.ts"
+import { isDockTap, releaseSpeed, settleSheet, sheetHeight, smoothSpeed } from "../game/shopDock.ts"
 import type { SheetDrag, SheetMode } from "../game/shopDock.ts"
+import { springSheet } from "./shopMotion.ts"
 
 interface Press {
   readonly id: number
@@ -15,6 +16,10 @@ interface Press {
   readonly maxHeight: number
   readonly dockHeight: number
   moved: boolean
+  /** The finger's last position and time, and its smoothed speed in px/ms (positive is down), for the release. */
+  lastY: number
+  lastT: number
+  speed: number
 }
 
 /**
@@ -22,7 +27,8 @@ interface Press {
  * dock the shop to a bar, or up to expand the sheet (as high as the top of the screen; it stays there). Tap the bar
  * to open it; tap the grip of an expanded sheet to return to three rows. From the keyboard it steps expanded, three rows,
  * docked. While the finger is down the sheet follows it through inline heights, so the stage grows and shrinks live; on
- * release the classes take over and the CSS transition settles it.
+ * release the classes say where it rests and a Motion spring carries it there from where the finger left it, with the
+ * finger's speed (shopMotion.ts). Without Motion the CSS transition settles it instead.
  */
 export function ShopGrip({
   docked,
@@ -47,13 +53,24 @@ export function ShopGrip({
 
   const sheetOf = (el: Element) => el.closest<HTMLElement>(".shop")
 
-  const release = (sheet: HTMLElement) => {
-    // After React has committed the new class, so the transition runs from where the finger left the sheet.
-    requestAnimationFrame(() => {
-      sheet.style.removeProperty("max-height")
-      sheet.style.removeProperty("height")
-      sheet.classList.remove("is-dragging", "is-expanding")
-    })
+  // The spring that is carrying the sheet home after a release. A finger that lands on the sheet meanwhile takes it over.
+  const settling = useRef<{ stop: () => void } | null>(null)
+  const settled = useRef<HTMLElement | null>(null)
+  useEffect(
+    () => () => {
+      settling.current?.stop()
+      settled.current?.classList.remove("is-dragging", "is-expanding")
+      settled.current?.style.removeProperty("max-height")
+      settled.current?.style.removeProperty("height")
+    },
+    [],
+  )
+
+  const release = (sheet: HTMLElement, speed: number) => {
+    // Read before the state below commits, while the sheet is still where the finger left it.
+    const from = sheet.getBoundingClientRect().height
+    settling.current = springSheet(sheet, from, speed)
+    settled.current = sheet
   }
 
   const dragOf = (p: Press, dy: number): SheetDrag => ({ mode: p.mode, height: p.height, dy, ms: 0, rowsHeight: p.rowsHeight, maxHeight: p.maxHeight, dockHeight: p.dockHeight })
@@ -63,6 +80,8 @@ export function ShopGrip({
     if (event.button !== 0) return
     const sheet = sheetOf(event.currentTarget)
     if (!sheet) return
+    settling.current?.stop()
+    settling.current = null
     const box = sheet.getBoundingClientRect()
     const mode: SheetMode = docked ? "docked" : expanded !== null ? "expanded" : "rows"
     if (mode === "rows") rowsHeight.current = box.height
@@ -70,7 +89,7 @@ export function ShopGrip({
     const dockHeight = docked ? box.height : parseFloat(getComputedStyle(sheet).getPropertyValue("--shop-dock-h")) || 46
     // Never off the screen: the sheet's foot is fixed, so the room is what lies above it.
     event.currentTarget.setPointerCapture(event.pointerId)
-    press.current = { id: event.pointerId, y: event.clientY, t: event.timeStamp, mode, height: box.height, rowsHeight: rows, maxHeight: box.bottom, dockHeight, moved: false }
+    press.current = { id: event.pointerId, y: event.clientY, t: event.timeStamp, mode, height: box.height, rowsHeight: rows, maxHeight: box.bottom, dockHeight, moved: false, lastY: event.clientY, lastT: event.timeStamp, speed: 0 }
   }
 
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
@@ -78,6 +97,9 @@ export function ShopGrip({
     const sheet = sheetOf(event.currentTarget)
     if (!p || p.id !== event.pointerId || !sheet) return
     const dy = event.clientY - p.y
+    p.speed = smoothSpeed(p.speed, event.clientY - p.lastY, event.timeStamp - p.lastT)
+    p.lastY = event.clientY
+    p.lastT = event.timeStamp
     if (!p.moved && isDockTap(dy)) return
     p.moved = true
     sheet.classList.add("is-dragging")
@@ -98,12 +120,12 @@ export function ShopGrip({
     if (!p.moved || !sheet) return
     swallowClick.current = true
     const next = settleSheet({ ...dragOf(p, event.clientY - p.y), ms: event.timeStamp - p.t })
+    release(sheet, releaseSpeed(p.speed, event.timeStamp - p.lastT))
     if (next.mode === "expanded") onExpand(next.height ?? null)
     else {
       onExpand(null)
       if ((next.mode === "docked") !== docked) onDock(next.mode === "docked")
     }
-    release(sheet)
   }
 
   const onPointerCancel = (event: PointerEvent<HTMLButtonElement>) => {
@@ -111,7 +133,7 @@ export function ShopGrip({
     const sheet = sheetOf(event.currentTarget)
     if (!p || p.id !== event.pointerId) return
     press.current = null
-    if (sheet) release(sheet)
+    if (sheet) release(sheet, 0)
   }
 
   return (
