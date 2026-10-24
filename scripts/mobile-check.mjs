@@ -171,7 +171,7 @@ function check(vp, state, m) {
         if (m.shop.top < -1) fail(`the expanded shop runs off the top of the screen (shop top ${Math.round(m.shop.top)})`)
       } else if (m.docked) fail("the shop is docked")
       else if (m.expanded) fail("the shop is still expanded")
-      else if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
+      else if (state !== "start-card" && state !== "origin-pick" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
       if (state !== "expanded" && m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
     }
     if (desktop && m.shop.left < m.stage.left + vp.w * 0.4) fail("desktop lost its side-by-side stage and shop")

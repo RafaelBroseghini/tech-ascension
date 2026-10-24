@@ -156,6 +156,20 @@
   max-height: calc(100dvh - var(--sp-4) * 2);
   overflow-y: auto;
 }
+/* Short or narrow screens drop the lines that only flavour a path, so all three fit with the button in view. */
+@media (max-width: 480px), (max-height: 700px) {
+  .identity-card:has(.identity-origins) .event-flavor,
+  .identity-card:has(.identity-origins) .identity-origin span,
+  .identity-card:has(.identity-origins) .identity-origin-leans { display: none; }
+  .identity-card:has(.identity-origins) { gap: var(--sp-2); padding: var(--sp-4); }
+  .identity-card:has(.identity-origins) .identity-origins { margin: var(--sp-2) 0 0; gap: var(--sp-2); }
+  .identity-card:has(.identity-origins) .identity-origin { padding: var(--sp-2) var(--sp-3); }
+}
+/* A landscape phone has width to spare: the three paths sit side by side. */
+@media (max-height: 480px) {
+  .identity-card:has(.identity-origins) { width: min(760px, 100%); }
+  .identity-card:has(.identity-origins) .identity-origins { grid-template-columns: repeat(3, 1fr); }
+}
 .identity-card:has(.identity-origins) .event-actions {
   position: sticky;
   bottom: calc(var(--sp-5) * -1);
