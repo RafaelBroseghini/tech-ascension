@@ -1,7 +1,9 @@
 import { setAdminMode } from "./adminMode.ts"
 import { sealImage, storedJson, PREF_IDS, type DurablePort, type Json, type LoadedShelf, type PrefRow } from "./ledger.ts"
 import { freshSave, hydrate, parseSave, type SaveData } from "./save.ts"
-import type { TechDatabase } from "./ledgerDexie.ts"
+// Static on purpose. As a lazy chunk it shares a bundler chunk with the store, and loading that chunk boots the store
+// (a fresh career) before the saved one is read, so every reload in a production build started from zero.
+import { createDexiePort, openTechDatabase, readAdminMode, toggleAdminMode, type TechDatabase } from "./ledgerDexie.ts"
 
 const DATABASE_ERROR = "Couldn't open the save database."
 
@@ -40,7 +42,6 @@ function setupAdminToggle(db: TechDatabase): void {
       index = 0
       ctrlAlt = false
       void (async () => {
-        const { toggleAdminMode } = await import("./ledgerDexie.ts")
         const next = await toggleAdminMode(db)
         setAdminMode(next)
         if (typeof document !== "undefined") {
@@ -74,10 +75,9 @@ async function bootGame(): Promise<void> {
   let port: DurablePort
   let db: TechDatabase
   try {
-    const dexie = await import("./ledgerDexie.ts")
-    db = await dexie.openTechDatabase()
-    port = dexie.createDexiePort(db)
-    setAdminMode(await dexie.readAdminMode(db))
+    db = await openTechDatabase()
+    port = createDexiePort(db)
+    setAdminMode(await readAdminMode(db))
     setupAdminToggle(db)
   } catch {
     showDatabaseError()
