@@ -16,7 +16,7 @@ import {
   type ParadeBox,
   type ParadeGif,
 } from "../game/gifParade.ts"
-import { getDeskPrefs, subscribeDeskPrefs } from "../game/desk.ts"
+import { getDeskPrefs, reducedMotion, subscribeDeskPrefs } from "../game/desk.ts"
 import { paradePool } from "../game/paradePool.ts"
 import { useParadeProgress } from "./useParadeProgress.ts"
 import { useFeatureOpen } from "./useFeature.ts"
@@ -26,7 +26,7 @@ const ARRIVE_GAP_MS = 80
 
 const paradePref = () => getDeskPrefs().parade
 const sourcePref = () => getDeskPrefs().paradeSource
-const prefersReducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+const prefersReducedMotion = reducedMotion
 
 /** Every gif unlocked this run (or one category of them), moving round the stage once the parade itself is unlocked (the mid game, `parade` in src/data/features.ts). The settings menu turns it off and picks the gifs and the path. */
 export function GifParade() {

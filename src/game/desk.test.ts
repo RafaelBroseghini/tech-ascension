@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CAT_ROSTER } from "./catRoster.ts"
-import { getDeskActivity, getDeskPrefs, parseDeskPrefs, pokeDesk, setDeskPref, subscribeDeskActivity, subscribeDeskPrefs } from "./desk.ts"
+import { getDeskActivity, getDeskPrefs, parseDeskPrefs, pokeDesk, reducedMotion, setDeskPref, subscribeDeskActivity, subscribeDeskPrefs } from "./desk.ts"
 import { readPref } from "./ledger.ts"
 
 describe("desk", () => {
@@ -18,6 +18,24 @@ describe("desk", () => {
     expect(parseDeskPrefs(null).hoverMode).toBe("auto")
   })
 
+  it("follows the system's reduce-motion request unless the player chose full motion", () => {
+    const asked = (on: boolean) => {
+      vi.stubGlobal("window", { matchMedia: (query: string) => ({ matches: on && query.includes("reduce") }), addEventListener() {} })
+    }
+    expect(parseDeskPrefs(null).motion).toBe("system")
+    expect(parseDeskPrefs({ motion: "full" }).motion).toBe("full")
+    expect(parseDeskPrefs({ motion: "weird" }).motion).toBe("system")
+    asked(true)
+    setDeskPref("motion", "system")
+    expect(reducedMotion()).toBe(true)
+    setDeskPref("motion", "full")
+    expect(reducedMotion()).toBe(false)
+    asked(false)
+    setDeskPref("motion", "system")
+    expect(reducedMotion()).toBe(false)
+    vi.unstubAllGlobals()
+  })
+
   it("starts with music off, desk sounds on, and the cat out", () => {
     expect(parseDeskPrefs(null)).toEqual({
       music: false,
@@ -32,6 +50,7 @@ describe("desk", () => {
       paradeSource: "all",
       hoverClick: false,
       hoverMode: "auto",
+      motion: "system",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
@@ -48,6 +67,7 @@ describe("desk", () => {
       paradeSource: "all",
       hoverClick: false,
       hoverMode: "auto",
+      motion: "system",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
@@ -64,6 +84,7 @@ describe("desk", () => {
       paradeSource: "all",
       hoverClick: false,
       hoverMode: "auto",
+      motion: "system",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })
@@ -135,6 +156,7 @@ describe("desk", () => {
       paradeSource: "all",
       hoverClick: false,
       hoverMode: "auto",
+      motion: "system",
       heroOffsetX: 0,
       heroOffsetY: 0,
     })

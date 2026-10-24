@@ -10,7 +10,7 @@ import { stageEmojiSource, STAGE_START_EMOJI } from "../data/emojiAssets.ts"
 import { hoverStepMs } from "../game/autoClick.ts"
 import type { ClickSource } from "../game/build.ts"
 import { hoverRate } from "../game/gold.ts"
-import { HOVER_MODES, getDeskPrefs, pokeDesk, subscribeDeskPrefs } from "../game/desk.ts"
+import { HOVER_MODES, getDeskPrefs, pokeDesk, reducedMotion, subscribeDeskPrefs } from "../game/desk.ts"
 import { ownsEverything } from "../game/nextUnlock.ts"
 import { eraOf, stageOf } from "../game/phase.ts"
 import { formatNumber } from "../game/format.ts"
@@ -90,7 +90,7 @@ function DropIcon({ drop, children }: { drop: Drop; children: ReactNode }) {
       opacity: f.o,
     }))
     // Reduced motion keeps a short, plain fall: the logo drops straight to the ground and goes, with no bounces.
-    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+    const still = reducedMotion()
     const first = frames[0]!
     const plain = [first, { offset: 1, transform: `translate(0px, ${drop.fall.toFixed(1)}px)`, opacity: 0 }]
     const run = el.animate(still ? plain : frames, { duration: still ? 900 : life, easing: "linear", fill: "forwards" })

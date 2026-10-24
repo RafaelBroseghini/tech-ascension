@@ -1992,7 +1992,7 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sticky-note { animation: none; }
+  :root:not([data-motion="full"]) .sticky-note { animation: none; }
 }
 
 /* Offline return, stuck to the editor pane. */
@@ -2058,7 +2058,7 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sticky-note { animation: none; }
+  :root:not([data-motion="full"]) .sticky-note { animation: none; }
 }
 
 /* ---------- phase economy ---------- */
@@ -2766,8 +2766,8 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .roster-feature img { animation: none; }
-  .roster-cell { transition: none; }
+  :root:not([data-motion="full"]) .roster-feature img { animation: none; }
+  :root:not([data-motion="full"]) .roster-cell { transition: none; }
 }
 
 /* ---------- generated resume modal ---------- */

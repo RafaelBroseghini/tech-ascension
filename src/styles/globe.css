@@ -606,8 +606,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mini-globe[data-alert="bad"]::after,
-  .globe-feed-item {
+  :root:not([data-motion="full"]) .mini-globe[data-alert="bad"]::after,
+  :root:not([data-motion="full"]) .globe-feed-item {
     animation: none;
   }
 }

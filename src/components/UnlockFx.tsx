@@ -61,7 +61,7 @@ function paletteOf(panel: HTMLElement, era: ReturnType<typeof eraOf>): Palette {
  * with a pulse of light and a small shake, and plays the flash and the two shockwaves (elements this component lays
  * out and styles). canvas-confetti throws the shards, stars and the fan. What this file decides is the choreography:
  * when each goes, how many, how far, and the colours, which come from the desk's theme. A phone also gets a short
- * buzz. Nothing runs under prefers-reduced-motion.
+ * buzz. Nothing runs when the player's motion setting says to hold still (the library's own reduced-motion switch is off: it would ignore the player's choice of full motion).
  */
 export function UnlockFx({ panelRef, hitboxRef }: { panelRef: RefObject<HTMLElement | null>; hitboxRef: RefObject<HTMLButtonElement | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -88,11 +88,11 @@ export function UnlockFx({ panelRef, hitboxRef }: { panelRef: RefObject<HTMLElem
       if (!canvas) return
       const confetti = await loadConfetti()
       if (!alive) return
-      const shoot = (fire ??= confetti.create(canvas, { resize: true, useWorker: true, disableForReducedMotion: true }))
+      const shoot = (fire ??= confetti.create(canvas, { resize: true, useWorker: true }))
       const k = unit / 192
       const colors = [palette.accent, palette.accent, palette.light]
       const big = kind === "unlock"
-      const base = { origin, colors, zIndex: 1, disableForReducedMotion: true }
+      const base = { origin, colors, zIndex: 1 }
       void shoot({ ...base, particleCount: big ? 46 : 22, spread: 360, startVelocity: 24 * k, gravity: 0.9, decay: 0.9, ticks: 110, scalar: 0.9 * k + 0.2, shapes: ["square"] })
       void shoot({ ...base, particleCount: big ? 12 : 6, spread: 360, startVelocity: 20 * k, gravity: 0.7, decay: 0.9, ticks: 120, scalar: 1.05 * k + 0.2, shapes: ["star"], colors: [palette.light, palette.accent] })
       if (big) {

@@ -7,7 +7,7 @@ import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
 import { PARADE_SOURCES, PARADE_STYLES } from "../data/paradeStyles.ts"
 import type { ParadeSourceId } from "../data/paradeStyles.ts"
 import { UI_FONTS } from "../data/uiFonts.ts"
-import { HOVER_MODES, setDeskPref } from "../game/desk.ts"
+import { HOVER_MODES, MOTION_MODES, setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
@@ -187,6 +187,27 @@ export function HoverModeList({ desk }: { desk: DeskPrefs }) {
           data-testid={`desk-hoverMode-${mode.id}`}
           title={mode.blurb}
           onClick={() => setDeskPref("hoverMode", mode.id)}
+        >
+          <span className="ide-theme-name">{mode.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function MotionModeList({ desk }: { desk: DeskPrefs }) {
+  return (
+    <div className="desk-toggles" role="listbox" aria-label="Motion">
+      {MOTION_MODES.map((mode) => (
+        <button
+          key={mode.id}
+          type="button"
+          role="option"
+          aria-selected={desk.motion === mode.id}
+          className={desk.motion === mode.id ? "ide-theme-option is-active" : "ide-theme-option"}
+          data-testid={`desk-motion-${mode.id}`}
+          title={mode.blurb}
+          onClick={() => setDeskPref("motion", mode.id)}
         >
           <span className="ide-theme-name">{mode.label}</span>
         </button>

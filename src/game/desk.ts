@@ -19,6 +19,14 @@ export const HOVER_MODES = [
 
 export type HoverMode = (typeof HOVER_MODES)[number]["id"]
 
+/** Whether the game honours the device's "reduce motion" request. Full motion is a choice the player makes here, since a device can ask for less without its owner knowing. */
+export const MOTION_MODES = [
+  { id: "system", label: "Follow system", blurb: "Do what your device's reduce-motion setting says." },
+  { id: "full", label: "Full motion", blurb: "Play every animation, even if your device asks for less." },
+] as const
+
+export type MotionMode = (typeof MOTION_MODES)[number]["id"]
+
 export type DeskPrefs = {
   music: boolean
   musicStyle: MusicStyleId
@@ -37,6 +45,7 @@ export type DeskPrefs = {
   /** When true, and every catalog row is owned, hovering the stage emoji clicks at the max rate. */
   hoverClick: boolean
   hoverMode: HoverMode
+  motion: MotionMode
   /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
   heroOffsetX: number
   heroOffsetY: number
@@ -55,6 +64,7 @@ const DEFAULTS: DeskPrefs = {
   paradeSource: "all",
   hoverClick: false,
   hoverMode: "auto",
+  motion: "system",
   heroOffsetX: 0,
   heroOffsetY: 0,
 }
@@ -63,6 +73,10 @@ const HERO_OFFSET_CLAMP = 280
 
 function parseHoverMode(value: unknown): HoverMode {
   return HOVER_MODES.find((mode) => mode.id === value)?.id ?? "auto"
+}
+
+function parseMotionMode(value: unknown): MotionMode {
+  return MOTION_MODES.find((mode) => mode.id === value)?.id ?? "system"
 }
 
 function parseHeroOffset(value: unknown): number {
@@ -98,6 +112,7 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
   next.paradeStyle = parseParadeStyleId((body as Record<string, unknown>).paradeStyle)
   next.paradeSource = parseParadeSourceId((body as Record<string, unknown>).paradeSource)
   next.hoverMode = parseHoverMode((body as Record<string, unknown>).hoverMode)
+  next.motion = parseMotionMode((body as Record<string, unknown>).motion)
   const catArt = (body as Record<string, unknown>).catArt
   next.catArt = isRosterCat(catArt) ? catArt : null
   next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
@@ -113,9 +128,23 @@ function writePrefs(value: DeskPrefs): void {
   writePref("desk", value)
 }
 
+/** The stylesheet's reduce-motion rules stand down on `data-motion="full"` (src/styles/motion.css and the rest). */
+function applyMotionMode(mode: MotionMode): void {
+  if (typeof document !== "undefined") document.documentElement.dataset.motion = mode
+}
+
 export function getDeskPrefs(): DeskPrefs {
-  if (!prefs) prefs = readPrefs()
+  if (!prefs) {
+    prefs = readPrefs()
+    applyMotionMode(prefs.motion)
+  }
   return prefs
+}
+
+/** True when the game should hold still: the device asks for reduced motion and the player has not chosen full motion. Every animation in the game asks this one function. */
+export function reducedMotion(): boolean {
+  if (getDeskPrefs().motion === "full") return false
+  return typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)
 }
 
 export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[K]): void {
@@ -123,6 +152,7 @@ export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[
   if (current[key] === value) return
   prefs = { ...current, [key]: value }
   writePrefs(prefs)
+  if (key === "motion") applyMotionMode(prefs.motion)
   for (const listener of prefListeners) listener()
   syncDeskAudio()
   if ((key === "clicks" && value) || (key === "clickKit" && prefs.clicks)) playCozyClick()

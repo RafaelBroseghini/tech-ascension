@@ -72,7 +72,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 - Tests sit next to the code as `*.test.ts`. Pin rules with numbers imported from the data modules. Store-level tests are `*.store.test.ts`.
 - Match the surrounding code: comment density, naming, idiom. Comments say why, not what.
 - No new dependencies without a reason; the repo already dropped unused ones.
-- Animation comes from libraries: Motion (`motion`) for movement, springs and sequences, canvas-confetti for particles. Do not hand-roll a particle system or a spring; our code picks colours (from the theme), counts, timing and origin. Load Motion only through `src/components/useMotion.ts` (one lazy chunk; never `motion/react`), and never wait on it: no Motion yet, no layout or reduced motion means the UI just changes. Details in `docs/GAMEPLAY.md` (the unlock celebration, Motion in the interface).
+- Animation comes from libraries: Motion (`motion`) for movement, springs and sequences, canvas-confetti for particles. Ask `reducedMotion()` (`src/game/desk.ts`) before animating, never `matchMedia` directly, and prefix a new CSS reduce-motion rule with `:root:not([data-motion="full"])`. Do not hand-roll a particle system or a spring; our code picks colours (from the theme), counts, timing and origin. Load Motion only through `src/components/useMotion.ts` (one lazy chunk; never `motion/react`), and never wait on it: no Motion yet, no layout or reduced motion means the UI just changes. Details in `docs/GAMEPLAY.md` (the unlock celebration, Motion in the interface).
 - Do not hand-edit `emojiManifest.json`; the generator overwrites it (`npm run generate:emojis`, see the emoji-gg skill).
 
 ## Where things are
