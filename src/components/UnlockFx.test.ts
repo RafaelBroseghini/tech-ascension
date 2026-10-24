@@ -35,10 +35,10 @@ describe("the unlock celebration", () => {
 
   const celebrate = () => act(() => useGame.setState((state) => ({ celebrationNonce: state.celebrationNonce + 1 })))
 
-  it("is a canvas the pointer cannot reach and a screen reader skips", () => {
-    const canvas = host.querySelector("canvas.unlock-fx")
-    expect(canvas).not.toBeNull()
-    expect(canvas?.getAttribute("aria-hidden")).toBe("true")
+  it("is a layer the pointer cannot reach and a screen reader skips", () => {
+    const layer = host.querySelector(".unlock-fx")
+    expect(layer?.querySelector("canvas")).not.toBeNull()
+    expect(layer?.getAttribute("aria-hidden")).toBe("true")
   })
 
   it("buzzes a phone once for an unlock, and treats two announcements of one moment as one", () => {

@@ -871,14 +871,54 @@ img { -webkit-user-drag: none; user-select: none; }
 
 .loot-xp { color: var(--accent-hi); font-size: 0.85rem; }
 
-/* The unlock celebration's canvas (UnlockFx.tsx): over the sprite, under the money pops, never takes a click. */
+/*
+ * The unlock celebration (UnlockFx.tsx): over the sprite, under the money pops, never takes a click. The flash and the
+ * two rings are elements Motion scales and fades; their colours are the era's glow, set by the component from the theme.
+ * canvas-confetti draws the shards on the canvas.
+ */
 .unlock-fx {
   position: absolute;
   inset: 0;
   z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+.unlock-flash,
+.unlock-wave {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  mix-blend-mode: var(--fx-blend, normal);
+}
+.unlock-flash {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--fx-light, #fff) 95%, transparent) 0%,
+    color-mix(in srgb, var(--fx-accent, #a6e3a1) 55%, transparent) 26%,
+    transparent 68%
+  );
+}
+.unlock-wave {
+  border: 2px solid color-mix(in srgb, var(--fx-light, #fff) 85%, transparent);
+  background: radial-gradient(
+    circle,
+    transparent 56%,
+    color-mix(in srgb, var(--fx-accent, #a6e3a1) 34%, transparent) 84%,
+    color-mix(in srgb, var(--fx-light, #fff) 60%, transparent) 98%,
+    transparent 100%
+  );
+  box-shadow: 0 0 18px color-mix(in srgb, var(--fx-accent, #a6e3a1) 50%, transparent);
+}
+.unlock-wave-far {
+  border-width: 1px;
+  background: radial-gradient(circle, transparent 66%, color-mix(in srgb, var(--fx-light, #fff) 26%, transparent) 92%, transparent 100%);
+  box-shadow: none;
+}
+.unlock-confetti {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
 }
 
 .plate {
