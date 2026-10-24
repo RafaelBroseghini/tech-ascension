@@ -6,8 +6,11 @@
  *  - idle life (side-to-side sway) is slow and never covers the UI
  *  - boost is a rim light on the sprite, never a screen shake
  *  - prefers-reduced-motion is a hard kill switch (bottom of file)
- * The click bump itself is driven from Stage.tsx via WAAPI so it can aim
- * at the pointer; its keyframes live there.
+ * The click bump itself is a Motion spring driven from Stage.tsx so it can aim
+ * at the pointer; the balance's squash, tick and count-up are Motion too
+ * (HeroMoney.tsx). Movement in components comes from `motion`, loaded lazily
+ * through src/components/useMotion.ts; this file keeps only the idle loops,
+ * the stage particles and the reduced-motion switch.
  */
 
 /*

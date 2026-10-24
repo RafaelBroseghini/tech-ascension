@@ -10,20 +10,16 @@ import { useGame } from "../game/store.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { useDeskMoneyHeroDrag } from "./useDeskMoneyHeroDrag.ts"
 import { useFeatureOpen } from "./useFeature.ts"
+import { motionReady, playing, prefersReducedMotion, tickUp } from "./useMotion.ts"
+import type { Playing } from "./useMotion.ts"
 
-const COUNT_UP_MS = 720
-const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
-
-/** easeOutBack: the running total overshoots its target by about a tenth of the jump, then settles. */
-function easeOutBack(t: number): number {
-  const c1 = 1.70158
-  const c3 = c1 + 1
-  return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2
-}
+const COUNT_UP_S = 0.72
 
 /**
  * Money shown on screen. Normally the live balance. After a large pop (gig clear, phase unlock) it counts up
  * from the pre-payout balance with overshoot, so the lump feels like it lands. Idle ticks never animate.
+ * Motion tweens the progress (0 to 1, backOut so it overshoots by about a tenth of the jump); the goal is read each
+ * frame, so income that lands during the count is not lost.
  */
 function useScore(target: number): number {
   const pop = useGame((state) => state.pop)
@@ -31,25 +27,34 @@ function useScore(target: number): number {
   useEffect(() => {
     targetRef.current = target
   })
-  const [tween, setTween] = useState<{ id: number; value: number } | null>(null)
-  const frame = useRef(0)
+  const [tween, setTween] = useState<number | null>(null)
+  // The pop whose count-up has ended. Until then the number reads from the pre-payout balance, even in the frame
+  // before the first tween value, so the full payout never shows early.
+  const [ended, setEnded] = useState(0)
+  // Without Motion (not loaded yet, or an offline chunk) the balance simply reads true.
+  const counting = pop !== null && pop.size === "large" && pop.amount > 0 && pop.id !== ended && motionReady() !== null && !prefersReducedMotion()
 
   useEffect(() => {
-    if (!pop || pop.size !== "large" || !(pop.amount > 0) || prefersReducedMotion()) return
+    const motion = motionReady()
+    if (!pop || !motion || pop.size !== "large" || !(pop.amount > 0) || prefersReducedMotion()) return
     const from = Math.max(0, targetRef.current - pop.amount)
-    const start = performance.now()
-    const step = (nowMs: number) => {
-      const t = Math.min(1, (nowMs - start) / COUNT_UP_MS)
-      const goal = targetRef.current
-      setTween({ id: pop.id, value: from + (goal - from) * easeOutBack(t) })
-      if (t < 1) frame.current = requestAnimationFrame(step)
-      else setTween(null)
+    const run = motion.animate(0, 1, {
+      duration: COUNT_UP_S,
+      ease: "backOut",
+      onUpdate: (progress) => setTween(from + (targetRef.current - from) * progress),
+      onComplete: () => {
+        setTween(null)
+        setEnded(pop.id)
+      },
+    })
+    return () => {
+      run.stop()
+      setTween(null)
     }
-    frame.current = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame.current)
   }, [pop])
 
-  return tween ? Math.max(0, Math.floor(tween.value)) : target
+  if (!counting) return target
+  return Math.max(0, Math.floor(tween ?? Math.max(0, target - pop.amount)))
 }
 
 type HeroMoneyProps = {
@@ -143,7 +148,8 @@ function HeroMoneyBody() {
   const buyStamp = useGame((state) => state.buyStamp)
   const pop = useGame((state) => state.pop)
   const valueRef = useRef<HTMLSpanElement>(null)
-  const squash = useRef<Animation | null>(null)
+  const squash = useRef<Playing | null>(null)
+  const tick = useRef<Playing | null>(null)
   const shownMoney = useScore(money)
   const shownXp = Math.floor(xp)
   const moneyText = formatNumber(shownMoney)
@@ -155,45 +161,41 @@ function HeroMoneyBody() {
   const moneyOpen = useFeatureOpen("money")
   const rates = production({ skills, equipment, owned, jobs, gigs, build }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
 
+  // A purchase ticks the balance: the digits roll up from below and flash the accent.
   useEffect(() => {
     const el = valueRef.current
-    if (!pop || !el || typeof el.animate !== "function" || prefersReducedMotion()) return
-    // Only the last squash can still be running. getAnimations() would flush style on every click.
-    const last = squash.current
-    if (last) {
-      last.finished.catch(() => {})
-      last.cancel()
-    }
+    if (!el || buyStamp === 0) return
+    // The tick and the squash both move the number's transform, so the newer of the two takes it over.
+    squash.current?.finish()
+    tick.current?.finish()
+    tick.current = tickUp(el)
+  }, [buyStamp])
+
+  useEffect(() => {
+    const el = valueRef.current
+    // Never waits for Motion: a pop before its chunk lands just goes without the squash.
+    const motion = pop && el ? motionReady() : null
+    if (!pop || !el || !motion || prefersReducedMotion()) return
+    squash.current?.finish()
+    tick.current?.finish()
     if (pop.size === "large") {
-      squash.current = el.animate(
-        [
-          { transform: "scale(1)", textShadow: "0 4px 0 var(--ink)" },
-          {
-            transform: "scale(1.42, 0.78) rotate(-2deg)",
-            textShadow: "-5px 0 var(--ide-red), 5px 0 var(--ide-sky), 0 4px 0 var(--ink)",
-            offset: 0.18,
-          },
-          {
-            transform: "scale(0.9, 1.22) rotate(1.5deg)",
-            textShadow: "-3px 0 var(--ide-red), 3px 0 var(--ide-sky), 0 4px 0 var(--ink)",
-            offset: 0.4,
-          },
-          { transform: "scale(1.08, 0.96)", textShadow: "-1px 0 var(--ide-red), 1px 0 var(--ide-sky), 0 4px 0 var(--ink)", offset: 0.65 },
-          { transform: "scale(1)", textShadow: "0 4px 0 var(--ink)" },
-        ],
-        { duration: 620, easing: "cubic-bezier(0.25, 0.9, 0.3, 1)" },
+      // The chromatic split has the same three shadows at every step so Motion can tween between them.
+      const split = (px: number) => `${-px}px 0 0 var(--ide-red), ${px}px 0 0 var(--ide-sky), 0 4px 0 var(--ink)`
+      const play = motion.animate(
+        el,
+        {
+          scaleX: [1, 1.42, 0.9, 1.08, 1],
+          scaleY: [1, 0.78, 1.22, 0.96, 1],
+          rotate: [0, -2, 1.5, 0, 0],
+          textShadow: [split(0), split(5), split(3), split(1), split(0)],
+        },
+        { duration: 0.62, times: [0, 0.18, 0.4, 0.65, 1], ease: [0.25, 0.9, 0.3, 1] },
       )
+      squash.current = playing(el, [play])
       return
     }
-    squash.current = el.animate(
-      [
-        { transform: "scale(1)" },
-        { transform: "scale(1.14, 0.9)", offset: 0.3 },
-        { transform: "scale(0.97, 1.06)", offset: 0.62 },
-        { transform: "scale(1)" },
-      ],
-      { duration: 190, easing: "ease-out" },
-    )
+    const play = motion.animate(el, { scaleX: [1, 1.14, 0.97, 1], scaleY: [1, 0.9, 1.06, 1] }, { duration: 0.19, times: [0, 0.3, 0.62, 1], ease: "easeOut" })
+    squash.current = playing(el, [play])
   }, [pop])
 
   if (!moneyOpen) {
@@ -213,13 +215,10 @@ function HeroMoneyBody() {
   return (
     <>
       <span
-        key={buyStamp}
         ref={valueRef}
         data-testid="money"
         data-feature-anchor="money"
-        className={["hero-money-value", buyStamp > 0 ? "tick-up" : "", moneyText.length > 11 ? "is-long" : ""]
-          .filter(Boolean)
-          .join(" ")}
+        className={["hero-money-value", moneyText.length > 11 ? "is-long" : ""].filter(Boolean).join(" ")}
       >
         ${moneyText}
       </span>
