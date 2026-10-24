@@ -1,13 +1,13 @@
 # Gameplay
 
-The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, jobs, gates), `src/data/gear.ts` and `src/data/capital.ts`. Every repeatable item costs `floor(base × 1.15 ^ owned)`. **The opening is compressed**: a gate under 60,000 lifetime XP asks for 15% of the number the tables write (`openingXp` in `src/data/costs.ts`; above the knee it asks the same less what the share saved, so the curve has no step), and the XP lumps on the jobs under it shrink with them. A player who follows the Next banner opens the Gig Board about 3 minutes in and the Job Board about 4 and a half (`docs/PACING.md`).
+The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, jobs, gates), `src/data/gear.ts` and `src/data/capital.ts`. Every repeatable item costs `floor(base × 1.15 ^ owned)`. **The opening is brought forward, not squeezed**: every gig asks for 9,900 XP less than the table writes (`openingGigXp` in `src/data/costs.ts`), so the Gig Board opens about three minutes in and a new gig follows every dozen seconds or so as before; the first seven job ranks follow a hand-set staircase (`openingJobXp`, one rank every 15 to 30 seconds), and the XP lumps on those rows shrink with it. Scaling every gate down instead packs the early gigs into seconds and reads as everything unlocking at once. A player who follows the Next banner opens the Gig Board about 3 minutes in and the Job Board about 4 and a half (`docs/PACING.md`).
 
 | Phase | Pays in | You buy | Opens when |
 | --- | --- | --- | --- |
 | **A Skill grind** | XP per click, no $/s | 104 skills (XP/click, XP/s). The used laptop is 90 XP; the ones after it take a lot of clicks | start |
-| **B Gigs** | first $ | 65 gigs: lump $ on clear, some add a retainer $/s | `openingXp(14,000)` lifetime XP and Portfolio (#15) + React (#16) owned |
-| **C Jobs** | salary $/s, and XP/s on some | 31 jobs (held once) | `openingXp(40,000)` lifetime XP and 6 gigs cleared |
-| **Gear** (shop tab, not a phase) | click bonus, $/s | 110 repeatable infra items (desk, Pi lab, GPUs, racks, cloud, Mars) | `openingXp(10,000)` lifetime XP. A row then shows once you have held its `unlockMoney` and, on later rows, its job |
+| **B Gigs** | first $ | 65 gigs: lump $ on clear, some add a retainer $/s | `openingGigXp(14,000)` lifetime XP and Portfolio (#15) + React (#16) owned |
+| **C Jobs** | salary $/s, and XP/s on some | 31 jobs (held once) | `openingJobXp(40,000)` lifetime XP and 6 gigs cleared |
+| **Gear** (shop tab, not a phase) | click bonus, $/s | 110 repeatable infra items (desk, Pi lab, GPUs, racks, cloud, Mars) | `GEAR_TAB_UNLOCK` lifetime XP (opens ahead of the Gig Board). A row then shows once you have held its `unlockMoney` and, on later rows, its job |
 | **D Capital** | heavy $/s | 25 rows, angel syndicate to Mars Holdings | the Senior job (id >= 14) OR $500,000 held at some point |
 
 ## The rules
@@ -52,7 +52,7 @@ The desk is earned, not handed over. A new career starts with the XP counter and
 | 2 min | Career log (the Git icon) | Git + GitHug hygiene (skill 5) | big |
 | 2 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 5) | standard |
 | 3 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
-| 2 min | Gear tab | `openingXp(10,000)` lifetime XP | standard |
+| 2 min | Gear tab | `GEAR_TAB_UNLOCK` lifetime XP | standard |
 | 3 min | Gig Board | its gate | the phase pop |
 | 3 min | Dollars: the $ counters | the first dollar | small |
 | 3 min | Rosters | the first gig | standard |

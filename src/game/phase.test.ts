@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
-import { openingXp } from "../data/costs.ts"
+import { openingGigXp, openingJobXp } from "../data/costs.ts"
 import { CAPITAL_UNLOCK, EQUIPMENT, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, MONEY_POP, SKILL_TIERS } from "../data/phases.ts"
 import { comboFactors, foundCombos } from "./combos.ts"
 import { clickFlat, clickPower, gigById, idlePerSec, jobById, nextCost, ownedCount } from "./economy.ts"
@@ -43,7 +43,7 @@ const EMPTY = { xpTotal: 0, peakMoney: 0, skills: {}, owned: {}, jobs: [] as num
 describe("phase gates", () => {
   it("opens the Gig Board at its lifetime XP with Portfolio (#15) and React (#16) owned", () => {
     const minXp = GIG_BOARD_UNLOCK.minXp
-    expect(GIG_BOARD_UNLOCK).toEqual({ minXp: openingXp(14000), requireOwnedSkills: [15, 16] })
+    expect(GIG_BOARD_UNLOCK).toEqual({ minXp: openingGigXp(14000), requireOwnedSkills: [15, 16] })
     const skills = { "15": 1, "16": 1 }
     expect(gigBoardUnlocked(EMPTY)).toBe(false)
     expect(gigBoardUnlocked({ ...EMPTY, xpTotal: minXp })).toBe(false)
@@ -55,7 +55,7 @@ describe("phase gates", () => {
 
   it("opens the Job Board at its lifetime XP and 6 completed gigs", () => {
     const minXp = JOB_BOARD_UNLOCK.minXp
-    expect(JOB_BOARD_UNLOCK).toEqual({ minXp: openingXp(40000), minGigsCompleted: 6 })
+    expect(JOB_BOARD_UNLOCK).toEqual({ minXp: openingJobXp(40000), minGigsCompleted: 6 })
     expect(jobBoardUnlocked({ ...EMPTY, xpTotal: minXp, gigs: [1, 2, 3, 4, 5] })).toBe(false)
     expect(jobBoardUnlocked({ ...EMPTY, xpTotal: minXp - 1, gigs: [1, 2, 3, 4, 5, 6] })).toBe(false)
     expect(jobBoardUnlocked({ ...EMPTY, xpTotal: minXp, gigs: [1, 2, 3, 4, 5, 6] })).toBe(true)
