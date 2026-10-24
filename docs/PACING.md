@@ -6,6 +6,10 @@ How many days of real time it takes to own everything, for someone who does not 
 
 A career now finishes on the later of two days: the day it owns everything and the day the product wins the world (8B users). The pace model prints both. The formula below is about the first.
 
+## The opening
+
+The first minutes are paced separately from the days below: the shop is the finish for every row of the table, but a new player decides in the first few minutes whether there is a second visit. The gates under 60,000 lifetime XP are compressed to 15% of what the tables write (`openingXp` in `src/data/costs.ts`), the first skills cost fewer clicks (`earlyGrind` in `src/data/phases.ts`) and the first eight skills pay their full XP/s. Playing it as the Next banner does (first copies of skills 1 to 16 in order, two clicks a second, buying as soon as it can), the first skills are bought by 2.6 minutes, the Gig Board opens at 3.0 and the Job Board at 4.5, against about 7 and 8.5 before. A player who instead buys every copy of every cheap skill in id order reaches them later, about 6 minutes, because the gate waits on Portfolio and React; the banner points at them. The tests that pin the gates import them from the data modules.
+
 ## The formula
 
 ```
@@ -43,11 +47,11 @@ Days of real time, from the model (`src/game/pace.ts`) and from the formula. Eac
 | Player | Visits | Minutes | Clicks/s | Idle share | Pace | Stacker: finish / owns everything / formula | One-of-each: finish / owns everything / formula | Hands-on to finish (stacker / one-of-each) | Longest wait, visits (stacker / one-of-each) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Left open, clicking in bursts | 24/day | 15 | 2 | 1.00 | 1.29 | 0.6 / 0.6 / 0.7 days | 0.4 / 0.4 / 0.6 days | 3.8 h / 2.5 h | 1 / 0 |
-| Hardcore | 6/day | 20 | 3 | 1.00 | 1.14 | 0.8 / 0.8 / 0.8 days | 0.7 / 0.7 / 0.7 days | 100 min / 80 min | 0 / 0 |
+| Hardcore | 6/day | 20 | 3 | 1.00 | 1.14 | 0.8 / 0.8 / 0.8 days | 0.5 / 0.5 / 0.7 days | 100 min / 62 min | 0 / 0 |
 | Regular | 3/day | 15 | 2 | 1.00 | 1.04 | 1.0 / 1.0 / 0.9 days | 1.0 / 0.7 / 0.8 days | 46 min / 45 min | 0 / 0 |
 | Commuter | 2/day | 10 | 2 | 0.68 | 0.70 | 1.5 / 1.5 / 1.3 days | 2.0 / 1.5 / 1.1 days | 31 min / 40 min | 0 / 0 |
 | Daily | 1/day | 30 | 2 | 0.35 | 0.38 | 2.1 / 2.0 / 2.4 days | 3.0 / 3.0 / 2.1 days | 62 min / 90 min | 0 / 0 |
-| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 3.1 / 3.0 / 2.6 days | 4.0 / 3.0 / 2.3 days | 31 min / 40 min | 0 / 0 |
+| Daily, short | 1/day | 10 | 2 | 0.34 | 0.35 | 3.0 / 3.0 / 2.6 days | 4.0 / 3.0 / 2.3 days | 30 min / 40 min | 0 / 0 |
 | Every other day | 0.5/day | 30 | 2 | 0.18 | 0.19 | 6.0 / 6.0 / n/a days | 6.0 / 6.0 / 4.2 days | 90 min / 90 min | 0 / 0 |
 | Weekly | 0.14/day | 30 | 2 | 0.05 | 0.05 | 21.0 / 21.0 / n/a days | 35.0 / 35.0 / 14.8 days | 90 min / 2.5 h | 0 / 0 |
 

@@ -88,6 +88,7 @@ describe("the career log rows", () => {
       event: "event:1",
       review: "review:1",
       milestone: "milestone:money-1337",
+      year: "year:first-job",
     }
     for (const type of CAREER_TYPES) {
       const row = describeEntry({ seq: 1, at, type, ref: refs[type] ?? "", money: 0, xpTotal: 0 })

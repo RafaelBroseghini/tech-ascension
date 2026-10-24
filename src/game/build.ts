@@ -6,7 +6,7 @@
  */
 import { highestJobRank, firstJobAtRank, JOB_TIERS } from "../data/phases.ts"
 import type { JobTier } from "../data/phases.ts"
-import { isOriginId } from "../data/origins.ts"
+import { isOriginId, ORIGIN_ASK_XP } from "../data/origins.ts"
 import type { OriginId } from "../data/origins.ts"
 import { isLeadId, LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
@@ -63,13 +63,18 @@ export const buildFactsOf = (p: HasBuild & { jobs: readonly number[]; equipment?
 
 export const leadOf = (p: HasBuild): LeadId | null => p.build?.leadership ?? null
 
-/** The origin pick is open until the career has earned anything (no XP, no gig, no job): the start card can change its mind until the first click, and it is locked after. */
-export function originPickOpen(p: { xpTotal: number; gigs: readonly number[]; jobs: readonly number[] }): boolean {
-  return p.xpTotal === 0 && p.gigs.length === 0 && p.jobs.length === 0
+/** The origin pick is open until the first gig is cleared or the first job held: the career has by then paid for it. */
+export function originPickOpen(p: { gigs: readonly number[]; jobs: readonly number[] }): boolean {
+  return p.gigs.length === 0 && p.jobs.length === 0
 }
 
-export function canPickOrigin(p: HasBuild & { xpTotal: number; gigs: readonly number[]; jobs: readonly number[] }, id: unknown): id is OriginId {
+export function canPickOrigin(p: HasBuild & { gigs: readonly number[]; jobs: readonly number[] }, id: unknown): id is OriginId {
   return isOriginId(id) && originPickOpen(p)
+}
+
+/** The career has kept its handle, has learned a little, and has not said where it came from: the origin card is up. */
+export function originDue(p: HasBuild & { profile: { chosen: boolean }; xpTotal: number; gigs: readonly number[]; jobs: readonly number[] }): boolean {
+  return p.profile.chosen && originOf(p) === null && p.xpTotal >= ORIGIN_ASK_XP && originPickOpen(p)
 }
 
 /** The career's origin, or null for none. */

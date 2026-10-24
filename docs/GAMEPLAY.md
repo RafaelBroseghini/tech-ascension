@@ -1,13 +1,13 @@
 # Gameplay
 
-The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, jobs, gates), `src/data/gear.ts` and `src/data/capital.ts`. Every repeatable item costs `floor(base × 1.15 ^ owned)`.
+The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, jobs, gates), `src/data/gear.ts` and `src/data/capital.ts`. Every repeatable item costs `floor(base × 1.15 ^ owned)`. **The opening is compressed**: a gate under 60,000 lifetime XP asks for 15% of the number the tables write (`openingXp` in `src/data/costs.ts`; above the knee it asks the same less what the share saved, so the curve has no step), and the XP lumps on the jobs under it shrink with them. A player who follows the Next banner opens the Gig Board about 3 minutes in and the Job Board about 4 and a half (`docs/PACING.md`).
 
 | Phase | Pays in | You buy | Opens when |
 | --- | --- | --- | --- |
 | **A Skill grind** | XP per click, no $/s | 104 skills (XP/click, XP/s). The used laptop is 90 XP; the ones after it take a lot of clicks | start |
-| **B Gigs** | first $ | 65 gigs: lump $ on clear, some add a retainer $/s | 14,000 lifetime XP and Portfolio (#15) + React (#16) owned |
-| **C Jobs** | salary $/s, and XP/s on some | 31 jobs (held once) | 40,000 lifetime XP and 6 gigs cleared |
-| **Gear** (shop tab, not a phase) | click bonus, $/s | 110 repeatable infra items (desk, Pi lab, GPUs, racks, cloud, Mars) | 10,000 lifetime XP. A row then shows once you have held its `unlockMoney` and, on later rows, its job |
+| **B Gigs** | first $ | 65 gigs: lump $ on clear, some add a retainer $/s | `openingXp(14,000)` lifetime XP and Portfolio (#15) + React (#16) owned |
+| **C Jobs** | salary $/s, and XP/s on some | 31 jobs (held once) | `openingXp(40,000)` lifetime XP and 6 gigs cleared |
+| **Gear** (shop tab, not a phase) | click bonus, $/s | 110 repeatable infra items (desk, Pi lab, GPUs, racks, cloud, Mars) | `openingXp(10,000)` lifetime XP. A row then shows once you have held its `unlockMoney` and, on later rows, its job |
 | **D Capital** | heavy $/s | 25 rows, angel syndicate to Mars Holdings | the Senior job (id >= 14) OR $500,000 held at some point |
 
 ## The rules
@@ -24,7 +24,7 @@ The economy is phase-gated. Numbers live in `src/data/phases.ts` (skills, gigs, 
 
 ## Shop
 
-Six tabs: Skills, Gigs, Jobs (roles only), Gear (repeatable infra, grouped by kind), Capital (with era sub-tabs), and Company (your product's globe, world and hires; see Your company below). Gear opens at 10,000 lifetime XP, ahead of the Gig Board, because its first rows cost a few hundred dollars. Closed boards stay out of the tab bar until they are the next one to open; that one waits there dimmed and, when picked, shows what it needs, with the requirements ticking off. A newly opened phase takes over the tab (Gear never does, it is not a phase). Each list shows what you own plus the next thing you do not, even while that next row is still locked. New rows carry a `New` tag.
+Six tabs: Skills, Gigs, Jobs (roles only), Gear (repeatable infra, grouped by kind), Capital (with era sub-tabs), and Company (your product's globe, world and hires; see Your company below). Gear opens at `openingXp(10,000)` lifetime XP, ahead of the Gig Board, because its first rows cost a few hundred dollars. Closed boards stay out of the tab bar until they are the next one to open; that one waits there dimmed and, when picked, shows what it needs, with the requirements ticking off. A newly opened phase takes over the tab (Gear never does, it is not a phase). Each list shows what you own plus the next thing you do not, even while that next row is still locked. New rows carry a `New` tag.
 
 **No bars.** A locked row says what it is waiting on in words (`More lifetime XP`, `More skills`, `A bigger balance`, `the Senior SWE job`), never how much is left, and there is no progress bar anywhere: knowing the exact gap turns the game into watching a number, and the loop is to click, shop and leave. A locked row's button reads "Locked" instead of a price, so an XP price is never mistaken for the lifetime XP that opens the row; the price appears once the row is open, and a row you can afford lights up. Switching to a tab scrolls its list to the bottom, where the newest rows are.
 
@@ -32,26 +32,36 @@ Six tabs: Skills, Gigs, Jobs (roles only), Gear (repeatable infra, grouped by ki
 
 The logic is `nextUnlock(progress, tab)` in `src/game/nextUnlock.ts`. Without a `tab` it gives the single next thing across the whole game (skills first, then closed boards, then each catalog in order), and that is what `__GAME__.getState().nextUnlock` returns.
 
+## Where you came from
+
+The start card is three beats (the handle, the product, the bet) and no longer asks for an origin. A minute in, at `ORIGIN_ASK_XP` lifetime XP (`src/data/origins.ts`) and with the handle kept, a card opens with the three origins and cannot be waved away: Escape and the backdrop do nothing, and the button waits on a pick (`src/components/OriginPick.tsx`, `originDue` in `src/game/build.ts`). The pick is the career's first real choice and is kept for the career. It stays open (through `pickOrigin`) until the first gig is cleared or the first job held. A career that never kept its handle (an agent's bare `keepProfile`) is asked as soon as it has the XP; call `pickOrigin` or leave the card up.
+
+## Career years
+
+The game has a calendar of its own: the career's **year**, read off lifetime XP by `careerYear` in `src/game/careerYear.ts` (no save field, it never falls). The stretch before the first job is school and freelancing (the Gig Board is the start of Year 3, the internship of Year 5), then each rung of the ladder is a year or more, to Year 34 at the top. The status bar shows `Year N`, and the career log opens with the year and the next three **marks** the career's path has coming.
+
+A mark is a moment on the calendar (`src/data/careerYears.ts`, a drop-in table): shared ones (a client who pays, a real badge, Senior), an origin's own (College: orientation, the thesis, graduation; Bootcamp: demo day, two hundred applications; Dropout: the withdrawal form, the founder's DM, the pivot) and a leadership line's (IC: the design doc everyone cites; Manager: a first direct report). When the year reaches one it is journaled as a `year` line (`Year 5: A real badge`) and toasted once. Picking the origin after the year passed some of its marks catches them up, and a reload never repeats one.
+
 ## Career timeline
 
 The desk is earned, not handed over. A new career starts with the XP counter and the Skills tab; everything else arrives at a career moment that explains it. The table is `src/data/features.ts` (a drop-in file), the gates are `src/game/features.ts`. Times are for a player clicking twice a second.
 
 | When | What appears | Trigger | Reveal |
 | --- | --- | --- | --- |
-| 10 min | Your company: the activity-bar globe button. The globe sits bottom left of the desk and each cleared gig seeded users in its client's region, and they spread from there as locations and gear allow. Its card's Try it opens the shop's Company tab | The first job (the internship). The Gear tab lists the next serving row (Cloud and below) beside the next desk row from this moment | big |
-| 4 min | Career log (the Git icon) | Git + GitHug hygiene (skill 5) | big |
-| 4 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 5) | standard |
-| 8 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
-| 8 min | Gear tab | 10,000 lifetime XP | standard |
-| 9 min | Gig Board | its gate | the phase pop |
-| 9 min | Dollars: the $ counters | the first dollar | small |
-| 9 min | Rosters | the first gig | standard |
-| 10 min | Job Board | its gate | the phase pop |
-| 10 min | Metrics | the first job | standard |
+| 5 min | Your company: the activity-bar globe button. The globe sits bottom left of the desk and each cleared gig seeded users in its client's region, and they spread from there as locations and gear allow. Its card's Try it opens the shop's Company tab | The first job (the internship). The Gear tab lists the next serving row (Cloud and below) beside the next desk row from this moment | big |
+| 2 min | Career log (the Git icon) | Git + GitHug hygiene (skill 5) | big |
+| 2 min | GitHug profile, and the star for the real repo | Git + GitHug hygiene (skill 5) | standard |
+| 3 min | LinkedOut profile | Portfolio site live (skill 15) | standard |
+| 2 min | Gear tab | `openingXp(10,000)` lifetime XP | standard |
+| 3 min | Gig Board | its gate | the phase pop |
+| 3 min | Dollars: the $ counters | the first dollar | small |
+| 3 min | Rosters | the first gig | standard |
+| 5 min | Job Board | its gate | the phase pop |
+| 5 min | Metrics | the first job | standard |
 | 10 min | Click sounds, editor themes | Thocky keyboard, Drawing tablet (UI) | small |
 | 20 min | 10x dev skills | the first 10x dev row in reach (Overnight Cron, 100,000 lifetime XP; Hover Tap, 20,000, also waits for a Senior SWE job) | standard |
 | on a 10x dev skill | Auto-click | a hover skill (or every catalog row) | standard |
-| 10 min | Desk cat | the first job | big |
+| 5 min | Desk cat | the first job | big |
 | ~28 min | Music | Noise-cancelling headset | standard |
 | second visit | Capital | its gate | the phase pop |
 

@@ -1,18 +1,17 @@
 import { Dices } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { ORIGINS } from "../data/origins.ts"
 import { initialOf } from "../game/identity.ts"
 import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useAdmin } from "./useExit.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
 
-const STEPS = 4
+const STEPS = 3
 
 /**
  * The first thing a new career sees, in three beats on one card: who you are (the handle it drew), what you are building
- * (the product named after its animal) and the bet. Each draw has its own Reroll; Start keeps both for good. Nothing is
+ * (the product named after its animal) and the bet. Where you came from is asked a minute into the game, by `OriginPick`. Each draw has its own Reroll; Start keeps both for good. Nothing is
  * typed. Esc and the backdrop keep what is on screen too.
  */
 export function IdentityPicker() {
@@ -29,9 +28,7 @@ function IdentityCard() {
   const reroll = useGame((state) => state.rerollProfile)
   const rerollProduct = useGame((state) => state.rerollProduct)
   const keep = useGame((state) => state.keepProfile)
-  const origin = useGame((state) => state.build.origin ?? null)
-  const pickOrigin = useGame((state) => state.pickOrigin)
-  // A later career keeps the handle: its card opens on the origin beat, with no handle to draw.
+  // A later career keeps the handle: its card opens on the product beat, with no handle to draw.
   const first = useGame((state) => (state.legacy.runs > 1 ? 1 : 0))
   const [step, setStep] = useState(first)
   const mainRef = useRef<HTMLButtonElement>(null)
@@ -81,32 +78,6 @@ function IdentityCard() {
         {step === 1 ? (
           <>
             <h2 id="identity-title" className="event-title">
-              Where you start
-            </h2>
-            <div className="identity-origins" role="radiogroup" aria-label="Origin" data-testid="identity-origins">
-              {ORIGINS.map((row) => (
-                <button
-                  key={row.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={origin === row.id}
-                  className={origin === row.id ? "identity-origin is-on" : "identity-origin"}
-                  data-testid={`identity-origin-${row.id}`}
-                  onClick={() => pickOrigin(row.id)}
-                >
-                  <strong>{row.name}</strong>
-                  <span>{row.blurb}</span>
-                  <small className="identity-origin-up">{row.upside}</small>
-                  <small className="identity-origin-cost">{row.cost}</small>
-                  <small className="identity-origin-leans">{`Leans toward ${row.leans}`}</small>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : null}
-        {step === 2 ? (
-          <>
-            <h2 id="identity-title" className="event-title">
               What you're building
             </h2>
             <div className="identity-draw" aria-live="polite" key={profile.product}>
@@ -119,7 +90,7 @@ function IdentityCard() {
             </p>
           </>
         ) : null}
-        {step === 3 ? (
+        {step === 2 ? (
           <>
             <h2 id="identity-title" className="event-title">
               The bet
@@ -140,7 +111,7 @@ function IdentityCard() {
               Back
             </button>
           ) : null}
-          {step === 0 || step === 2 ? (
+          {step === 0 || step === 1 ? (
             <button
               type="button"
               className="event-choice event-no identity-reroll"
@@ -156,7 +127,7 @@ function IdentityCard() {
               Start as @{profile.handle}
             </button>
           ) : (
-            <button ref={mainRef} type="button" className="event-choice event-yes" data-testid="identity-next" disabled={step === 1 && origin === null} onClick={() => setStep(step + 1)}>
+            <button ref={mainRef} type="button" className="event-choice event-yes" data-testid="identity-next" onClick={() => setStep(step + 1)}>
               Next
             </button>
           )}

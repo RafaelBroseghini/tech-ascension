@@ -33,6 +33,7 @@ import { shipLaunches, shipsLaunches } from "./launch.ts"
 import { servableUsers } from "./globe/load.ts"
 import { gigLump, skillPriceMult } from "./origin.ts"
 import type { OriginId } from "../data/origins.ts"
+import { markYear, reachedMarks } from "./careerYear.ts"
 import { canPickOrigin, originOf, leadOf, omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
 import type { LeadId } from "../data/leadership.ts"
@@ -1191,6 +1192,30 @@ useGame.subscribe((state, prev) => {
     if (returning && live.toast && names.length > 0) patch.toast = { ...live.toast, unlocked: [...(live.toast.unlocked ?? []), ...names] }
   }
   useGame.setState(patch)
+})
+
+// The career's calendar: a mark lands in the log, with a toast, the moment the career's year reaches it. The journal says
+// which marks are already down, so a reload or a pick of origin catches up on what was passed and never repeats a line.
+let marksLogged = 0
+useGame.subscribe((state, prev) => {
+  if (state.xpTotal === prev.xpTotal && state.build.origin === prev.build.origin && state.build.leadership === prev.build.leadership) return
+  const reached = reachedMarks(state.xpTotal, state.build.origin, state.build.leadership)
+  if (reached.length <= marksLogged) {
+    marksLogged = reached.length
+    return
+  }
+  const down = new Set(state.journal.entries.filter((entry) => entry.type === "year").map((entry) => entry.ref))
+  const fresh = reached.filter((mark) => mark.at > 0 && !down.has(`year:${mark.id}`))
+  marksLogged = reached.length
+  if (fresh.length === 0) return
+  const notes: CareerNote[] = fresh.map((mark) => ({ type: "year", ref: `year:${mark.id}`, data: { year: markYear(mark) } }))
+  const last = fresh[fresh.length - 1]!
+  const live = useGame.getState()
+  const toastSeq = live.toastSeq + 1
+  useGame.setState({
+    journal: noted(live.journal, notes, live),
+    ...(live.toast?.note ? {} : { toast: { id: toastSeq, text: `Year ${markYear(last)}: ${last.title}` }, toastSeq }),
+  })
 })
 
 // A save from before the kitchen already holds some ingredients: its combos are found once, at boot, and journaled.

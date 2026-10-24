@@ -37,7 +37,7 @@ The endgame is also a wait. Most of a career is the last capital row (6.6 days o
 
 ## 1. Origin
 
-Picked on the start card, after the handle, once per career. Each origin replaces the first few shared skills with about six of its own, and has its own first job.
+Picked a minute into the game, on a card that opens after the first skill (`ORIGIN_ASK_XP`), once per career. Each origin replaces the first few shared skills with about six of its own, and has its own first job.
 
 | Origin | Its own rows (sample) | First job | Upside | Cost | Leans toward |
 | --- | --- | --- | --- | --- | --- |

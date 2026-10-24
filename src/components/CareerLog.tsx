@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { agoLabel, describeEntry } from "../game/careerLog.ts"
 import { progressOf } from "../game/careerSync.ts"
+import { markById, upcomingMarks, yearNumber } from "../game/careerYear.ts"
 import { upNext } from "../game/features.ts"
 import { useGame } from "../game/store.ts"
 import { useAdmin } from "./useFeature.ts"
@@ -31,6 +32,37 @@ function useMinuteClock(): number {
 
 const HISTORY_STEP = 150
 
+/** Where the career is in years, and the next marks its path has coming. One string, so it re-renders only when a year or a mark changes. */
+function yearsKey(state: ReturnType<typeof useGame.getState>): string {
+  const ahead = upcomingMarks(state.xpTotal, state.build.origin, state.build.leadership, 3).map((mark) => mark.id)
+  return JSON.stringify({ year: yearNumber(state.xpTotal), ahead })
+}
+
+function CareerYears() {
+  const key = useGame(yearsKey)
+  const { year, ahead } = JSON.parse(key) as { year: number; ahead: string[] }
+  return (
+    <section aria-label="Career years" data-testid="career-years">
+      <p className="career-log-sec">
+        Year <span data-testid="career-year">{year}</span>
+      </p>
+      {ahead.length > 0 ? (
+        <ol className="career-log-list is-next" data-testid="career-years-next">
+          {ahead.map((id) => {
+            const mark = markById(id)
+            return mark ? (
+              <li key={id} data-mark={id}>
+                <b>{mark.title}</b>
+                <small>{`Year ${Math.floor(mark.at) + 1} · ${mark.blurb}`}</small>
+              </li>
+            ) : null
+          })}
+        </ol>
+      ) : null}
+    </section>
+  )
+}
+
 /** The Git view of the sidebar: what unlocks next, then the career as commits, newest on top. */
 export function CareerLog() {
   const entries = useGame((state) => state.journal.entries)
@@ -47,6 +79,7 @@ export function CareerLog() {
         <p className="ide-tree-title">Career log</p>
       </div>
       <div className="career-log-scroll">
+        <CareerYears />
         {up.length > 0 ? (
           <section aria-label="Up next">
             <p className="career-log-sec">Up next</p>

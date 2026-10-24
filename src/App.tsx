@@ -9,6 +9,7 @@ import { Toast } from "./components/Toast.tsx"
 import { UnlockReveals } from "./components/UnlockReveals.tsx"
 import { ExitHeadline } from "./components/ExitPanel.tsx"
 import { IdentityPicker } from "./components/IdentityPicker.tsx"
+import { OriginPick } from "./components/OriginPick.tsx"
 import { UI_ICON } from "./components/icons/ui.tsx"
 import { highestOwnedCapital } from "./game/economy.ts"
 import { readShopPanelOpen, subscribeShopPanelOpen, writeShopPanelOpen } from "./game/shopPanelPrefs.ts"
@@ -65,6 +66,7 @@ export default function App() {
         <ReviewModal />
         <UnlockReveals />
         <IdentityPicker />
+        <OriginPick />
         <ExitHeadline />
       </div>
     </>
