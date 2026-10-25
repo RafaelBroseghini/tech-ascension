@@ -19,6 +19,8 @@ export type Notification = {
   blurb: string
   /** Where "Open" goes. Null for rows with no place of their own (a board, a milestone). */
   surface: Surface | null
+  /** The settings rows "Open" goes to first, most exact first (see `settingsTargetsOf`). Null when it lives elsewhere. */
+  settings: string[] | null
 }
 
 /** Feature ids that are also surfaces the desk can open. */
@@ -30,6 +32,36 @@ export function surfaceOf(id: string): Surface | null {
   if (!row) return null
   if (row.parent) return surfaceOf(row.parent)
   return SURFACES.has(id) ? (id as Surface) : null
+}
+
+/** Rows that live in the settings menu, by the marks to look for there. */
+const SETTINGS_TARGETS: Record<string, string[]> = {
+  clickKits: ["kit", "clicks"],
+  themes: ["theme"],
+  music: ["music", "music-style"],
+  parade: ["parade-source", "parade"],
+  hoverClick: ["hoverClick"],
+  cat: ["cat"],
+  rosters: ["rosters"],
+}
+
+/** Where a cosmetic's option sits after its own mark: its picker's section, then the switch that shows it. */
+const PICKER_TARGETS: Record<string, string[]> = {
+  clickKits: ["kit", "clicks"],
+  themes: ["theme"],
+  music: ["music-style", "music"],
+}
+
+/**
+ * Where a row sits in the settings menu, most exact first: a cosmetic's own option, then its picker's section, then
+ * the switch that shows the section (the click kits hide while click sounds are off). Null for rows outside settings.
+ */
+export function settingsTargetsOf(id: string): string[] | null {
+  const row = featureById(id)
+  if (!row) return null
+  const targets = row.parent ? PICKER_TARGETS[row.parent] : SETTINGS_TARGETS[id]
+  if (!targets) return null
+  return row.parent ? [id, ...targets] : [...targets]
 }
 
 /** A board that changes the phase is journaled as a phase entry ("phase:B"), not an unlock, so map it back to its row. */
@@ -51,12 +83,12 @@ export function notificationsOf(entries: readonly CareerEntry[], admin: boolean)
     const entry = entries[i]
     if (!entry || entry.data?.backfill === true) continue
     if (entry.type === "milestone" || (entry.type === "world" && entry.ref === "world:won")) {
-      out.push({ seq: entry.seq, at: entry.at, id: entry.ref, name: describeEntry(entry).title, blurb: describeEntry(entry).detail, surface: null })
+      out.push({ seq: entry.seq, at: entry.at, id: entry.ref, name: describeEntry(entry).title, blurb: describeEntry(entry).detail, surface: null, settings: null })
       continue
     }
     const row = featureOf(entry)
     if (!row || (row.admin && !admin)) continue
-    out.push({ seq: entry.seq, at: entry.at, id: row.id, name: entry.type === "unlock" ? describeEntry(entry).title : row.name, blurb: row.blurb, surface: surfaceOf(row.id) })
+    out.push({ seq: entry.seq, at: entry.at, id: row.id, name: entry.type === "unlock" ? describeEntry(entry).title : row.name, blurb: row.blurb, surface: surfaceOf(row.id), settings: settingsTargetsOf(row.id) })
   }
   return out
 }

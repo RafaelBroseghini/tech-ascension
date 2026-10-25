@@ -34,3 +34,20 @@ export function onSurface(id: Surface, listener: () => void): () => void {
     set.delete(listener)
   }
 }
+
+/**
+ * Asks the settings menu to open on one row. `targets` are its `data-settings-target` marks, most exact first: a
+ * picked kit, then its section, then the switch that shows that section. False when no menu took the request.
+ */
+let settingsListener: ((targets: readonly string[]) => boolean) | null = null
+
+export function openSettingsAt(targets: readonly string[]): boolean {
+  return settingsListener ? settingsListener(targets) : false
+}
+
+export function onSettingsAt(listener: (targets: readonly string[]) => boolean): () => void {
+  settingsListener = listener
+  return () => {
+    if (settingsListener === listener) settingsListener = null
+  }
+}

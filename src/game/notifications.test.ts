@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { FEATURES } from "../data/features.ts"
 import { appendNotes, emptyJournal } from "./careerLog.ts"
 import type { CareerNote } from "./careerLog.ts"
-import { notificationsOf, surfaceOf, unreadCount } from "./notifications.ts"
+import { notificationsOf, settingsTargetsOf, surfaceOf, unreadCount } from "./notifications.ts"
 
 const journal = (notes: CareerNote[]) => appendNotes(emptyJournal(), notes, { money: 0, xpTotal: 0 }, 1_000).entries
 
@@ -53,5 +53,24 @@ describe("the notification history", () => {
     const kit = FEATURES.find((row) => row.parent === "clickKits")
     expect(kit && surfaceOf(kit.id)).toBe("clickKits")
     expect(surfaceOf("boardGigs")).toBeNull()
+  })
+
+  it("sends a cosmetic to its own option in settings, then its section, then the switch that shows it", () => {
+    const kit = FEATURES.find((row) => row.parent === "clickKits")
+    const theme = FEATURES.find((row) => row.parent === "themes")
+    const style = FEATURES.find((row) => row.parent === "music")
+    if (!kit || !theme || !style) throw new Error("expected a kit, a theme and a music style row")
+    expect(settingsTargetsOf(kit.id)).toEqual([kit.id, "kit", "clicks"])
+    expect(settingsTargetsOf(theme.id)).toEqual([theme.id, "theme"])
+    expect(settingsTargetsOf(style.id)).toEqual([style.id, "music-style", "music"])
+  })
+
+  it("sends settings rows to settings and the rest to their own surface", () => {
+    expect(settingsTargetsOf("rosters")).toEqual(["rosters"])
+    expect(settingsTargetsOf("themes")).toEqual(["theme"])
+    expect(settingsTargetsOf("linkedout")).toBeNull()
+    expect(settingsTargetsOf("githug")).toBeNull()
+    const entries = journal([{ type: "unlock", ref: "linkedout" }])
+    expect(notificationsOf(entries, false)[0]).toMatchObject({ surface: "linkedout", settings: null })
   })
 })

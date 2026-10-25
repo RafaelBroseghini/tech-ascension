@@ -302,6 +302,13 @@ img { -webkit-user-drag: none; user-select: none; }
   margin: 0;
 }
 
+/* The row a notification opened settings on, ringed until focus moves off it. */
+[data-settings-target][data-sought] {
+  outline: 2px solid var(--ide-green);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .ide-settings { position: relative; }
 
 .ide-settings-section-panel {
