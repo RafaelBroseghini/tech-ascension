@@ -5,7 +5,7 @@ import type { FeatureId } from "../data/features.ts"
 import { agoLabel } from "../game/careerLog.ts"
 import { notificationsOf, unreadCount } from "../game/notifications.ts"
 import { useGame } from "../game/store.ts"
-import { openSurface } from "../game/surfaces.ts"
+import { openSettingsAt, openSurface } from "../game/surfaces.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { useAdmin } from "./useFeature.ts"
 import { useFocusTrap } from "./useFocusTrap.ts"
@@ -94,7 +94,7 @@ function NotificationsModal({ list, onClose }: { list: ReturnType<typeof notific
         </header>
         <ol className="career-log-list notifications-list" data-testid="notifications-list">
           {list.map((item) => {
-            const surface = item.surface
+            const { surface, settings } = item
             return (
               <li key={item.seq} data-tone="unlock" className={fresh.includes(item.id) ? "is-new" : undefined}>
                 <b>
@@ -105,14 +105,16 @@ function NotificationsModal({ list, onClose }: { list: ReturnType<typeof notific
                   {item.blurb ? `${item.blurb} · ` : ""}
                   {agoLabel(item.at, now)}
                 </small>
-                {surface ? (
+                {surface || settings ? (
                   <button
                     type="button"
                     className="notifications-open"
                     onClick={() => {
                       seeFeature(item.id as FeatureId)
                       onClose()
-                      openSurface(surface)
+                      // A row kept in settings opens the menu on itself; the menu declines what it does not hold here.
+                      if (settings && openSettingsAt(settings)) return
+                      if (surface) openSurface(surface)
                     }}
                   >
                     Open

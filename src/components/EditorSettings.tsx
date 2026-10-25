@@ -8,7 +8,7 @@ import { UI_ICON, UI_ICON_SM } from "./icons/ui.tsx"
 import type { CSSProperties, ReactNode } from "react"
 import { deskCatEmojiUrl } from "../data/emojiAssets.ts"
 import { ideThemeStyle, ideThemesOf } from "../data/ideThemes.ts"
-import { HOVER_MODES, getDeskPrefs, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
+import { HOVER_MODES, getDeskPrefs, reducedMotion, setDeskPref, subscribeDeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
 import { clearIdeThemePreview, getSavedIdeTheme, previewIdeTheme, setIdeTheme, subscribeIdeTheme } from "../game/ideTheme.ts"
@@ -18,7 +18,7 @@ import { ownsEverything } from "../game/nextUnlock.ts"
 import { paradeCounts as countParadeGifs } from "../game/paradePool.ts"
 import { useGame } from "../game/store.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
-import { useFeatureOpen, useFresh, useSurface, useUnlockedSet } from "./useFeature.ts"
+import { useFeatureOpen, useFresh, useSettingsAt, useSurface, useUnlockedSet } from "./useFeature.ts"
 import { useNarrow } from "./useNarrow.ts"
 import { HoverModeList, MotionModeList, ParadeSourceList, ParadeStyleList, UiFontList } from "./deskSettingsPanels.tsx"
 import { useParadeProgress } from "./useParadeProgress.ts"
@@ -201,6 +201,33 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
   useSurface("themes", () => {
     if (narrow) setOpen(true)
   })
+  // A notification asks for one row: open on it. Rosters sit in this menu only on narrow screens.
+  const seek = useRef<readonly string[] | null>(null)
+  const [seekCount, setSeekCount] = useState(0)
+  useSettingsAt((targets) => {
+    if (targets.includes("rosters") && !(narrow && rosters)) return false
+    seek.current = targets
+    setSeekCount((count) => count + 1)
+    setOpen(true)
+    return true
+  })
+  useEffect(() => {
+    const targets = seek.current
+    const menu = menuRef.current
+    if (!open || !targets || !menu) return
+    seek.current = null
+    const row = targets.map((target) => menu.querySelector<HTMLElement>(`[data-settings-target="${target}"]`)).find((el) => el != null)
+    if (!row) return
+    // After the menu's own first focus, which waits a frame too.
+    requestAnimationFrame(() => {
+      if (!menu.contains(row)) return
+      if (!row.matches("button, [tabindex]")) row.tabIndex = -1
+      row.dataset.sought = ""
+      row.addEventListener("blur", () => delete row.dataset.sought, { once: true })
+      row.focus({ preventScroll: true })
+      row.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" })
+    })
+  }, [open, anchor, seekCount])
 
   useEffect(() => {
     if (!open) return
@@ -295,6 +322,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                       type="button"
                       className="desk-toggle"
                       data-testid={`desk-${toggle.key}`}
+                      data-settings-target={toggle.key}
                       aria-pressed={desk[toggle.key]}
                       title={toggle.key === "hoverClick" ? `Auto-click at ${hoverPerSec}/s. ${HOVER_MODES[0].blurb}` : toggle.title}
                       onClick={() => {
@@ -329,7 +357,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
           </section>
           {paradeOpen && paradeCounts.all > 0 && desk.parade ? (
             <>
-              <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-source`}>
+              <section className="ide-settings-section" aria-labelledby={`${menuId}-parade-source`} data-settings-target="parade-source">
                 <p className="ide-theme-heading" id={`${menuId}-parade-source`}>
                   Parade gifs
                 </p>
@@ -348,7 +376,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
             </>
           ) : null}
           {music ? (
-          <section className="ide-settings-section" aria-labelledby={`${menuId}-music-style`}>
+          <section className="ide-settings-section" aria-labelledby={`${menuId}-music-style`} data-settings-target="music-style">
             <p className="ide-theme-heading" id={`${menuId}-music-style`}>
               Music style
               <SettingsMark id="music:" />
@@ -363,6 +391,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                       aria-selected={desk.musicStyle === id}
                       className={desk.musicStyle === id ? "ide-theme-option is-active" : "ide-theme-option"}
                       data-testid={`desk-music-${id}`}
+                      data-settings-target={`music:${id}`}
                       onClick={() => {
                         setDeskPref("musicStyle", id)
                         seeFeature("music")
@@ -377,7 +406,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
           </section>
           ) : null}
           {desk.clicks && kits ? (
-            <section className="ide-settings-section" aria-labelledby={`${menuId}-click-kit`}>
+            <section className="ide-settings-section" aria-labelledby={`${menuId}-click-kit`} data-settings-target="kit">
               <p className="ide-theme-heading" id={`${menuId}-click-kit`}>
                 Click kit
                 <SettingsMark id="kit:" />
@@ -392,6 +421,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                         aria-selected={desk.clickKit === id}
                         className={desk.clickKit === id ? "ide-theme-option is-active" : "ide-theme-option"}
                         data-testid={`desk-kit-${id}`}
+                        data-settings-target={`kit:${id}`}
                         onClick={() => {
                           setDeskPref("clickKit", id)
                           seeFeature("clickKits")
@@ -405,7 +435,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
               </div>
             </section>
           ) : null}
-          <section className="ide-settings-section" aria-labelledby={`${menuId}-editor-theme`}>
+          <section className="ide-settings-section" aria-labelledby={`${menuId}-editor-theme`} data-settings-target="theme">
             <p className="ide-theme-heading" id={`${menuId}-editor-theme`}>
               Editor theme
               <SettingsMark id="theme:" />
@@ -426,6 +456,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
                           className={entry.id === saved.id ? "ide-theme-option is-active" : "ide-theme-option"}
                           data-testid="editor-theme"
                           data-theme={entry.id}
+                          data-settings-target={`theme:${entry.id}`}
                           style={ideThemeStyle(entry) as CSSProperties}
                           onPointerEnter={() => previewIdeTheme(entry.id)}
                           onFocus={() => previewIdeTheme(entry.id)}
@@ -458,7 +489,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
             </div>
           </section>
           {narrow && rosters ? (
-            <section className="ide-settings-section" aria-labelledby={`${menuId}-rosters`}>
+            <section className="ide-settings-section" aria-labelledby={`${menuId}-rosters`} data-settings-target="rosters">
               <p className="ide-theme-heading" id={`${menuId}-rosters`}>
                 Rosters
                 <SettingsMark id="rosters" />

@@ -5,7 +5,7 @@ import { progressOf } from "../game/careerSync.ts"
 import { ALL_FEATURE_IDS, nextGhost } from "../game/features.ts"
 import type { FeatureTease } from "../game/features.ts"
 import { useGame } from "../game/store.ts"
-import { onSurface } from "../game/surfaces.ts"
+import { onSettingsAt, onSurface } from "../game/surfaces.ts"
 import type { Surface } from "../game/surfaces.ts"
 
 /** Admin mode shows the whole desk. */
@@ -55,4 +55,13 @@ export function useSurface(id: Surface, handler: () => void): void {
     ref.current = handler
   })
   useEffect(() => onSurface(id, () => ref.current()), [id])
+}
+
+/** Runs `handler` when something asks the settings menu to open on a row; it returns false to decline. */
+export function useSettingsAt(handler: (targets: readonly string[]) => boolean): void {
+  const ref = useRef(handler)
+  useEffect(() => {
+    ref.current = handler
+  })
+  useEffect(() => onSettingsAt((targets) => ref.current(targets)), [])
 }
