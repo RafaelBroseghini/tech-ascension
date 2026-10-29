@@ -1,11 +1,7 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { PointerEvent, RefObject } from "react"
-import { getDeskPrefs, setDeskHeroOffset, subscribeDeskPrefs } from "../game/desk.ts"
 
 const DRAG_THRESHOLD_PX = 8
-
-const heroOffsetXPref = () => getDeskPrefs().heroOffsetX
-const heroOffsetYPref = () => getDeskPrefs().heroOffsetY
 
 export function clampDeskHeroOffset(
   panel: DOMRect,
@@ -39,6 +35,10 @@ function clearHeroTransform(el: HTMLElement) {
   el.style.removeProperty("--hero-y")
 }
 
+/**
+ * A drag nudges the card for this visit only. The offset is pixels from a layout that depends on the screen, so
+ * saving it would carry a spot from one viewport into another; every load starts at the card's default place above the art.
+ */
 export function useDeskMoneyHeroDrag(panelRef: RefObject<HTMLElement | null>) {
   const boxRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{
@@ -52,8 +52,7 @@ export function useDeskMoneyHeroDrag(panelRef: RefObject<HTMLElement | null>) {
   const liveRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef(0)
 
-  const savedX = useSyncExternalStore(subscribeDeskPrefs, heroOffsetXPref, heroOffsetXPref)
-  const savedY = useSyncExternalStore(subscribeDeskPrefs, heroOffsetYPref, heroOffsetYPref)
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
@@ -98,8 +97,8 @@ export function useDeskMoneyHeroDrag(panelRef: RefObject<HTMLElement | null>) {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: savedX,
-      originY: savedY,
+      originX: offset.x,
+      originY: offset.y,
       dragging: false,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -137,7 +136,7 @@ export function useDeskMoneyHeroDrag(panelRef: RefObject<HTMLElement | null>) {
       const dy = event.clientY - drag.startY
       const cur = liveRef.current ?? { x: drag.originX, y: drag.originY }
       const next = clamp(drag.originX + dx, drag.originY + dy, cur.x, cur.y)
-      setDeskHeroOffset(Math.round(next.x), Math.round(next.y))
+      setOffset({ x: Math.round(next.x), y: Math.round(next.y) })
     }
     liveRef.current = null
     const el = boxRef.current
@@ -155,8 +154,8 @@ export function useDeskMoneyHeroDrag(panelRef: RefObject<HTMLElement | null>) {
 
   return {
     boxRef,
-    offsetX: savedX,
-    offsetY: savedY,
+    offsetX: offset.x,
+    offsetY: offset.y,
     dragging,
     onPointerDown,
     onPointerMove,
