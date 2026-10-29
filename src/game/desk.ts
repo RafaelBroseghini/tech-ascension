@@ -46,9 +46,6 @@ export type DeskPrefs = {
   hoverClick: boolean
   hoverMode: HoverMode
   motion: MotionMode
-  /** Pixel offset of the money/XP hero card from its default spot (persists across runs). */
-  heroOffsetX: number
-  heroOffsetY: number
 }
 
 const DEFAULTS: DeskPrefs = {
@@ -65,11 +62,7 @@ const DEFAULTS: DeskPrefs = {
   hoverClick: false,
   hoverMode: "auto",
   motion: "system",
-  heroOffsetX: 0,
-  heroOffsetY: 0,
 }
-
-const HERO_OFFSET_CLAMP = 280
 
 function parseHoverMode(value: unknown): HoverMode {
   return HOVER_MODES.find((mode) => mode.id === value)?.id ?? "auto"
@@ -77,11 +70,6 @@ function parseHoverMode(value: unknown): HoverMode {
 
 function parseMotionMode(value: unknown): MotionMode {
   return MOTION_MODES.find((mode) => mode.id === value)?.id ?? "system"
-}
-
-function parseHeroOffset(value: unknown): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return 0
-  return Math.round(Math.max(-HERO_OFFSET_CLAMP, Math.min(HERO_OFFSET_CLAMP, value)))
 }
 
 const prefListeners = new Set<() => void>()
@@ -115,8 +103,6 @@ export function parseDeskPrefs(raw: unknown): DeskPrefs {
   next.motion = parseMotionMode((body as Record<string, unknown>).motion)
   const catArt = (body as Record<string, unknown>).catArt
   next.catArt = isRosterCat(catArt) ? catArt : null
-  next.heroOffsetX = parseHeroOffset((body as Record<string, unknown>).heroOffsetX)
-  next.heroOffsetY = parseHeroOffset((body as Record<string, unknown>).heroOffsetY)
   return next
 }
 
@@ -156,16 +142,6 @@ export function setDeskPref<K extends keyof DeskPrefs>(key: K, value: DeskPrefs[
   for (const listener of prefListeners) listener()
   syncDeskAudio()
   if ((key === "clicks" && value) || (key === "clickKit" && prefs.clicks)) playCozyClick()
-}
-
-export function setDeskHeroOffset(x: number, y: number): void {
-  const heroOffsetX = parseHeroOffset(x)
-  const heroOffsetY = parseHeroOffset(y)
-  const current = getDeskPrefs()
-  if (current.heroOffsetX === heroOffsetX && current.heroOffsetY === heroOffsetY) return
-  prefs = { ...current, heroOffsetX, heroOffsetY }
-  writePrefs(prefs)
-  for (const listener of prefListeners) listener()
 }
 
 export function subscribeDeskPrefs(listener: () => void): () => void {

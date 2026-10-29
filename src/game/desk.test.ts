@@ -18,6 +18,12 @@ describe("desk", () => {
     expect(parseDeskPrefs(null).hoverMode).toBe("auto")
   })
 
+  it("ignores a hero card offset an older build saved, so the card starts at its default place", () => {
+    const parsed = parseDeskPrefs({ heroOffsetX: -100, heroOffsetY: 200 })
+    expect(parsed).toEqual(parseDeskPrefs(null))
+    expect(parsed).not.toHaveProperty("heroOffsetX")
+  })
+
   it("follows the system's reduce-motion request unless the player chose full motion", () => {
     const asked = (on: boolean) => {
       vi.stubGlobal("window", { matchMedia: (query: string) => ({ matches: on && query.includes("reduce") }), addEventListener() {} })
@@ -51,8 +57,6 @@ describe("desk", () => {
       hoverClick: false,
       hoverMode: "auto",
       motion: "system",
-      heroOffsetX: 0,
-      heroOffsetY: 0,
     })
     expect(parseDeskPrefs("nope")).toEqual({
       music: false,
@@ -68,8 +72,6 @@ describe("desk", () => {
       hoverClick: false,
       hoverMode: "auto",
       motion: "system",
-      heroOffsetX: 0,
-      heroOffsetY: 0,
     })
     expect(parseDeskPrefs(JSON.stringify({ music: true, musicStyle: "edm", hoverClick: "yes" }))).toEqual({
       music: true,
@@ -85,8 +87,6 @@ describe("desk", () => {
       hoverClick: false,
       hoverMode: "auto",
       motion: "system",
-      heroOffsetX: 0,
-      heroOffsetY: 0,
     })
   })
 
@@ -157,8 +157,6 @@ describe("desk", () => {
       hoverClick: false,
       hoverMode: "auto",
       motion: "system",
-      heroOffsetX: 0,
-      heroOffsetY: 0,
     })
   })
 })
