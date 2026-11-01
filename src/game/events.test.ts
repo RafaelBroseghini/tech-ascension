@@ -338,7 +338,7 @@ describe("events in the store", () => {
 
   it("idle income credits a timed multiplier only for the seconds it ran", () => {
     const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
-    // A salary and no gigs: no clients means no users, so the product pays and costs nothing.
+    // A salary and no gigs.
     useGame.setState({ money: 0, peakMoney: 1, jobs: [1], xp: 0 })
     const cps = 8
     const start = useGame.getState().now

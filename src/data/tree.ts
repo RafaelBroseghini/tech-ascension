@@ -19,7 +19,7 @@ export type GigStep = {
  * The gigs, in the order the board lists them. Nothing here is a chain: a gig is open when the career has the XP and
  * enough owned skills of each tag the gig is about, so two careers that learned different skills meet different
  * clients. Each count is half of what the old skill-prefix held of that tag (rounded up), at least one, and never
- * more than the catalog has. Specialization and origin lower them further (`gigTagMin` in src/game/origin.ts).
+ * more than the catalog has. The specialization lowers its own tag's count further (`gigTagMin` in src/game/tree/check.ts).
  */
 export const GIG_PATH: readonly GigStep[] = [
   { id: 1, needs: [{ tag: "backend", min: 1 }, { tag: "frontend", min: 1 }] },

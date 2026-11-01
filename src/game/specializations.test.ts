@@ -430,7 +430,7 @@ describe("click and idle builds", () => {
     })
 
     it("time away pays an idle build its quarter too", () => {
-      // The same holdings on two tracks: the product's users pay alike, so the credits differ by the quarter of the career's own income.
+      // The same holdings on two tracks: the credits differ by the quarter of the career's own income.
       const awayCredit = (spec: SpecId) => {
         toMid()
         game.pickSpecialization(spec)
@@ -438,7 +438,6 @@ describe("click and idle builds", () => {
         const cps = game.getState().cps
         return { cps, credited: game.advanceOffline(3_600_000).credited }
       }
-      // No incident rolls while away: a block or a DDoS in one run and not the other would move the product's pay.
       const calm = vi.spyOn(Math, "random").mockReturnValue(0.999)
       const plain = awayCredit("frontend")
       const idle = awayCredit("ai")

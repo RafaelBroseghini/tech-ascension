@@ -16,14 +16,11 @@ Vitest + happy-dom, all through `__GAME__`:
 7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The toast is a diary sentence plus that credit.
 8. **10x dev skills.** A 10x dev skill is gated by lifetime XP and price, hover rate and offline cap follow the gold owned.
 9. **Events and 1:1s.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, and a 1:1 waits for a job and its three replies pay, sit or bill you.
-10. **The world.** Users seed from gigs and grow per region while the gear serves them (a laptop alone settles near what it serves), a DDoS surge multiplies a region's demand, paying `cost` ends an incident and is refused when short, and eight billion users latch `won` once, pay the ×1.25 forever multiplier once, and write `world:won` to the journal; the game keeps ticking.
-11. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens nothing (Your company waits for the first job), the skills before Git + GitHug hygiene open nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return; the first job also opens Your company and brings the desk cat, not time at the desk or a break; Hover Tap waits for the Senior SWE job (`setUsers` first, since Senior needs users).
-12. **Specializations.** The pick is refused before Mid-level SWE and every job above rank 7 is refused without it; after it the other tracks are hidden and unbuyable, the switch works once, capital stays open after a switch past Senior, and a click build's manual click out-pays a hover or auto click.
-13. **Leadership.** The pick opens at Senior SWE (rank 14) and is made once; every job above rank 15 is refused without it and the other line's rows are hidden and unbuyable; `hire` is refused for an IC and for a Manager below the kind's rank (outsourced and bootcamp 18, copypaste and senior 20, staff and tenx 21, greybeard and codegod 22); a win reads sponsor for a Manager and night owl for an IC (`src/game/smoke.play.ts`).
-14. **Launches and GPUs.** A Frontend build's manual clicks charge a launch (`getState().launch`), hover and auto clicks do not, and the 25th ships one that adds users the serving gear can take; an AI build grows faster with GPU gear than without.
-15. **Origins.** `pickOrigin` is refused for an unknown id, can be changed until the first gig or job and is refused after, is journaled, and survives a pick and a switch; a career with no origin plays the plain ladder.
-16. **The tree.** `explain` answers for a row of every kind (a gig names the board, the XP, the gigs before it and its skills), a gig is `open` once they hold and `owned` once cleared, and an unknown ref is null. The tree and the old per-kind rules agree on whole careers (`treeEquivalence.test.ts`).
-17. **Prestige.** The Exit is shut at the start; `setMoney` past the first Prestige opens it; `exit()` pays Prestige, and money, skills, gigs, jobs, capital, users, regions and hires are back to fresh, with a new product name and the handle kept; 10x dev skills survive; the multiplier is in `cps` and `xpPerClick`; `buyLegacy` enforces order and price, and `capital.offline` raises `offlineCapHours` by 4.
+10. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens nothing (the desk cat and the metrics wait for the first job), the skills before Git + GitHug hygiene open nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return; the first job brings the desk cat, not time at the desk or a break; Hover Tap waits for the Senior SWE job.
+11. **Specializations.** The pick is refused before Mid-level SWE and every job above rank 7 is refused without it; after it the other tracks are hidden and unbuyable, the switch works once, capital stays open after a switch past Senior, and a click build's manual click out-pays a hover or auto click.
+12. **Leadership.** The pick opens at Senior SWE (rank 14) and is made once; every job above rank 15 is refused without it and the other line's rows are hidden and unbuyable (`src/game/smoke.play.ts`).
+13. **The tree.** `explain` answers for a row of every kind (a gig names the board, the XP, the gigs before it and its skills), a gig is `open` once they hold and `owned` once cleared, and an unknown ref is null. The tree and the old per-kind rules agree on whole careers (`treeEquivalence.test.ts`).
+14. **Prestige.** The Exit is shut at the start; `setMoney` past the first Prestige opens it; `exit()` pays Prestige, and money, skills, gigs, jobs and capital are back to fresh, with the handle kept; 10x dev skills survive; the multiplier is in `cps` and `xpPerClick`; `buyLegacy` enforces order and price, and `capital.offline` raises `offlineCapHours` by 4.
 
 ## Free play (`npm run play:agent`)
 
@@ -79,9 +76,7 @@ for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job 
 game.buyJob(1) // free internship (needs 35K XP), salary $/s
 game.setXp(1e7) // enough spendable XP for the rest of the ladder
 for (let id = 2; id <= 7; id++) game.buyJob(id) // the trunk; Mid-level SWE (id 7) opens the pick
-game.setUsers("americas-east", 10_000) // the pick opens at 10,000 users (the product has none yet)
-game.pickSpecialization("backend") // every job above rank 7 needs a pick; Backend keeps ids 8-15
-game.setUsers("americas-east", 1_000_000) // Senior SWE needs 1,000,000 users
+game.pickSpecialization("backend") // the pick opens on Mid-level SWE; every job above rank 7 needs it; Backend keeps ids 8-15
 for (let id = 8; id <= 14; id++) game.buyJob(id) // job 14 is Senior SWE: capital opens with no cash (holding $500,000 opens it too)
 game.buyJob(15) // the rest of the track
 game.pickLeadership("ic") // every job above rank 15 needs a line: "ic" (16, 17, 19, 23, 24) or "manager" (18, 20, 21, 22); 25-31 are shared
@@ -112,7 +107,7 @@ const game = window.__GAME__
 game.reset()
 game.getState().features // { open: [], fresh: [], reveals: [], next: { id: "careerLog", ... }, upNext: [...] }
 game.setXp(90)
-game.buySkill(1) // Your company unlocks: logged, queued to reveal
+game.buySkill(1) // the first skill opens nothing; Git + GitHug hygiene (skill 5) is the first unlock
 game.setXp(2_300)
 for (let id = 2; id <= 5; id++) game.buySkill(id) // Git + GitHug hygiene: the career log, marked NEW
 game.seeFeature("careerLog")
