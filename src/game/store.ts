@@ -29,16 +29,13 @@ import { advanceReviewClock, isReviewChoice, pickPrompt, promptsForJob, resolveR
 import type { ReviewChoiceId } from "./reviews.ts"
 import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
-import { shipLaunches, shipsLaunches } from "./launch.ts"
-import { servableUsers } from "./globe/load.ts"
 import { markYear, reachedMarks } from "./careerYear.ts"
-import { leadOf, omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import { leadOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
 import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
-import { HALL_OF_FAME } from "../data/legacy.ts"
-import { canBuyPerk, canExit, earningsPrestige, endingBonus, exitHeadline, freshLegacy, isFreshLegacy, legacyPerkById, mergeGrant, startingGrant, withStartUsers } from "./legacy.ts"
+import { canBuyPerk, canExit, earningsPrestige, exitHeadline, freshLegacy, isFreshLegacy, legacyPerkById, mergeGrant, startingGrant } from "./legacy.ts"
 import type { ExitCard, LegacyState } from "./legacy.ts"
 import type { TempMults } from "./mods.ts"
 import type { Era } from "../data/capital.ts"
@@ -46,17 +43,6 @@ import { canBuyJob, capitalUnlocked, clickPaysMoney, equipmentOpen, eraOf, gigSt
 import type { Phase } from "./phase.ts"
 import { loadCareerForBoot, retireWriter, stageCareer, writeCareer } from "./ledger.ts"
 import { freshSave, OFFLINE_CAP_MS, RETURN_BREAK_MS, SAVE_VERSION } from "./save.ts"
-import { advanceCompany, FRESH_COMPANY, growthFacts, settleGrowth } from "./globe/growth.ts"
-import * as companyActions from "./globe/actions.ts"
-import type { CompanyPatch } from "./globe/actions.ts"
-import { totalUsers, WIN_MULT } from "./globe/world.ts"
-import { productFactsOf, productRevenueOf } from "./globe/product.ts"
-import type { Hires } from "./globe/hires.ts"
-import type { CompanyState } from "./globe/growth.ts"
-import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
-import { winNote } from "./globe/hires.ts"
-import { servingOf } from "./globe/load.ts"
-import type { Footprint } from "./globe/footprint.ts"
 import type { SaveData } from "./save.ts"
 import {
   creditMoney,
@@ -82,7 +68,7 @@ import { freshCareer } from "./save.ts"
 import type { SavedCareerEntry } from "./save.ts"
 import { setMusicAllowed } from "./desk.ts"
 import { getAdminMode, subscribeAdminMode } from "./adminMode.ts"
-import { randomHandle, randomIdentity, randomProduct } from "./identity.ts"
+import { randomHandle, randomIdentity } from "./identity.ts"
 import type { SavedIdentity } from "./identity.ts"
 
 const SAVE_EVERY_MS = 4_000
@@ -178,13 +164,7 @@ type GameState = {
   journal: CareerJournal
   /** The handle on the GitHug and LinkedOut profiles, and whether the player has kept it. */
   profile: SavedIdentity
-  /** Users by region, the world's resistance, its incidents and the uptime bars for the company on the globe. */
-  company: CompanyState
-  /** The regions bought and the cities with a point of presence. */
-  footprint: Footprint
-  /** Heads hired of each kind (`HIRES`), by id. */
-  hires: Hires
-  /** Prestige: careers started, Prestige, earnings of earlier careers, Legacy perks, the Hall of Fame. Survives an Exit; `wipe` clears it. */
+  /** Prestige: careers started, Prestige, earnings of earlier careers, Legacy perks. Survives an Exit; `wipe` clears it. */
   legacy: LegacyState
   /** The headline card after the latest Exit, until dismissed. Not saved. */
   exitCard: ExitCard | null
@@ -209,8 +189,8 @@ type GameState = {
   /** Take the one switch: keeps money, gear and the trunk jobs, drops the old track's jobs. False without a pick, after the switch, or to the same one. */
   switchSpecialization: (id: string) => boolean
   /**
-   * Leave this career: pay the Prestige its earnings climbed to, reset the run and the product (see `exit` in the store),
-   * start the next career under the Network and Founder perks held. Returns the Prestige earned, or false when the Exit is not open or would pay nothing.
+   * Leave this career: pay the Prestige its earnings climbed to, reset the run (see `exit` in the store), start the next
+   * career under the Network perks held. Returns the Prestige earned, or false when the Exit is not open or would pay nothing.
    */
   exit: () => number | false
   /** Spend Prestige on a Legacy perk. It lands in the career under way and starts every later one. False when unknown, owned, out of order, or too dear. */
@@ -219,20 +199,6 @@ type GameState = {
   dismissExitCard: () => void
   /** Buy a gold skill with spendable XP. False when it is unknown, owned, still locked, behind an earlier one of its family, or too dear. */
   buyGold: (goldId: number) => boolean
-  /** Buy a region with money. False when it is unknown, owned, or unaffordable. */
-  buyRegion: (regionId: string) => boolean
-  /** Deploy a point of presence in a city of a region you own, for its cost in money. */
-  deployPop: (cityId: string) => boolean
-  /** Switch a deployed point of presence on or off. Its traffic goes to the nearest one still on; the last one on stays on. */
-  setPopActive: (cityId: string, on: boolean) => boolean
-  /** Pays to end an incident now, in minutes of what the company earns. False when the incident is gone or the money is short. */
-  respondIncident: (id: number) => boolean
-  /** Hire one person of a kind (see `HIRES`). False in a closed row or short of the price. */
-  hire: (id: string) => boolean
-  /** Let go of one person of a kind. No refund. False with nobody of that kind. */
-  fire: (id: string) => boolean
-  /** Switch a bought region on or off as a whole. The last region serving stays on. */
-  setRegionActive: (regionId: string, on: boolean) => boolean
   /** Clear a gig. `force` skips the XP and prior-gig requirements (harness only). */
   clearGig: (gigId: number, force?: boolean) => boolean
   /** Note a cat the desk cat turned into. True the first time this cat is seen. */
@@ -262,10 +228,8 @@ type GameState = {
   /** Drops every waiting reveal (the NEW markers stay). */
   clearReveals: () => void
   dismissWhatsNew: () => void
-  /** Draw another handle from the word lists, and a product from its animal. Only before the player keeps it; false after. */
+  /** Draw another handle from the word lists. Only before the player keeps it; false after. */
   rerollProfile: () => boolean
-  /** Draw another suffix for the product. Only before the player keeps it; false after. */
-  rerollProduct: () => boolean
   /** Keep the current handle for the rest of the career. */
   keepProfile: () => void
   /** The tab came back after a long hide: log the return (the cat's cue on a first one). */
@@ -311,9 +275,6 @@ function toSave(state: GameState, now: number): SaveData {
   if (Object.keys(temp).length > 0) save.tempMults = temp
   if (state.seenMilestones.length > 0) save.seenMilestones = state.seenMilestones
   save.profile = state.profile
-  save.company = state.company
-  save.footprint = state.footprint
-  if (Object.keys(state.hires).length > 0) save.hires = state.hires
   if (state.combos.length > 0) save.combos = state.combos
   save.career = {
     seq: state.journal.seq,
@@ -356,14 +317,6 @@ function boot() {
 }
 
 const booted = boot()
-
-/** Applies a company action's patch and saves. Spending stamps the clock, as every purchase does. False when it was refused. */
-function commitCompany(patch: CompanyPatch, spends: boolean): boolean {
-  if (!patch) return false
-  useGame.setState(spends ? { ...patch, now: Date.now() } : patch)
-  persistNow()
-  return true
-}
 
 function makePop(state: Pick<GameState, "popSeq">, kind: PopKind, amount: number, label: string) {
   const popSeq = state.popSeq + 1
@@ -460,9 +413,6 @@ export const useGame = create<GameState>((set, get) => ({
   journal: booted.career.journal,
   // A save from before names were drawn is a career already under way: it gets one, kept, with no start card.
   profile: booted.save.profile ?? { ...randomIdentity(), chosen: true },
-  company: booted.save.company ?? FRESH_COMPANY,
-  footprint: booted.save.footprint ?? FRESH_FOOTPRINT,
-  hires: booted.save.hires ?? {},
   legacy: booted.save.legacy ?? freshLegacy(),
   exitCard: null,
   unlocked: booted.career.unlocked,
@@ -479,15 +429,7 @@ export const useGame = create<GameState>((set, get) => ({
     const rates = production(state, state.activeBoost, now, modsOf(state))
     const xpGain = rates.xpClick * rates.mult
     const clickMoney = clickPaysMoney(state) ? (source === "auto" ? rates.clickAuto : rates.click) : 0
-    // Frontend's manual clicks charge a launch, and each full charge ships one: a burst of users (src/game/launch.ts).
-    const launched = source === "manual" && shipsLaunches(specOf(state)) ? shipLaunches(state.company, state.build.charge ?? 0, 1, servableUsers(state.equipment)) : null
     set({
-      ...(launched
-        ? {
-            build: launched.charge > 0 ? { ...state.build, charge: launched.charge } : omitCharge(state.build),
-            ...(launched.launches > 0 ? { company: launched.company } : {}),
-          }
-        : {}),
       money: state.money + clickMoney,
       // Kept here so the peak subscriber below does not notify everyone a second time.
       peakMoney: Math.max(state.peakMoney, state.money + clickMoney),
@@ -594,37 +536,21 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
-  hire: (id) => commitCompany(companyActions.hire(get(), id, get()), true),
-  fire: (id) => commitCompany(companyActions.fire(get(), id), true),
-  buyRegion: (regionId) => commitCompany(companyActions.buyRegion(get(), regionId), true),
-  deployPop: (cityId) => commitCompany(companyActions.deployPop(get(), cityId), true),
-  setPopActive: (cityId, on) => commitCompany(companyActions.setPopActive(get(), cityId, on), false),
-  respondIncident: (id) => commitCompany(companyActions.respondIncident(get(), id, earnedPerSec(get())), true),
-  setRegionActive: (regionId, on) => commitCompany(companyActions.setRegionActive(get(), regionId, on), false),
-
-
   exit: () => {
     const state = get()
     const earned = state.stats.lifetimeEarned
-    const win = { won: state.company.won, ending: state.company.ending }
-    if (!canExit(state.legacy, earned, win)) return false
-    const bonus = endingBonus(state.legacy, win)
-    const gained = earningsPrestige(state.legacy, earned) + bonus
-    const newEnding = bonus > 0 && win.ending ? win.ending : null
-    const endings = newEnding ? HALL_OF_FAME.filter((entry) => entry.id === newEnding || state.legacy.endings.includes(entry.id)).map((entry) => entry.id) : state.legacy.endings
+    if (!canExit(state.legacy, earned)) return false
+    const gained = earningsPrestige(state.legacy, earned)
     const legacy: LegacyState = {
       ...state.legacy,
       runs: state.legacy.runs + 1,
       prestige: state.legacy.prestige + gained,
       prestigeTotal: state.legacy.prestigeTotal + gained,
       earnedAllRuns: state.legacy.earnedAllRuns + earned,
-      endings,
     }
     const start = mergeGrant({ skills: {}, gigs: [], jobs: [], xp: 0, xpTotal: 0, money: 0, peakMoney: 0 }, startingGrant(legacy.perks))
     const now = Date.now()
     const fresh = { ...start, equipment: {}, owned: {} }
-    const users = totalUsers(state.company.users)
-    const product = state.profile.product
     const note: CareerNote = {
       type: "exit",
       ref: "",
@@ -633,11 +559,6 @@ export const useGame = create<GameState>((set, get) => ({
         prestigeEarned: gained,
         prestigeTotal: legacy.prestigeTotal,
         earned: Math.floor(earned),
-        product,
-        users: Math.floor(users),
-        won: state.company.won,
-        ...(win.won && win.ending ? { ending: win.ending } : {}),
-        ...(newEnding ? { endingBonus: bonus } : {}),
         highestCapital: highestOwnedCapital(state.owned)?.id ?? 0,
       },
     }
@@ -652,10 +573,6 @@ export const useGame = create<GameState>((set, get) => ({
       jobs: start.jobs,
       gigs: start.gigs,
       build: FRESH_BUILD,
-      // The product starts over: users, regions, hires, the win and its multiplier.
-      company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
-      footprint: FRESH_FOOTPRINT,
-      hires: {},
       phase: phaseOf(fresh),
       activeBoost: null,
       nextBoostAt: null,
@@ -672,17 +589,15 @@ export const useGame = create<GameState>((set, get) => ({
       previewEra: null,
       previewUntil: 0,
       pop: null,
-          stats: { ...state.stats, lifetimeEarned: 0 },
-      // Every career is a new product. The handle stays; the start card opens on the product beat.
-      profile: { handle: state.profile.handle, product: randomProduct(state.profile.handle, Math.random, product), chosen: false },
+      stats: { ...state.stats, lifetimeEarned: 0 },
+      // The handle stays, and so does the choice of it: a later career has nothing to draw on the start card.
+      profile: { handle: state.profile.handle, chosen: true },
       legacy,
       combos: [],
       exitCard: {
         run: state.legacy.runs,
-        headline: exitHeadline({ handle: state.profile.handle, product, users, won: state.company.won, ending: state.company.ending }),
+        headline: exitHeadline({ handle: state.profile.handle, earned }),
         prestigeEarned: gained,
-        newEnding,
-        endingBonus: bonus,
         mult: prestigeMult(legacy.prestigeTotal),
       },
       journal: noted(state.journal, [note], state),
@@ -710,7 +625,6 @@ export const useGame = create<GameState>((set, get) => ({
       xpTotal: merged.xpTotal,
       money: merged.money,
       peakMoney: merged.peakMoney,
-      company: perk.id === "founder.users" ? { ...state.company, users: withStartUsers(state.company.users, perks) } : state.company,
       legacy: { ...state.legacy, prestige: state.legacy.prestige - perk.cost, perks },
       journal: noted(state.journal, [{ type: "legacy", ref: `legacy:${perk.id}`, data: { cost: perk.cost } }], state),
       now: Date.now(),
@@ -917,15 +831,12 @@ export const useGame = create<GameState>((set, get) => ({
     const boosting = advanced.clock.activeBoost !== null
     const fx = modFactors(modsOf(state), state.now, state.now + dt)
     const gain = idlePerSec(state) * fx.cps * (dt / 1000)
-    const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy, buildFactsOf(state))), now - dt, now, Math.random)
     const xpGain = xpPerSec(state) * fx.xpIdle * (dt / 1000)
     const tempMults = pruneTemp(state.tempMults, now)
     let stats = touchIdleRecord(state.stats, statsClock, now)
     stats = { ...stats, playTimeMs: stats.playTimeMs + dt }
-    stats = creditMoney(stats, gain + grown.earned, "idle")
-    const settled = settleGrowth(state.money + gain, state.foreverMult, state.company.won, grown)
-    const foreverMult = settled.foreverMult
-    const balance = { money: settled.money, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
+    stats = creditMoney(stats, gain, "idle")
+    const balance = { money: state.money + gain, xp: state.xp + xpGain, xpTotal: state.xpTotal + xpGain }
     // Events wait out each other and 1:1s: one slot, never stacked.
     const eventAdvance = advanceEventClock(
       state.nextEventAt,
@@ -966,7 +877,6 @@ export const useGame = create<GameState>((set, get) => ({
       xp: balance.xp,
       xpTotal: balance.xpTotal,
       stats,
-      foreverMult,
       tempMults,
       event,
       lastEvent: fired ? event : state.lastEvent,
@@ -978,8 +888,6 @@ export const useGame = create<GameState>((set, get) => ({
       nextReviewAt: reviewAdvance.nextReviewAt,
       previewEra: state.previewEra && now >= state.previewUntil ? null : state.previewEra,
       now,
-      company: grown.state,
-      journal: grown.notes.length > 0 ? noted(state.journal, grown.notes, balance) : state.journal,
       activeBoost: advanced.clock.activeBoost,
       nextBoostAt: advanced.clock.nextBoostAt,
       idleSince: advanced.clock.idleSince,
@@ -1005,9 +913,6 @@ export const useGame = create<GameState>((set, get) => ({
       xp: 0,
       xpTotal: 0,
       peakMoney: 0,
-      company: FRESH_COMPANY,
-      footprint: FRESH_FOOTPRINT,
-      hires: {},
       stats: emptyStats(),
       skills: {},
       equipment: {},
@@ -1066,19 +971,9 @@ export const useGame = create<GameState>((set, get) => ({
   },
 
   rerollProfile: () => {
-    const { profile, legacy } = get()
-    // A later career keeps the handle: only its product is drawn again.
-    if (profile.chosen || legacy.runs > 1) return false
-    const handle = randomHandle(Math.random, profile.handle)
-    set({ profile: { handle, product: randomProduct(handle), chosen: false } })
-    persistNow()
-    return true
-  },
-
-  rerollProduct: () => {
     const { profile } = get()
     if (profile.chosen) return false
-    set({ profile: { ...profile, product: randomProduct(profile.handle, Math.random, profile.product) } })
+    set({ profile: { handle: randomHandle(Math.random, profile.handle), chosen: false } })
     persistNow()
     return true
   },
@@ -1222,22 +1117,6 @@ syncMusicGate()
 subscribeAdminMode(syncMusicGate)
 useGame.subscribe((state, prev) => {
   if (state.unlocked !== prev.unlocked) syncMusicGate()
-})
-
-/** What the career earns a second right now: idle income with the event multipliers in, plus what the product's users pay. Incidents are priced in minutes of this. */
-export function earnedPerSec(state: GameState, at = Date.now()): number {
-  return idlePerSec(state) * modFactors(modsOf(state), at, at).cps + productRevenueOf(servingOf(state.company.users, state.company.incidents, state.equipment).revenuePerSec, state.legacy.perks, specOf(state))
-}
-
-// The win: a pop, the confetti and a toast, whatever moved the company there (a tick, a stretch away, the harness).
-useGame.subscribe((state, prev) => {
-  if (!state.company.won || prev.company.won) return
-  const toastSeq = state.toastSeq + 1
-  useGame.setState({
-    ...makePop(state, "unlock", 0, "Eight billion users"),
-    celebrationNonce: state.celebrationNonce + 1,
-    ...(state.toast?.note ? {} : { toast: { id: toastSeq, text: winNote(state.company.ending, WIN_MULT) }, toastSeq }),
-  })
 })
 
 /** Save once more and stop saving: another tab is taking the game. */

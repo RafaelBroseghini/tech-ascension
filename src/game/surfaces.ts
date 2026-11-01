@@ -13,8 +13,6 @@ export type Surface =
   | "music"
   | "tenx"
   | "boardGear"
-  | "studio"
-  | "company"
 
 const listeners = new Map<Surface, Set<() => void>>()
 

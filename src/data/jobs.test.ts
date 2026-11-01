@@ -172,9 +172,8 @@ describe("visible jobs", () => {
 })
 
 describe("leadership", () => {
-  it("lists the two lines, each with a name, a blurb and its ending", () => {
+  it("lists the two lines, each with a name and a blurb", () => {
     expect(LEADERSHIP.map((row) => row.id)).toEqual(["ic", "manager"])
-    expect(LEADERSHIP.map((row) => row.ending)).toEqual(["nightOwl", "sponsor"])
     for (const row of LEADERSHIP) {
       expect(row.name.length).toBeGreaterThan(0)
       expect(row.blurb.length).toBeGreaterThan(0)

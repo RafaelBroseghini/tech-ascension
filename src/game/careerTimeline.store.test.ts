@@ -3,7 +3,6 @@ import { careerJson } from "./careerLog.ts"
 import { bootCareer } from "./careerSync.ts"
 import { readCareerText } from "./ledger.ts"
 import { freshSave, hydrate, parseSave } from "./save.ts"
-import { productsOf } from "./identity.ts"
 import { persistNow, useGame } from "./store.ts"
 
 const types = () => useGame.getState().journal.entries.map((entry) => `${entry.type}:${entry.ref}`)
@@ -28,7 +27,7 @@ describe("career timeline", () => {
     expect(state.reveals).toEqual([])
   })
 
-  it("the first skill opens nothing: the company waits for the first job", () => {
+  it("the first skill opens nothing: the desk waits for the first job", () => {
     learn(1)
     const state = useGame.getState()
     expect(types()).toEqual(["start:", "learn:skill:1"])
@@ -36,15 +35,15 @@ describe("career timeline", () => {
     expect(state.reveals).toEqual([])
   })
 
-  it("the first job opens the studio, logged and revealed, with no NEW marker", () => {
+  it("the first job opens Metrics and the desk cat, logged and revealed", () => {
     useGame.setState({ xp: 1e6, xpTotal: 1e6, gigs: [1, 2, 3, 4, 5, 6] })
-    expect(useGame.getState().unlocked).not.toContain("studio")
+    expect(useGame.getState().unlocked).not.toContain("cat")
     expect(useGame.getState().buyJob(1)).toBe(true)
     const state = useGame.getState()
-    expect(types()).toContain("unlock:studio")
-    expect(state.unlocked).toContain("studio")
-    expect(state.reveals).toContain("studio")
-    expect(state.fresh).not.toContain("studio")
+    expect(types()).toContain("unlock:metrics")
+    expect(types()).toContain("unlock:cat")
+    expect(state.unlocked).toEqual(expect.arrayContaining(["metrics", "cat"]))
+    expect(state.reveals).toContain("cat")
   })
 
   it("the skills before Git + GitHug hygiene open nothing, and it opens the career log with a NEW marker that using it clears", () => {
@@ -134,18 +133,11 @@ describe("career timeline", () => {
     expect(useGame.getState().rerollProfile()).toBe(true)
     expect(useGame.getState().profile.chosen).toBe(false)
     expect(useGame.getState().profile.handle).not.toBe(first.handle)
-    expect(productsOf(useGame.getState().profile.handle)).toContain(useGame.getState().profile.product)
-    const before = useGame.getState().profile
-    expect(useGame.getState().rerollProduct()).toBe(true)
-    expect(useGame.getState().profile.handle).toBe(before.handle)
-    expect(useGame.getState().profile.product).not.toBe(before.product)
     const kept = useGame.getState().profile
     useGame.getState().keepProfile()
     expect(useGame.getState().profile).toEqual({ ...kept, chosen: true })
     expect(useGame.getState().rerollProfile()).toBe(false)
-    expect(useGame.getState().rerollProduct()).toBe(false)
     expect(useGame.getState().profile.handle).toBe(kept.handle)
-    expect(useGame.getState().profile.product).toBe(kept.product)
     persistNow()
     const saved = parseSave(JSON.parse(readCareerText() ?? "null"))
     expect(saved?.profile).toEqual({ ...kept, chosen: true })

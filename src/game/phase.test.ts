@@ -21,13 +21,6 @@ import {
   stageOf,
 } from "./phase.ts"
 import { useGame } from "./store.ts"
-import { advanceCompany, FRESH_COMPANY, growthFacts } from "./globe/growth.ts"
-
-/** What the company's served users pay less what its drops cost over a span. */
-function productNet(gigs: readonly number[], from: number, to: number): number {
-  const grown = advanceCompany(FRESH_COMPANY, growthFacts(gigs, {}), from, to, () => 0.999)
-  return grown.earned - grown.lost
-}
 
 /** Owned skills (by id) that cover what a gig asks by tag: the first skills of each tag, as many as it needs. */
 function skillsFor(gig: (typeof GIGS)[number]): Record<string, number> {
@@ -332,12 +325,10 @@ describe("phase B: gigs", () => {
     expect(idlePerSec(before)).toBe(2)
     expect(before.money).toBe(GIGS.filter((gig) => gig.id <= 8).reduce((sum, gig) => sum + gig.lump, 0))
     useGame.getState().tick(before.now + 10_000)
-    // The eight clients have only the laptop to serve them: the users it serves pay and the drops cost, on top of the 20.
-    const net = productNet([1, 2, 3, 4, 5, 6, 7, 8], before.now, before.now + 10_000)
     // The skills held make Friday deploy (+1% idle), which is part of the 20.
     expect(foundCombos(before).map((row) => row.id)).toContain("friday-deploy")
     expect(comboFactors(before).cps).toBeCloseTo(1.01, 12)
-    expect(useGame.getState().money - before.money).toBeCloseTo(20 * comboFactors(before).cps + net, 3)
+    expect(useGame.getState().money - before.money).toBeCloseTo(20 * comboFactors(before).cps, 3)
     spy.mockRestore()
   })
 })

@@ -2,18 +2,16 @@ import { CircleHelp } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { GOLD_SKILLS } from "../data/gold.ts"
-import { useGame } from "../game/store.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
 import { useFocusTrap } from "./useFocusTrap.ts"
 import { ModalBackdrop } from "./ModalBackdrop.tsx"
 
 const LAST_TROPHY = GOLD_SKILLS[GOLD_SKILLS.length - 1]?.name ?? "the last 10x dev skill"
 
-const steps = (product: string): readonly { title: string; text: string }[] => [
+const steps: readonly { title: string; text: string }[] = [
   { title: "Click the emoji", text: "Every click is XP. Spend it on skills: study, level up, repeat." },
   { title: "Skills open gigs", text: "Learn enough and the Gig Board opens. Gigs pay your first real dollars." },
   { title: "Gigs open jobs", text: "Jobs cost XP and pay a salary every second, even while you are away." },
-  { title: product, text: `Your product. Every cleared gig brings users from its client's region, and they spread as your gear, regions and points of presence allow. Open the globe from the bar on the left to chase eight billion.` },
   { title: "Gear and capital", text: "Spend dollars on desk upgrades, then on companies, rockets and Mars. Bigger clicks, bigger income." },
   { title: "Leave and come back", text: "The game keeps earning while you are gone, up to 8 hours. Check in, shop, leave again." },
   { title: "Collect trophies", text: "The 10x dev tab holds one-off perks: hover to click, stay away longer." },
@@ -21,7 +19,6 @@ const steps = (product: string): readonly { title: string; text: string }[] => [
 
 /** A short, friendly rundown of the game, opened from the top of the settings menu. */
 export function HowToPlay() {
-  const product = useGame((state) => state.profile.product)
   const [open, setOpen] = useState(false)
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -62,7 +59,7 @@ export function HowToPlay() {
                   How to play
                 </h2>
                 <ol className="howto-steps">
-                  {steps(product).map((step) => (
+                  {steps.map((step) => (
                     <li key={step.title}>
                       <b>{step.title}.</b> {step.text}
                     </li>

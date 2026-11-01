@@ -1,7 +1,7 @@
 import { LEGACY_PERKS, PERK } from "../data/legacy.ts"
 
 /**
- * What the Legacy perks held do, as plain numbers. Pure: the economy, the growth model, the offline cap and the shop
+ * What the Legacy perks held do, as plain numbers. Pure: the economy, the offline cap and the shop
  * each read the factor they need from here, so every number the game shows is the number it pays.
  */
 export type PerkEffects = {
@@ -15,12 +15,6 @@ export type PerkEffects = {
   salaries: number
   /** Multiplier on what capital rows earn. */
   capitalIncome: number
-  /** Multiplier on product growth. */
-  growth: number
-  /** Multiplier on product revenue. */
-  revenue: number
-  /** Users each career starts with. */
-  startUsers: number
 }
 
 export const NO_PERKS: PerkEffects = {
@@ -29,9 +23,6 @@ export const NO_PERKS: PerkEffects = {
   gearCost: 1,
   salaries: 1,
   capitalIncome: 1,
-  growth: 1,
-  revenue: 1,
-  startUsers: 0,
 }
 
 const KNOWN = new Set(LEGACY_PERKS.map((perk) => perk.id))
@@ -59,9 +50,6 @@ export function perkEffects(perks: readonly string[] | undefined): PerkEffects {
     gearCost: has("capital.gearCost") ? PERK.gearCost : 1,
     salaries: has("capital.salaries") ? PERK.salaries : 1,
     capitalIncome: has("capital.capitalIncome") ? PERK.capitalIncome : 1,
-    growth: has("founder.growth") ? PERK.growth : 1,
-    revenue: has("founder.revenue") ? PERK.revenue : 1,
-    startUsers: has("founder.users") ? PERK.startUsers : 0,
   }
   memo.set(key, effects)
   byList.set(perks, { ids: [...perks], effects })

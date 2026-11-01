@@ -27,8 +27,6 @@ export type FeatureProgress = Progress & {
   runs?: number
   /** This career's lifetime earnings (`stats.lifetimeEarned`); the first career's Exit opens once they would pay a Prestige. Omitted means 0. */
   earned?: number
-  /** The product has won the world: the Exit opens on the first career with the ending's bonus. */
-  won?: boolean
 }
 
 const BY_ID = new Map<string, FeatureRow>(FEATURES.map((row) => [row.id, row]))
@@ -79,7 +77,7 @@ export function triggerMet(trigger: FeatureTrigger, p: FeatureProgress): boolean
     case "era":
       return reachedEra(p, trigger.era)
     case "exit":
-      return (p.runs ?? 1) > 1 || p.won === true || prestigeTotalFor(p.earned ?? 0) >= 1
+      return (p.runs ?? 1) > 1 || prestigeTotalFor(p.earned ?? 0) >= 1
   }
 }
 
@@ -118,7 +116,7 @@ export function triggerLabel(trigger: FeatureTrigger): string {
     case "era":
       return `the ${trigger.era === "q3" ? "scale" : trigger.era} era`
     case "exit":
-      return "earning enough for your first Prestige, or winning the world"
+      return "earning enough for your first Prestige"
   }
 }
 

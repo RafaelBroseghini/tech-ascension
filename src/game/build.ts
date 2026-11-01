@@ -4,14 +4,12 @@
  * src/data/specializations.ts and src/data/leadership.ts, and the rows are in src/data/phases.ts. The store keeps the
  * state, the save carries it as an optional `build` block.
  */
-import { highestJobRank, firstJobAtRank, JOB_TIERS } from "../data/phases.ts"
+import { highestJobRank, JOB_TIERS } from "../data/phases.ts"
 import type { JobTier } from "../data/phases.ts"
 import { isLeadId, LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
 import { isSpecId, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
-import type { Hire, Hires } from "./globe/hires.ts"
-import { GEAR } from "../data/gear.ts"
 
 const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
 
@@ -27,8 +25,6 @@ export type BuildState = {
   peakRank?: number
   /** The leadership line picked after Senior (IC or Manager), or left out before the pick. Locked once picked. */
   leadership?: LeadId
-  /** Frontend's launch charge: manual clicks banked towards the next launch (`src/game/launch.ts`). Left out at 0. */
-  charge?: number
 }
 
 export const FRESH_BUILD: BuildState = { spec: null, switched: false }
@@ -38,33 +34,10 @@ export type HasBuild = { build?: BuildState }
 
 export const specOf = (p: HasBuild): SpecId | null => p.build?.spec ?? null
 
-/** What the product reads from the build: the specialization, the leadership line and the IC rows held. */
-export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number; gpus: number }
-
-/** Jobs held that belong to the IC line (ranks 16 to 24 carry a `lead`). */
-export const icRowsHeld = (jobs: readonly number[]): number => JOB_TIERS.filter((job) => job.lead === "ic" && jobs.includes(job.id)).length
-
-/** GPU gear copies held: what an AI build's growth reads. */
-export const gpusHeld = (equipment: Readonly<Record<string, number>> | undefined): number =>
-  equipment ? GEAR.reduce((sum, row) => (row.kind === "gpu" ? sum + (equipment[String(row.id)] ?? 0) : sum), 0) : 0
-
-export const buildFactsOf = (p: HasBuild & { jobs: readonly number[]; equipment?: Readonly<Record<string, number>> }): BuildFacts => ({
-  spec: specOf(p),
-  lead: leadOf(p),
-  icRows: icRowsHeld(p.jobs),
-  gpus: gpusHeld(p.equipment),
-})
-
 export const leadOf = (p: HasBuild): LeadId | null => p.build?.leadership ?? null
 
-/** The build without its launch charge (a full launch used it up). */
-export function omitCharge(build: BuildState): BuildState {
-  const { charge: _used, ...rest } = build
-  return rest
-}
-
 export function isFreshBuild(build: BuildState | undefined): boolean {
-  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership && !(build.charge && build.charge > 0))
+  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership)
 }
 
 /** The rank the career has reached: the highest job held now, or before a switch, whichever is higher. Rank gates read this. */
@@ -98,9 +71,7 @@ export function jobsAfterSwitch(jobs: readonly number[], from: SpecId): number[]
 
 /** The build after the switch. The rank reached so far is kept, so the gates it opened stay open, and so is the leadership line. */
 export function switchedBuild(p: HasBuild & { jobs: readonly number[] }, id: SpecId): BuildState {
-  // A switch lets the old build's launch charge go.
-  const { charge: _gone, ...kept } = p.build ?? FRESH_BUILD
-  return { ...kept, spec: id, switched: true, peakRank: heldRank(p) }
+  return { ...(p.build ?? FRESH_BUILD), spec: id, switched: true, peakRank: heldRank(p) }
 }
 
 /** The leadership pick opens once a Senior job (rank 14) is held, now or before a switch. */
@@ -120,13 +91,6 @@ export function leadPickedBuild(build: BuildState | undefined, id: LeadId): Buil
 /** The lines the player could take right now: both while the pick is open, none otherwise. */
 export function leadOptions(p: HasBuild & { jobs: readonly number[] }): LeadId[] {
   return leadPickOpen(p) ? LEADERSHIP.map((row) => row.id) : []
-}
-
-/** Why a hire kind is shut for this career, or null when it is open. Hiring belongs to the Manager line, and each kind opens at a manager rank. */
-export function hireLocked(p: HasBuild & { jobs: readonly number[] }, row: Pick<Hire, "rank">): string | null {
-  if (leadOf(p) !== "manager") return "Hiring opens when you lead as a Manager"
-  if (highestJobRank(p.jobs) < row.rank) return `Needs ${firstJobAtRank(row.rank)?.name ?? `job ${row.rank}`}`
-  return null
 }
 
 /** The specializations the player could take right now: all of them to pick, the other five to switch, none otherwise. */
@@ -152,11 +116,10 @@ export const needsLead = (job: JobTier): boolean => job.rank > LEAD_NEEDED_ABOVE
  * holds a job above the trunk was on the plain ladder, which is Backend; one that holds another track's row (a
  * hand-edited save) takes that track. Jobs of other tracks are never kept alongside a pick.
  *
- * A save from before leadership that holds a job above rank 15 and picked no line takes one: Manager when it holds
- * hires or a manager-only row and no IC-only row, IC otherwise. Jobs of the other line are dropped. Hires are never
- * dropped here; they keep working, they just cannot be bought under IC.
+ * A save that holds a job above rank 15 and picked no line takes one: Manager when it holds a manager-only row and no
+ * IC-only row, IC otherwise. Jobs of the other line are dropped.
  */
-export function normalizeBuild(raw: unknown, jobs: readonly number[], hires: Hires = {}): { build: BuildState | undefined; jobs: number[] } {
+export function normalizeBuild(raw: unknown, jobs: readonly number[]): { build: BuildState | undefined; jobs: number[] } {
   const record = typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
   let spec: SpecId | null = isSpecId(record.spec) ? record.spec : null
   if (spec === null && highestJobRank(jobs) > TRUNK_TOP_RANK) {
@@ -166,17 +129,15 @@ export function normalizeBuild(raw: unknown, jobs: readonly number[], hires: Hir
   let lead: LeadId | null = isLeadId(record.leadership) ? record.leadership : null
   if (lead === null && highestJobRank(jobs) > LEAD_NEEDED_ABOVE_RANK) {
     const held = jobs.map((id) => JOB_BY_ID.get(id)?.lead)
-    const manager = Object.keys(hires).length > 0 || held.includes("manager")
-    lead = manager && !held.includes("ic") ? "manager" : "ic"
+    lead = held.includes("manager") && !held.includes("ic") ? "manager" : "ic"
   }
   const peak = typeof record.peakRank === "number" && Number.isFinite(record.peakRank) ? Math.floor(record.peakRank) : 0
   const peakRank = Math.min(Math.max(0, peak), 31)
-  const banked = typeof record.charge === "number" && Number.isFinite(record.charge) ? Math.max(0, Math.min(24.999, record.charge)) : 0
   const kept = jobs.filter((id) => {
     const row = JOB_BY_ID.get(id)
     return row !== undefined && rowVisible(row, spec, lead) && (lead !== null || row.lead === undefined)
   })
-  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}), ...(spec === "frontend" && banked > 0 ? { charge: banked } : {}) }
+  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}) }
   return { build: isFreshBuild(build) ? undefined : build, jobs: kept }
 }
 

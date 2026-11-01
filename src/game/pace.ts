@@ -16,12 +16,9 @@ import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
 import { GIGS, SKILL_TIERS, highestJobRank, visibleJobs } from "../data/phases.ts"
 import type { LeadId } from "../data/leadership.ts"
-import { effectsOf } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { shipLaunches, shipsLaunches } from "./launch.ts"
-import { servableUsers } from "./globe/load.ts"
 import type { TreeView } from "./tree/index.ts"
-import { buildFactsOf, hireLocked, leadPickedBuild, specOf, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
+import { leadPickedBuild, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
   capitalBase,
@@ -39,17 +36,9 @@ import {
   xpPerSec,
 } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { HALL_OF_FAME, LEGACY_PERKS, PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
-import { canBuyPerk, earningsTotal, endingBonus, exitOpen, freshLegacy, mergeGrant, prestigeOnExit, startingGrant, withStartUsers } from "./legacy.ts"
+import { LEGACY_PERKS, PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
+import { canBuyPerk, earningsPrestige, exitOpen, freshLegacy, mergeGrant, startingGrant } from "./legacy.ts"
 import type { LegacyState } from "./legacy.ts"
-import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
-import { advanceCompany, FRESH_COMPANY } from "./globe/growth.ts"
-import type { CompanyState, GrowthFacts } from "./globe/growth.ts"
-import { headcountOf, hirePayrollOf, hirePrice, openHires } from "./globe/hires.ts"
-import type { Ending, Hires } from "./globe/hires.ts"
-import { arpuOf, REVENUE_PER_DROPPED_RPS, RPS_PER_USER, servedRpsOf, servingOf } from "./globe/load.ts"
-import { productFactsOf } from "./globe/product.ts"
-import { liveRegions, reachOf, seedsOf, totalUsers, WIN_MULT, WORLD_TARGET } from "./globe/world.ts"
 import { prestigeMult } from "./mods.ts"
 import { perkEffects } from "./perks.ts"
 import { ownsEverything } from "./nextUnlock.ts"
@@ -96,7 +85,7 @@ export function cadenceOf(profile: PlayProfile, capSeconds: number = OFFLINE_CAP
 /** The track the model takes when it reaches the pick, unless a run asks for another. Backend is the plain ladder. */
 export const DEFAULT_PACE_SPEC: SpecId = "backend"
 
-/** The line the model takes when it reaches Senior, unless a run asks for another. The sim is an IC player with no hires. */
+/** The line the model takes when it reaches Senior, unless a run asks for another. */
 export const DEFAULT_PACE_LEAD: LeadId = "ic"
 
 /** Share of idle income each click adds once every job the pace build can see is held: the sum of their `clickPct`, as a fraction. */
@@ -135,26 +124,19 @@ export const PACE_MILESTONES = [
   "allJobs",
   "allGear",
   "allCapital",
-  "users10k",
-  "users1m",
-  "won",
 ] as const
 
 export type PaceMilestone = (typeof PACE_MILESTONES)[number]
 
-/** Users the product has to reach for each product milestone. The first two are the career gates to come (`docs/BUILDS.md`). */
-export const PRODUCT_MILESTONES = { users10k: 10_000, users1m: 1_000_000, won: WORLD_TARGET } as const
-export type ProductMilestone = keyof typeof PRODUCT_MILESTONES
-
-/** Job ranks the career gates sit on: Mid-level SWE (the specialization pick) and Senior SWE. A milestone is met by holding a job of that rank or higher. */
+/** Job ranks of the picks: Mid-level SWE (the specialization pick) and Senior SWE (the leadership pick). A milestone is met by holding a job of that rank or higher. */
 export const MID_JOB_RANK = 7
 export const SENIOR_JOB_RANK = 14
 
 export type PaceResult = {
   profile: PlayProfile
-  /** True when everything was owned and (with the product) the world was won before `maxDays`. */
+  /** True when everything was owned before `maxDays`. */
   complete: boolean
-  /** Wall-clock days until the career finished: the later of owning everything and the win (or `maxDays` when it never did). */
+  /** Wall-clock days until the career finished by owning everything (or `maxDays` when it never did). */
   days: number
   /** Wall-clock day everything was owned (`ownsEverything`), or null if it never was. The formula in docs/PACING.md is about this day. */
   ownedDays: number | null
@@ -168,8 +150,6 @@ export type PaceResult = {
    * everything was owned. The model only buys at visits, so a wait is counted in visits, not minutes.
    */
   longestWaitVisits: number
-  /** Heads on the payroll at the end: 0 on the IC line, whatever a Manager hired under `HIRE_CASH_SHARE` and `HIRE_PAYROLL_SHARE`. */
-  headcount: number
 }
 
 type Sim = Omit<Progress, "jobs" | "gigs"> & {
@@ -177,46 +157,20 @@ type Sim = Omit<Progress, "jobs" | "gigs"> & {
   gigs: number[]
   /** The Prestige multiplier on every income and XP rate. 1 in a single run. */
   mult: number
-  /** Dollars credited this career (gig lumps, idle, click and product income); the seed money is not. */
+  /** Dollars credited this career (gig lumps, idle and click income); the seed money is not. */
   earned: number
-  /** The product, when the run models it (`simulateExits`, and `simulatePace` unless it is turned off). */
-  product?: ProductSim
   /** The specialization the run picks the first time it holds Mid-level SWE. */
   track: SpecId
   /** The leadership line the run picks the first time it holds Senior SWE. */
   lead: LeadId
   /** A test's probe, called at every round of the shop (`PaceOptions.inspect`). */
   inspect?: (career: PaceCareer) => void
-  /** The product's company, which the user gates read: the pick opens at 10,000 users and Senior at 1,000,000. Left out when the run has no product, and the gates stay open. */
-  readonly company?: CompanyState
-}
-
-/** What the model keeps of the company: users by region and the product's facts, no incidents, no hires, no extra regions. */
-type ProductSim = {
-  company: CompanyState
-  /** Legacy perks held and the Prestige total behind the permanent bonus (it multiplies growth). */
-  perks: readonly string[]
-  prestigeTotal: number
-  /** The team a Manager has hired, by kind. Empty on the IC line. */
-  hires: Hires
-  /** Day of this career the world was won, or null. */
-  winSeconds: number | null
-  /** Second of this career each product milestone was first reached; the win is `winSeconds`. */
-  marks: Partial<Record<ProductMilestone, number>>
-  /**
-   * Seconds of the wall clock the product did not see (time away past the offline cap). The product walks its own clock;
-   * marks and the win are dated on the wall clock, which is that plus this.
-   */
-  skipped: number
 }
 
 function freshSim(track: SpecId, lead: LeadId): Sim {
   return {
     track,
     lead,
-    get company() {
-      return this.product?.company
-    },
     money: 0,
     xp: 0,
     xpTotal: 0,
@@ -231,7 +185,7 @@ function freshSim(track: SpecId, lead: LeadId): Sim {
   }
 }
 
-const MILESTONE_TESTS: Record<Exclude<PaceMilestone, ProductMilestone>, (s: Sim) => boolean> = {
+const MILESTONE_TESTS: Record<PaceMilestone, (s: Sim) => boolean> = {
   gigBoard: gigBoardUnlocked,
   gear: equipmentOpen,
   jobBoard: jobBoardUnlocked,
@@ -275,16 +229,7 @@ function clearGigs(s: Sim): boolean {
   return any
 }
 
-/** A Frontend build's clicks ship launches: `clicks` manual clicks charge it, and each full charge adds users to the product (`src/game/launch.ts`). */
-function launch(s: Sim, clicks: number) {
-  const p = s.product
-  if (!p || !shipsLaunches(s.build?.spec ?? null) || s.jobs.length === 0) return
-  const shipped = shipLaunches(p.company, s.build?.charge ?? 0, clicks, servableUsers(s.equipment))
-  p.company = shipped.company
-  s.build = { ...(s.build ?? { spec: "frontend", switched: false }), charge: shipped.charge }
-}
-
-/** The model takes its track the moment the pick opens (Mid-level SWE held and 10,000 users) and its line once Senior is held. */
+/** The model takes its track the moment the pick opens (Mid-level SWE held) and its line once Senior is held. */
 function takePicks(s: Sim): boolean {
   let any = false
   if (pickOpen(s)) {
@@ -313,21 +258,6 @@ function takeJobs(s: Sim): boolean {
   return any
 }
 
-/** The player keeps the status page green: it reads "degraded" above this share of capacity in use (`servingOf`), so they buy before the drops start. */
-const SERVING_TARGET_LOAD = 0.8
-
-/** Serving gear the users are outgrowing is bought if the revenue it saves repays it within a day, for both players. */
-const PRODUCT_PAYBACK_SECONDS = 2 * DAY_SECONDS
-
-/**
- * A Manager hires whenever a kind's next copy costs no more than this share of the cash in hand: someone who treats the
- * team as a side bet. It is a model assumption, not a tuned number; `docs/PACING.md` sweeps it. The kinds are the ones
- * the line's ranks open (`hireLocked`).
- */
-export const HIRE_CASH_SHARE = 0.05
-/** ...and only while the payroll, with that hire, stays within this share of what the product's served users pay. */
-export const HIRE_PAYROLL_SHARE = 0.05
-
 /**
  * Gear and capital are bought by payback: `cost / gain`, where `gain` is the $/s the copy adds as the
  * player actually earns it (idle share of the day, plus the click share of a visit). A first copy is bought
@@ -343,43 +273,23 @@ function spendMoney(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
     const capitalIncome = perkEffects(s.legacy?.perks).capitalIncome
 
     let best: { payback: number; cost: number; buy: () => void } | null = null
-    // Users the gear cannot serve are dropped: a serving copy earns its cost back from the revenue it saves, whichever rule the player reinvests by.
-    const serving = s.product ? servingOf(s.product.company.users, [], s.equipment) : null
-    const perDroppedRps = serving ? REVENUE_PER_DROPPED_RPS + arpuOf(totalUsers(s.product!.company.users)) / RPS_PER_USER : 0
-    const consider = (cost: number, first: boolean, gain: number, buy: () => void, servedRps = 0) => {
+    const consider = (cost: number, first: boolean, gain: number, buy: () => void) => {
       if (!canAfford(s.money, cost)) return
-      const saved = serving ? Math.min(servedRps, Math.max(0, serving.demand / SERVING_TARGET_LOAD - serving.capacity)) * perDroppedRps : 0
-      gain += saved
       const payback = gain > 0 ? cost / gain : Number.POSITIVE_INFINITY
-      if (!first && payback > (saved > 0 ? Math.max(paybackSeconds, PRODUCT_PAYBACK_SECONDS) : paybackSeconds)) return
+      if (!first && payback > paybackSeconds) return
       if (!best || payback < best.payback || (payback === best.payback && cost < best.cost)) best = { payback, cost, buy }
     }
 
     for (const row of GEAR) {
       const have = ownedCount(s.equipment, row.id)
       if (!equipmentOpen(s) || !isGearRevealed(row, s.equipment, s.peakMoney, s.jobs, s.build?.peakRank)) continue
-      consider(nextCost(gearBase(row, s), have), have === 0, (row.cps * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.equipment[String(row.id)] = have + 1), servedRpsOf(row))
+      consider(nextCost(gearBase(row, s), have), have === 0, (row.cps * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.equipment[String(row.id)] = have + 1))
     }
     if (capitalUnlocked(s)) {
       for (const row of CAPITAL) {
         const have = ownedCount(s.owned, row.id)
         if (!isRevealed(row, s.owned, s.peakMoney)) continue
         consider(nextCost(capitalBase(row, s), have), have === 0, (row.cps * capitalIncome * perIdleSecond + row.clickBonus * perClick) * s.mult, () => (s.owned[String(row.id)] = have + 1))
-      }
-    }
-
-    // A Manager hires the cheapest kind the cash share allows, before the shop's rows.
-    if (s.product && s.lead === "manager") {
-      const p = s.product
-      const revenueNow = servingOf(p.company.users, [], s.equipment).revenuePerSec * perkEffects(p.perks).revenue * effectsOf(specOf(s)).revenue
-      const row = openHires(p.hires)
-        .filter((h) => hireLocked(s, h) === null && hirePrice(h, p.hires[h.id] ?? 0) <= s.money * HIRE_CASH_SHARE && hirePayrollOf(p.hires) + h.salary <= revenueNow * HIRE_PAYROLL_SHARE)
-        .sort((a, b) => hirePrice(a, p.hires[a.id] ?? 0) - hirePrice(b, p.hires[b.id] ?? 0))[0]
-      if (row) {
-        s.money -= hirePrice(row, p.hires[row.id] ?? 0)
-        p.hires = { ...p.hires, [row.id]: (p.hires[row.id] ?? 0) + 1 }
-        any = true
-        continue
       }
     }
 
@@ -433,11 +343,9 @@ export type PaceOptions = {
    * (best payback first). 0 never buys one. Default `STACKER_PAYBACK_SECONDS`.
    */
   paybackSeconds?: number
-  /** Play the day job alone, with no product: the finish is owning everything. Default false. */
-  withoutProduct?: boolean
   /** The specialization the career picks at Mid-level SWE. Default `DEFAULT_PACE_SPEC` (Backend, the plain ladder). */
   specialization?: SpecId
-  /** The leadership line the career picks at Senior SWE. Default `DEFAULT_PACE_LEAD` (IC: no hires are modeled, so only the night owl ending can be won). */
+  /** The leadership line the career picks at Senior SWE. Default `DEFAULT_PACE_LEAD` (IC). */
   leadership?: LeadId
   /** Called with the career at every round of the shop, so a test can check the whole game's rules against it. Never set in play. */
   inspect?: (career: PaceCareer) => void
@@ -454,47 +362,28 @@ export type PaceCareer = TreeView & { equipment: Record<string, number> }
 export const ONE_OF_EACH_PAYBACK_SECONDS = 60 * 60
 export const STACKER_PAYBACK_SECONDS = 2 * DAY_SECONDS
 
-/**
- * The single career. The product is in it: a fresh company walked with the game's own growth (`stepProduct`), an IC player
- * with no hires on the free home region. The career finishes when it owns everything and has won the world.
- */
+/** The single career. It finishes when it owns everything. */
 export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): PaceResult {
   const maxSeconds = (options.maxDays ?? 365) * DAY_SECONDS
   const cad = cadenceOf(profile)
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
   const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
   if (options.inspect) s.inspect = options.inspect
-  if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, hires: {}, winSeconds: null, marks: {}, skipped: 0 }
   const milestones: Partial<Record<PaceMilestone, number>> = {}
   let t = 0
-  let walked = 0
   let ownedAt: number | null = null
 
-  // The product's clock is the wall clock less the time away past the offline cap, which the game never walks.
-  const syncProduct = (pastCap = 0) => {
-    const p = s.product
-    if (!p) return
-    const target = t - pastCap - p.skipped
-    stepProduct(s, walked, target)
-    walked = Math.max(walked, target)
-    p.skipped += pastCap
-  }
   const note = () => {
     for (const id of PACE_MILESTONES) {
-      if (milestones[id] !== undefined) continue
-      if (id in PRODUCT_MILESTONES) {
-        const at = s.product?.marks[id as ProductMilestone]
-        if (at !== undefined) milestones[id] = at / DAY_SECONDS
-      } else if (MILESTONE_TESTS[id as keyof typeof MILESTONE_TESTS](s)) milestones[id] = t / DAY_SECONDS
+      if (milestones[id] === undefined && MILESTONE_TESTS[id](s)) milestones[id] = t / DAY_SECONDS
     }
     if (ownedAt === null && ownsEverything(s)) ownedAt = t
   }
-  const finished = () => ownedAt !== null && (!s.product || s.product.winSeconds !== null)
+  const finished = () => ownedAt !== null
   let longestWait = 0
   let wait = 0
   // A visit that bought a first copy ends the wait; one that did not extends it.
   const endVisit = (before: number) => {
-    // The wait after everything is owned is the product's, not the shop's.
     if (ownedAt !== null) return
     wait = firstCopies(s) > before ? 0 : wait + 1
     longestWait = Math.max(longestWait, wait)
@@ -502,20 +391,18 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   const result = (complete: boolean): PaceResult => ({
     profile,
     complete,
-    days: complete ? Math.max(ownedAt ?? 0, s.product?.winSeconds ?? 0) / DAY_SECONDS : t / DAY_SECONDS,
+    days: complete ? (ownedAt ?? 0) / DAY_SECONDS : t / DAY_SECONDS,
     ownedDays: ownedAt === null ? null : ownedAt / DAY_SECONDS,
     milestones,
     idleShare: cad.idleShare,
     clicksPerWallSecond: cad.clicksPerWallSecond,
     longestWaitVisits: longestWait,
-    headcount: headcountOf(s.product?.hires ?? {}),
   })
 
   for (let cycle = 0; cycle * cad.cycleSeconds < maxSeconds; cycle++) {
     t = cycle * cad.cycleSeconds
     if (cycle > 0) {
-      // The product grows through the time away; coming back pays the time away, up to the cap, at the rates held when they left.
-      syncProduct(Math.max(0, cad.awaySeconds - OFFLINE_CAP_SECONDS))
+      // Coming back pays the time away, up to the cap, at the rates held when they left.
       const away = Math.min(cad.awaySeconds, OFFLINE_CAP_SECONDS)
       earn(s, idlePerSec(s) * s.mult * away, xpPerSec(s) * s.mult * away)
     }
@@ -537,8 +424,6 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
       )
       spent += step
       t += step
-      syncProduct()
-      launch(s, profile.clicksPerSec * step)
       shop(s, cad, paybackSeconds)
       note()
       if (finished()) {
@@ -564,39 +449,31 @@ export type ExitRun = {
   row6Days: number | null
   /** Days into the career when the Exit first opened (the first career: when it would pay a Prestige), or null if it never did. */
   exitOpenDays: number | null
-  /** Days into the career when the world was won (8B users), or null. */
-  winDays: number | null
   /** Days into the career when every row was owned (`ownsEverything`), or null. */
   ownedDays: number | null
   /** Days into the career when it had earned what the career before it earned in all, or null for career 1 and when it never did. */
   catchUpDays: number | null
-  /** Users the product had when the career ended. */
-  users: number
-  /** Prestige the Exit paid, ending bonus included (0 for a career that finished instead). */
+  /** Prestige the Exit paid (0 for a career that finished instead). */
   prestigeEarned: number
-  /** The part of it that was a new ending's bonus. */
-  endingBonus: number
   /** Lifetime Prestige and the multiplier after this Exit. */
   prestigeTotal: number
   mult: number
   /** Legacy perks held when the career started. */
   perks: number
-  /** Dollars the career earned, product revenue included. */
+  /** Dollars the career earned. */
   earned: number
-  /** True when the career owned every row (`ownsEverything`) and had won the world, and the model stopped there. */
+  /** True when the career owned every row (`ownsEverything`), and the model stopped there. */
   finished: boolean
 }
 
 export type ExitsResult = {
   profile: PlayProfile
-  /** True when some career owned everything and had won the world before `maxDays`. */
+  /** True when some career owned everything before `maxDays`. */
   complete: boolean
   /** Wall-clock days until it did (or `maxDays`). */
   days: number
   /** The run that finished, or null. */
   finishRun: number | null
-  /** Endings in the Hall of Fame at the end. The model has no hires, so only `nightOwl` can be reached. */
-  endings: string[]
   runs: ExitRun[]
 }
 
@@ -616,71 +493,22 @@ export type ExitsOptions = PaceOptions & {
 /** A first Exit worth taking: the bonus grows by 15%. */
 export const EXIT_MIN_GROWTH = 1.15
 
-/** Prestige the Exit would pay if the ladder were smooth: the rungs climbed so far plus the fraction toward the next, with the ending bonus. */
-function smoothPrestige(legacy: LegacyState, earned: number, bonus: number): number {
-  return Math.cbrt((legacy.earnedAllRuns + earned) / PRESTIGE_EARN_SCALE) - earningsTotal(legacy) + bonus
+/** Prestige the Exit would pay if the ladder were smooth: the rungs climbed so far plus the fraction toward the next. */
+function smoothPrestige(legacy: LegacyState, earned: number): number {
+  return Math.cbrt((legacy.earnedAllRuns + earned) / PRESTIGE_EARN_SCALE) - legacy.prestigeTotal
 }
 
-const NEVER = () => 0.999
-const HOME_REACH = reachOf(FRESH_FOOTPRINT)
-const HOME_LIVE = liveRegions(FRESH_FOOTPRINT)
-
-/** The product is walked in chunks this long, so a milestone is dated to ten minutes and not to the next visit. */
-const PRODUCT_CHUNK_SECONDS = 600
-
-/**
- * Walks the product from `fromSec` to `toSec` of the run with the real `advanceCompany`: users grow by region from the
- * clients signed, the gear the sim owns serves them, served users pay and dropped requests cost. The career has
- * no hires, the footprint is the free home region, and `rand` never throws an incident.
- */
-function stepProduct(s: Sim, fromSec: number, toSec: number) {
-  const p = s.product
-  if (!p || !(toSec > fromSec)) return
-  const facts: GrowthFacts = {
-    seeds: seedsOf(s.gigs),
-    reach: HOME_REACH,
-    live: HOME_LIVE,
-    equipment: s.equipment,
-    product: productFactsOf(p.hires, { perks: p.perks, prestigeTotal: p.prestigeTotal }, buildFactsOf(s)),
-  }
-  for (let at = fromSec; at < toSec; at += PRODUCT_CHUNK_SECONDS) {
-    const end = Math.min(toSec, at + PRODUCT_CHUNK_SECONDS)
-    const grown = advanceCompany(p.company, facts, at * 1000, end * 1000, NEVER)
-    p.company = grown.state
-    s.earned += grown.earned
-    s.money = Math.max(0, s.money + grown.earned - grown.lost - grown.payroll)
-    if (s.money > s.peakMoney) s.peakMoney = s.money
-    const users = totalUsers(grown.state.users)
-    for (const id of Object.keys(PRODUCT_MILESTONES) as ProductMilestone[]) if (p.marks[id] === undefined && users >= PRODUCT_MILESTONES[id]) p.marks[id] = end + p.skipped
-    if (grown.state.won && p.winSeconds === null) {
-      p.winSeconds = end + p.skipped
-      p.marks.won = end + p.skipped
-      // The win pays its multiplier on everything earned from then on, as `foreverMult` does.
-      s.mult *= WIN_MULT
-    }
-  }
-}
-
-/** A new career under the perks held: the grant merged into an empty one, the Prestige multiplier on, the product seeded. */
+/** A new career under the perks held: the grant merged into an empty one, the Prestige multiplier on. */
 function newCareer(legacy: LegacyState, track: SpecId, lead: LeadId): Sim {
   const s = freshSim(track, lead)
   const start = mergeGrant(s, startingGrant(legacy.perks))
   Object.assign(s, { skills: start.skills, gigs: start.gigs, jobs: start.jobs, xp: start.xp, xpTotal: start.xpTotal, money: start.money, peakMoney: start.peakMoney })
   s.mult = prestigeMult(legacy.prestigeTotal)
   s.legacy = { perks: [...legacy.perks] }
-  s.product = {
-    company: { ...FRESH_COMPANY, users: withStartUsers(FRESH_COMPANY.users, legacy.perks) },
-    perks: [...legacy.perks],
-    prestigeTotal: legacy.prestigeTotal,
-    hires: {},
-    winSeconds: null,
-    marks: {},
-    skipped: 0,
-  }
   return s
 }
 
-/** After an Exit: the cheapest perk the Prestige covers, across the three tracks, over and over. Network first on ties. */
+/** After an Exit: the cheapest perk the Prestige covers, across the two tracks, over and over. Network first on ties. */
 function buyPerks(legacy: LegacyState) {
   for (;;) {
     let pick: (typeof LEGACY_PERKS)[number] | null = null
@@ -692,17 +520,11 @@ function buyPerks(legacy: LegacyState) {
 }
 
 /**
- * The same player over several careers, with the product. At the start of a visit they sell the product through the
- * Exit when it would raise the Prestige bonus by `minGrowth` (15%) or more, or, with the `falling` rule, when the
- * Prestige per hour of this career starts to fall. Then they spend the Prestige on the cheapest perk they can pay for,
- * across the Network, Founder and Capital tracks (Network first on ties), and play the next career, which starts under
- * those perks. It stops when a career owns everything and has won the world.
- *
- * The product is modeled with the game's own growth and serving functions, and it is the only difference from the
- * single-run model: served users pay, the win (8B users) pays its x1.25 and its Hall of Fame bonus. Left out: incidents,
- * hires (so only the night owl ending can be won and the hires' share does nothing), extra regions and points of
- * presence, and any gear bought to serve users beyond what the
- * model already buys. `simulatePace` now models the same product for the single career.
+ * The same player over several careers. At the start of a visit they leave through the Exit when it would raise the
+ * Prestige bonus by `minGrowth` (15%) or more, or, with the `falling` rule, when the Prestige per hour of this career
+ * starts to fall. Then they spend the Prestige on the cheapest perk they can pay for, across the Network and Capital
+ * tracks (Network first on ties), and play the next career, which starts under those perks. It stops when a career owns
+ * everything.
  */
 export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}): ExitsResult {
   const maxSeconds = (options.maxDays ?? 365) * DAY_SECONDS
@@ -722,32 +544,22 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
   let target = Number.POSITIVE_INFINITY
   let catchUpAt: number | null = null
   let ownedAt: number | null = null
-  // The product has been walked up to this second of the whole run.
-  let walked = 0
 
-  const syncProduct = () => {
-    stepProduct(s, walked - runStart, t - runStart)
-    walked = t
-  }
   const noteRow6 = () => {
     if (row6At === null && ownedCount(s.owned, EXIT_ROW) > 0) row6At = (t - runStart) / DAY_SECONDS
     if (catchUpAt === null && s.earned >= target) catchUpAt = (t - runStart) / DAY_SECONDS
     if (ownedAt === null && ownsEverything(s)) ownedAt = (t - runStart) / DAY_SECONDS
   }
-  const finishedNow = () => ownsEverything(s) && s.product?.winSeconds != null
-  const winOf = () => ({ won: s.product?.winSeconds != null, ending: s.product?.company.ending as Ending | undefined })
-  const record = (finished: boolean, prestigeEarned: number, bonus: number): ExitRun => ({
+  const finishedNow = () => ownsEverything(s)
+  const record = (finished: boolean, prestigeEarned: number): ExitRun => ({
     run: legacy.runs,
     startDay: runStart / DAY_SECONDS,
     endDay: t / DAY_SECONDS,
     row6Days: row6At,
     exitOpenDays: openAt,
-    winDays: s.product?.winSeconds == null ? null : s.product.winSeconds / DAY_SECONDS,
     catchUpDays: catchUpAt,
     ownedDays: ownedAt,
-    users: Object.values(s.product?.company.users ?? {}).reduce((sum, n) => sum + n, 0),
     prestigeEarned,
-    endingBonus: bonus,
     prestigeTotal: legacy.prestigeTotal,
     mult: prestigeMult(legacy.prestigeTotal),
     perks: perksAtStart,
@@ -759,7 +571,6 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
     complete,
     days: t / DAY_SECONDS,
     finishRun: complete ? legacy.runs : null,
-    endings: [...legacy.endings],
     runs,
   })
 
@@ -768,29 +579,23 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
     // The cap carries Long weekend: the perks held now are the ones this career started under.
     const capSeconds = OFFLINE_CAP_SECONDS + perkEffects(legacy.perks).offlineHours * 3600
     if (cycle > 0) {
-      // The product grows through the time away, then the visit is paid at the rates held when they left.
-      syncProduct()
+      // The visit is paid at the rates held when they left.
       const away = Math.min(cad.awaySeconds, capSeconds)
       earn(s, idlePerSec(s) * s.mult * away, xpPerSec(s) * s.mult * away)
     }
     shop(s, cad, paybackSeconds)
     noteRow6()
-    syncProduct()
-    noteRow6()
     if (finishedNow()) {
-      runs.push(record(true, 0, 0))
+      runs.push(record(true, 0))
       return done(true)
     }
 
     // The Exit: only when it is open and pays a whole Prestige, and the player's rule says go.
-    syncProduct()
     const hours = (t - runStart) / 3600
-    const win = winOf()
-    const open = exitOpen(legacy, s.earned, win)
+    const open = exitOpen(legacy, s.earned)
     if (open && openAt === null) openAt = (t - runStart) / DAY_SECONDS
-    const bonus = endingBonus(legacy, win)
-    const gain = open ? prestigeOnExit(legacy, s.earned, win) : 0
-    const rate = open && hours > 0 ? Math.max(0, smoothPrestige(legacy, s.earned, bonus)) / hours : 0
+    const gain = open ? earningsPrestige(legacy, s.earned) : 0
+    const rate = open && hours > 0 ? Math.max(0, smoothPrestige(legacy, s.earned)) / hours : 0
     const growth = prestigeMult(legacy.prestigeTotal + gain) / prestigeMult(legacy.prestigeTotal)
     const leave = gain >= 1 && (options.exitRule === "falling" ? prevRate > 0 && rate < prevRate : growth >= (options.minGrowth ?? EXIT_MIN_GROWTH))
     prevRate = rate
@@ -798,11 +603,7 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
       legacy.prestige += gain
       legacy.prestigeTotal += gain
       legacy.earnedAllRuns += s.earned
-      if (bonus > 0 && win.ending) {
-        const ending = win.ending
-        legacy.endings = HALL_OF_FAME.filter((entry) => entry.id === ending || legacy.endings.includes(entry.id)).map((entry) => entry.id)
-      }
-      runs.push(record(false, gain, bonus))
+      runs.push(record(false, gain))
       target = s.earned
       catchUpAt = null
       ownedAt = null
@@ -812,7 +613,6 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
       s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
       cad = cadenceOf(profile, OFFLINE_CAP_SECONDS + perkEffects(legacy.perks).offlineHours * 3600)
       runStart = t
-      walked = t
       row6At = null
       openAt = null
       prevRate = 0
@@ -831,17 +631,15 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
       )
       spent += step
       t += step
-      syncProduct()
       shop(s, cad, paybackSeconds)
       noteRow6()
       if (finishedNow()) {
-        runs.push(record(true, 0, 0))
+        runs.push(record(true, 0))
         return done(true)
       }
     }
   }
   // Out of days: the career under way is part of the answer, unfinished.
-  syncProduct()
-  runs.push(record(false, 0, 0))
+  runs.push(record(false, 0))
   return done(false)
 }

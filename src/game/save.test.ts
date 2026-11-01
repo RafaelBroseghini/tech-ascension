@@ -1,7 +1,5 @@
-import { describe, expect, it, vi } from "vitest"
-import { freshSave, hydrate, parseSave } from "./save.ts"
-import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
-import { REGIONS } from "../data/regions.ts"
+import { describe, expect, it } from "vitest"
+import { freshSave, hydrate, parseSave, SAVE_VERSION } from "./save.ts"
 
 describe("save: a block this build does not know", () => {
   it("still loads, and the unknown block is dropped", () => {
@@ -10,60 +8,42 @@ describe("save: a block this build does not know", () => {
     expect(parseSave(JSON.parse(text))).not.toHaveProperty("retiredBlock")
     expect(hydrate(text, 1_000).save).not.toHaveProperty("retiredBlock")
   })
-})
 
-describe("save: the company's users", () => {
-  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "oo", day: 3 }
-
-  it("keeps the block, and drops one from before users and regions without wiping the career", () => {
-    const kept = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company })))
-    expect(kept?.company).toEqual(company)
-    const old = parseSave(JSON.parse(JSON.stringify({ ...freshSave(1_000), company: { popularity: 40, leads: 2, uptime: "oo", day: 3 } })))
-    expect(old).not.toBeNull()
-    expect(old).not.toHaveProperty("company")
-  })
-
-  it("grows the company while away and pays the win's multiplier once", () => {
-    const near = Object.fromEntries(REGIONS.map((region) => [region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING)]))
-    const saved = { ...freshSave(0), gigs: [1, 2, 3], company: { ...company, users: near, resistance: 100 }, equipment: { "110": 40, "109": 40 } }
-    // No incidents while away: a block or a law rolled in those hours can hold the crowd under eight billion, and the win is what is under test.
-    const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
-    const first = hydrate(JSON.stringify(saved), 24 * 3_600_000)
-    calmRolls.mockRestore()
-    expect(first.save.company?.won).toBe(true)
-    expect(first.save.foreverMult).toBeCloseTo(1.25)
-    expect(first.toast?.split("\n")[0]).toContain("Eight billion users")
-    const again = hydrate(JSON.stringify(first.save), 25 * 3_600_000)
-    expect(again.save.foreverMult).toBeCloseTo(1.25)
-    expect(again.toast ?? "").not.toContain("Eight billion users")
+  it("drops the blocks of a company that is gone, without wiping the career", () => {
+    const raw = {
+      ...freshSave(1_000),
+      money: 50,
+      company: { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "oo", day: 3 },
+      footprint: { regions: ["europe"], pops: [] },
+      hires: { outsourced: 4 },
+    }
+    const loaded = parseSave(JSON.parse(JSON.stringify(raw)))
+    expect(loaded?.money).toBe(50)
+    for (const key of ["company", "footprint", "hires"]) expect(loaded, key).not.toHaveProperty(key)
   })
 })
 
-describe("save: from before the fork was removed", () => {
-  const company = { users: { europe: 1200 }, resistance: 4, incidents: [], incidentSeq: 0, won: false, hiredUsers: 0, uptime: "oo", day: 3 }
-  const founder = { track: "founder", offered: true, bridges: 2, equityCut: 0.2, requitAt: 4000, broke: true, hires: { outsourced: 4, ghost: 2 } }
-  const old = () => ({ ...freshSave(0), money: 1_000_000, gigs: [1, 2, 3], company, founder })
-
-  it("loads a founder-track save as a normal career, keeping the users and the hires", () => {
-    const kept = parseSave(JSON.parse(JSON.stringify(old())))
-    expect(kept).not.toBeNull()
-    expect(kept).not.toHaveProperty("founder")
-    expect(kept?.hires).toEqual({ outsourced: 4 })
-    expect(kept?.company).toEqual(company)
+describe("save: the version", () => {
+  it("wipes a save from another version, with no migration", () => {
+    const old = JSON.stringify({ ...freshSave(1_000), version: SAVE_VERSION - 1, money: 99 })
+    expect(parseSave(JSON.parse(old))).toBeNull()
+    const back = hydrate(old, 2_000)
+    expect(back.reset).toBe(true)
+    expect(back.save.money).toBe(0)
   })
 
-  it("walks the company while away with no burn and no run-out choice", () => {
-    const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
-    const back = hydrate(JSON.stringify(old()), 600_000)
-    calmRolls.mockRestore()
-    expect(back.reset).toBe(false)
-    expect(back.save).not.toHaveProperty("founder")
-    expect(back.save.hires).toEqual({ outsourced: 4 })
-    expect(back.save.company?.users["europe"]).toBeGreaterThan(0)
+  it("keeps the handle but no product name on a fresh save", () => {
+    const save = freshSave(0)
+    expect(save.profile).toEqual({ handle: expect.any(String), chosen: false })
+  })
+})
+
+describe("save: time away", () => {
+  it("credits the idle income once, up to the cap, and nothing past the savedAt", () => {
+    const saved = { ...freshSave(0), jobs: [1], gigs: [1, 2, 3, 4, 5, 6] }
+    const back = hydrate(JSON.stringify(saved), 3_600_000)
     expect(back.save.money).toBeGreaterThan(0)
-  })
-
-  it("reads a save that kept its hires at the top level as before", () => {
-    expect(parseSave(JSON.parse(JSON.stringify({ ...freshSave(0), hires: { senior: 3 } })))?.hires).toEqual({ senior: 3 })
+    expect(back.save.savedAt).toBe(3_600_000)
+    expect(hydrate(JSON.stringify(saved), 0).save.money).toBe(0)
   })
 })
