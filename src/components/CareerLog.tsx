@@ -45,7 +45,7 @@ const HISTORY_STEP = 150
 
 /** Where the career is in years, and the next marks its path has coming. One string, so it re-renders only when a year or a mark changes. */
 function yearsKey(state: ReturnType<typeof useGame.getState>): string {
-  const ahead = upcomingMarks(state.xpTotal, state.build.origin, state.build.leadership, 3).map((mark) => mark.id)
+  const ahead = upcomingMarks(state.xpTotal, state.build.leadership, 3).map((mark) => mark.id)
   return JSON.stringify({ year: yearNumber(state.xpTotal), ahead })
 }
 

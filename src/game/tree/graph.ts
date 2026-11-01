@@ -8,7 +8,7 @@ import { CAPITAL } from "../../data/capital.ts"
 import { CAPITAL_UNLOCK, EQUIPMENT, firstJobAtRank, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK } from "../../data/leadership.ts"
-import { PICK_USERS, SENIOR_USERS, TRUNK_TOP_RANK } from "../../data/specializations.ts"
+import { TRUNK_TOP_RANK } from "../../data/specializations.ts"
 import { GIG_PATH, JOB_PATHS } from "../../data/tree.ts"
 import type { Node, Ref, Req, Track } from "./types.ts"
 
@@ -54,7 +54,7 @@ track(
       name: "Gig Board",
       requires: any(
         { t: "has", kind: "gig" },
-        all({ t: "xp", min: GIG_BOARD_UNLOCK.minXp, mod: "gigBoard" }, ...GIG_BOARD_UNLOCK.requireOwnedSkills.map((id): Req => ({ t: "owns", kind: "skill", ids: [id] }))),
+        all({ t: "xp", min: GIG_BOARD_UNLOCK.minXp }, ...GIG_BOARD_UNLOCK.requireOwnedSkills.map((id): Req => ({ t: "owns", kind: "skill", ids: [id] }))),
       ),
     },
     {
@@ -62,7 +62,7 @@ track(
       kind: "board",
       id: "jobs",
       name: "Job Board",
-      requires: any({ t: "has", kind: "job" }, all({ t: "xp", min: JOB_BOARD_UNLOCK.minXp }, { t: "count", of: "gigs", min: JOB_BOARD_UNLOCK.minGigsCompleted, mod: "jobBoard" })),
+      requires: any({ t: "has", kind: "job" }, all({ t: "xp", min: JOB_BOARD_UNLOCK.minXp }, { t: "count", of: "gigs", min: JOB_BOARD_UNLOCK.minGigsCompleted })),
     },
     {
       ref: "board:capital",
@@ -101,14 +101,14 @@ track(
       name: gig.name,
       requires: all(
         { t: "met", ref: "board:gigs" },
-        { t: "xp", min: gig.xpReq, mod: "gig" },
+        { t: "xp", min: gig.xpReq },
         ...step.needs.map((need): Req => ({ t: "tag", tag: need.tag, min: need.min, mod: "gig" })),
       ),
     } as Omit<Node, "track" | "index" | "after">
   }),
 )
 
-// Picks: the specialization once a Mid-level job is held (and the product has its users), the leadership line at Senior.
+// Picks: the specialization once a Mid-level job is held, the leadership line at Senior.
 track(
   "picks",
   "Picks",
@@ -119,21 +119,20 @@ track(
       kind: "pick",
       id: "spec",
       name: "Specialization",
-      requires: all({ t: "rank", min: TRUNK_TOP_RANK }, any({ t: "rank", min: TRUNK_TOP_RANK + 1 }, { t: "users", min: PICK_USERS })),
+      requires: { t: "rank", min: TRUNK_TOP_RANK },
     },
     { ref: "pick:lead", kind: "pick", id: "lead", name: "Leadership line", requires: { t: "rank", min: LEAD_OPEN_RANK } },
   ],
 )
 
-/** The gate every job shares, in the order the shop reads them: the board, the track, the picks, the XP, the users. */
+/** The gate every job shares, in the order the shop reads them: the board, the track, the picks, the XP. */
 function jobGate(job: (typeof JOB_TIERS)[number]): Req {
   return all(
     { t: "met", ref: "board:jobs" },
     { t: "track", ...(job.spec ? { spec: job.spec } : {}), ...(job.lead ? { lead: job.lead } : {}) },
     ...(job.rank > TRUNK_TOP_RANK ? [{ t: "picked", of: "spec" } as Req] : []),
     ...(job.rank > LEAD_NEEDED_ABOVE_RANK ? [{ t: "picked", of: "lead" } as Req] : []),
-    { t: "xp", min: job.xpReq, mod: "job", rank: job.rank },
-    ...(job.rank === LEAD_OPEN_RANK ? [any({ t: "rank", min: LEAD_OPEN_RANK }, { t: "users", min: SENIOR_USERS })] : []),
+    { t: "xp", min: job.xpReq },
   )
 }
 

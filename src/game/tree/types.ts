@@ -1,7 +1,7 @@
 /**
  * The progression tree: one data structure for what every row needs. A node is a row of the game (a skill, a gig, a job,
  * a gear row, a capital row, a board, a pick, a 10x dev perk); its `requires` is a small expression over what the career
- * has (lifetime XP, rows owned, a count of gigs, a tag count, a job rank, users, the money once held, a pick). Evaluating
+ * has (lifetime XP, rows owned, a count of gigs, a tag count, a job rank, the money once held, a pick). Evaluating
  * it says whether the row is open and, if not, exactly which leaves are unmet. docs/TREE.md explains the shape and how to
  * add a branch.
  *
@@ -18,27 +18,22 @@ export type Kind = "skill" | "gig" | "job" | "gear" | "capital" | "board" | "pic
 /** A node's address: `skill:15`, `gig:3`, `job:108`, `gear:42`, `capital:6`, `board:jobs`, `pick:spec`, `gold:2`. */
 export type Ref = `${Kind}:${string | number}`
 
-/** Where lifetime XP and board gates are scaled by the career's origin, by the same rule the origin module gives. */
-export type XpMod = "gig" | "job" | "gigBoard"
-
 /** Words a leaf says about itself when the default does not read right (the capital board's two alternatives). */
 type Labelled = { label?: string }
 
 export type Req = (
-  /** Lifetime XP at least `min` (scaled by `mod` for the career's origin; `rank` is the job's rank for the `job` rule). */
-  | { t: "xp"; min: number; mod?: XpMod; rank?: number }
+  /** Lifetime XP at least `min`. */
+  | { t: "xp"; min: number }
   /** Every one of these rows owned (a skill, a perk...). */
   | { t: "owns"; kind: "skill" | "gold"; ids: readonly number[] }
   /** Owns at least one row of this kind. This is what latches a gate: holding what it leads to keeps it open. */
   | { t: "has"; kind: "gig" | "job" | "capital" | "gear" }
-  /** At least `min` gigs cleared or jobs held (the Job Board's gig count is scaled by `mod` for the origin). */
-  | { t: "count"; of: "gigs" | "jobs"; min: number; mod?: "jobBoard" }
-  /** At least `min` owned skills carry this tag (a gig's `mod` lowers it by the career's specialization and origin). */
+  /** At least `min` gigs cleared or jobs held. */
+  | { t: "count"; of: "gigs" | "jobs"; min: number }
+  /** At least `min` owned skills carry this tag (a gig's `mod` lowers it by the career's specialization). */
   | { t: "tag"; tag: Tag; min: number; mod?: "gig" }
   /** The job rank held now or before a switch is at least `min`. */
   | { t: "rank"; min: number }
-  /** The product has at least `min` users. A caller with no company leaves this open. */
-  | { t: "users"; min: number }
   /** The balance has reached `peak` at some point (spending it later does not close the gate). */
   | { t: "money"; peak: number }
   /** The row is on the career's own track and line: a job of another specialization or line is hidden, never offered. */
@@ -89,7 +84,6 @@ export type TreeView = {
   jobs: readonly number[]
   gigs: readonly number[]
   build?: import("../build.ts").BuildState
-  company?: { users: Readonly<Record<string, number>> }
 }
 
 /** One leaf that does not hold, as the shop and an agent read it. */

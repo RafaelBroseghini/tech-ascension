@@ -7,8 +7,6 @@
 import { CAREER_MARKS } from "../data/careerYears.ts"
 import type { CareerMark } from "../data/careerYears.ts"
 import type { LeadId } from "../data/leadership.ts"
-import type { OriginId } from "../data/origins.ts"
-import { ORIGIN_ASK_XP } from "../data/origins.ts"
 import { firstJobAtRank, GIG_BOARD_UNLOCK, JOB_TIERS } from "../data/phases.ts"
 
 /** Years since the career began at each rank of the ladder (the first job lands in year 5), linear between the rungs named. */
@@ -33,12 +31,15 @@ function yearOfRank(rank: number): number {
   return RANK_YEARS[RANK_YEARS.length - 1]![1]
 }
 
+/** Lifetime XP a minute in, after the first skill: half a year of the career. */
+const FIRST_SKILL_XP = 150
+
 type Anchor = { xp: number; year: number }
 
 function buildAnchors(): readonly Anchor[] {
   const anchors: Anchor[] = [
     { xp: 0, year: 0 },
-    { xp: ORIGIN_ASK_XP, year: 0.5 },
+    { xp: FIRST_SKILL_XP, year: 0.5 },
     { xp: GIG_BOARD_UNLOCK.minXp * 0.4, year: 1 },
     { xp: GIG_BOARD_UNLOCK.minXp, year: 2 },
   ]
@@ -73,21 +74,21 @@ export const yearNumber = (xpTotal: number): number => Math.floor(careerYear(xpT
 /** The same for a mark: `at` 0.5 is in Year 1. */
 export const markYear = (mark: Pick<CareerMark, "at">): number => Math.floor(mark.at) + 1
 
-/** The marks a career has, in the order they fall: everyone's, its origin's and its leadership line's. */
-export function marksFor(origin: OriginId | null | undefined, lead: LeadId | null | undefined): CareerMark[] {
-  return CAREER_MARKS.filter((mark) => (!mark.origin || mark.origin === origin) && (!mark.lead || mark.lead === lead)).sort((a, b) => a.at - b.at)
+/** The marks a career has, in the order they fall: everyone's and its leadership line's. */
+export function marksFor(lead: LeadId | null | undefined): CareerMark[] {
+  return CAREER_MARKS.filter((mark) => !mark.lead || mark.lead === lead).sort((a, b) => a.at - b.at)
 }
 
 /** Marks the career has reached (their year has come), in order. */
-export function reachedMarks(xpTotal: number, origin: OriginId | null | undefined, lead: LeadId | null | undefined): CareerMark[] {
+export function reachedMarks(xpTotal: number, lead: LeadId | null | undefined): CareerMark[] {
   const year = careerYear(xpTotal)
-  return marksFor(origin, lead).filter((mark) => mark.at <= year)
+  return marksFor(lead).filter((mark) => mark.at <= year)
 }
 
 /** The next marks still ahead, soonest first. */
-export function upcomingMarks(xpTotal: number, origin: OriginId | null | undefined, lead: LeadId | null | undefined, count: number): CareerMark[] {
+export function upcomingMarks(xpTotal: number, lead: LeadId | null | undefined, count: number): CareerMark[] {
   const year = careerYear(xpTotal)
-  return marksFor(origin, lead).filter((mark) => mark.at > year).slice(0, count)
+  return marksFor(lead).filter((mark) => mark.at > year).slice(0, count)
 }
 
 export function markById(id: string): CareerMark | undefined {

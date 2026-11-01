@@ -6,14 +6,11 @@
  */
 import { highestJobRank, firstJobAtRank, JOB_TIERS } from "../data/phases.ts"
 import type { JobTier } from "../data/phases.ts"
-import { isOriginId, ORIGIN_ASK_XP } from "../data/origins.ts"
-import type { OriginId } from "../data/origins.ts"
 import { isLeadId, LEAD_NEEDED_ABOVE_RANK, LEAD_OPEN_RANK, LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
-import { isSpecId, PICK_USERS, SENIOR_USERS, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
+import { isSpecId, specById, SPECIALIZATIONS, TRUNK_TOP_RANK } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
 import type { Hire, Hires } from "./globe/hires.ts"
-import { totalUsers } from "./globe/world.ts"
 import { GEAR } from "../data/gear.ts"
 
 const JOB_BY_ID = new Map<number, JobTier>(JOB_TIERS.map((row) => [row.id, row]))
@@ -30,8 +27,6 @@ export type BuildState = {
   peakRank?: number
   /** The leadership line picked after Senior (IC or Manager), or left out before the pick. Locked once picked. */
   leadership?: LeadId
-  /** Where the career started (`src/data/origins.ts`), picked on the start card; left out for none. Kept for the career, through a switch. */
-  origin?: OriginId
   /** Frontend's launch charge: manual clicks banked towards the next launch (`src/game/launch.ts`). Left out at 0. */
   charge?: number
 }
@@ -44,7 +39,7 @@ export type HasBuild = { build?: BuildState }
 export const specOf = (p: HasBuild): SpecId | null => p.build?.spec ?? null
 
 /** What the product reads from the build: the specialization, the leadership line and the IC rows held. */
-export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number; gpus: number; origin: OriginId | null }
+export type BuildFacts = { spec: SpecId | null; lead: LeadId | null; icRows: number; gpus: number }
 
 /** Jobs held that belong to the IC line (ranks 16 to 24 carry a `lead`). */
 export const icRowsHeld = (jobs: readonly number[]): number => JOB_TIERS.filter((job) => job.lead === "ic" && jobs.includes(job.id)).length
@@ -58,27 +53,9 @@ export const buildFactsOf = (p: HasBuild & { jobs: readonly number[]; equipment?
   lead: leadOf(p),
   icRows: icRowsHeld(p.jobs),
   gpus: gpusHeld(p.equipment),
-  origin: originOf(p),
 })
 
 export const leadOf = (p: HasBuild): LeadId | null => p.build?.leadership ?? null
-
-/** The origin pick is open until the first gig is cleared or the first job held: the career has by then paid for it. */
-export function originPickOpen(p: { gigs: readonly number[]; jobs: readonly number[] }): boolean {
-  return p.gigs.length === 0 && p.jobs.length === 0
-}
-
-export function canPickOrigin(p: HasBuild & { gigs: readonly number[]; jobs: readonly number[] }, id: unknown): id is OriginId {
-  return isOriginId(id) && originPickOpen(p)
-}
-
-/** The career has kept its handle, has learned a little, and has not said where it came from: the origin card is up. */
-export function originDue(p: HasBuild & { profile: { chosen: boolean }; xpTotal: number; gigs: readonly number[]; jobs: readonly number[] }): boolean {
-  return p.profile.chosen && originOf(p) === null && p.xpTotal >= ORIGIN_ASK_XP && originPickOpen(p)
-}
-
-/** The career's origin, or null for none. */
-export const originOf = (p: HasBuild): OriginId | null => p.build?.origin ?? null
 
 /** The build without its launch charge (a full launch used it up). */
 export function omitCharge(build: BuildState): BuildState {
@@ -87,7 +64,7 @@ export function omitCharge(build: BuildState): BuildState {
 }
 
 export function isFreshBuild(build: BuildState | undefined): boolean {
-  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership && !build.origin && !(build.charge && build.charge > 0))
+  return !build || (build.spec === null && !build.switched && !(build.peakRank && build.peakRank > 0) && !build.leadership && !(build.charge && build.charge > 0))
 }
 
 /** The rank the career has reached: the highest job held now, or before a switch, whichever is higher. Rank gates read this. */
@@ -95,35 +72,12 @@ export function heldRank(p: HasBuild & { jobs: readonly number[] }): number {
   return Math.max(highestJobRank(p.jobs), p.build?.peakRank ?? 0)
 }
 
-/** What the user gates read: the product's users by region. Left out, the gates are not tracked and stay open (pure callers and tests). */
-export type HasCompany = { company?: { users: Readonly<Record<string, number>> } }
-
-/** All users the product has now, or null when the caller does not carry a company. */
-export const usersOf = (p: HasCompany): number | null => (p.company ? totalUsers(p.company.users) : null)
-
-/** Users still missing for the pick: 0 when it is not tracked, or the career is already past the trunk (the gate latches). */
-export function pickUsersShort(p: HasBuild & { jobs: readonly number[] } & HasCompany): number {
-  const users = usersOf(p)
-  return users === null || heldRank(p) > TRUNK_TOP_RANK ? 0 : Math.max(0, PICK_USERS - users)
+/** The pick opens once a job of the trunk's top rank (Mid-level SWE) is held and nothing is picked yet. */
+export function pickOpen(p: HasBuild & { jobs: readonly number[] }): boolean {
+  return specOf(p) === null && heldRank(p) >= TRUNK_TOP_RANK
 }
 
-/** Users still missing for the Senior job: 0 when it is not tracked, or a job of that rank or higher was already held. */
-export function seniorUsersShort(p: HasBuild & { jobs: readonly number[] } & HasCompany): number {
-  const users = usersOf(p)
-  return users === null || heldRank(p) >= LEAD_OPEN_RANK ? 0 : Math.max(0, SENIOR_USERS - users)
-}
-
-/** The pick opens once a job of the trunk's top rank (Mid-level SWE) is held and the product has `PICK_USERS` users. */
-export function pickOpen(p: HasBuild & { jobs: readonly number[] } & HasCompany): boolean {
-  return specOf(p) === null && heldRank(p) >= TRUNK_TOP_RANK && pickUsersShort(p) === 0
-}
-
-/** Mid-level SWE is held and nothing is picked, but the product is short of users. */
-export function pickWaitsOnUsers(p: HasBuild & { jobs: readonly number[] } & HasCompany): boolean {
-  return specOf(p) === null && heldRank(p) >= TRUNK_TOP_RANK && pickUsersShort(p) > 0
-}
-
-export function canPick(p: HasBuild & { jobs: readonly number[] } & HasCompany, id: unknown): id is SpecId {
+export function canPick(p: HasBuild & { jobs: readonly number[] }, id: unknown): id is SpecId {
   return isSpecId(id) && pickOpen(p)
 }
 
@@ -176,7 +130,7 @@ export function hireLocked(p: HasBuild & { jobs: readonly number[] }, row: Pick<
 }
 
 /** The specializations the player could take right now: all of them to pick, the other five to switch, none otherwise. */
-export function specOptions(p: HasBuild & { jobs: readonly number[] } & HasCompany): SpecId[] {
+export function specOptions(p: HasBuild & { jobs: readonly number[] }): SpecId[] {
   if (pickOpen(p)) return SPECIALIZATIONS.map((row) => row.id)
   const spec = specOf(p)
   if (spec !== null && !p.build?.switched) return SPECIALIZATIONS.filter((row) => row.id !== spec).map((row) => row.id)
@@ -222,7 +176,7 @@ export function normalizeBuild(raw: unknown, jobs: readonly number[], hires: Hir
     const row = JOB_BY_ID.get(id)
     return row !== undefined && rowVisible(row, spec, lead) && (lead !== null || row.lead === undefined)
   })
-  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}), ...(isOriginId(record.origin) ? { origin: record.origin } : {}), ...(spec === "frontend" && banked > 0 ? { charge: banked } : {}) }
+  const build: BuildState = { spec, switched: spec !== null && record.switched === true, ...(peakRank > 0 ? { peakRank } : {}), ...(lead !== null ? { leadership: lead } : {}), ...(spec === "frontend" && banked > 0 ? { charge: banked } : {}) }
   return { build: isFreshBuild(build) ? undefined : build, jobs: kept }
 }
 

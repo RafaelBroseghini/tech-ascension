@@ -20,10 +20,8 @@ import { effectsOf } from "../data/specializations.ts"
 import type { SpecId } from "../data/specializations.ts"
 import { shipLaunches, shipsLaunches } from "./launch.ts"
 import { servableUsers } from "./globe/load.ts"
-import { gigLump } from "./origin.ts"
-import type { OriginId } from "../data/origins.ts"
 import type { TreeView } from "./tree/index.ts"
-import { buildFactsOf, hireLocked, originOf, leadPickedBuild, specOf, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
+import { buildFactsOf, hireLocked, leadPickedBuild, specOf, leadPickOpen, pickedBuild, pickOpen } from "./build.ts"
 import {
   canAfford,
   capitalBase,
@@ -212,11 +210,10 @@ type ProductSim = {
   skipped: number
 }
 
-function freshSim(track: SpecId, lead: LeadId, origin: OriginId | null = null): Sim {
+function freshSim(track: SpecId, lead: LeadId): Sim {
   return {
     track,
     lead,
-    ...(origin ? { build: { spec: null, switched: false, origin } } : {}),
     get company() {
       return this.product?.company
     },
@@ -271,7 +268,7 @@ function clearGigs(s: Sim): boolean {
       if (gigState(s, gig) !== "ready") continue
       s.gigs.push(gig.id)
       s.gigs.sort((a, b) => a - b)
-      earn(s, gigLump(originOf(s), gig), 0)
+      earn(s, gig.lump, 0)
       changed = any = true
     }
   }
@@ -403,7 +400,7 @@ function spendXp(s: Sim, cad: Cadence, paybackSeconds: number): boolean {
     for (const row of SKILL_TIERS) {
       const have = ownedCount(s.skills, row.id)
       if (!isSkillRevealed(row, s.skills, s.xpTotal)) continue
-      const cost = skillCost(row, have, originOf(s))
+      const cost = skillCost(row, have)
       if (!canAfford(s.xp, cost)) continue
       const gain = (row.xpPerSec * cad.idleShare + row.xpPerClick * cad.clicksPerWallSecond) * s.mult
       const payback = gain > 0 ? cost / gain : Number.POSITIVE_INFINITY
@@ -442,8 +439,6 @@ export type PaceOptions = {
   specialization?: SpecId
   /** The leadership line the career picks at Senior SWE. Default `DEFAULT_PACE_LEAD` (IC: no hires are modeled, so only the night owl ending can be won). */
   leadership?: LeadId
-  /** Where the career started (`src/data/origins.ts`). Default none: the plain ladder. */
-  origin?: OriginId
   /** Called with the career at every round of the shop, so a test can check the whole game's rules against it. Never set in play. */
   inspect?: (career: PaceCareer) => void
 }
@@ -467,7 +462,7 @@ export function simulatePace(profile: PlayProfile, options: PaceOptions = {}): P
   const maxSeconds = (options.maxDays ?? 365) * DAY_SECONDS
   const cad = cadenceOf(profile)
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
-  const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD, options.origin ?? null)
+  const s = freshSim(options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
   if (options.inspect) s.inspect = options.inspect
   if (!options.withoutProduct) s.product = { company: FRESH_COMPANY, perks: [], prestigeTotal: 0, hires: {}, winSeconds: null, marks: {}, skipped: 0 }
   const milestones: Partial<Record<PaceMilestone, number>> = {}
@@ -667,8 +662,8 @@ function stepProduct(s: Sim, fromSec: number, toSec: number) {
 }
 
 /** A new career under the perks held: the grant merged into an empty one, the Prestige multiplier on, the product seeded. */
-function newCareer(legacy: LegacyState, track: SpecId, lead: LeadId, origin: OriginId | null = null): Sim {
-  const s = freshSim(track, lead, origin)
+function newCareer(legacy: LegacyState, track: SpecId, lead: LeadId): Sim {
+  const s = freshSim(track, lead)
   const start = mergeGrant(s, startingGrant(legacy.perks))
   Object.assign(s, { skills: start.skills, gigs: start.gigs, jobs: start.jobs, xp: start.xp, xpTotal: start.xpTotal, money: start.money, peakMoney: start.peakMoney })
   s.mult = prestigeMult(legacy.prestigeTotal)
@@ -715,7 +710,7 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
   const paybackSeconds = options.paybackSeconds ?? STACKER_PAYBACK_SECONDS
   const legacy = freshLegacy()
   const runs: ExitRun[] = []
-  let s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD, options.origin ?? null)
+  let s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
   let cad = cadenceOf(profile)
   let runStart = 0
   let row6At: number | null = null
@@ -814,7 +809,7 @@ export function simulateExits(profile: PlayProfile, options: ExitsOptions = {}):
       legacy.runs += 1
       buyPerks(legacy)
       perksAtStart = legacy.perks.length
-      s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD, options.origin ?? null)
+      s = newCareer(legacy, options.specialization ?? DEFAULT_PACE_SPEC, options.leadership ?? DEFAULT_PACE_LEAD)
       cad = cadenceOf(profile, OFFLINE_CAP_SECONDS + perkEffects(legacy.perks).offlineHours * 3600)
       runStart = t
       walked = t

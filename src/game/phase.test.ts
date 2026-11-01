@@ -115,7 +115,7 @@ describe("phase gates", () => {
     expect(all.size).toBe(board.cleared.length + board.open.length + board.locked.length)
   })
 
-  it("asks less of a career that specialized or came from an origin that fits the gig", () => {
+  it("asks less of a career that specialized in the gig's own tag", () => {
     const gig = gigById(36)
     if (!gig) throw new Error("missing gig 36")
     const backend = gig.needs.find((need) => need.tag === "backend")!
@@ -123,8 +123,6 @@ describe("phase gates", () => {
     expect(gigShortfall(none, gig)).toBe(gig.needs.reduce((sum, need) => sum + need.min, 0))
     const spec = { ...none, build: { spec: "backend" as const, switched: false } }
     expect(gigShortfall(spec, gig)).toBe(gigShortfall(none, gig) - (backend.min - Math.ceil(backend.min / 2)))
-    const bootcamp = { ...none, build: { spec: null, switched: false, origin: "bootcamp" as const } }
-    expect(gigShortfall(bootcamp, gig)).toBe(gigShortfall(none, gig) - gig.needs.length)
   })
 
   it("keeps the gig table in order of XP, with tag counts the catalog can meet", () => {

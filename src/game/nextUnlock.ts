@@ -4,12 +4,12 @@ import { GEAR } from "../data/gear.ts"
 import type { GearItem } from "../data/gear.ts"
 import { CAPITAL } from "../data/capital.ts"
 import type { Capital, Era } from "../data/capital.ts"
-import { heldRank, leadOf, leadPickOpen, needsLead, needsPick, pickOpen, pickWaitsOnUsers, specOf, usersOf } from "./build.ts"
+import { heldRank, leadOf, leadPickOpen, needsLead, needsPick, pickOpen, specOf } from "./build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
-import { PICK_USERS, SENIOR_USERS, SPECIALIZATIONS } from "../data/specializations.ts"
+import { SPECIALIZATIONS } from "../data/specializations.ts"
 import { canAfford, capitalBase, firstJobAtRank, gearBase, nextCost, ownedCount, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { capitalUnlocked, equipmentOpen, gigBoard, gigBoardUnlocked, jobBoardUnlocked, jobState } from "./phase.ts"
+import { capitalUnlocked, equipmentOpen, gigBoard, gigBoardUnlocked, jobBoardUnlocked } from "./phase.ts"
 import type { Gates, ShopTab } from "./phase.ts"
 import { entryPhrases, firstFail, neededPhrases, nodeOf, short } from "./tree/index.ts"
 
@@ -139,7 +139,7 @@ function rowTarget(p: Progression, tab: ShopTab): NextUnlock | null {
     const lead = leadOf(p)
     for (const job of visibleJobs(spec, lead)) {
       if (p.jobs.includes(job.id)) continue
-      if (spec === null && needsPick(job)) return pickOpen(p) ? pickTarget() : pickWaitsOnUsers(p) ? usersTarget(PICK_USERS_KEY, "Pick a specialization", PICK_USERS, p) : null
+      if (spec === null && needsPick(job)) return pickOpen(p) ? pickTarget() : null
       if (lead === null && needsLead(job)) return leadPickOpen(p) ? leadPickTarget() : null
       return jobTarget(p, job)
     }
@@ -183,15 +183,6 @@ export function nextUnlock(p: Progression, tab?: ShopTab): NextUnlock | null {
   return null
 }
 
-/** The pick is waiting on the product's users, not on anything the player buys directly. */
-export const PICK_USERS_KEY = "spec:users"
-
-/** A step that waits on the product: `goal` users, with how many it has. */
-function usersTarget(key: string, name: string, goal: number, p: Progression): NextUnlock {
-  const have = Math.round(usersOf(p) ?? 0)
-  return { key, name, tab: "C", needs: [`${goal.toLocaleString("en-US")} users (${have.toLocaleString("en-US")} now)`], either: false }
-}
-
 /** Mid-level SWE is held and nothing is picked: any one of the specializations is the next step. */
 export const PICK_KEY = "spec:pick"
 
@@ -228,10 +219,9 @@ function gigTarget(p: Progression, gig: Gig): NextUnlock {
 }
 
 function jobTarget(p: Progression, job: JobTier): NextUnlock {
-  // The picks and the board are named by their own steps; here the gate is the XP, then the users.
+  // The picks and the board are named by their own steps; here the gate is the XP.
   const gate = firstFail(nodeOf(`job:${job.id}`)!.requires, p)
   if (gate?.t === "xp") return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [short(gate, p)], either: false }
-  if (jobState(p, job) === "users") return usersTarget(`job:${job.id}`, job.name, SENIOR_USERS, p)
   if (job.xpCost > 0 && !canAfford(study(p), job.xpCost)) {
     return { key: `job:${job.id}`, name: job.name, tab: "C", needs: [xpLeft()], either: false }
   }

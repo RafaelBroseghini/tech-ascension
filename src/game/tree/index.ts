@@ -5,10 +5,10 @@
 import { childrenOf, NODE_MAP, nodeOf, TRACK_LIST } from "./graph.ts"
 import type { Node, Ref, Req, Track } from "./types.ts"
 
-export { check, describe, entry, entryPhrases, firstFail, holds, isOwned, neededPhrases, revealed, short, skillGapText, tagCount, tagNeeded } from "./check.ts"
+export { check, describe, entry, entryPhrases, firstFail, holds, isOwned, neededPhrases, revealed, short, gigTagMin, skillGapText, tagCount, tagNeeded } from "./check.ts"
 export type { EntryLine } from "./check.ts"
 export { childrenOf, NODE_MAP, nodeOf, TRACK_LIST }
-export type { Check, Kind, Missing, Node, Ref, Req, Track, TreeView, XpMod } from "./types.ts"
+export type { Check, Kind, Missing, Node, Ref, Req, Track, TreeView } from "./types.ts"
 
 /** Every node, in track order. */
 export const NODES: readonly Node[] = TRACK_LIST.flatMap((track) => track.nodes.map((ref) => NODE_MAP.get(ref) as Node))

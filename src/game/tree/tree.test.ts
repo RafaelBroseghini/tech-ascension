@@ -4,7 +4,7 @@ import { EQUIPMENT, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, J
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { GIG_PATH, JOB_PATHS } from "../../data/tree.ts"
 import { installGameHarness } from "../harness.ts"
-import { check, childrenOf, closure, dependents, describe as words, entry, entryPhrases, firstFail, neededPhrases, short, skillGapText, holds, isOwned, mentions, NODE_MAP, NODES, nodeOf, prereqs, TRACK_LIST, trackOf } from "./index.ts"
+import { check, childrenOf, closure, dependents, entry, entryPhrases, firstFail, neededPhrases, short, skillGapText, holds, isOwned, mentions, NODE_MAP, NODES, nodeOf, prereqs, TRACK_LIST, trackOf } from "./index.ts"
 import type { Ref, TreeView } from "./index.ts"
 
 const game = installGameHarness()
@@ -130,7 +130,6 @@ describe("reading a node", () => {
     expect(firstFail(senior.requires, view())?.t).toBe("met")
     const open = view({ xpTotal: 1e9, jobs: [1, 2, 3, 4, 5, 6, 7], gigs: [1, 2, 3, 4, 5, 6], build: { spec: "backend", switched: false } })
     expect(firstFail(senior.requires, open)).toBeNull()
-    expect(firstFail(senior.requires, { ...open, company: { users: { "americas-east": 10 } } })?.t).toBe("any")
   })
 
   it("lists every missing leaf with words and what the career has", () => {
@@ -138,20 +137,12 @@ describe("reading a node", () => {
     expect(result.met).toBe(false)
     expect(result.missing.map((row) => row.req.t)).toEqual(["met", "xp", "tag"])
     expect(result.missing[1]!.text).toContain(GIGS[0]!.xpReq.toLocaleString("en-US"))
-    expect(words({ t: "users", min: 10_000 })).toBe("10,000 users")
     expect(check("board:capital", view({ peakMoney: 500_000 })).met).toBe(true)
   })
 
   it("turns an unknown row into a clear miss instead of throwing", () => {
     expect(check("gig:9999" as Ref, view())).toMatchObject({ met: false })
     expect(isOwned("gig:9999" as Ref, view())).toBe(false)
-  })
-
-  it("scales XP and gig counts by the origin, from the same helpers the game uses", () => {
-    const xp = (origin: "college" | "bootcamp" | "dropout") => view({ xpTotal: 15_000, skills: Object.fromEntries(Array.from({ length: 6 }, (_, i) => [String(i + 1), 1])), build: { spec: null, switched: false, origin } })
-    expect(holds(nodeOf("board:gigs")!.requires, xp("bootcamp"))).toBe(false)
-    expect(holds(nodeOf("board:jobs")!.requires, view({ xpTotal: 40_000, gigs: [1, 2, 3, 4], build: { spec: null, switched: false, origin: "bootcamp" } }))).toBe(true)
-    expect(holds(nodeOf("board:jobs")!.requires, view({ xpTotal: 40_000, gigs: [1, 2, 3, 4] }))).toBe(false)
   })
 
   it("counts tag requirements on the skills owned (for a gig board that asks for tags)", () => {

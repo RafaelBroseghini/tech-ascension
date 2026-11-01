@@ -8,15 +8,14 @@ import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
 import { gearSections } from "../data/gear.ts"
-import { gigXpReq, skillPriceMult } from "../game/origin.ts"
 import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { TeamPanel } from "./Team.tsx"
 import { headcountOf } from "../game/globe/hires.ts"
-import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, pickWaitsOnUsers, specOptions, usersOf } from "../game/build.ts"
+import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
-import { isSpecId, PICK_USERS, SPECIALIZATIONS, specById } from "../data/specializations.ts"
+import { isSpecId, SPECIALIZATIONS, specById } from "../data/specializations.ts"
 import type { SpecId, SpecStyle } from "../data/specializations.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { GOLD_FAMILY_NAME } from "../data/gold.ts"
@@ -547,7 +546,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build, company }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
+    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
   useShopRows(listRef, narrow && tab !== "W", rowScope)
   // A new list slides in from the side its tab lies on: forward along the bar from the right, back from the left.
@@ -634,7 +633,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
       (skillRows.some((row) => ownedCount(skills, row.id) === 0 && isSkillRevealed(row, skills, xpTotal)) ||
         visibleGold(gold).some((row) => isGoldRevealed(row, { xpTotal, gold, jobs, build }) && nextInFamily(gold, row)))) ||
     (id === "B" && gigRows.some((gig) => gigState(gates, gig) === "ready")) ||
-    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build, company }) || leadPickOpen({ jobs, build }))) ||
+    (id === "C" && (jobRows.some((job) => jobState(gates, job) === "ready") || pickOpen({ jobs, build }) || leadPickOpen({ jobs, build }))) ||
     (id === "G" && equipRows.some((row) => ownedCount(equipment, row.id) === 0 && isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank))) ||
     (id === "D" && [...revealedByEra.values()].flat().some((tier) => ownedCount(owned, tier.id) === 0))
 
@@ -784,7 +783,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
           <>
             {skillRows.map((row, index) => {
               const have = ownedCount(skills, row.id)
-              const cost = skillCost(row, have, build.origin ?? null)
+              const cost = skillCost(row, have)
               const revealed = isSkillRevealed(row, skills, xpTotal)
               const afford = revealed && canAfford(xp, cost)
               const key = `skill:${row.id}`
@@ -807,7 +806,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   actions={
                     <>
                       <button type="button" disabled={!afford} onClick={() => act(key, () => buySkill(row.id))}>
-                        {!revealed && have === 0 ? "Locked" : <Price text={buyLabel("xp", row.baseXpCost * skillPriceMult(build.origin ?? null, row), have, row.firstXpCost)} />}
+                        {!revealed && have === 0 ? "Locked" : <Price text={buyLabel("xp", row.baseXpCost, have, row.firstXpCost)} />}
                       </button>
                     </>
                   }
@@ -883,7 +882,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               const status = gigState(gates, gig)
               const key = `gig:${gig.id}`
               const gap = [
-                xpTotal < gigXpReq(build.origin ?? null, gig) ? "More XP" : "",
+                xpTotal < gig.xpReq ? "More XP" : "",
                 ...gigSkillGaps(gates, gig),
               ].filter(Boolean)
               return (
@@ -933,13 +932,13 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   index={index}
                   afford={afford}
                   flash={flashKey === key}
-                  locked={status === "locked" || status === "users"}
+                  locked={status === "locked"}
                   done={status === "owned"}
-                  unlock={status === "users" ? ["More users"] : ["More XP"]}
+                  unlock={["More XP"]}
                   title={job.name}
                   actions={
                     <button type="button" disabled={!afford} onClick={() => act(key, () => buyJob(job.id))}>
-                      {status === "owned" ? "Hired" : status === "locked" || status === "users" ? "Locked" : job.xpCost > 0 ? `${formatNumber(job.xpCost)} XP` : "Accept"}
+                      {status === "owned" ? "Hired" : status === "locked" ? "Locked" : job.xpCost > 0 ? `${formatNumber(job.xpCost)} XP` : "Accept"}
                     </button>
                   }
                 >
@@ -954,8 +953,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                 </Offer>
               )
             })}
-            {pickOpen({ jobs, build, company }) ? <SpecPick glow={tabGlow} /> : null}
-            {pickWaitsOnUsers({ jobs, build, company }) ? <LockPanel title="Pick a specialization" lines={[{ text: `${PICK_USERS.toLocaleString("en-US")} users (${Math.round(usersOf({ company }) ?? 0).toLocaleString("en-US")} now)`, met: false }]} /> : null}
+            {pickOpen({ jobs, build }) ? <SpecPick glow={tabGlow} /> : null}
             {leadPickOpen({ jobs, build }) ? <LeadPick glow={tabGlow} /> : null}
             {build.spec !== null && isSpecId(build.spec) ? <SpecSwitch spec={build.spec} switched={build.switched} glow={tabGlow} /> : null}
             {build.leadership === "manager" || headcountOf(hires) > 0 ? <TeamPanel /> : null}

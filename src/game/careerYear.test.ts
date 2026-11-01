@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { CAREER_MARKS } from "../data/careerYears.ts"
-import { ORIGINS } from "../data/origins.ts"
 import { firstJobAtRank, GIG_BOARD_UNLOCK, JOB_TIERS } from "../data/phases.ts"
 import { careerYear, marksFor, reachedMarks, upcomingMarks, yearNumber } from "./careerYear.ts"
 import { useGame } from "./store.ts"
@@ -29,30 +28,28 @@ describe("the career's year", () => {
 })
 
 describe("the marks on it", () => {
-  it("has unique ids, and a few of its own for every origin", () => {
+  it("has unique ids", () => {
     expect(new Set(CAREER_MARKS.map((mark) => mark.id)).size).toBe(CAREER_MARKS.length)
-    for (const origin of ORIGINS) expect(CAREER_MARKS.filter((mark) => mark.origin === origin.id).length, origin.id).toBeGreaterThanOrEqual(3)
   })
 
-  it("gives a career its own origin's marks and the shared ones, in order of year", () => {
-    const college = marksFor("college", null)
-    expect(college.some((mark) => mark.id === "graduation")).toBe(true)
-    expect(college.some((mark) => mark.id === "demo-day")).toBe(false)
-    expect(college.some((mark) => mark.id === "first-job")).toBe(true)
-    expect(college.some((mark) => mark.lead)).toBe(false)
-    expect(marksFor(null, null).some((mark) => mark.origin)).toBe(false)
-    expect(marksFor("dropout", "manager").some((mark) => mark.id === "first-report")).toBe(true)
-    for (let index = 1; index < college.length; index++) expect(college[index]!.at).toBeGreaterThanOrEqual(college[index - 1]!.at)
+  it("gives a career the shared marks and its own line's, in order of year", () => {
+    const plain = marksFor(null)
+    expect(plain.some((mark) => mark.id === "first-job")).toBe(true)
+    expect(plain.some((mark) => mark.lead)).toBe(false)
+    const manager = marksFor("manager")
+    expect(manager.some((mark) => mark.id === "first-report")).toBe(true)
+    expect(manager.some((mark) => mark.id === "design-doc")).toBe(false)
+    for (let index = 1; index < manager.length; index++) expect(manager[index]!.at).toBeGreaterThanOrEqual(manager[index - 1]!.at)
   })
 
   it("reaches a mark when the year comes, and says what is ahead", () => {
     const jobXp = firstJobAtRank(1)!.xpReq
-    expect(reachedMarks(0, "bootcamp", null)).toEqual([])
-    expect(reachedMarks(jobXp, "bootcamp", null).map((mark) => mark.id)).toContain("first-job")
-    expect(reachedMarks(jobXp, "bootcamp", null).map((mark) => mark.id)).not.toContain("senior")
-    const ahead = upcomingMarks(0, "bootcamp", null, 3)
+    expect(reachedMarks(0, null)).toEqual([])
+    expect(reachedMarks(jobXp, null).map((mark) => mark.id)).toContain("first-job")
+    expect(reachedMarks(jobXp, null).map((mark) => mark.id)).not.toContain("senior")
+    const ahead = upcomingMarks(0, null, 3)
     expect(ahead).toHaveLength(3)
-    expect(ahead[0]!.origin).toBe("bootcamp")
+    expect(ahead[0]!.id).toBe("first-client")
   })
 })
 
@@ -63,26 +60,16 @@ describe("the marks in the career log", () => {
 
   it("lands each mark once, with a toast, as the year passes it", () => {
     useGame.getState().keepProfile()
-    useGame.getState().pickOrigin("college")
     expect(logged()).toEqual([])
     useGame.setState({ xpTotal: firstJobAtRank(1)!.xpReq })
     expect(logged()).toContain("year:first-job")
-    expect(logged()).toContain("year:graduation")
-    expect(logged()).not.toContain("year:demo-day")
+    expect(logged()).toContain("year:first-client")
+    expect(logged()).not.toContain("year:senior")
     const entry = useGame.getState().journal.entries.find((row) => row.ref === "year:first-job")!
     expect(entry.data).toEqual({ year: 5 })
     expect(useGame.getState().toast?.text).toMatch(/^Year \d+: /)
     const count = logged().length
     useGame.setState({ xpTotal: firstJobAtRank(1)!.xpReq + 1 })
     expect(logged()).toHaveLength(count)
-  })
-
-  it("catches up on its origin's marks when the origin is picked after the year passed them", () => {
-    useGame.getState().keepProfile()
-    useGame.setState({ xpTotal: GIG_BOARD_UNLOCK.minXp })
-    expect(logged()).not.toContain("year:orientation")
-    useGame.getState().pickOrigin("college")
-    expect(logged()).toContain("year:orientation")
-    expect(logged()).toContain("year:intro-cs-final")
   })
 })

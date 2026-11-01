@@ -1,5 +1,4 @@
 import type { SpecId } from "../../data/specializations.ts"
-import { originSeedMult } from "../origin.ts"
 import { effectsOf, gpuGrowthOf } from "../../data/specializations.ts"
 import { leadById } from "../../data/leadership.ts"
 import type { BuildFacts } from "../build.ts"
@@ -36,7 +35,7 @@ export interface LegacyFacts {
 /** Growth an IC adds for each IC-line job held: the multiplier is 1 for the player's own pace, a small team is a few. Five rows make the line. */
 export const IC_GROWTH_PER_ROW = 3
 
-export const NO_BUILD: BuildFacts = { spec: null, lead: null, icRows: 0, gpus: 0, origin: null }
+export const NO_BUILD: BuildFacts = { spec: null, lead: null, icRows: 0, gpus: 0 }
 
 /**
  * The facts for the growth model. Growth is scaled once by the permanent Prestige bonus, Viral loop and the
@@ -59,7 +58,7 @@ export function productFactsOf(hires: Hires, legacy?: LegacyFacts, build: BuildF
     payroll: hirePayrollOf(hires),
     dropsMult: fx.drops,
     incidentMult: fx.incidents,
-    seedMult: fx.seeds * originSeedMult(build.origin),
+    seedMult: fx.seeds,
     ...(build.lead ? { ending: leadById(build.lead).ending } : {}),
   }
 }

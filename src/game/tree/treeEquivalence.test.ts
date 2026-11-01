@@ -3,7 +3,6 @@ import { CAPITAL } from "../../data/capital.ts"
 import { EQUIPMENT, GEAR_TAB_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../../data/phases.ts"
 import { GOLD_SKILLS } from "../../data/gold.ts"
 import { LEADERSHIP } from "../../data/leadership.ts"
-import { ORIGINS } from "../../data/origins.ts"
 import { SPECIALIZATIONS } from "../../data/specializations.ts"
 import { canBuyGold, isGoldRevealed, nextInFamily } from "../gold.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, gigState, jobBoardUnlocked, jobState } from "../phase.ts"
@@ -41,12 +40,9 @@ describe("the tree and the rules it replaced", () => {
     { visitsPerDay: 24, minutesPerVisit: 15, clicksPerSec: 2 },
     { visitsPerDay: 4, minutesPerVisit: 5, clicksPerSec: 2 },
   ]
-  const careers: { spec: (typeof SPECIALIZATIONS)[number]["id"]; lead: (typeof LEADERSHIP)[number]["id"]; origin?: (typeof ORIGINS)[number]["id"] }[] = [
-    ...SPECIALIZATIONS.flatMap((spec) => LEADERSHIP.map((lead) => ({ spec: spec.id, lead: lead.id }))),
-    ...ORIGINS.map((origin) => ({ spec: "backend" as const, lead: "ic" as const, origin: origin.id })),
-  ]
+  const careers: { spec: (typeof SPECIALIZATIONS)[number]["id"]; lead: (typeof LEADERSHIP)[number]["id"] }[] = SPECIALIZATIONS.flatMap((spec) => LEADERSHIP.map((lead) => ({ spec: spec.id, lead: lead.id })))
 
-  it("agree at every round of the shop, across every build and origin", () => {
+  it("agree at every round of the shop, across every build", () => {
     let rounds = 0
     for (const career of careers) {
       for (const profile of profiles) {
@@ -56,11 +52,10 @@ describe("the tree and the rules it replaced", () => {
             paybackSeconds,
             specialization: career.spec,
             leadership: career.lead,
-            ...(career.origin ? { origin: career.origin } : {}),
             inspect: (p) => {
               rounds += 1
               const bad = compare(p)
-              if (bad.length > 0) throw new Error(`${career.spec}/${career.lead}/${career.origin ?? "none"}: ${bad[0]}`)
+              if (bad.length > 0) throw new Error(`${career.spec}/${career.lead}: ${bad[0]}`)
             },
           })
         }
@@ -84,7 +79,7 @@ describe("the tree and the rules it replaced", () => {
     expect(holds(node("board:gear").requires, base({ xpTotal: GEAR_TAB_UNLOCK.minXp }))).toBe(true)
   })
 
-  it("count the rank a switch kept, and leave the user gates open for a caller with no company", () => {
+  it("count the rank a switch kept, and open Senior on XP alone", () => {
     const gear = EQUIPMENT.find((row) => row.unlockJobRank > 0)!
     const view = base({ peakMoney: 1e12, build: { spec: "backend", switched: true, peakRank: gear.unlockJobRank } })
     expect(revealed(node(`gear:${gear.id}`), view)).toBe(oracle.isGearRevealed(gear, {}, 1e12, [], gear.unlockJobRank))
@@ -93,8 +88,6 @@ describe("the tree and the rules it replaced", () => {
     const senior = JOB_TIERS.find((job) => job.id === 14)!
     const open = base({ xpTotal: 1e9, jobs: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], gigs: [1, 2, 3, 4, 5, 6], build: { spec: "backend", switched: false } })
     expect(jobState(open as unknown as Gates, senior)).toBe("ready")
-    expect(jobState({ ...open, company: { users: { "americas-east": 10 } } } as unknown as Gates, senior)).toBe("users")
-    expect(jobState({ ...open, company: { users: { "americas-east": 1_000_000 } } } as unknown as Gates, senior)).toBe("ready")
   })
 
   it("agree on the 10x dev perks: a chain in each family, on XP and a rank", () => {

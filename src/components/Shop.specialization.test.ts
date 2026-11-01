@@ -51,13 +51,6 @@ describe("the Jobs tab and specializations", () => {
     expect(host.querySelector("[data-row^='spec:']")).toBeNull()
   })
 
-  it("waits on 10,000 users: a lock panel with the users it has, and no Pick buttons", () => {
-    atMid({ company: { ...FRESH_COMPANY, users: { "americas-east": 1234 } } })
-    const host = renderShop()
-    expect(host.querySelector("[data-row^='spec:']")).toBeNull()
-    expect(host.querySelector("[data-testid='lock-panel']")?.textContent).toContain("10,000 users (1,234 now)")
-  })
-
   it("lists the six specializations with a style chip and a Pick button once Mid-level is held", () => {
     atMid()
     const host = renderShop()
