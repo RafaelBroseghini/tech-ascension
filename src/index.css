@@ -2143,16 +2143,6 @@ img { -webkit-user-drag: none; user-select: none; }
   border-bottom: var(--stroke) solid var(--surface-1);
 }
 
-.shop-section-tag {
-  margin-left: var(--sp-2);
-  padding: 1px 6px;
-  border-radius: var(--radius, 4px);
-  background: color-mix(in srgb, var(--ide-green) 22%, transparent);
-  color: var(--ide-green);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
 .offer.is-locked .offer-copy,
 .offer.is-done .offer-copy { opacity: 0.78; }
 .offer.is-done h3 { color: var(--text-dim); }
@@ -3427,20 +3417,6 @@ img { -webkit-user-drag: none; user-select: none; }
   text-transform: uppercase;
 }
 .legacy-track-head span { color: var(--text-faint); font-size: var(--fs-xs); letter-spacing: 0; text-transform: none; font-family: var(--font-mono); }
-.hall-list { list-style: none; margin: 0; padding: 0; }
-.hall-entry {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-4);
-  border-bottom: var(--stroke) solid var(--surface-1);
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
-.hall-entry.is-owned { color: var(--ide-green); }
-.hall-entry.is-owned span { color: var(--text-dim); }
 .prestige-panel { width: min(560px, 100%); max-height: min(86vh, 760px); }
 .prestige-panel .exit-bar { border-bottom: 0; padding: 0; }
 .prestige-scroll { overflow-y: auto; min-height: 0; text-align: left; border: var(--stroke) solid var(--surface-2); border-radius: var(--radius); }

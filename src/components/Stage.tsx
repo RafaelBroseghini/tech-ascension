@@ -25,7 +25,6 @@ import { UnlockFx } from "./UnlockFx.tsx"
 import { StickyNote } from "./StickyNote.tsx"
 import { motionReady, prefersReducedMotion } from "./useMotion.ts"
 import { IdeChrome } from "./IdeChrome.tsx"
-import { MiniGlobe } from "./globe/MiniGlobe.tsx"
 import { OwnedStrip } from "./OwnedStrip.tsx"
 import { Skills } from "./Skills.tsx"
 import { useFeatureOpen } from "./useFeature.ts"
@@ -394,7 +393,6 @@ export function Stage() {
       <StickyNoteMemo />
       <DeskCatMemo />
       <GifParadeMemo />
-      <MiniGlobe />
       <span className="era-sweep" aria-hidden="true" />
       <UnlockFx panelRef={stagePanelRef} hitboxRef={hitboxRef} />
       <HeroMoneyMemo stagePanelRef={stagePanelRef} />

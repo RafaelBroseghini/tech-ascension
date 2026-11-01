@@ -24,7 +24,7 @@ export type Notification = {
 }
 
 /** Feature ids that are also surfaces the desk can open. */
-const SURFACES = new Set<string>(["careerLog", "githug", "linkedout", "metrics", "rosters", "clickKits", "themes", "music", "tenx", "boardGear", "studio"])
+const SURFACES = new Set<string>(["careerLog", "githug", "linkedout", "metrics", "rosters", "clickKits", "themes", "music", "tenx", "boardGear"])
 
 /** The surface a row opens: its own, or its picker's for a cosmetic. */
 export function surfaceOf(id: string): Surface | null {
@@ -82,7 +82,7 @@ export function notificationsOf(entries: readonly CareerEntry[], admin: boolean)
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i]
     if (!entry || entry.data?.backfill === true) continue
-    if (entry.type === "milestone" || (entry.type === "world" && entry.ref === "world:won")) {
+    if (entry.type === "milestone") {
       out.push({ seq: entry.seq, at: entry.at, id: entry.ref, name: describeEntry(entry).title, blurb: describeEntry(entry).detail, surface: null, settings: null })
       continue
     }

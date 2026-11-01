@@ -133,7 +133,6 @@ const ROWS = `(async () => {
   }
   const sub = () => [...document.querySelectorAll(".era-tabs.era-sub .era-tab")]
   for (const tab of [...document.querySelectorAll(".era-tabs:not(.era-sub) .era-tab")]) {
-    if (/Company/.test(tab.textContent)) continue
     tab.click()
     await sleep(300)
     await probe(tab.textContent.trim())
@@ -171,7 +170,7 @@ function check(vp, state, m) {
         if (m.shop.top < -1) fail(`the expanded shop runs off the top of the screen (shop top ${Math.round(m.shop.top)})`)
       } else if (m.docked) fail("the shop is docked")
       else if (m.expanded) fail("the shop is still expanded")
-      else if (state !== "start-card" && state !== "origin-pick" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
+      else if (state !== "start-card" && m.shop.height < vp.h * 0.15) fail(`shop is only ${Math.round((m.shop.height / vp.h) * 100)}% of the screen`)
       if (state !== "expanded" && m.stage.height < vp.h * 0.3) fail(`stage is only ${Math.round((m.stage.height / vp.h) * 100)}% of the screen`)
     }
     if (desktop && m.shop.left < m.stage.left + vp.w * 0.4) fail("desktop lost its side-by-side stage and shop")
@@ -199,16 +198,14 @@ function check(vp, state, m) {
 }
 
 const STATES = {
-  "origin-pick": `g.reset(); g.keepProfile(); g.setXp(200); g.clearReveals(); g.tick(1000); return 1`,
-  "phase-a": `g.reset(); g.keepProfile(); g.pickOrigin("college"); g.setXp(2000); for (const id of [1,2,3,4]) g.buySkill(id); g.clearReveals(); g.tick(1000); return 1`,
+  "phase-a": `g.reset(); g.keepProfile(); g.setXp(2000); for (const id of [1,2,3,4]) g.buySkill(id); g.clearReveals(); g.tick(1000); return 1`,
   "phase-b": `g.reset(); g.keepProfile(); g.setXp(200000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 3; id++) g.forceGig(id); g.clearReveals(); g.tick(1000); return 1`,
   "phase-c": `g.reset(); g.keepProfile(); g.setXp(200000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); g.buyJob(1); g.setMoney(60000); g.clearReveals(); g.tick(1000); return 1`,
-  "jobs-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 2e6); g.clearReveals(); g.tick(1000); return 1`,
-  "jobs-users": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 1234); g.clearReveals(); g.tick(1000); return 1`,
-  "jobs-track": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 2e6); g.pickSpecialization("frontend"); for (let id = 108; id <= 110; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
-  "lead-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 2e6); g.pickSpecialization("backend"); for (let id = 8; id <= 15; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
-  "lead-track": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 2e6); g.pickSpecialization("backend"); for (let id = 8; id <= 15; id++) g.buyJob(id); g.pickLeadership("manager"); g.buyJob(18); g.clearReveals(); g.tick(1000); return 1`,
-  "mid-d": `g.reset(); g.keepProfile(); g.setXp(400000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); g.buyJob(1); for (let id = 2; id <= 7; id++) g.buyJob(id); g.setUsers("americas-east", 2e6); g.pickSpecialization("backend"); g.setUsers("americas-east", 2e6); g.buyJob(14); g.setMoney(9e6); g.buy(1); g.buy(3); g.clearReveals(); g.tick(1000); return 1`,
+  "jobs-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
+  "jobs-track": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.pickSpecialization("frontend"); for (let id = 108; id <= 110; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
+  "lead-pick": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.pickSpecialization("backend"); for (let id = 8; id <= 15; id++) g.buyJob(id); g.clearReveals(); g.tick(1000); return 1`,
+  "lead-track": `g.reset(); g.keepProfile(); g.setXp(2e6); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); for (let id = 1; id <= 7; id++) g.buyJob(id); g.pickSpecialization("backend"); for (let id = 8; id <= 15; id++) g.buyJob(id); g.pickLeadership("manager"); g.buyJob(18); g.clearReveals(); g.tick(1000); return 1`,
+  "mid-d": `g.reset(); g.keepProfile(); g.setXp(400000); for (let id = 1; id <= 16; id++) g.buySkill(id); for (let id = 1; id <= 6; id++) g.forceGig(id); g.buyJob(1); for (let id = 2; id <= 7; id++) g.buyJob(id); g.pickSpecialization("backend"); g.buyJob(14); g.setMoney(9e6); g.buy(1); g.buy(3); g.clearReveals(); g.tick(1000); return 1`,
 }
 
 function dismissGate() {
@@ -349,17 +346,6 @@ async function runViewports() {
       check(vp, "undocked", measure())
       ab("eval", UNDOCK)
     }
-
-    // The Company tab, with an incident live.
-    game("g.forceIncident('ddos'); return 1")
-    try {
-      ab("find", "role", "tab", "click", "--name", "Company")
-    } catch {
-      failures.push(`${tag(vp)} company: no Company tab to open`)
-    }
-    await settle()
-    check(vp, "company", measure())
-    shot(vp, "company")
 
     // Narrow screens keep the owned list behind a button, in a modal that must fit.
     if (vp.w <= 860) {

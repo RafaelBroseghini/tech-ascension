@@ -8,8 +8,7 @@ import type { ReviewChoiceId } from "./reviews.ts"
 import { COMBOS } from "../data/combos.ts"
 import { check, dependents, describe, holds, isOwned, nodeOf, trackOf } from "./tree/index.ts"
 import type { Ref, Req } from "./tree/index.ts"
-import { LAUNCH_CLICKS, LAUNCH_SHARE, shipsLaunches } from "./launch.ts"
-import { leadOptions, specOf, specOptions } from "./build.ts"
+import { leadOptions, specOptions } from "./build.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { modFactors, modsOf, pruneTemp, prestigeMult } from "./mods.ts"
 import type { TempMults } from "./mods.ts"
@@ -20,15 +19,6 @@ import type { Phase } from "./phase.ts"
 import { goldById, hoverRate, offlineCapMs } from "./gold.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { hydrate, OFFLINE_CAP_MS } from "./save.ts"
-import { forceIncident, setRegionUsers } from "./globe/actions.ts"
-import type { CompanyPatch } from "./globe/actions.ts"
-import { FRESH_COMPANY } from "./globe/growth.ts"
-import { servingOf } from "./globe/load.ts"
-import { creditOf, headcountOf } from "./globe/hires.ts"
-import type { Ending } from "./globe/hires.ts"
-import { productRevenueOf } from "./globe/product.ts"
-import { incidentCost, totalUsers, WORLD_TARGET } from "./globe/world.ts"
-import type { IncidentKind } from "./globe/world.ts"
 import { normalizeStats } from "./stats.ts"
 import { isGif } from "./gifParade.ts"
 import { CAT_ROSTER } from "./catRoster.ts"
@@ -36,9 +26,8 @@ import { readCareerText } from "./ledger.ts"
 import { isUiFontId } from "../data/uiFonts.ts"
 import { setUiFont } from "./uiFont.ts"
 import { setMoneyDirect, setPrestigeDirect, setXpDirect } from "./admin.ts"
-import { exitOpen, prestigeOnExit } from "./legacy.ts"
-import type { HallEnding } from "../data/legacy.ts"
-import { earnedPerSec, persistNow, useGame, writeStateAt } from "./store.ts"
+import { earningsPrestige, exitOpen } from "./legacy.ts"
+import { persistNow, useGame, writeStateAt } from "./store.ts"
 import type { ActiveReview } from "./store.ts"
 import { careerJson, journalFromSave } from "./careerLog.ts"
 import { progressOf } from "./careerSync.ts"
@@ -101,16 +90,14 @@ export type LegacySnapshot = {
   prestige: number
   /** Every Prestige ever earned. */
   prestigeTotal: number
-  /** `1 + 0.03 * prestigeTotal`, already folded into cps, clickPower, xpPerClick, xpPerSec, the offline credit and product growth. */
+  /** `1 + 0.03 * prestigeTotal`, already folded into cps, clickPower, xpPerClick, xpPerSec and the offline credit. */
   mult: number
   /** The Exit is open: it would pay at least 1 Prestige (the first career), or this is a later career. */
   exitOpen: boolean
-  /** Prestige an Exit taken now would pay, earnings and a new ending's bonus together. 0 means `exit()` refuses. */
+  /** Prestige an Exit taken now would pay. 0 means `exit()` refuses. */
   prestigeOnExit: number
   /** Legacy perk ids owned. */
   perks: string[]
-  /** The Hall of Fame: endings a career has won the world with. */
-  endings: HallEnding[]
 }
 
 export type GameSnapshot = {
@@ -176,17 +163,7 @@ export type GameSnapshot = {
   /** Journal entries kept (the newest 2,000) and the latest one. */
   careerLog: { size: number; last: CareerLogLine | null }
   /** The career's handle, shown on GitHug and LinkedOut, drawn from word lists. `chosen` once the player kept it. */
-  profile: { handle: string; product: string; chosen: boolean }
-  /** Heads hired of each kind, by id (`HIRES` in `src/game/globe/hires.ts`). A kind with nobody is left out. */
-  hires: Record<string, number>
-  /** Everyone hired, all kinds together. */
-  headcount: number
-  /** The share of the users that came from growth the hires added, 0 to 1. */
-  hiredShare: number
-  /** How the win read, once it latched: `sponsor` (over half the users from hires) or `nightOwl`. Null before. */
-  ending: Ending | null
-  /** The company's reach: all users, the target, users by region, resistance, live incidents, and whether the world is won. */
-  world: WorldSnapshot
+  profile: { handle: string; chosen: boolean }
   /** Prestige: Prestige, the permanent multiplier, the Exit and the Legacy perks. */
   legacy: LegacySnapshot
   /**
@@ -195,26 +172,9 @@ export type GameSnapshot = {
    */
   build: { specialization: string | null; switched: boolean; options: string[]; leadership: string | null; leadershipOptions: string[] }
   /** The kitchen: combos found this career, in the order they turned up, and how many the table holds. */
-  /** Frontend's launches: whether the build ships them, the manual clicks banked, the clicks one launch takes and the share of the crowd it adds. */
-  launch: { ships: boolean; charge: number; every: number; share: number }
   combos: { found: { id: string; name: string; joke: string; effect: string }[]; total: number }
 }
 
-
-export type WorldSnapshot = {
-  users: number
-  target: number
-  regionUsers: Record<string, number>
-  /** How hard the world pushes back, 0 to 100. */
-  resistance: number
-  incidents: { id: number; kind: IncidentKind; region: string; endsAt: number; strength: number; cost: number }[]
-  /** Requests a second the users send, against what the gear serves. */
-  demand: number
-  capacity: number
-  /** Dollars a second the served users pay, with Platform's multiplier in. Dropped users pay nothing. Not in `cps`, which stays the idle $/s from owned items. */
-  revenuePerSec: number
-  won: boolean
-}
 
 /** A closed timeline row: what opens it and how close it is. */
 export type TeaseSnapshot = { id: string; name: string; via: string; fill: number; left: string }
@@ -257,8 +217,7 @@ export type GameHarness = {
   explain: (ref: string) => ExplainRow | null
   /**
    * Pick the career's leadership line (`ic` or `manager`). It opens once a Senior job (rank 14) is held and is made once. False
-   * before that, once picked, or for an unknown id. Every job above rank 15 needs it (and only its own line's rows open),
-   * and hiring is refused unless the line is `manager`, each kind from its manager rank.
+   * before that, once picked, or for an unknown id. Every job above rank 15 needs it, and only its own line's rows open.
    */
   pickLeadership: (id: string) => boolean
   /**
@@ -268,37 +227,18 @@ export type GameHarness = {
   switchSpecialization: (id: string) => boolean
   buyEquipment: (equipId: number) => boolean
   /**
-   * Sell the product (the Exit): pay the Prestige this career's earnings climbed to, plus a new ending's bonus, and start
-   * the next career. Money, XP, skills, gigs, jobs, gear, capital, boosts, event multipliers and the whole product (users,
-   * regions, hires, resistance, incidents, the win) start over, and a new product name
-   * is drawn. Prestige, Legacy perks, the Hall of Fame, 10x dev skills, the career timeline, journal and handle stay.
+   * The Exit: pay the Prestige this career's earnings climbed to and start the next career. Money, XP, skills, gigs, jobs,
+   * gear, capital, boosts and event multipliers start over. Prestige, Legacy perks, 10x dev skills, the career timeline,
+   * journal and handle stay.
    * Returns the Prestige paid, or false when the Exit is not open or would pay 0.
    */
   exit: () => number | false
-  /** Spend Prestige on a Legacy perk (`src/data/legacy.ts`: `network.*`, `founder.*`, `capital.*`), each after the one before it in its track. It lands in the career under way (nothing is taken away) and starts every later career. */
+  /** Spend Prestige on a Legacy perk (`src/data/legacy.ts`: `network.*`, `capital.*`), each after the one before it in its track. It lands in the career under way (nothing is taken away) and starts every later career. */
   buyLegacy: (perkId: string) => boolean
   /** Set spendable Prestige (lifetime Prestige rises to match). Tests only, like setXp. */
   setPrestige: (n: number) => void
   /** Buy a gold skill with spendable XP through its normal gates (lifetime XP, earlier row of its family, price). */
   buyGold: (goldId: number) => boolean
-  /** Buy a region with money (see src/data/regions.ts). False when unknown, owned or unaffordable. */
-  buyRegion: (regionId: string) => boolean
-  /** Deploy a point of presence in a city of an owned region, for a quarter of its region's price. */
-  deployPop: (cityId: string) => boolean
-  /** Switch a deployed point of presence on or off; its traffic goes to the nearest one still on. False for the last one on. */
-  setPopActive: (cityId: string, on: boolean) => boolean
-  /** Switch a bought region on or off as a whole. False for the last region serving. */
-  setRegionActive: (regionId: string, on: boolean) => boolean
-  /** Hire one person of a kind. False unless the career leads as a Manager at the kind's rank (outsourced and bootcamp 18, copypaste and senior 20, staff and tenx 21, greybeard and codegod 22), in a closed row, or short of the price. */
-  hire: (id: string) => boolean
-  /** Let go of one person of a kind. No refund. False with nobody of that kind. */
-  fire: (id: string) => boolean
-  /** Opens an incident (ddos, block, law, rival) on a region, the biggest by default. False at the cap of three or for an unknown region. */
-  forceIncident: (kind: IncidentKind, regionId?: string) => boolean
-  /** Pays to end an incident now. False when it is gone or the money is short. */
-  respondIncident: (id: number) => boolean
-  /** Sets a region's users, up to what the region can hold. */
-  setUsers: (regionId: string, users: number) => boolean
   /** Grant a gold skill now, bypassing XP, order and price. False for an unknown or owned id. */
   forceGold: (goldId: number) => boolean
   /** Clear a gig through the normal gates (board open, XP, prior gigs). */
@@ -339,10 +279,8 @@ export type GameHarness = {
   seeFeature: (id: string) => boolean
   /** Drop the reveals waiting to play. */
   clearReveals: () => void
-  /** Draw another handle (and a product to match), as the start card's first Reroll does. False once it is kept. */
+  /** Draw another handle, as the start card's Reroll does. False once it is kept. */
   rerollProfile: () => boolean
-  /** Draw another product suffix, as the second step's Reroll does. False once it is kept. */
-  rerollProduct: () => boolean
   /** Keep the current handle, as the start card's Start does. */
   keepProfile: () => void
   reset: () => void
@@ -446,32 +384,6 @@ function featuresSnapshot(state: ReturnType<typeof useGame.getState>): FeaturesS
   }
 }
 
-/** Applies a company patch the way a test hook does: no save, false when it was refused. */
-function adoptCompany(patch: CompanyPatch): boolean {
-  if (!patch) return false
-  useGame.setState(patch)
-  return true
-}
-
-function worldSnapshot(state: ReturnType<typeof useGame.getState>, perSec: number): WorldSnapshot {
-  const { company } = state
-  const serving = servingOf(company.users, company.incidents, state.equipment)
-  return {
-    users: totalUsers(company.users),
-    target: WORLD_TARGET,
-    regionUsers: { ...company.users },
-    resistance: company.resistance,
-    incidents: company.incidents.map((i) => ({ id: i.id, kind: i.kind, region: i.region, endsAt: i.until, strength: i.strength, cost: incidentCost(i, perSec, state.money) })),
-    demand: serving.demand,
-    capacity: serving.capacity,
-    revenuePerSec: productRevenueOf(serving.revenuePerSec, state.legacy.perks, specOf(state)),
-    won: company.won,
-  }
-}
-
-const exitWin = (state: ReturnType<typeof useGame.getState>) => ({ won: state.company.won, ending: state.company.ending })
-
-
 export function installGameHarness(): GameHarness {
   const api: GameHarness = {
     getState: () => {
@@ -524,20 +436,14 @@ export function installGameHarness(): GameHarness {
           last: state.journal.entries.length > 0 ? careerJson(state.journal.entries[state.journal.entries.length - 1]!) : null,
         },
         profile: { ...state.profile },
-        hires: { ...state.hires },
-        headcount: headcountOf(state.hires),
-        hiredShare: creditOf(state.company).hiredShare,
-        ending: state.company.ending ?? null,
-        world: worldSnapshot(state, earnedPerSec(state, now)),
         legacy: {
           runs: state.legacy.runs,
           prestige: state.legacy.prestige,
           prestigeTotal: state.legacy.prestigeTotal,
           mult: prestigeMult(state.legacy.prestigeTotal),
-          exitOpen: exitOpen(state.legacy, state.stats.lifetimeEarned, exitWin(state)),
-          prestigeOnExit: exitOpen(state.legacy, state.stats.lifetimeEarned, exitWin(state)) ? prestigeOnExit(state.legacy, state.stats.lifetimeEarned, exitWin(state)) : 0,
+          exitOpen: exitOpen(state.legacy, state.stats.lifetimeEarned),
+          prestigeOnExit: exitOpen(state.legacy, state.stats.lifetimeEarned) ? earningsPrestige(state.legacy, state.stats.lifetimeEarned) : 0,
           perks: [...state.legacy.perks],
-          endings: [...state.legacy.endings],
         },
         build: {
           specialization: state.build.spec,
@@ -546,7 +452,6 @@ export function installGameHarness(): GameHarness {
           leadership: state.build.leadership ?? null,
           leadershipOptions: leadOptions(state),
         },
-        launch: { ships: shipsLaunches(specOf(state)), charge: state.build.charge ?? 0, every: LAUNCH_CLICKS, share: LAUNCH_SHARE },
         combos: {
           found: state.combos.flatMap((id) => {
             const row = comboById(id)
@@ -611,15 +516,6 @@ export function installGameHarness(): GameHarness {
     setPrestige: setPrestigeDirect,
 
     buyGold: (goldId) => useGame.getState().buyGold(goldId),
-    buyRegion: (regionId) => useGame.getState().buyRegion(regionId),
-    hire: (id) => useGame.getState().hire(id),
-    fire: (id) => useGame.getState().fire(id),
-    forceIncident: (kind, regionId) => adoptCompany(forceIncident(useGame.getState(), kind, regionId, Date.now())),
-    respondIncident: (id) => useGame.getState().respondIncident(id),
-    setUsers: (regionId, users) => adoptCompany(setRegionUsers(useGame.getState(), regionId, users)),
-    deployPop: (cityId) => useGame.getState().deployPop(cityId),
-    setPopActive: (cityId, on) => useGame.getState().setPopActive(cityId, on),
-    setRegionActive: (regionId, on) => useGame.getState().setRegionActive(regionId, on),
 
     forceGold: (goldId) => {
       const state = useGame.getState()
@@ -683,8 +579,6 @@ export function installGameHarness(): GameHarness {
         ...(hydrated.save.career ? { journal: journalFromSave(hydrated.save.career), returns: hydrated.save.career.returns } : {}),
         tempMults: hydrated.save.tempMults ?? {},
         foreverMult: hydrated.save.foreverMult ?? 1,
-        company: hydrated.save.company ?? FRESH_COMPANY,
-        hires: hydrated.save.hires ?? {},
         activeBoost: hydrated.save.activeBoost ?? null,
         now,
         idleSince: now,
@@ -720,7 +614,6 @@ export function installGameHarness(): GameHarness {
 
     careerLog: () => useGame.getState().journal.entries.map(careerJson),
     rerollProfile: () => useGame.getState().rerollProfile(),
-    rerollProduct: () => useGame.getState().rerollProduct(),
     keepProfile: () => useGame.getState().keepProfile(),
 
     seeFeature: (id) => {

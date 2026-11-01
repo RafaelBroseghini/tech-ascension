@@ -26,7 +26,7 @@ export type CareerSlice = {
   whatsNew: boolean
 }
 
-type SyncState = Progress & { gold: readonly number[]; stats: { playTimeMs: number; lifetimeEarned?: number }; returns: number; legacy?: { runs: number; perks?: readonly string[] }; company?: { won: boolean } }
+type SyncState = Progress & { gold: readonly number[]; stats: { playTimeMs: number; lifetimeEarned?: number }; returns: number; legacy?: { runs: number; perks?: readonly string[] } }
 
 export function progressOf(state: SyncState): FeatureProgress {
   return {
@@ -45,7 +45,6 @@ export function progressOf(state: SyncState): FeatureProgress {
     playTimeMs: state.stats.playTimeMs,
     runs: state.legacy?.runs ?? 1,
     earned: state.stats.lifetimeEarned ?? 0,
-    won: state.company?.won ?? false,
     ...(state.legacy?.perks ? { legacy: { perks: state.legacy.perks } } : {}),
   }
 }
@@ -112,7 +111,7 @@ export function newlyOpen(progress: FeatureProgress, unlocked: readonly FeatureI
 
 /** NEW markers sit on things the player can go and use. Boards change the tab on their own, and dollars are just a number. */
 export function getsMarker(row: FeatureRow): boolean {
-  return row.size !== "phase" && row.id !== "money" && row.id !== "studio" && !row.admin
+  return row.size !== "phase" && row.id !== "money" && !row.admin
 }
 
 /** How loud each size is, for picking the one reveal a batch keeps. */

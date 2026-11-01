@@ -11,8 +11,6 @@ import { featureById, triggerLabel } from "./features.ts"
 import { formatNumber } from "./format.ts"
 import { reviewById } from "./reviews.ts"
 import { formatPlayTime } from "./stats.ts"
-import { INCIDENTS, MILESTONES, regionName } from "./globe/world.ts"
-import type { IncidentKind } from "./globe/world.ts"
 import type { SavedCareer, SavedCareerEntry } from "./save.ts"
 
 /**
@@ -34,8 +32,6 @@ export const CAREER_TYPES = [
   "return",
   "event",
   "review",
-  "incident",
-  "world",
   "milestone",
   "exit",
   "legacy",
@@ -206,10 +202,6 @@ export function entryName(entry: Pick<CareerEntry, "type" | "ref">): string {
       return eventById(idOf(entry.ref))?.name ?? entry.ref
     case "review":
       return reviewById(idOf(entry.ref))?.question ?? entry.ref
-    case "incident":
-      return INCIDENTS[entry.ref.slice("incident:".length) as IncidentKind]?.name ?? entry.ref
-    case "world":
-      return MILESTONES.find((row) => `world:${row.id}` === entry.ref)?.label ?? entry.ref
     case "milestone":
       return BALANCE_MILESTONES.find((row) => `milestone:${row.id}` === entry.ref)?.label ?? entry.ref
     case "legacy":
@@ -305,12 +297,6 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: name, detail: data.accepted === true ? "event · took it" : "event · passed", tone: "event" }
     case "review":
       return { title: "1:1", detail: typeof data.choice === "string" ? `answered: ${data.choice}` : "left without a reply", tone: "event" }
-    case "incident": {
-      const region = typeof data.region === "string" ? regionName(data.region) : ""
-      return { title: name, detail: region ? `incident · ${region}` : "incident", tone: "event" }
-    }
-    case "world":
-      return { title: name, detail: entry.ref === "world:won" ? "the world is yours" : "users", tone: "career" }
     case "milestone":
       return { title: name, detail: "milestone", tone: "career" }
     case "exit": {

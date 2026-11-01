@@ -3,20 +3,19 @@
 //
 //   npm run pace                          the table in the docs
 //   npm run pace -- 3 15 2                one profile: visits per day, minutes per visit, clicks per second
-//   npm run pace -- builds [4 5 2]       every specialization on each leadership line: the day it owns everything and wins
+//   npm run pace -- builds [4 5 2]       every specialization on each leadership line: the day it owns everything
 //   npm run pace -- exit [3 15 2] [falling]   the same player over several careers, leaving through the Exit
 //                                         (docs/PRESTIGE.md); "falling" leaves when Prestige per hour starts to fall
 //
 // Needs Node 22.18 or newer, which runs the TypeScript the game is written in without a build step.
 import { CAPITAL } from "../src/data/capital.ts"
-import { ENDING_BONUS, PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
+import { PRESTIGE_EARN_SCALE, PRESTIGE_MULT_PER } from "../src/data/legacy.ts"
 import { GEAR } from "../src/data/gear.ts"
 import { LEADERSHIP } from "../src/data/leadership.ts"
 import { SPECIALIZATIONS } from "../src/data/specializations.ts"
 import { visibleJobs } from "../src/data/phases.ts"
 import {
   cadenceOf,
-  HIRE_CASH_SHARE,
   DEFAULT_PACE_LEAD,
   DEFAULT_PACE_SPEC,
   PACE_MILESTONES,
@@ -77,22 +76,20 @@ function row(name, visitsPerDay, minutesPerVisit, clicksPerSec) {
 const REGULAR = { visitsPerDay: 3, minutesPerVisit: 15, clicksPerSec: 2 }
 
 // The multi-run model: when each Exit happens, what it pays, the bonus, and the career that finally owns everything.
-const users = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}k` : `${Math.round(n)}`)
-
 function printExits(profile, exitRule) {
   const rule = exitRule === "falling" ? "Prestige per hour starts to fall" : "an Exit raises the bonus by 15% or more"
-  console.log(`Exits: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s; leaves when ${rule}; Prestige ladder scale ${PRESTIGE_EARN_SCALE.toExponential(0)}, ${PRESTIGE_MULT_PER} per Prestige, ending bonus ${ENDING_BONUS}`)
+  console.log(`Exits: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s; leaves when ${rule}; Prestige ladder scale ${PRESTIGE_EARN_SCALE.toExponential(0)}, ${PRESTIGE_MULT_PER} per Prestige`)
   for (const player of PLAYERS) {
     const run = simulateExits(profile, { maxDays: MAX_DAYS, paybackSeconds: player.paybackSeconds, exitRule })
     console.log("")
-    console.log(`${player.name}: ${run.complete ? `owns everything and wins the world in career ${run.finishRun}, day ${days(run.days)}` : `not finished by day ${MAX_DAYS}`}; Hall of Fame: ${run.endings.length > 0 ? run.endings.join(", ") : "none"}`)
-    console.log("| Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Matched the last career's earnings after (days) | World won after (days) | Users | Perks held | Earned | Prestige paid (ending bonus) | Prestige total | Bonus |")
-    console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    console.log(`${player.name}: ${run.complete ? `owns everything in career ${run.finishRun}, day ${days(run.days)}` : `not finished by day ${MAX_DAYS}`}`)
+    console.log("| Career | Day in | Day out | Exit open after (days) | Row 6 after (days) | Matched the last career's earnings after (days) | Owned everything after (days) | Perks held | Earned | Prestige paid | Prestige total | Bonus |")
+    console.log("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for (const r of run.runs) {
       const at = (n) => (n === null ? "-" : n.toFixed(2))
       const out = r.finished ? `${r.endDay.toFixed(2)} (done)` : r.endDay.toFixed(2)
-      const paid = r.finished ? "-" : r.endingBonus > 0 ? `${r.prestigeEarned} (${r.endingBonus})` : `${r.prestigeEarned}`
-      console.log(`| ${r.run} | ${r.startDay.toFixed(2)} | ${out} | ${at(r.exitOpenDays)} | ${at(r.row6Days)} | ${at(r.catchUpDays)} | ${at(r.winDays)} | ${users(r.users)} | ${r.perks} | ${r.earned.toExponential(1)} | ${paid} | ${r.prestigeTotal} | x${r.mult.toFixed(2)} |`)
+      const paid = r.finished ? "-" : `${r.prestigeEarned}`
+      console.log(`| ${r.run} | ${r.startDay.toFixed(2)} | ${out} | ${at(r.exitOpenDays)} | ${at(r.row6Days)} | ${at(r.catchUpDays)} | ${at(r.ownedDays)} | ${r.perks} | ${r.earned.toExponential(1)} | ${paid} | ${r.prestigeTotal} | x${r.mult.toFixed(2)} |`)
     }
   }
 }
@@ -101,7 +98,7 @@ if (process.argv[2] === "builds") {
   const nums = process.argv.slice(3, 6).map(Number)
   const given = nums.length === 3 && nums.every((n) => Number.isFinite(n) && n > 0)
   const profile = given ? { visitsPerDay: nums[0], minutesPerVisit: nums[1], clicksPerSec: nums[2] } : { visitsPerDay: 4, minutesPerVisit: 5, clicksPerSec: 2 }
-  console.log(`Builds: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s. Each cell: owns everything / wins the world, in days (the finish is the later). A Manager hires when a kind costs at most ${HIRE_CASH_SHARE * 100}% of its cash.`)
+  console.log(`Builds: ${profile.visitsPerDay} visits a day, ${profile.minutesPerVisit} min, ${profile.clicksPerSec} clicks/s. Each cell: the day it owns everything.`)
   console.log("")
   console.log("| Specialization | Style | " + LEADERSHIP.flatMap((l) => PLAYERS.map((p) => `${l.id} ${p.name}`)).join(" | ") + " |")
   console.log("| --- | --- | " + LEADERSHIP.flatMap((l) => PLAYERS.map(() => "---")).join(" | ") + " |")
@@ -109,9 +106,7 @@ if (process.argv[2] === "builds") {
     const cells = LEADERSHIP.flatMap((lead) =>
       PLAYERS.map((player) => {
         const run = simulatePace(profile, { maxDays: 60, paybackSeconds: player.paybackSeconds, specialization: spec.id, leadership: lead.id })
-        const owned = run.ownedDays === null ? "never" : run.ownedDays.toFixed(2)
-        const won = run.milestones.won === undefined ? "never" : run.milestones.won.toFixed(2)
-        return `${owned} / ${won}`
+        return run.ownedDays === null ? "never" : run.ownedDays.toFixed(2)
       }),
     )
     console.log(`| ${spec.name} | ${spec.style} | ${cells.join(" | ")} |`)
@@ -170,15 +165,6 @@ if (custom) {
   for (const [index, player] of PLAYERS.entries()) {
     const { milestones } = rows[0].cells[index].run
     console.log(`- ${player.name}: ${PACE_MILESTONES.filter((id) => milestones[id] !== undefined).map((id) => `${id} ${milestones[id].toFixed(2)}`).join(", ")}`)
-  }
-  // The career gates to come read users (docs/BUILDS.md): each should land within about a visit of the job it sits on.
-  const visit = 1 / rows[0].profile.visitsPerDay
-  console.log("")
-  console.log(`Career gates (one visit is ${visit.toFixed(2)} days): users against the job each gate sits on, then the finish`)
-  for (const [index, player] of PLAYERS.entries()) {
-    const { milestones: m, days: finish, ownedDays } = rows[0].cells[index].run
-    const at = (n) => (n === undefined || n === null ? "never" : n.toFixed(2))
-    console.log(`- ${player.name}: Mid-level SWE day ${at(m.midJob)}, 10k users day ${at(m.users10k)}; Senior SWE day ${at(m.seniorJob)}, 1M users day ${at(m.users1m)}; win day ${at(m.won)}, owns everything day ${at(ownedDays)}, finish day ${at(rows[0].cells[index].run.complete ? finish : null)}`)
   }
 }
 

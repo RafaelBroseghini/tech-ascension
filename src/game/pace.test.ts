@@ -6,7 +6,6 @@ import {
   ONE_OF_EACH_PAYBACK_SECONDS,
   estimateDays,
   FINAL_CLICK_SHARE,
-  HIRE_PAYROLL_SHARE,
   OFFLINE_CAP_SECONDS,
   PACE_K,
   PACE_MILESTONES,
@@ -64,14 +63,13 @@ describe("pace model", () => {
     for (const id of PACE_MILESTONES) expect(run.milestones[id], id).toBeDefined()
     const m = run.milestones
     expect(m.gigBoard!).toBeLessThanOrEqual(m.jobBoard!)
+    expect(m.jobBoard!).toBeLessThanOrEqual(m.midJob!)
+    expect(m.midJob!).toBeLessThanOrEqual(m.seniorJob!)
     expect(m.jobBoard!).toBeLessThanOrEqual(m.capital!)
-    // Owning everything is the last thing in the shop; with the capital tail cut, which list finishes last varies by player.
+    // Owning everything is the finish, and the last thing in the shop; with the capital tail cut, which list finishes last varies by player.
     const last = Math.max(...PACE_MILESTONES.filter((id) => id.startsWith("all")).map((id) => m[id]!))
     expect(run.ownedDays!).toBeCloseTo(last, 6)
-    // The career's finish is the later of owning everything and winning the world.
-    expect(run.days).toBeCloseTo(Math.max(last, m.won!), 6)
-    expect(m.users10k!).toBeLessThanOrEqual(m.users1m!)
-    expect(m.users1m!).toBeLessThanOrEqual(m.won!)
+    expect(run.days).toBeCloseTo(last, 6)
   })
 
   // 4 visits of 5 minutes, 2 clicks a second: a career takes a day, and no visit in the middle comes back to nothing new.
@@ -81,35 +79,10 @@ describe("pace model", () => {
     for (const payback of [ONE_OF_EACH_PAYBACK_SECONDS, STACKER_PAYBACK_SECONDS]) {
       const run = simulatePace(profile(4, 5, 2), { maxDays: 30, paybackSeconds: payback })
       expect(run.complete).toBe(true)
-      // The user gates (10,000 users for the pick, 1,000,000 for Senior) cost this player one visit: the product reaches
-      // each mark minutes after the visit that holds the job, so the pick and Senior wait for the next one (docs/PACING.md).
       expect(run.ownedDays!).toBeLessThanOrEqual(1.26)
       expect(run.longestWaitVisits).toBeLessThanOrEqual(1)
-      // The win is the finish and lands about a day and a half in: the capital tail and the product's gear share one
-      // pot of money. Bringing it inside a day is step 8 of docs/BUILDS.md; this pins today's number so it cannot slip.
-      expect(run.days).toBeLessThanOrEqual(1.55) // was 1.45 before the user gates took a visit
+      expect(run.days).toBeCloseTo(run.ownedDays!, 6)
     }
-  })
-
-  // A player who is away longer than the offline cap skips product time: the product only runs during a visit and the
-  // capped hours after it. Every product date is on the wall clock, so each one falls inside one of those windows.
-  it("dates the product milestones on the wall clock when visits are a day apart", () => {
-    const visit = profile(1, 10, 2)
-    const run = simulatePace(visit, { maxDays: 400 })
-    expect(run.complete).toBe(true)
-    const { users10k, users1m, won } = run.milestones
-    expect(users10k).toBeDefined()
-    expect(users1m).toBeDefined()
-    expect(won).toBeDefined()
-    expect(users10k!).toBeLessThanOrEqual(users1m!)
-    expect(users1m!).toBeLessThanOrEqual(won!)
-    expect(won!).toBeLessThanOrEqual(run.days)
-    const window = (visit.minutesPerVisit * 60 + OFFLINE_CAP_SECONDS) / 86_400
-    for (const [name, day] of Object.entries({ users10k, users1m, won })) {
-      expect(day! - Math.floor(day!), name).toBeLessThanOrEqual(window + 1e-6)
-    }
-    // The finish is the later of owning everything and the win.
-    expect(run.days).toBeCloseTo(Math.max(won!, run.ownedDays!), 6)
   })
 
   it("counts a visit with no first copy as a wait", () => {
@@ -144,74 +117,39 @@ describe("pace model", () => {
       ["daily", profile(1, 30, 2)],
     ]
     for (const [name, p] of fits) {
-      // The formula is about owning everything, not the win.
       const oneOfEach = simulatePace(p, { maxDays: 800, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS }).ownedDays!
       const stacker = simulatePace(p, { maxDays: 800, paybackSeconds: STACKER_PAYBACK_SECONDS }).ownedDays!
-      // The formula knows nothing of the product's revenue or an IC's growth, which pay for gear sooner than it says: a
-      // player who is always there owns everything up to half a day earlier than it estimates.
+      // The formula is a closed form of a few visits and a floor from the lifetime-XP gate on the last skill, so it runs
+      // loose for a player who is always there.
       expect(Math.abs(estimateDays(p, PACE_K.oneOfEach) / oneOfEach - 1), `${name} one-of-each`).toBeLessThan(name === "left open" ? 0.5 : 0.35)
       expect(Math.abs(estimateDays(p, PACE_K.stacker) / stacker - 1), `${name} stacker`).toBeLessThan(0.35)
     }
   }, 60_000)
 })
 
-// Each case simulates hundreds of days over several careers: about 2 s here, past the 5 s default on a CI runner.
+// Each case simulates weeks over several careers: about 2 s here, past the 5 s default on a CI runner.
 describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
+  // Weekly, 30 minutes, 2 clicks a second: slow enough that the Exit pays before the career owns everything. A player who
+  // visits every few hours owns everything inside a day, before an Exit would raise the bonus by 15%, and never leaves.
+  const weekly = profile(1 / 7, 30, 2)
   const regular = profile(3, 15, 2)
 
   for (const [name, payback] of [
     ["stacker", STACKER_PAYBACK_SECONDS],
     ["oneOfEach", ONE_OF_EACH_PAYBACK_SECONDS],
   ] as const) {
-    it(`a career that never leaves finishes on the single run's day: owning everything, then the win (${name})`, () => {
+    it(`a career that never leaves finishes on the single run's day (${name})`, () => {
       const single = simulatePace(regular, { maxDays: 400, paybackSeconds: payback })
       const never = simulateExits(regular, { maxDays: 30, paybackSeconds: payback, minGrowth: Number.POSITIVE_INFINITY })
       expect(never.runs).toHaveLength(1)
       const first = never.runs[0]!
-      // The product is part of the finish: the later of the two, in both models.
-      expect(single.days).toBeCloseTo(Math.max(single.ownedDays!, single.milestones.won!), 6)
       expect(first.ownedDays!).toBeCloseTo(single.ownedDays!, 6)
-      expect(first.winDays!).toBeCloseTo(single.milestones.won!, 6)
-      expect(first.endDay).toBeGreaterThanOrEqual(single.days - 1e-6)
-      expect(first.users).toBeGreaterThan(1e6)
-    })
-  }
-
-  for (const [name, payback] of [
-    ["stacker", STACKER_PAYBACK_SECONDS],
-    ["oneOfEach", ONE_OF_EACH_PAYBACK_SECONDS],
-  ] as const) {
-    it(`meets the pacing targets for the Regular ${name}`, () => {
-      const result = simulateExits(regular, { maxDays: 400, paybackSeconds: payback })
-      expect(result.complete).toBe(true)
-      const [first, second] = result.runs
-      // A career is about a day now, so the first Exit opens around day 1 (the Exit constants were tuned for careers
-      // of days and now pay a lot of Prestige for it; docs/PACING.md). Pinned to the model's output, not a target.
-      expect(first!.endDay).toBeGreaterThanOrEqual(0.9)
-      expect(first!.endDay).toBeLessThanOrEqual(1.1)
-      expect(first!.prestigeEarned).toBeGreaterThanOrEqual(100)
-      expect(first!.prestigeEarned).toBeLessThanOrEqual(120)
-      expect(first!.endingBonus).toBe(0)
-      // The second career reaches capital row 6 in under half a day.
-      expect(second!.row6Days).not.toBeNull()
-      expect(second!.row6Days!).toBeLessThan(0.5)
-      // It gets back to what the first one earned sooner, but not twice as fast: income grows exponentially, so a
-      // head start of a day saves a fraction of a day (docs/PACING.md, "Over several careers").
-      // An IC's own growth can win the world before the second career matches the first one's earnings: then it never does.
-      if (second!.catchUpDays !== null) expect(second!.catchUpDays / first!.endDay).toBeLessThan(1.01)
-      else expect(second!.winDays).not.toBeNull()
-      // Owning everything and winning the world: the stacker is done in the fourth to sixth career, in two to four days.
-      // The one-of-each player buys little serving gear in a first career, but the product now grows fast enough that the
-      // second career (under the first Exit's perks) wins it: career 2 to 3, in under three days.
-      const [fewest, most, soonest, latest] = name === "stacker" ? [4, 6, 2, 4] : [2, 3, 1.2, 3]
-      expect(result.finishRun).toBeGreaterThanOrEqual(fewest!)
-      expect(result.finishRun).toBeLessThanOrEqual(most!)
-      expect(result.days).toBeGreaterThan(soonest!)
-      expect(result.days).toBeLessThan(latest!)
+      expect(first.endDay).toBeCloseTo(single.days, 6)
+      expect(first.finished).toBe(true)
     })
 
-    it(`only ever gains Prestige and bonus across careers (${name})`, () => {
-      const result = simulateExits(regular, { maxDays: 400, paybackSeconds: payback })
+    it(`only ever gains Prestige across careers (${name})`, () => {
+      const result = simulateExits(weekly, { maxDays: 400, paybackSeconds: payback })
       let total = 0
       for (const run of result.runs) {
         expect(run.prestigeTotal).toBeGreaterThanOrEqual(total)
@@ -220,20 +158,32 @@ describe("pace over several careers (the Exit)", { timeout: 30_000 }, () => {
     })
   }
 
-  it("spends Prestige on the cheapest perks across tracks, Network first on ties, and models the night owl ending only", () => {
-    const result = simulateExits(regular, { maxDays: 400, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS })
+  it("leaves through the Exit before owning everything, and the next career starts far ahead", () => {
+    const result = simulateExits(weekly, { maxDays: 400, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS })
+    expect(result.complete).toBe(true)
     const [first, second] = result.runs
-    // The first Exit pays enough to buy the cheap firsts of every track, Network before Founder before Capital.
+    expect(first!.finished).toBe(false)
+    expect(first!.exitOpenDays).not.toBeNull()
     expect(first!.prestigeEarned).toBeGreaterThanOrEqual(5)
-    expect(second!.perks).toBeGreaterThanOrEqual(3)
-    expect(result.endings.every((ending) => ending === "nightOwl")).toBe(true)
-    expect(result.runs.every((run) => run.endingBonus === 0 || run.winDays !== null)).toBe(true)
+    // The second career reaches capital row 6 almost at once, and gets back to what the first one earned in under half its time.
+    expect(second!.row6Days!).toBeLessThan(first!.row6Days! / 10)
+    expect(second!.catchUpDays).not.toBeNull()
+    expect(second!.catchUpDays!).toBeLessThan(first!.endDay / 2)
+    expect(result.finishRun).toBe(result.runs.length)
   })
 
-  it("the optimal rule (Prestige per hour starts to fall) waits until a career is nearly done", () => {
-    const result = simulateExits(regular, { maxDays: 400, exitRule: "falling" })
-    const worth = simulateExits(regular, { maxDays: 400 })
-    expect(result.runs[0]!.endDay).toBeGreaterThan(worth.runs[0]!.endDay)
+  it("spends Prestige on the cheapest perks across both tracks, Network first on ties", () => {
+    const result = simulateExits(weekly, { maxDays: 400, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS })
+    const [first, second] = result.runs
+    expect(first!.prestigeEarned).toBeGreaterThanOrEqual(5)
+    expect(first!.perks).toBe(0)
+    expect(second!.perks).toBeGreaterThanOrEqual(3)
+  })
+
+  it("the optimal rule (Prestige per hour starts to fall) waits longer than the 15% rule", () => {
+    const falling = simulateExits(weekly, { maxDays: 400, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS, exitRule: "falling" })
+    const worth = simulateExits(weekly, { maxDays: 400, paybackSeconds: ONE_OF_EACH_PAYBACK_SECONDS })
+    expect(falling.runs[0]!.endDay).toBeGreaterThan(worth.runs[0]!.endDay)
   })
 })
 
@@ -241,30 +191,19 @@ describe("pace by build", () => {
   const leftOpen = profile(24, 15, 2)
   const run = (specialization: SpecId, leadership: LeadId, paybackSeconds = STACKER_PAYBACK_SECONDS) => simulatePace(leftOpen, { maxDays: 30, paybackSeconds, specialization, leadership })
 
-  it("hires nobody on the IC line and a team on the Manager's, which still finishes", () => {
+  it("finishes on either leadership line", () => {
     const ic = run("backend", "ic")
     const manager = run("backend", "manager")
-    expect(ic.headcount).toBe(0)
-    expect(manager.headcount).toBeGreaterThan(0)
     expect(ic.complete).toBe(true)
     expect(manager.complete).toBe(true)
     expect(manager.days).toBeGreaterThan(0)
   })
 
-  it("keeps a lightly hiring Manager within 10% of the IC for every specialization, so neither line is a dead end", () => {
+  it("keeps a Manager within 10% of the IC for every specialization, so neither line is a dead end", () => {
     for (const spec of SPECIALIZATIONS) {
       const ic = run(spec.id, "ic")
       const manager = run(spec.id, "manager")
       expect(Math.abs(manager.days / ic.days - 1), spec.id).toBeLessThan(0.1)
     }
   }, 60_000)
-
-  it("lets a click build win the world sooner than a plain one (its clicks pay more)", () => {
-    expect(run("frontend", "ic").milestones.won!).toBeLessThan(run("backend", "ic").milestones.won!)
-  })
-
-  it("only hires while the payroll stays within its share of the revenue", () => {
-    expect(HIRE_PAYROLL_SHARE).toBeGreaterThan(0)
-    expect(HIRE_PAYROLL_SHARE).toBeLessThanOrEqual(1)
-  })
 })

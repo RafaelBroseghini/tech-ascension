@@ -28,7 +28,7 @@ export type FeatureTrigger =
   | { kind: "art"; tier: number }
   /** The first capital row of an era. */
   | { kind: "era"; era: Era }
-  /** The Exit (prestige): it would pay at least 1 Prestige (a win included), or this is a later career. */
+  /** The Exit (prestige): it would pay at least 1 Prestige, or this is a later career. */
   | { kind: "exit" }
 
 /**
@@ -39,7 +39,6 @@ export type FeatureTrigger =
 export type FeatureSize = "big" | "standard" | "small" | "phase"
 
 export type FeatureId =
-  | "studio"
   | "careerLog"
   | "githug"
   | "linkedout"
@@ -87,15 +86,6 @@ export type FeatureRow = {
 }
 
 export const FEATURES: readonly FeatureRow[] = [
-  {
-    id: "studio",
-    name: "Your company",
-    blurb: "Your company, on the globe. Every gig you clear brought users, and the world is the goal. Serve them with Cloud gear from the Gear tab.",
-    size: "big",
-    trigger: { kind: "firstJob" },
-    action: "Try it",
-    ghost: false,
-  },
   {
     id: "careerLog",
     name: "Career log",
@@ -230,7 +220,7 @@ export const FEATURES: readonly FeatureRow[] = [
   {
     id: "exit",
     name: "The Exit",
-    blurb: "Sell your product for Prestige, a permanent bonus, and start a faster career with a new one. Your Legacy perks and the Hall of Fame stay.",
+    blurb: "Leave this career for Prestige, a permanent bonus, and start a faster one. Your Legacy perks stay.",
     size: "big",
     trigger: { kind: "exit" },
     action: "Show me",

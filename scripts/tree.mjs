@@ -3,11 +3,11 @@
 //   npm run tree                         the tracks, in order, with how many rows each holds and what it hangs off
 //   npm run tree -- track gigs           one track's rows in order, each with its gate in words
 //   npm run tree -- gig:5                one row: its gate, what it sits under, what it opens, everything it needs back to the start
-//   npm run tree -- job:14 --xp 200000 --gigs 6 --jobs 1,2,3,4,5,6,7 --spec backend --users 5000
+//   npm run tree -- job:14 --xp 200000 --gigs 6 --jobs 1,2,3,4,5,6,7 --spec backend
 //                                        the same row against a career: which leaves hold and which do not
 //
 // Career flags: --xp N (lifetime XP) --money N (the most held) --gigs N (the first N gigs cleared) --jobs 1,2,3 --skills 1-16
-// --gear 42,43 --capital 1 --spec id --lead id --origin id --users N.
+// --gear 42,43 --capital 1 --spec id --lead id.
 // Needs Node 22.18 or newer, which runs the TypeScript the game is written in without a build step.
 import { closure, check, dependents, describe, holds, NODE_MAP, NODES, nodeOf, prereqs, TRACK_LIST } from "../src/game/tree/index.ts"
 
@@ -36,8 +36,7 @@ const career = {
   gold: [],
   jobs: list(flags.jobs),
   gigs: flags.gigs ? Array.from({ length: Number(flags.gigs) }, (_, i) => i + 1) : [],
-  build: flags.spec || flags.lead || flags.origin ? { spec: flags.spec ?? null, switched: false, ...(flags.lead ? { leadership: flags.lead } : {}), ...(flags.origin ? { origin: flags.origin } : {}) } : undefined,
-  ...(flags.users ? { company: { users: { "americas-east": Number(flags.users) } } } : {}),
+  build: flags.spec || flags.lead ? { spec: flags.spec ?? null, switched: false, ...(flags.lead ? { leadership: flags.lead } : {}) } : undefined,
 }
 const given = Object.keys(flags).length > 0
 

@@ -4,16 +4,10 @@ import { GEAR } from "../data/gear.ts"
 import { PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
 import { LEAD_OPEN_RANK, LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
-import { GIGS, JOB_TIERS, SKILL_TIERS, highestJobRank, jobRank, visibleJobs } from "../data/phases.ts"
-import { REGIONS } from "../data/regions.ts"
+import { GIGS, JOB_TIERS, SKILL_TIERS, jobRank, visibleJobs } from "../data/phases.ts"
 import type { SpecId } from "../data/specializations.ts"
-import { buildFactsOf, hireLocked, leadOptions, leadPickOpen, normalizeBuild } from "./build.ts"
+import { leadOptions, leadPickOpen, normalizeBuild } from "./build.ts"
 import { describeEntry } from "./careerLog.ts"
-import { advanceCompany, FRESH_COMPANY, growthFacts, stepCompany } from "./globe/growth.ts"
-import { HIRES, hireBonusOf, hirePayrollOf } from "./globe/hires.ts"
-import type { Hires } from "./globe/hires.ts"
-import { NO_BUILD, productFactsOf } from "./globe/product.ts"
-import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
 import { installGameHarness } from "./harness.ts"
 import { readCareerText } from "./ledger.ts"
 import { LEAD_PICK_KEY, nextUnlock, ownsEverything, shopFocus } from "./nextUnlock.ts"
@@ -34,7 +28,6 @@ const SHARED_ABOVE = [25, 26, 27, 28, 29, 30, 31]
 function toMid() {
   game.reset()
   game.keepProfile()
-  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) expect(game.buyJob(id), `job ${id}`).toBe(true)
@@ -69,7 +62,6 @@ describe("the pick", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
   })
 
   it("is shut before Senior SWE and opens when a job of rank 14 is held", () => {
@@ -133,7 +125,6 @@ describe("the rows above rank 15", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
   })
 
   it("leaves rank 15 in the track and waits on the pick for everything above it", () => {
@@ -212,193 +203,9 @@ describe("the rows above rank 15", () => {
   })
 })
 
-describe("hiring", () => {
-  beforeEach(() => {
-    game.reset()
-    game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
-  })
-
-  it("is refused with no line picked and for an individual contributor, whatever the rank and the money", () => {
-    toSenior()
-    game.setMoney(1e15)
-    expect(game.hire("outsourced")).toBe(false)
-    game.pickLeadership("ic")
-    game.setXp(1e9)
-    for (const id of [16, 17, 19, 23, 24, 25, 26, 27, 28, 29, 30, 31]) game.buyJob(id)
-    expect(highestJobRank(game.getState().jobs)).toBe(31)
-    game.setMoney(1e15)
-    for (const row of HIRES) expect(game.hire(row.id), row.id).toBe(false)
-    expect(game.getState().headcount).toBe(0)
-    expect(game.getState().money).toBe(1e15)
-  })
-
-  it("is refused to a Manager below the kind's rank, and opens with each rank", () => {
-    toLine("manager")
-    game.setMoney(1e15)
-    // Senior SWE (14) and the rank 15 row do not open the first kind: it asks for Engineering manager.
-    expect(game.hire("outsourced")).toBe(false)
-    const opens: [string, number][] = [
-      ["outsourced", 18],
-      ["bootcamp", 18],
-      ["copypaste", 20],
-      ["senior", 20],
-      ["staff", 21],
-      ["tenx", 21],
-      ["greybeard", 22],
-      ["codegod", 22],
-    ]
-    expect(HIRES.map((row) => [row.id, row.rank])).toEqual(opens)
-    let rank = 0
-    for (const [id, needed] of opens) {
-      game.setMoney(1e15)
-      if (rank < needed) {
-        // The kind above is open as a row (a hire of the one before it), but its rank is not held yet.
-        expect(game.hire(id), `${id} before rank ${needed}`).toBe(false)
-        game.setXp(1e9)
-        expect(game.buyJob(needed), `job ${needed}`).toBe(true)
-        rank = needed
-      }
-      game.setMoney(1e15)
-      expect(game.hire(id), `${id} at rank ${needed}`).toBe(true)
-      expect(game.getState().hires[id]).toBe(1)
-    }
-    expect(game.getState().headcount).toBe(8)
-  })
-
-  it("still needs the row above to have a hire, and the money", () => {
-    toLine("manager")
-    game.setXp(1e9)
-    for (const id of [18, 20, 21, 22]) game.buyJob(id)
-    game.setMoney(1e15)
-    expect(game.hire("bootcamp")).toBe(false)
-    game.setMoney(0)
-    expect(game.hire("outsourced")).toBe(false)
-    game.setMoney(1e15)
-    expect(game.hire("outsourced")).toBe(true)
-    expect(game.hire("bootcamp")).toBe(true)
-  })
-
-  it("says why a kind is shut", () => {
-    const row = (id: string) => HIRES.find((hire) => hire.id === id)!
-    expect(hireLocked({ jobs: [14] }, row("outsourced"))).toBe("Hiring opens when you lead as a Manager")
-    expect(hireLocked({ jobs: [14, 16], build: { spec: "backend", switched: false, leadership: "ic" } }, row("outsourced"))).toBe("Hiring opens when you lead as a Manager")
-    const manager = { spec: "backend" as const, switched: false, leadership: "manager" as const }
-    expect(hireLocked({ jobs: [14], build: manager }, row("outsourced"))).toBe("Needs Engineering manager")
-    expect(hireLocked({ jobs: [14, 18], build: manager }, row("outsourced"))).toBeNull()
-    expect(hireLocked({ jobs: [14, 18], build: manager }, row("copypaste"))).toBe("Needs Director of Eng")
-    expect(hireLocked({ jobs: [14, 18, 20], build: manager }, row("staff"))).toBe("Needs VP Engineering")
-    expect(hireLocked({ jobs: [14, 18, 20, 21], build: manager }, row("codegod"))).toBe("Needs CTO (startup)")
-    expect(hireLocked({ jobs: [14, 22], build: manager }, row("codegod"))).toBeNull()
-  })
-
-  it("keeps hires already held working under IC: they grow the product and draw pay, but nobody new is hired", () => {
-    toLine("ic")
-    const held: Hires = { outsourced: 3, bootcamp: 1 }
-    useGame.setState({ hires: held })
-    game.setMoney(1e15)
-    expect(game.hire("outsourced")).toBe(false)
-    expect(game.getState().hires).toEqual(held)
-    expect(game.getState().headcount).toBe(4)
-    // They still count in the growth facts and the payroll.
-    const facts = productFactsOf(held, undefined, { ...NO_BUILD, lead: "ic" })
-    expect(facts.hireBonus).toBeGreaterThan(0)
-    expect(facts.hireBonus).toBe(hireBonusOf(held))
-    expect(facts.payroll).toBe(hirePayrollOf(held))
-    // Letting one go is still allowed.
-    expect(useGame.getState().fire("bootcamp")).toBe(true)
-    expect(game.getState().hires).toEqual({ outsourced: 3 })
-  })
-})
-
-describe("the ending", () => {
-  const nearWin = Object.fromEntries(REGIONS.map((r) => [r.id, ceilingOf(r.id) * (7.9999e9 / WORLD_CEILING)]))
-  const everywhere = { regions: REGIONS.map((r) => r.id), pops: ["ashburn", "frankfurt", "tokyo", "saopaulo", "lagos", "sydney", "sf"], off: [], dark: [] }
-  const never = () => 0.999
-  const winFacts = (hires: Hires, lead?: LeadId | null) => growthFacts([1, 2, 3, 4, 5, 6, 7, 8], { "110": 20 }, everywhere, productFactsOf(hires, undefined, { ...NO_BUILD, lead: lead ?? null }))
-  const team: Hires = Object.fromEntries(HIRES.slice(0, 6).map((row) => [row.id, 20]))
-  const near = (hiredUsers = 0) => ({ ...FRESH_COMPANY, users: nearWin, hiredUsers })
-  const wonWith = (hires: Hires, lead: LeadId | null | undefined, hiredShare: number) => stepCompany(near(7.9999e9 * hiredShare), winFacts(hires, lead), 60_000, 60_000, never).state
-
-  it("comes from the line the facts carry", () => {
-    expect(productFactsOf({}, undefined, { ...NO_BUILD, lead: "ic" }).ending).toBe("nightOwl")
-    expect(productFactsOf({}, undefined, { ...NO_BUILD, lead: "manager" }).ending).toBe("sponsor")
-    expect(productFactsOf({}).ending).toBeUndefined()
-    expect(productFactsOf({}, undefined, NO_BUILD).ending).toBeUndefined()
-    expect(LEADERSHIP.map((row) => row.ending)).toEqual(["nightOwl", "sponsor"])
-  })
-
-  it("makes a Manager's win the sponsor's, even with no hires", () => {
-    const won = wonWith({}, "manager", 0)
-    expect(won.won).toBe(true)
-    expect(won.ending).toBe("sponsor")
-  })
-
-  it("makes an IC's win the night owl's, even when the hires brought most of the users", () => {
-    const won = wonWith(team, "ic", 0.9)
-    expect(won.won).toBe(true)
-    expect(won.ending).toBe("nightOwl")
-  })
-
-  it("falls back to the hires' share with no line, as before", () => {
-    expect(wonWith(team, undefined, 0.9).ending).toBe("sponsor")
-    expect(wonWith({}, null, 0).ending).toBe("nightOwl")
-    expect(wonWith(team, null, 0.4).ending).toBe("nightOwl")
-  })
-
-  it("is picked once, when the win latches, and stays through a later line", () => {
-    const won = stepCompany(near(), winFacts({}, "manager"), 60_000, 60_000, never)
-    expect(won.notes.find((n) => n.ref === "world:won")?.data).toMatchObject({ ending: "sponsor" })
-    expect(stepCompany(won.state, winFacts({}, "ic"), 60_000, 120_000, never).state.ending).toBe("sponsor")
-  })
-
-  it("is not served from a stale cache after the pick", () => {
-    const gigs = [1, 2, 3]
-    const gear = { "110": 1 }
-    const before = growthFacts(gigs, gear, undefined, productFactsOf({}, undefined, NO_BUILD))
-    const after = growthFacts(gigs, gear, undefined, productFactsOf({}, undefined, { ...NO_BUILD, lead: "manager" }))
-    expect(before.product?.ending).toBeUndefined()
-    expect(after.product?.ending).toBe("sponsor")
-  })
-
-  it("follows the line in the store: the Hall of Fame records it on the Exit", () => {
-    for (const [lead, ending] of [["ic", "nightOwl"], ["manager", "sponsor"]] as const) {
-      toLine(lead)
-      useGame.setState({
-        company: { ...FRESH_COMPANY, users: nearWin },
-        equipment: { "110": 20 },
-        footprint: everywhere,
-        gigs: [1, 2, 3, 4, 5, 6, 7, 8],
-      })
-      const store = useGame.getState()
-      const grown = advanceCompany(store.company, growthFacts(store.gigs, store.equipment, store.footprint, productFactsOf(store.hires, store.legacy, buildFactsOf(store))), store.now, store.now + 60_000, never)
-      expect(grown.state.won).toBe(true)
-      useGame.setState({ company: grown.state })
-      expect(useGame.getState().company.ending).toBe(ending)
-      game.setMoney(PRESTIGE_EARN_SCALE * 3)
-      expect(game.exit()).toBeGreaterThan(0)
-      expect(game.getState().legacy.endings).toContain(ending)
-    }
-  })
-
-  it("follows the line while away: a win on return reads the pick", () => {
-    toLine("manager")
-    useGame.setState({
-      company: { ...FRESH_COMPANY, users: nearWin },
-      equipment: { "110": 20 },
-      footprint: everywhere,
-      gigs: [1, 2, 3, 4, 5, 6, 7, 8],
-    })
-    game.advanceOffline(8 * 3_600_000)
-    expect(game.getState().world.won).toBe(true)
-    expect(useGame.getState().company.ending).toBe("sponsor")
-  })
-})
-
 describe("old saves and the save block", () => {
   const base = { version: SAVE_VERSION, money: 0, xp: 0, xpTotal: 1e6, skills: {}, equipment: {}, owned: {}, gigs: [], savedAt: 0, peakMoney: 0 }
   const ladder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-  const hires = { outsourced: 2 }
 
   it("gives a save with only IC rows above rank 15 the IC line", () => {
     const save = parseSave({ ...base, jobs: [...ladder, 16, 17] })!
@@ -412,14 +219,7 @@ describe("old saves and the save block", () => {
     expect(save.jobs).toEqual([...ladder, 18, 20])
   })
 
-  it("gives a save with hires and only shared rows above 15 the Manager line, and keeps the hires", () => {
-    const save = parseSave({ ...base, jobs: [...ladder, 25], hires })!
-    expect(save.build?.leadership).toBe("manager")
-    expect(save.hires).toEqual(hires)
-    expect(save.jobs).toEqual([...ladder, 25])
-  })
-
-  it("gives a save with no hires and only shared rows above 15 the IC line", () => {
+  it("gives a save with only shared rows above 15 the IC line", () => {
     expect(parseSave({ ...base, jobs: [...ladder, 25, 26] })!.build?.leadership).toBe("ic")
   })
 
@@ -429,23 +229,9 @@ describe("old saves and the save block", () => {
     expect(save.jobs).toEqual([...ladder, 16, 25])
   })
 
-  it("gives a save with hires and an IC row the IC line, and keeps the hires", () => {
-    const save = parseSave({ ...base, jobs: [...ladder, 19], hires })!
-    expect(save.build?.leadership).toBe("ic")
-    expect(save.hires).toEqual(hires)
-  })
-
-  it("gives a save with hires and both lines' rows the IC line", () => {
-    const save = parseSave({ ...base, jobs: [...ladder, 16, 18], hires })!
-    expect(save.build?.leadership).toBe("ic")
-    expect(save.jobs).toEqual([...ladder, 16])
-    expect(save.hires).toEqual(hires)
-  })
-
-  it("leaves a save with hires and nothing above rank 15 without a line, and keeps the hires", () => {
-    const save = parseSave({ ...base, jobs: ladder, hires })!
+  it("leaves a save with nothing above rank 15 without a line", () => {
+    const save = parseSave({ ...base, jobs: ladder })!
     expect(save.build?.leadership).toBeUndefined()
-    expect(save.hires).toEqual(hires)
     expect(parseSave({ ...base, jobs: [1, 2, 3] })!.build).toBeUndefined()
   })
 
@@ -463,16 +249,14 @@ describe("old saves and the save block", () => {
     expect(normalizeBuild({ leadership: 3 }, []).build).toBeUndefined()
   })
 
-  it("maps with the hires passed in, and with none when they are left out", () => {
-    expect(normalizeBuild(undefined, [...ladder, 25], hires).build?.leadership).toBe("manager")
+  it("maps a manager row to the Manager line and shared rows to the IC line", () => {
+    expect(normalizeBuild(undefined, [...ladder, 18]).build?.leadership).toBe("manager")
     expect(normalizeBuild(undefined, [...ladder, 25]).build?.leadership).toBe("ic")
-    expect(normalizeBuild(undefined, [...ladder, 25], {}).build?.leadership).toBe("ic")
   })
 
   it("round-trips a pick through the save, and omits the line before it", () => {
     game.reset()
     game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
     expect(JSON.parse(readCareerText() ?? "{}").build).toBeUndefined()
     toSenior()
     persistNow()
@@ -491,7 +275,6 @@ describe("reset and the Exit", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
   })
 
   it("reset clears the line", () => {
@@ -516,7 +299,6 @@ describe("the next step", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
   })
 
   it("names the pick once the track is held to its top, and the next row of the line after it", () => {
@@ -611,8 +393,7 @@ describe("the pace model", () => {
     expect(run.milestones.allJobs).toBeDefined()
   })
 
-  it("owns everything no later than before the manager rows left the IC's ladder", () => {
-    // The day the run owned everything before the user gates was 1.0 for this profile and one visit (a quarter day) later with them (docs/PACING.md); skipping four rows cannot make it later still.
+  it("owns everything inside a day and a quarter", () => {
     const run = simulatePace(profile, { maxDays: 30 })
     expect(run.ownedDays).not.toBeNull()
     expect(run.ownedDays!).toBeLessThanOrEqual(1.26)

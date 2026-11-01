@@ -8,7 +8,6 @@ import { LEADERSHIP } from "../data/leadership.ts"
 import { visibleJobs } from "../data/phases.ts"
 import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
-import { CompanyTab } from "./globe/CompanyTab.tsx"
 import { Shop } from "./Shop.tsx"
 
 const roots: Root[] = []
@@ -110,65 +109,5 @@ describe("the Jobs tab and the leadership pick", () => {
     expect(useGame.getState().build.leadership).toBe("ic")
     expect(host.querySelector("[data-row='job:16']")?.textContent).toContain("Staff engineer")
     expect(host.querySelector("[data-row='job:18']")).toBeNull()
-  })
-})
-
-describe("the Team's hire rows", () => {
-  const hireRow = (host: ParentNode, id: string) => host.querySelector<HTMLElement>(`[data-testid='world-hire-${id}']`)
-
-  it("offers no hire rows to a career with no line, and the Company tab says where hiring is", () => {
-    atSenior({ company: { ...useGame.getState().company, users: { "americas-east": 5_000 } }, money: 1e12 })
-    expect(hireRow(render(Shop), "outsourced")).toBeNull()
-    const company = render(CompanyTab)
-    expect(hireRow(company, "outsourced")).toBeNull()
-    expect(company.querySelector("[data-testid='world-team-note']")?.textContent).toContain("lead as a Manager")
-  })
-
-  it("keeps an IC's hires shut with the reason in the Jobs tab, and still lets one go", () => {
-    atSenior({
-      company: { ...useGame.getState().company, users: { "americas-east": 5_000 } },
-      money: 1e12,
-      build: { spec: "backend", switched: false, leadership: "ic" },
-      hires: { outsourced: 2 },
-    })
-    const host = render(Shop)
-    const row = hireRow(host, "outsourced")
-    expect(row?.textContent).toContain("Hiring opens when you lead as a Manager")
-    expect(row?.textContent).toContain("2 hired")
-    expect(row?.querySelector<HTMLButtonElement>("button:not(.world-fire)")?.disabled).toBe(true)
-    expect(row?.querySelector<HTMLButtonElement>("[data-testid='world-fire-outsourced']")).not.toBeNull()
-    // The Company tab keeps the count and the cost, and no buttons.
-    const company = render(CompanyTab)
-    expect(hireRow(company, "outsourced")).toBeNull()
-    expect(company.querySelector("[data-testid='world-team-note']")?.textContent).toContain("2 hired")
-  })
-
-  it("opens the kinds a Manager's rank reaches and says which rank the next one needs", () => {
-    atSenior({
-      company: { ...useGame.getState().company, users: { "americas-east": 5_000 } },
-      money: 1e12,
-      jobs: [...TRUNK, ...TRACK_TO_SENIOR, 15, 18],
-      build: { spec: "backend", switched: false, leadership: "manager" },
-      hires: { outsourced: 1, bootcamp: 1 },
-    })
-    const host = render(Shop)
-    expect(hireRow(host, "outsourced")?.querySelector("[data-testid='world-hire-locked-outsourced']")).toBeNull()
-    expect(hireRow(host, "outsourced")?.querySelector<HTMLButtonElement>("button:not(.world-fire)")?.disabled).toBe(false)
-    expect(hireRow(host, "copypaste")?.querySelector("[data-testid='world-hire-locked-copypaste']")?.textContent).toBe("Needs Director of Eng")
-    expect(hireRow(host, "copypaste")?.querySelector<HTMLButtonElement>("button")?.disabled).toBe(true)
-  })
-
-  it("hires through the Jobs tab's button", () => {
-    atSenior({
-      company: { ...useGame.getState().company, users: { "americas-east": 5_000 } },
-      money: 1e12,
-      jobs: [...TRUNK, ...TRACK_TO_SENIOR, 15, 18],
-      build: { spec: "backend", switched: false, leadership: "manager" },
-    })
-    const host = render(Shop)
-    const button = hireRow(host, "outsourced")?.querySelector<HTMLButtonElement>("button:not(.world-fire)")
-    expect(button?.disabled).toBe(false)
-    flushSync(() => button?.click())
-    expect(useGame.getState().hires.outsourced).toBe(1)
   })
 })

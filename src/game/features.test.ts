@@ -123,14 +123,14 @@ describe("gates", () => {
 
 describe("teasing", () => {
   it("lists the next closed rows in table order, skipping cosmetics", () => {
-    expect(upNext(progress(), none).map((row) => row.id)).toEqual(["studio", "careerLog", "githug"])
-    const later = upNext(progress({ skills: { "1": 1 } }), new Set(["studio"]))
-    expect(later.map((row) => row.id)).toEqual(["careerLog", "githug", "linkedout"])
+    expect(upNext(progress(), none).map((row) => row.id)).toEqual(["careerLog", "githug", "linkedout"])
+    const later = upNext(progress({ skills: { "1": 1 } }), new Set(["careerLog"]))
+    expect(later.map((row) => row.id)).toEqual(["githug", "linkedout", "tenx"])
   })
 
   it("stands one row in its place: the first closed one with a slot on screen", () => {
     expect(nextGhost(progress(), none)?.id).toBe("careerLog")
-    expect(nextGhost(progress({ skills: { "5": 1 } }), new Set(["studio", "careerLog", "githug"]))?.id).toBe("linkedout")
+    expect(nextGhost(progress({ skills: { "5": 1 } }), new Set(["careerLog", "githug"]))?.id).toBe("linkedout")
   })
 
   it("fills the ring as the trigger gets close, and reads full once it opens", () => {

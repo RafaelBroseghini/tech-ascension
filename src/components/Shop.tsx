@@ -7,11 +7,8 @@ import { ERA_ACCENT } from "../data/eraAccent.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
-import { gearSections } from "../data/gear.ts"
-import { isServingKind, servedUsersOf } from "../game/globe/load.ts"
+import { gearSections, isInfraKind } from "../data/gear.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
-import { TeamPanel } from "./Team.tsx"
-import { headcountOf } from "../game/globe/hires.ts"
 import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
 import type { LeadId } from "../data/leadership.ts"
@@ -51,8 +48,7 @@ import { useShopRows } from "./useShopRows.ts"
 import { ShopGrip } from "./ShopGrip.tsx"
 import { isCosmetic, rowUnlocks } from "../game/features.ts"
 import { NewMark, UnlockBadge } from "./FeatureMarks.tsx"
-import { useFeatureOpen, useSurface, useUnlockedSet } from "./useFeature.ts"
-import { CompanyTab } from "./globe/CompanyTab.tsx"
+import { useSurface, useUnlockedSet } from "./useFeature.ts"
 import { bump, listEnter, rowEnter, sweepRef, useTabBar } from "./shopMotion.ts"
 import { tickUp, useOnChange } from "./useMotion.ts"
 
@@ -63,7 +59,6 @@ const PHASE_TAB: Record<ShopTab, { label: string; title: string; hint: string; g
   C: { label: "Jobs", title: "Climb the ladder", hint: "Salary", glow: "var(--ide-peach)", done: "Every job held" },
   G: { label: "Gear", title: "Build out your infra", hint: "Repeatable buys", glow: "var(--ide-sky)", done: "Every gear row bought" },
   D: { label: "Capital", title: "Deploy capital", hint: "Funds, equity, firms", glow: "var(--ide-mauve)", done: "Every capital row bought" },
-  W: { label: "Company", title: "Run the company", hint: "Users, team, uptime", glow: "var(--ide-teal, var(--ide-green))", done: "" },
 }
 
 /** How many of a row you hold. It jumps in size and flashes the accent each time the count changes. */
@@ -464,17 +459,13 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     setLastPhase(phase)
     if (phaseRank(phase) > phaseRank(lastPhase)) setPicked(null)
   }
-  const companyOpen = useFeatureOpen("studio")
-  const company = useGame((state) => state.company)
-  const hires = useGame((state) => state.hires)
-  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, build, company }
+  const gates = { xpTotal, peakMoney, skills, owned, jobs, gigs, build }
   const unlocked: Record<ShopTab, boolean> = {
     A: true,
     B: gigBoardUnlocked(gates),
     C: jobBoardUnlocked(gates),
     G: equipmentOpen({ xpTotal, equipment }),
     D: capitalUnlocked(gates),
-    W: companyOpen,
   }
   // Closed boards stay out of the bar, except the next one to open, which waits there dimmed.
   const nextLockedTab = (["G", "B", "C", "D"] as const).find((id) => !unlocked[id]) ?? null
@@ -493,7 +484,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     setSkillView("tenx")
     setPicked("A")
   })
-  useSurface("company", () => setPicked("W"))
   useSurface("boardGear", () => {
     seeFeature("boardGear")
     setPicked("G")
@@ -511,14 +501,13 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     visibleJobs(build.spec, build.leadership ?? null).filter((job) => (build.spec !== null || !needsPick(job)) && (build.leadership !== undefined || !needsLead(job))),
     (job) => jobs.includes(job.id),
   )
-  // Gear that serves users is its own track, shown from the moment the company opens (the first job): its next row is
-  // always in the list, whatever desk gear is still unbought, so the first dropped requests have somewhere to go.
-  // Before the company opens the serving rows stay out of the list.
+  // The infra sections (Cloud and on) are their own track, shown from the first job: their next row is always in the
+  // list, whatever desk gear is still unbought. Before a job is held they stay out of the list.
   const heldGear = (row: { id: number }) => ownedCount(equipment, row.id) > 0
   const equipRows = (() => {
-    const desk = visibleShopRows(EQUIPMENT.filter((row) => !isServingKind(row.kind)), heldGear)
-    const serving = companyOpen ? visibleShopRows(EQUIPMENT.filter((row) => isServingKind(row.kind)), heldGear) : []
-    const shown = new Set([...desk, ...serving].map((row) => row.id))
+    const desk = visibleShopRows(EQUIPMENT.filter((row) => !isInfraKind(row.kind)), heldGear)
+    const infra = jobs.length > 0 ? visibleShopRows(EQUIPMENT.filter((row) => isInfraKind(row.kind)), heldGear) : []
+    const shown = new Set([...desk, ...infra].map((row) => row.id))
     return EQUIPMENT.filter((row) => shown.has(row.id))
   })()
   const goldOpen = goldSectionOpen({ xpTotal, gold, jobs, build })
@@ -546,9 +535,9 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const capitalRows = revealedByEra.get(era) ?? []
 
   const rowCount =
-    tab === "W" ? 0 : tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
+    tab === "A" ? (tenx ? goldRows.length : skillRows.length) : tab === "B" ? gigRows.length : tab === "C" ? jobRows.length + (pickOpen({ jobs, build }) ? SPECIALIZATIONS.length : 0) + (leadPickOpen({ jobs, build }) ? LEADERSHIP.length : 0) : tab === "G" ? equipRows.length : capitalRows.length
   const rowScope = tab === "D" ? `D:${era}` : tenx ? "A:tenx" : tab
-  useShopRows(listRef, narrow && tab !== "W", rowScope)
+  useShopRows(listRef, narrow, rowScope)
   // A new list slides in from the side its tab lies on: forward along the bar from the right, back from the left.
   const scopeRank = SHOP_TABS.indexOf(tab) * 10 + (tenx ? 1 : tab === "D" ? Math.max(0, eraTabs.findIndex((section) => section.id === era)) : 0)
   const [slide, setSlide] = useState({ scope: rowScope, rank: scopeRank, dir: 1 })
@@ -571,7 +560,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     return () => window.removeEventListener("resize", reset)
   }, [])
   const [listOverflows, setListOverflows] = useState(false)
-  const showJumpEnd = tab !== "W" && unlocked[tab] && listOverflows
+  const showJumpEnd = unlocked[tab] && listOverflows
 
   function scrollToNextOpen() {
     const list = listRef.current
@@ -654,7 +643,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
       <div className="shop-head">
         <div className="shop-head-top">
           <p className="eyebrow">
-            {tab === "W" ? "Company · Users" : tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
+            {tab === "G" ? "Gear · Infra" : `Phase ${tab} · ${PHASE_NAME[tab]}`}
           </p>
           {showJumpEnd ? (
             <button
@@ -770,15 +759,13 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
 
       <ScrollPanel
         key={rowScope}
-        wrapClassName={tab === "W" ? "shop-list-wrap" : "shop-list-wrap is-capped"}
+        wrapClassName="shop-list-wrap is-capped"
         className="shop-list"
         scrollRef={attachList}
         data-slide={slide.dir}
         showArrow={false}
         onOverflowChange={setListOverflows}
       >
-        {tab === "W" ? <CompanyTab /> : null}
-
         {tab === "A" && !tenx ? (
           <>
             {skillRows.map((row, index) => {
@@ -956,7 +943,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
             {pickOpen({ jobs, build }) ? <SpecPick glow={tabGlow} /> : null}
             {leadPickOpen({ jobs, build }) ? <LeadPick glow={tabGlow} /> : null}
             {build.spec !== null && isSpecId(build.spec) ? <SpecSwitch spec={build.spec} switched={build.switched} glow={tabGlow} /> : null}
-            {build.leadership === "manager" || headcountOf(hires) > 0 ? <TeamPanel /> : null}
             </>
           ) : (
             <LockPanel title="Job Board" lines={jobBoardRequirements(gates)} />
@@ -968,14 +954,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
             <>
               {gearSections(equipRows).map((group) => (
                 <Fragment key={group.id}>
-                  <h3 className="shop-section">
-                    {group.label}
-                    {isServingKind(group.id) ? (
-                      <span className="shop-section-tag" title="Gear in this section serves your product's users: it adds request capacity on top of its $/s.">
-                        Serves users
-                      </span>
-                    ) : null}
-                  </h3>
+                  <h3 className="shop-section">{group.label}</h3>
                   {group.rows.map((row, index) => {
                       const have = ownedCount(equipment, row.id)
                       const cost = nextCost(gearBase(row, perksHeld), have)
@@ -1013,7 +992,6 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                             items={[
                               ...(row.cps > 0 ? [<Stat key="sec">{`+$${formatNumber(row.cps)}/s`}</Stat>] : []),
                               ...(row.clickBonus > 0 ? [<Stat key="click" icon="click">{`+$${formatNumber(row.clickBonus)}`}</Stat>] : []),
-                              ...(servedUsersOf(row) > 0 ? [<Stat key="serves">{`serves ${formatNumber(servedUsersOf(row))} users`}</Stat>] : []),
                             ]}
                           />
                           {" · owned "}

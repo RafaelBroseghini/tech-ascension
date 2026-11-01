@@ -1,4 +1,4 @@
-import { Crown, GitBranch, Globe } from "lucide-react"
+import { Crown, GitBranch } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { getSidebarView, setSidebarView, subscribeSidebarView } from "../game/ideSidebar.ts"
 import { CareerLog } from "./CareerLog.tsx"
@@ -18,9 +18,6 @@ import { MetricsButton } from "./MetricsButton.tsx"
 import { NotificationsButton } from "./NotificationsButton.tsx"
 import { OwnedButton } from "./OwnedModal.tsx"
 import { useExitVisible } from "./useExit.ts"
-import { writeShopPanelOpen } from "../game/shopPanelPrefs.ts"
-import { writeSavedShopTab } from "../game/shopTabPrefs.ts"
-import { openSurface } from "../game/surfaces.ts"
 
 /** The desk shell behind the stage: the activity bar, the career log sidebar and the status bar. The palette is the saved theme. */
 export const IdeChrome = memo(function IdeChrome() {
@@ -34,9 +31,6 @@ export const IdeChrome = memo(function IdeChrome() {
   const seeFeature = useGame((state) => state.seeFeature)
 
   const logOpen = useFeatureOpen("careerLog")
-  const studioOpen = useFeatureOpen("studio")
-  const incidents = useGame((state) => state.company.incidents.length)
-  const product = useGame((state) => state.profile.product)
   const prestigeVisible = useExitVisible()
   const [prestigeOpen, setPrestigeOpen] = useState(false)
   const closePrestige = useCallback(() => setPrestigeOpen(false), [])
@@ -59,18 +53,10 @@ export const IdeChrome = memo(function IdeChrome() {
     if (githugOpen && !githugWas.current) setSidebarView("log")
     githugWas.current = githugOpen
   }, [githugOpen])
-  const openCompany = () => {
-    seeFeature("studio")
-    // The company lives on the shop's Company tab: show the shop (it mounts on the saved tab), or tell the open one.
-    writeSavedShopTab("W")
-    writeShopPanelOpen(true)
-    openSurface("company")
-  }
-  useSurface("studio", openCompany)
 
   return (
     <div
-      className={studioOpen ? "ide has-globe" : "ide"}
+      className="ide"
       role="region"
       aria-label="Desk"
       data-testid="ide"
@@ -79,21 +65,7 @@ export const IdeChrome = memo(function IdeChrome() {
       onPointerEnter={holdPreview}
       onPointerMove={holdPreview}
     >
-      <nav className="ide-activity" aria-label="Activity bar" data-feature-anchor="studio">
-        {studioOpen ? (
-          <button
-            type="button"
-            className="ide-activity-btn"
-            data-testid="ide-view-company"
-            aria-label={product}
-            title={product}
-            onClick={openCompany}
-          >
-            <Globe className="ide-activity-icon" {...UI_ICON} aria-hidden />
-            <NewMark id="studio" />
-            {incidents > 0 ? <i className="ide-activity-alert" data-testid="ide-company-alert" aria-hidden /> : null}
-          </button>
-        ) : null}
+      <nav className="ide-activity" aria-label="Activity bar">
         {logOpen ? (
           <button
             type="button"

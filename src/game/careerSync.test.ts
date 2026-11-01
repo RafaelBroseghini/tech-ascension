@@ -61,9 +61,9 @@ describe("planning unlocks", () => {
   })
 
   it("plays only the loudest reveal of a big batch or a return", () => {
-    const batch = rows("studio", "careerLog", "githug", "linkedout", "rosters")
+    const batch = rows("careerLog", "githug", "linkedout", "rosters", "metrics")
     expect(batch.length).toBeGreaterThanOrEqual(REVEAL_BATCH_LIMIT)
-    expect(planUnlocks(batch, empty).reveals).toEqual(["studio"])
+    expect(planUnlocks(batch, empty).reveals).toEqual(["careerLog"])
     expect(planUnlocks(rows("rosters", "cat"), empty, true).reveals).toEqual(["cat"])
   })
 
@@ -82,10 +82,10 @@ describe("booting the timeline", () => {
       ...freshSave(now),
       skills: { "1": 1, "15": 1 },
       jobs: [1],
-      career: { ...freshCareer(now), unlocked: ["studio"], returns: 1 },
+      career: { ...freshCareer(now), unlocked: ["careerLog"], returns: 1 },
     }
     const career = bootCareer(save, now)
-    expect(career.unlocked).toEqual(["studio", "linkedout", "money", "boardJobs", "metrics", "cat"])
+    expect(career.unlocked).toEqual(["careerLog", "linkedout", "money", "boardJobs", "metrics", "cat"])
     expect(career.reveals).toEqual(["cat"])
     expect(career.awayUnlocks).toEqual(["LinkedOut profile", "Dollars", "Metrics", "Desk cat"])
     expect(career.whatsNew).toBe(false)
@@ -109,7 +109,7 @@ describe("booting the timeline", () => {
     const save = { ...freshSave(now), skills: { "1": 1 }, gigs: [1, 2], jobs: [1], xpTotal: 50_000 }
     delete (save as { career?: unknown }).career
     const career = bootCareer(save, now)
-    expect(career.unlocked).toEqual(expect.arrayContaining(["studio", "money", "rosters", "metrics", "boardGigs", "boardJobs", "cat"]))
+    expect(career.unlocked).toEqual(expect.arrayContaining(["money", "rosters", "metrics", "boardGigs", "boardJobs", "cat"]))
     expect(career.whatsNew).toBe(true)
     expect(career.reveals).toEqual([])
     const types = career.journal.entries.map((entry) => `${entry.type}:${entry.ref}`)

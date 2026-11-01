@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { CAPITAL } from "../data/capital.ts"
 import { GEAR } from "../data/gear.ts"
-import { ENDING_BONUS, PERK, PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
+import { PERK, PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
 import { GIGS, JOB_TIERS } from "../data/phases.ts"
-import { FRESH_COMPANY } from "./globe/growth.ts"
-import type { CompanyState } from "./globe/growth.ts"
-import { FRESH_FOOTPRINT } from "./globe/footprint.ts"
 import { installGameHarness } from "./harness.ts"
 import { prestigeMult } from "./mods.ts"
 import { readCareerText } from "./ledger.ts"
@@ -17,12 +14,6 @@ const game = installGameHarness()
 /** `earned` dollars credited this career. */
 function earn(earned = PRESTIGE_EARN_SCALE * 3) {
   game.setMoney(earned)
-}
-
-/** A career that has won the world with `ending`, users and all. */
-function winWith(ending: "nightOwl" | "sponsor") {
-  const company: CompanyState = { ...FRESH_COMPANY, users: { "americas-east": 8e9 }, won: true, ending, hiredUsers: 1 }
-  useGame.setState({ company })
 }
 
 describe("the Exit", () => {
@@ -89,50 +80,20 @@ describe("the Exit", () => {
     expect(game.careerLog().at(-1)).toMatchObject({ type: "exit", run: 1, prestigeEarned: 1, prestigeTotal: 1 })
   })
 
-  it("puts every company field back the way a fresh career has it", () => {
-    useGame.setState({
-      company: {
-        users: { "americas-east": 5e8, europe: 1.2e9 },
-        resistance: 63,
-        incidents: [{ id: 4, kind: "ddos", region: "europe", until: Date.now() + 60_000, strength: 3 }],
-        incidentSeq: 4,
-        won: true,
-        hiredUsers: 3e8,
-        ending: "sponsor",
-        uptime: "oodpm",
-        day: 12,
-      },
-      footprint: { regions: ["americas-east", "europe"], pops: ["ashburn", "london"], off: ["london"], dark: [] },
-      hires: { outsourced: 40, senior: 2 },
-      foreverMult: 3,
-    })
+  it("puts the event multiplier back the way a fresh career has it", () => {
+    useGame.setState({ foreverMult: 3 })
     earn()
     expect(game.exit()).toBeGreaterThan(0)
-    const s = useGame.getState()
-    expect(s.company).toEqual(FRESH_COMPANY)
-    expect(s.footprint).toEqual(FRESH_FOOTPRINT)
-    expect(s.hires).toEqual({})
-    expect(s.foreverMult).toBe(1)
-    const world = game.getState()
-    expect(world).toMatchObject({ hires: {}, headcount: 0, ending: null })
-    expect(world.world).toMatchObject({ users: 0, regionUsers: {}, resistance: 0, incidents: [], won: false })
+    expect(useGame.getState().foreverMult).toBe(1)
   })
 
-  it("draws a new product, keeps the handle, and opens the start card again", () => {
+  it("keeps the handle and the choice of it: a later career has nothing to draw on the start card", () => {
     const before = game.getState().profile
     expect(before.chosen).toBe(true)
     earn()
     game.exit()
-    const after = game.getState().profile
-    expect(after.handle).toBe(before.handle)
-    expect(after.product).not.toBe(before.product)
-    expect(after.chosen).toBe(false)
-    // The handle stays; the product can be rerolled.
+    expect(game.getState().profile).toEqual(before)
     expect(game.rerollProfile()).toBe(false)
-    expect(useGame.getState().rerollProduct()).toBe(true)
-    expect(game.getState().profile.handle).toBe(before.handle)
-    game.keepProfile()
-    expect(game.getState().profile.chosen).toBe(true)
   })
 
   it("keeps the headline card until it is dismissed", () => {
@@ -151,51 +112,25 @@ describe("the Exit", () => {
   })
 })
 
-describe("the Hall of Fame", () => {
+describe("the headline", () => {
   beforeEach(() => {
     game.reset()
     game.keepProfile()
   })
 
-  it("pays the ending bonus on top of the earnings, once per ending", () => {
+  it("names the handle and reads by what the career earned", () => {
     earn(PRESTIGE_EARN_SCALE * 8)
-    winWith("nightOwl")
-    expect(game.getState().legacy.prestigeOnExit).toBe(2 + ENDING_BONUS)
-    expect(game.exit()).toBe(2 + ENDING_BONUS)
-    expect(game.getState().legacy.endings).toEqual(["nightOwl"])
-    expect(useGame.getState().exitCard).toMatchObject({ newEnding: "nightOwl", endingBonus: ENDING_BONUS })
-
-    // The same ending again pays only earnings.
-    game.keepProfile()
-    earn(PRESTIGE_EARN_SCALE * 64)
-    winWith("nightOwl")
-    const second = game.exit()
-    expect(second).toBe(2)
-    expect(game.getState().legacy.endings).toEqual(["nightOwl"])
-    expect(useGame.getState().exitCard?.newEnding).toBeNull()
-
-    // A different ending pays its bonus, and the bonus does not eat the earnings ladder: 4 from 64 scales so far, 5 more at 125.
-    game.keepProfile()
-    earn(PRESTIGE_EARN_SCALE * 125)
-    winWith("sponsor")
-    const third = game.exit()
-    expect(third).toBe(1 + ENDING_BONUS)
-    expect(game.getState().legacy.endings).toEqual(["nightOwl", "sponsor"])
-    expect(game.getState().legacy.prestigeTotal).toBe(5 + 2 * ENDING_BONUS)
-  })
-
-  it("opens the first Exit on a win alone, and a win with a recorded ending pays only earnings", () => {
-    winWith("nightOwl")
-    expect(game.getState().legacy).toMatchObject({ exitOpen: true, prestigeOnExit: ENDING_BONUS })
-    expect(game.exit()).toBe(ENDING_BONUS)
-    expect(useGame.getState().exitCard?.headline).toContain("Get some sleep")
+    game.exit()
+    const handle = game.getState().profile.handle
+    expect(useGame.getState().exitCard).toMatchObject({ run: 1, prestigeEarned: 2 })
+    expect(useGame.getState().exitCard?.headline).toContain(`@${handle}`)
   })
 
   it("survives a reload", () => {
-    winWith("nightOwl")
+    earn()
     game.exit()
     const saved = hydrate(readCareerText(), Date.now()).save
-    expect(saved.legacy?.endings).toEqual(["nightOwl"])
+    expect(saved.legacy).toMatchObject({ runs: 2, prestige: 1, prestigeTotal: 1 })
   })
 })
 
@@ -223,14 +158,12 @@ describe("Legacy perks", () => {
     game.setPrestige(100)
     expect(game.buyLegacy("network.gigBoard")).toBe(true)
     expect(game.buyLegacy("network.seed")).toBe(false)
-    expect(game.buyLegacy("founder.growth")).toBe(false)
-    expect(game.buyLegacy("founder.users")).toBe(true)
     expect(game.buyLegacy("capital.offline")).toBe(true)
     expect(game.buyLegacy("capital.offline")).toBe(false)
     expect(game.buyLegacy("nope")).toBe(false)
     game.setPrestige(1)
     expect(game.buyLegacy("network.gigs")).toBe(false)
-    expect(game.careerLog().filter((line) => line.type === "legacy")).toHaveLength(4)
+    expect(game.careerLog().filter((line) => line.type === "legacy")).toHaveLength(3)
   })
 
   it("Network perks land in the career under way without taking anything away, and the seed money is not earnings", () => {
@@ -249,20 +182,6 @@ describe("Legacy perks", () => {
     expect(game.getState().money).toBe(PERK.seedMoney)
     expect(useGame.getState().stats.lifetimeEarned).toBe(earnedMid)
     expect(game.getState().jobs).toEqual([JOB_TIERS[0]!.id])
-  })
-
-  it("Early adopters seed 1,000 users at once and on every new career", () => {
-    expect(game.getState().world.users).toBe(0)
-    game.setPrestige(2)
-    expect(game.buyLegacy("founder.users")).toBe(true)
-    expect(game.getState().world.users).toBe(PERK.startUsers)
-    expect(game.getState().world.regionUsers).toEqual({ "americas-east": PERK.startUsers })
-    earn(PRESTIGE_EARN_SCALE * 30)
-    expect(game.exit()).toBeGreaterThan(0)
-    expect(game.getState().world.users).toBe(PERK.startUsers)
-    // A career that already has the users keeps them.
-    game.setUsers("europe", 5_000)
-    expect(game.getState().world.users).toBe(6_000)
   })
 
   it("Long weekend adds four hours to the offline cap, on top of Time away", () => {
@@ -308,17 +227,6 @@ describe("Legacy perks", () => {
     expect(game.buyLegacy("capital.capitalIncome")).toBe(true)
     expect(game.getState().cps / mult).toBeCloseTo(retainers * PERK.salaries + capital * PERK.capitalIncome)
   })
-
-  it("Platform lifts product revenue", () => {
-    game.setUsers("americas-east", 1000)
-    const base = game.getState().world.revenuePerSec
-    expect(base).toBeGreaterThan(0)
-    game.setPrestige(100)
-    for (const id of ["founder.users", "founder.growth"]) game.buyLegacy(id)
-    expect(game.getState().world.revenuePerSec).toBeCloseTo(base)
-    expect(game.buyLegacy("founder.revenue")).toBe(true)
-    expect(game.getState().world.revenuePerSec).toBeCloseTo(base * PERK.revenue)
-  })
 })
 
 describe("the Prestige bonus", () => {
@@ -353,7 +261,7 @@ describe("the Prestige bonus", () => {
     const saved = hydrate(readCareerText(), Date.now()).save
     expect(saved.legacy).toMatchObject({ runs: 2, prestige: 7 })
     game.reset()
-    expect(game.getState().legacy).toMatchObject({ runs: 1, prestige: 0, prestigeTotal: 0, perks: [], endings: [], mult: 1 })
+    expect(game.getState().legacy).toMatchObject({ runs: 1, prestige: 0, prestigeTotal: 0, perks: [], mult: 1 })
     expect(hydrate(readCareerText(), Date.now()).save.legacy).toBeUndefined()
   })
 

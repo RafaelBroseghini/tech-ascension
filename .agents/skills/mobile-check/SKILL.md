@@ -16,7 +16,7 @@ MOBILE_CHECK_FONT=all npm run check:mobile            # every UI font (or one id
 
 ## What it asserts
 
-Per viewport and per state (start card, phases A to C, mid D, the Company tab, a reveal card, an event, a 1:1, and on narrow screens the Owned modal):
+Per viewport and per state (start card, phases A to C, the picks, mid D, a reveal card, an event, a 1:1, and on narrow screens the Owned modal):
 
 - Shop tabs (and their sub tabs) show whole rows at the top, middle and end of the scroll, on narrow screens.
 - No sideways scroll, no vertical page scroll, and no control off the screen (controls inside a horizontally scrolling row are fine).
@@ -43,5 +43,4 @@ A pass is not a look. Open the PNGs for 360x640 (the tightest), 390x844, 844x390
 ## Gotchas
 
 - Wait for `window.__GAME__` after `open` before the first eval. The harness does.
-- Reload after changing the viewport. Resizing a live page makes the three.js globe lose its WebGL context.
 - If a dev server is already on the port, the harness uses it. Make sure it serves this checkout.

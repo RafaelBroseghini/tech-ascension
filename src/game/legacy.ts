@@ -1,13 +1,8 @@
-import { ENDING_BONUS, LEGACY_PERKS, HALL_OF_FAME, PERK, PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
-import type { HallEnding, LegacyPerk } from "../data/legacy.ts"
+import { LEGACY_PERKS, PERK, PRESTIGE_EARN_SCALE } from "../data/legacy.ts"
+import type { LegacyPerk } from "../data/legacy.ts"
 import { GIG_BOARD_UNLOCK, GIGS, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
-import { HOME_REGION_ID } from "../data/regions.ts"
 import { jobById, skillCost } from "./economy.ts"
 import type { OwnedMap } from "./economy.ts"
-import { isEnding, productRole } from "./globe/hires.ts"
-import type { Ending } from "./globe/hires.ts"
-import { totalUsers } from "./globe/world.ts"
-import { perkEffects } from "./perks.ts"
 
 /**
  * The Exit and Legacy rules (docs/PRESTIGE.md). Pure: the store reads and writes them, the save keeps `LegacyState`
@@ -24,12 +19,10 @@ export type LegacyState = {
   earnedAllRuns: number
   /** Legacy perk ids owned. */
   perks: string[]
-  /** The Hall of Fame: endings a career has won the world with, in the Hall's order. */
-  endings: HallEnding[]
 }
 
 export function freshLegacy(): LegacyState {
-  return { runs: 1, prestige: 0, prestigeTotal: 0, earnedAllRuns: 0, perks: [], endings: [] }
+  return { runs: 1, prestige: 0, prestigeTotal: 0, earnedAllRuns: 0, perks: [] }
 }
 
 const PERK_BY_ID = new Map<string, LegacyPerk>(LEGACY_PERKS.map((perk) => [perk.id, perk]))
@@ -43,42 +36,22 @@ export function prestigeTotalFor(earned: number): number {
   return Math.max(0, Math.floor(Math.cbrt(earned / PRESTIGE_EARN_SCALE) + 1e-9))
 }
 
-/** How a career's product ended, as the Exit reads it. */
-export type ExitWin = { won: boolean; ending?: Ending | undefined }
-
-/**
- * Prestige earned from earnings so far: the total less the one-time ending bonuses in it. The bonus is paid on top of the
- * earnings, so it does not count as a rung of the earnings ladder.
- */
-export const earningsTotal = (legacy: Pick<LegacyState, "prestigeTotal" | "endings">): number => Math.max(0, legacy.prestigeTotal - legacy.endings.length * ENDING_BONUS)
-
-/** Prestige from earnings alone: the rungs climbed since the last Exit. */
+/** Prestige from earnings: the rungs climbed since the last Exit. */
 export function earningsPrestige(legacy: LegacyState, runEarned: number): number {
-  return Math.max(0, prestigeTotalFor(legacy.earnedAllRuns + Math.max(0, runEarned)) - earningsTotal(legacy))
-}
-
-/** The Hall of Fame bonus: `ENDING_BONUS` when the career won with an ending not yet recorded, else 0. */
-export function endingBonus(legacy: Pick<LegacyState, "endings">, win?: ExitWin | null): number {
-  return win?.won && win.ending && !legacy.endings.includes(win.ending) ? ENDING_BONUS : 0
-}
-
-/** Prestige this Exit would pay in all: the earnings part and the ending bonus. */
-export function prestigeOnExit(legacy: LegacyState, runEarned: number, win?: ExitWin | null): number {
-  return earningsPrestige(legacy, runEarned) + endingBonus(legacy, win)
+  return Math.max(0, prestigeTotalFor(legacy.earnedAllRuns + Math.max(0, runEarned)) - legacy.prestigeTotal)
 }
 
 /**
  * The Exit is open on every later career, and on the first once it would pay at least 1 Prestige. It latches: earnings
- * only rise within a career (`stats.lifetimeEarned` never falls, and only an Exit zeroes it, with `runs` going up), and
- * a win stays won.
+ * only rise within a career (`stats.lifetimeEarned` never falls, and only an Exit zeroes it, with `runs` going up).
  */
-export function exitOpen(legacy: LegacyState, runEarned: number, win?: ExitWin | null): boolean {
-  return legacy.runs > 1 || prestigeOnExit(legacy, runEarned, win) >= 1
+export function exitOpen(legacy: LegacyState, runEarned: number): boolean {
+  return legacy.runs > 1 || earningsPrestige(legacy, runEarned) >= 1
 }
 
 /** The Exit can be taken: it is open and pays at least one Prestige. */
-export function canExit(legacy: LegacyState, runEarned: number, win?: ExitWin | null): boolean {
-  return exitOpen(legacy, runEarned, win) && prestigeOnExit(legacy, runEarned, win) >= 1
+export function canExit(legacy: LegacyState, runEarned: number): boolean {
+  return exitOpen(legacy, runEarned) && earningsPrestige(legacy, runEarned) >= 1
 }
 
 /** The perk before this one in its track, or undefined for the first. */
@@ -96,7 +69,7 @@ export function canBuyPerk(legacy: LegacyState, id: string): boolean {
   return legacy.prestige >= perk.cost
 }
 
-/** Clamps a saved block: unknown perk ids and endings dropped, numbers finite and >= 0, `prestigeTotal >= prestige`, `runs >= 1`. */
+/** Clamps a saved block: unknown perk ids dropped, numbers finite and >= 0, `prestigeTotal >= prestige`, `runs >= 1`. */
 export function normalizeLegacy(raw: unknown): LegacyState {
   const base = freshLegacy()
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return base
@@ -104,31 +77,18 @@ export function normalizeLegacy(raw: unknown): LegacyState {
   const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0)
   const prestige = Math.floor(num(row.prestige))
   const perks = Array.isArray(row.perks) ? [...new Set(row.perks.filter((id): id is string => typeof id === "string" && PERK_BY_ID.has(id)))] : []
-  const endings = Array.isArray(row.endings) ? row.endings.filter(isEnding) : []
   return {
     runs: Math.max(1, Math.floor(num(row.runs))),
     prestige,
     prestigeTotal: Math.max(prestige, Math.floor(num(row.prestigeTotal))),
     earnedAllRuns: num(row.earnedAllRuns),
     perks: LEGACY_PERKS.filter((perk) => perks.includes(perk.id)).map((perk) => perk.id),
-    endings: HALL_OF_FAME.filter((entry) => endings.includes(entry.id)).map((entry) => entry.id),
   }
 }
 
 /** A saved block is only written once there is something in it. */
 export function isFreshLegacy(legacy: LegacyState): boolean {
-  return legacy.runs === 1 && legacy.prestige === 0 && legacy.prestigeTotal === 0 && legacy.earnedAllRuns === 0 && legacy.perks.length === 0 && legacy.endings.length === 0
-}
-
-/**
- * Users the product starts with under Early adopters, at the home region. Top-up, not a gift on top: a career that
- * already has this many users keeps them.
- */
-export function withStartUsers(users: Readonly<Record<string, number>>, perks: readonly string[]): Record<string, number> {
-  const want = perkEffects(perks).startUsers
-  const have = totalUsers(users)
-  if (have >= want) return { ...users }
-  return { ...users, [HOME_REGION_ID]: (users[HOME_REGION_ID] ?? 0) + (want - have) }
+  return legacy.runs === 1 && legacy.prestige === 0 && legacy.prestigeTotal === 0 && legacy.earnedAllRuns === 0 && legacy.perks.length === 0
 }
 
 /** What the Network perks put into a new career. Every field is a floor or a list to merge, never a spend. */
@@ -227,43 +187,15 @@ export function mergeGrant(target: GrantTarget, grant: StartingGrant): GrantTarg
   }
 }
 
-/** What the headline card says about how the product ended. */
-export type HeadlineFacts = { handle: string; product: string; users: number; won: boolean; ending?: Ending | undefined }
+/** What the headline card says about the career just closed. */
+export type HeadlineFacts = { handle: string; earned: number }
 
-/** "@quiet-otter sells the side project eight billion people use". The first three rows are by users; a win reads by its ending. */
+/** The Exit's headline, by what the career earned: "@quiet-otter takes the severance and a very large mug". */
 export function exitHeadline(f: HeadlineFacts): string {
   const handle = `@${f.handle}`
-  if (f.won) {
-    if (f.ending === "sponsor") return `${f.product} sold; its team thanks their executive sponsor`
-    return `${handle} sells the side project eight billion people use. Get some sleep.`
-  }
-  if (f.users < 1_000_000) return `${handle} acqui-hired; ${f.product} sunset 'to focus on the core'`
-  if (f.users < 1_000_000_000) return `${f.product} acquired; ${handle} stays on as 'advisor'`
-  return `${f.product} sold in a blockbuster deal`
-}
-
-/** A product sold in an earlier career, as the résumé lists it. */
-export type PastProduct = { product: string; role: string; meta: string }
-
-/**
- * The products of earlier careers, newest first, from the journal's `exit` entries: "Founder, Otterly" (or the sponsor
- * line) for one that won the world, "Side project, Otterly" for one sold before that.
- */
-export function pastProductsOf(entries: readonly { type: string; data?: Readonly<Record<string, number | string | boolean>> | undefined }[]): PastProduct[] {
-  const out: PastProduct[] = []
-  for (const entry of entries) {
-    if (entry.type !== "exit" || typeof entry.data?.product !== "string") continue
-    const product = entry.data.product
-    const users = typeof entry.data.users === "number" ? entry.data.users : 0
-    const ending = isEnding(entry.data.ending) ? entry.data.ending : null
-    const won = entry.data.won === true
-    out.push({
-      product,
-      role: won ? productRole(ending, product) : `Side project, ${product}`,
-      meta: won ? "Sold · eight billion users" : `Sold · ${users.toLocaleString("en-US")} users`,
-    })
-  }
-  return out.reverse()
+  if (f.earned < 1e12) return `${handle} takes the severance and a very large mug`
+  if (f.earned < 1e14) return `${handle} retires to a standing desk and a quiet calendar`
+  return `${handle} leaves a legacy, an endowed chair and a very long wiki`
 }
 
 /** The card shown after an Exit. Not saved. */
@@ -271,12 +203,8 @@ export type ExitCard = {
   /** The career that ended (1 for the first). */
   run: number
   headline: string
-  /** Prestige paid in all, ending bonus included. */
+  /** Prestige paid. */
   prestigeEarned: number
-  /** The ending recorded in the Hall of Fame by this Exit, or null. */
-  newEnding: HallEnding | null
-  /** The bonus it paid (0 with no new ending). */
-  endingBonus: number
   /** The permanent multiplier after this Exit. */
   mult: number
 }

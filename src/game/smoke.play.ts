@@ -1,25 +1,13 @@
 import { expect, test, vi } from "vitest"
-import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
+import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { CAPITAL } from "../data/capital.ts"
 import { EVENTS } from "../data/events.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { PRESTIGE_MULT_PER } from "../data/legacy.ts"
 import { installGameHarness } from "./harness.ts"
-import { formatNumber } from "./format.ts"
 import { nextUnlock } from "./nextUnlock.ts"
 import { hydrate } from "./save.ts"
-import { advanceCompany, growthFacts } from "./globe/growth.ts"
-import type { CompanyState } from "./globe/growth.ts"
-import { productFactsOf } from "./globe/product.ts"
-import { ceilingOf, WORLD_CEILING } from "./globe/world.ts"
-import { REGIONS } from "../data/regions.ts"
 import { useGame } from "./store.ts"
-
-/** What the company's served users pay less what its drops cost over a span, with incident rolls off. Money tests add it so they count the income alone. */
-const productNet = (state: { company: CompanyState; gigs: readonly number[]; equipment: Record<string, number> }, from: number, to: number) => {
-  const grown = advanceCompany(state.company, growthFacts(state.gigs, state.equipment), from, to, () => 0.999)
-  return grown.earned - grown.lost
-}
 
 const game = installGameHarness()
 
@@ -134,10 +122,8 @@ test("B: a retainer gig is the first $/s", () => {
   expect(cleared).toBe(true)
   expect(game.getState().cps).toBe(retainer.retainerCps)
   const before = game.getState()
-  const storeBefore = useGame.getState()
   game.tick(10_000)
-  // The retainer's clients have only the laptop to serve them: the users it serves pay and the drops cost, on top of the income.
-  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10 + productNet(storeBefore, storeBefore.now, storeBefore.now + 10_000), 3)
+  expect(game.getState().money - before.money).toBeCloseTo(retainer.retainerCps * 10, 3)
   spy.mockRestore()
   expect(game.getState().lastPop?.kind).toBe("gigClear")
 })
@@ -251,53 +237,9 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
 })
 
-test("launches and GPUs: Frontend's clicks ship launches the gear can take, and an AI build's growth follows its GPUs", () => {
+test("leadership: the pick opens at Senior and rows above rank 15 need it", () => {
   game.reset()
   game.keepProfile()
-  game.setXp(1e9)
-  for (let id = 1; id <= 6; id++) game.forceGig(id)
-  for (let id = 1; id <= 7; id++) game.buyJob(id)
-  game.setUsers("americas-east", 10_000)
-  expect(game.pickSpecialization("frontend")).toBe(true)
-  game.setUsers("americas-east", 50)
-  game.setMoney(1e6)
-  for (let i = 0; i < 20; i++) game.buyEquipment(42)
-  expect(game.getState().launch).toMatchObject({ ships: true, charge: 0, every: 25 })
-
-  // Hover clicks charge nothing; manual clicks do, and the 25th ships a launch.
-  const before = game.getState().world.users
-  for (let i = 0; i < 24; i++) game.click()
-  expect(game.getState().launch.charge).toBe(24)
-  expect(game.getState().world.users).toBe(before)
-  game.click()
-  expect(game.getState().launch.charge).toBe(0)
-  expect(game.getState().world.users).toBeGreaterThan(before)
-
-  // An AI build grows slower with no GPUs and faster with them.
-  const growthWith = (gpus: number) => {
-    game.reset()
-    game.keepProfile()
-    game.setXp(1e9)
-    for (let id = 1; id <= 6; id++) game.forceGig(id)
-    for (let id = 1; id <= 7; id++) game.buyJob(id)
-    game.setUsers("americas-east", 10_000)
-    game.pickSpecialization("ai")
-    game.setUsers("americas-east", 500)
-    game.setMoney(1e9)
-    for (let i = 0; i < 30; i++) game.buyEquipment(42)
-    for (let i = 0; i < gpus; i++) game.buyEquipment(57)
-    const start = game.getState().world.users
-    game.tick(20_000)
-    return game.getState().world.users - start
-  }
-  expect(growthWith(40)).toBeGreaterThan(growthWith(0))
-  game.reset()
-})
-
-test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring is the Manager's, and the ending follows the line", () => {
-  game.reset()
-  game.keepProfile()
-  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
@@ -314,70 +256,25 @@ test("leadership: the pick opens at Senior, rows above rank 15 need it, hiring i
   expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "lead:pick", name: "Pick a leadership line", tab: "C" })
   expect(nextUnlock(useGame.getState(), "C")?.needs.length).toBeGreaterThan(0)
 
-  // Made once. An IC does not see the Manager's rows, and cannot hire.
+  // Made once. An IC does not see the Manager's rows.
   expect(game.pickLeadership("wizard")).toBe(false)
   expect(game.pickLeadership("ic")).toBe(true)
   expect(game.pickLeadership("manager")).toBe(false)
   expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "lead:ic")).toBe(true)
   for (const id of [18, 20, 21, 22]) expect(game.buyJob(id), `job ${id} on the other line`).toBe(false)
   for (const id of [16, 17, 19, 23, 24, 25]) expect(game.buyJob(id), `job ${id}`).toBe(true)
-  game.setMoney(1e12)
-  expect(game.hire("outsourced")).toBe(false)
 
-  // A Manager hires from Engineering manager (rank 18), and each kind opens at its rank.
+  // A Manager takes the other rows.
   game.reset()
   game.keepProfile()
-  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
   game.pickSpecialization("backend")
   for (let id = 8; id <= 15; id++) game.buyJob(id)
   expect(game.pickLeadership("manager")).toBe(true)
-  game.setMoney(1e15)
-  expect(game.hire("outsourced")).toBe(false)
   for (const id of [16, 17, 19, 23, 24]) expect(game.buyJob(id), `job ${id} on the other line`).toBe(false)
-  expect(game.buyJob(18)).toBe(true)
-  expect(game.hire("outsourced")).toBe(true)
-  expect(game.hire("bootcamp")).toBe(true)
-  expect(game.hire("copypaste")).toBe(false)
-  expect(game.buyJob(20)).toBe(true)
-  expect(game.hire("copypaste")).toBe(true)
-  expect(game.hire("senior")).toBe(true)
-  expect(game.hire("staff")).toBe(false)
-  expect(game.buyJob(21)).toBe(true)
-  expect(game.hire("staff")).toBe(true)
-  expect(game.hire("tenx")).toBe(true)
-  expect(game.hire("greybeard")).toBe(false)
-  expect(game.buyJob(22)).toBe(true)
-  expect(game.hire("greybeard")).toBe(true)
-  expect(game.hire("codegod")).toBe(true)
-  expect(game.getState().headcount).toBe(8)
-
-  // The win reads the line: a Manager's is the sponsor's even with a small team's share, and an IC's is the night owl's.
-  for (const [lead, ending] of [["manager", "sponsor"], ["ic", "nightOwl"]] as const) {
-    game.reset()
-    game.keepProfile()
-    game.setUsers("americas-east", 2_000_000)
-    game.setXp(1e9)
-    for (let id = 1; id <= 6; id++) game.forceGig(id)
-    for (let id = 1; id <= 7; id++) game.buyJob(id)
-    game.pickSpecialization("backend")
-    for (let id = 8; id <= 15; id++) game.buyJob(id)
-    game.pickLeadership(lead)
-    // The late gear waits on the late jobs: hold every row of the line.
-    for (const job of visibleJobs("backend", lead)) if (job.rank > 15) game.buyJob(job.id)
-    for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
-    game.setXp(1e9)
-    game.setMoney(1e15)
-    for (const id of [105, 106, 107, 108, 109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
-    for (const incident of game.getState().world.incidents) game.respondIncident(incident.id)
-    const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
-    for (let i = 0; i < 60 && !game.getState().world.won; i++) game.tick(Date.now() + (i + 2) * 3_600_000)
-    calmRolls.mockRestore()
-    expect(game.getState().world.won, lead).toBe(true)
-    expect(useGame.getState().company.ending, lead).toBe(ending)
-  }
+  for (const id of [18, 20, 21, 22, 25]) expect(game.buyJob(id), `job ${id}`).toBe(true)
 })
 
 test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
@@ -452,7 +349,6 @@ test("mid jump matches the first-LLM tier and boosts clicks only", () => {
 test("offline catch-up pays 1h and caps at 8h", () => {
   const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
   game.reset()
-  // A salary and no gigs: no clients means no users, so the income is the whole credit.
   useGame.setState({ jobs: [1], peakMoney: 1 })
   const cps = game.getState().cps
   expect(cps).toBe(JOB_TIERS[0]!.cps)
@@ -467,39 +363,6 @@ test("offline catch-up pays 1h and caps at 8h", () => {
   expect(tenHours.toast?.split("\n")[1]).toMatch(/^credited \$/)
   expect(Math.abs(tenHours.credited - cps * 8 * 3600)).toBeLessThan(1)
   expect(tenHours.credited).toBeLessThan(cps * 10 * 3600)
-  spy.mockRestore()
-})
-
-test("users pay: idle money rises by the product revenue, and the note counts it once", () => {
-  const spy = vi.spyOn(Math, "random").mockReturnValue(0.999)
-  game.reset()
-  game.keepProfile()
-  game.setXp(1e6)
-  game.setMoney(1e9)
-  for (let i = 0; i < 6; i++) expect(game.buyEquipment(60)).toBe(true)
-  game.setUsers("americas-east", 2_000)
-  const { world, cps, money } = game.getState()
-  expect(world.capacity).toBeGreaterThan(world.demand)
-  expect(world.revenuePerSec).toBeGreaterThan(0)
-  // cps stays what the owned items pay; product revenue is its own figure.
-  const storeBefore = useGame.getState()
-  // The crowd grows through the ten seconds, so the users pay a little more than they did at the start.
-  const grownFacts = growthFacts(storeBefore.gigs, storeBefore.equipment, storeBefore.footprint, productFactsOf(storeBefore.hires, storeBefore.legacy))
-  const walkedTen = advanceCompany(storeBefore.company, grownFacts, storeBefore.now, storeBefore.now + 10_000, () => 0.999)
-  game.tick(10_000)
-  const gained = game.getState().money - money
-  expect(gained).toBeGreaterThanOrEqual(world.revenuePerSec * 10)
-  expect(gained).toBeCloseTo(cps * 10 + walkedTen.earned - walkedTen.lost, 0)
-
-  // Away, the users pay once. The note shows income, the balance also loses the drops.
-  const hour = 60 * 60 * 1000
-  const state = useGame.getState()
-  const t = Date.now()
-  const walked = advanceCompany(state.company, growthFacts(state.gigs, state.equipment, state.footprint, productFactsOf(state.hires, state.legacy)), t - hour, t, () => 0.999)
-  const away = game.advanceOffline(hour)
-  expect(walked.earned).toBeGreaterThan(0)
-  expect(away.credited).toBeCloseTo(cps * 3600 + walked.earned - walked.lost, 0)
-  expect(away.toast?.split("\n")[1]).toBe(`credited $${formatNumber(cps * 3600 + walked.earned)}`)
   spy.mockRestore()
 })
 
@@ -652,9 +515,7 @@ test("10x dev (gold) skills: hover clicking and the offline cap open at XP miles
   expect(game.buyGold(hover.id)).toBe(false)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   for (let id = 1; id <= 7; id++) game.buyJob(id)
-  game.setUsers("americas-east", 10_000)
   game.pickSpecialization("backend")
-  game.setUsers("americas-east", 1_000_000)
   for (let id = 8; id <= 13; id++) game.buyJob(id)
   game.setXp(1e9)
   expect(game.buyGold(hover.id)).toBe(false)
@@ -686,9 +547,9 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(start.features.open).toEqual([])
   expect(start.careerLog.size).toBe(1)
   expect(start.careerLog.last).toMatchObject({ seq: 1, type: "start" })
-  expect(start.features.upNext.map((row) => row.id)).toEqual(["studio", "careerLog", "githug"])
+  expect(start.features.upNext.map((row) => row.id)).toEqual(["careerLog", "githug", "linkedout"])
 
-  // The first skill opens nothing: Your company waits for the first job, and Git + GitHug hygiene (skill 5) is next.
+  // The first skill opens nothing: the cat waits for the first job, and Git + GitHug hygiene (skill 5) is next.
   game.setXp(90)
   expect(game.buySkill(1)).toBe(true)
   let state = game.getState()
@@ -716,10 +577,9 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.buyJob(1)).toBe(true)
   state = game.getState()
   expect(state.features.open).toEqual(expect.arrayContaining(["careerLog", "githug", "linkedout", "boardGigs", "money", "rosters", "boardJobs", "metrics"]))
-  // The first job also opens Your company and brings the cat.
-  expect(state.features.open).toContain("studio")
-  expect(state.features.reveals).toContain("studio")
+  // The first job also brings the cat.
   expect(state.features.open).toContain("cat")
+  expect(state.features.reveals).toContain("cat")
 
   // Every journal line is one flat JSON object with a time, a type and the balances it left.
   const lines = game.careerLog()
@@ -739,19 +599,13 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
 
   // The career has a drawn handle, rerolled from the word lists until kept.
   const drawn = game.getState().profile
-  expect(drawn).toEqual({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/), product: expect.stringMatching(/^[A-Z][a-z]+$/) })
-  const animal = drawn.handle.split("-")[1]!
-  expect(drawn.product.toLowerCase().startsWith(animal)).toBe(true)
-  expect(game.rerollProduct()).toBe(true)
-  expect(game.getState().profile.handle).toBe(drawn.handle)
-  expect(game.getState().profile.product).not.toBe(drawn.product)
+  expect(drawn).toEqual({ chosen: false, handle: expect.stringMatching(/^[a-z]+-[a-z]+$/) })
   expect(game.rerollProfile()).toBe(true)
   expect(game.getState().profile.chosen).toBe(false)
   expect(game.getState().profile.handle).not.toBe(drawn.handle)
   game.keepProfile()
   expect(game.getState().profile.chosen).toBe(true)
   expect(game.rerollProfile()).toBe(false)
-  expect(game.rerollProduct()).toBe(false)
 
   // A wipe starts the timeline over.
   game.reset()
@@ -764,163 +618,44 @@ test("career timeline: the desk is earned piece by piece, logged as JSON, and th
   expect(game.getState().features.open).not.toContain("cat")
 })
 
-test("the world: users per region, gear as the throttle, incidents, and the win", () => {
+test("prestige: the Exit pays Prestige, restarts the career, keeps the Legacy, and perks start the next one", () => {
   game.reset()
   game.keepProfile()
-  expect(game.getState().world).toMatchObject({ users: 0, target: 8_000_000_000, resistance: 0, incidents: [], won: false })
-
-  // A cleared gig seeds its client's region, and the users grow from there while the gear serves them.
-  game.forceGig(1)
-  game.setMoney(1e9)
-  game.setUsers("americas-east", 200)
-  expect(game.getState().world.users).toBe(200)
-  expect(game.setUsers("americas-east", -1)).toBe(false)
-  game.setUsers("americas-east", 1e15)
-  expect(game.getState().world.regionUsers["americas-east"]).toBeLessThan(330_000_000)
-  game.setUsers("americas-east", 5_000)
-
-  // Demand is users × requests per user; a laptop cannot serve it, so the shortfall costs money.
-  const before = game.getState()
-  expect(before.world.demand).toBeCloseTo(500)
-  expect(before.world.capacity).toBeLessThan(before.world.demand)
-  game.tick(60_000)
-  expect(game.getState().money).toBeLessThan(before.money)
-
-  // The world fights back: an incident opens, shows its price, and ends when paid. The minute above can roll one of
-  // its own, so that one is paid off first and the forced one is alone.
-  for (const incident of game.getState().world.incidents) expect(game.respondIncident(incident.id)).toBe(true)
-  const calm = game.getState().world.demand
-  expect(game.forceIncident("ddos", "americas-east")).toBe(true)
-  const hit = game.getState().world
-  expect(hit.incidents).toHaveLength(1)
-  expect(hit.incidents[0]).toMatchObject({ kind: "ddos", region: "americas-east" })
-  expect(hit.demand).toBeCloseTo(calm * hit.incidents[0]!.strength)
-  game.setMoney(0)
-  expect(game.respondIncident(hit.incidents[0]!.id)).toBe(false)
-  game.setMoney(1e9)
-  expect(game.respondIncident(hit.incidents[0]!.id)).toBe(true)
-  expect(game.getState().world.incidents).toEqual([])
-  expect(game.forceIncident("meteor" as never)).toBe(false)
-
-  // Eight billion users win it once: a card, the journal, a forever multiplier, and the game keeps going.
-  for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
-  game.setXp(1e9)
-  for (let id = 1; id <= 6; id++) game.forceGig(id)
-  for (let id = 1; id <= 7; id++) game.buyJob(id)
-  game.pickSpecialization("backend")
-  for (let id = 8; id <= 15; id++) game.buyJob(id)
-  game.pickLeadership("ic")
-  for (let id = 16; id <= 31; id++) game.buyJob(id)
-  game.setXp(1e9)
-  game.setMoney(1e15)
-  for (const id of [105, 106, 107, 108, 109, 110]) {
-    for (let i = 0; i < 30; i++) expect(game.buyEquipment(id), `gear ${id} copy ${i}`).toBe(true)
-  }
-  const mult = game.getState().foreverMult
-  // No incidents on the way: a block or a law rolled in these hours can hold the crowd under eight billion, and the win is what is under test.
-  for (const incident of game.getState().world.incidents) game.respondIncident(incident.id)
-  const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
-  for (let i = 0; i < 60 && !game.getState().world.won; i++) game.tick(Date.now() + (i + 2) * 3_600_000)
-  calmRolls.mockRestore()
-  expect(game.getState().world.won).toBe(true)
-  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
-  expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
-  game.tick(Date.now() + 99 * 3_600_000)
-  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
-  expect(useGame.getState().pop).toMatchObject({ kind: "unlock", label: "Eight billion users" })
-
-  // What an incident costs is what the harness says: minutes of everything earned, the product's revenue and the win's multiplier in.
-  // The hours just ticked rolled real incidents (three live is the cap and refuses another): pay them off first.
-  game.setMoney(1e15)
-  for (const incident of game.getState().world.incidents) game.respondIncident(incident.id)
-  expect(game.forceIncident("block")).toBe(true)
-  game.setMoney(5e12)
-  const open = game.getState().world.incidents.at(-1)!
-  const cash = game.getState().money
-  expect(open.cost).toBeCloseTo((game.getState().cps + game.getState().world.revenuePerSec) * 60 * 3, -3)
-  expect(open.cost).toBeGreaterThan(cash * 0.01)
-  expect(game.respondIncident(open.id)).toBe(true)
-  expect(cash - game.getState().money).toBeCloseTo(open.cost, 0)
-})
-
-test("the world while away: the win is journaled and paid when it happens offline", () => {
-  game.reset()
-  game.keepProfile()
-  game.setUsers("americas-east", 2_000_000)
-  game.forceGig(1)
-  game.setXp(1e9)
-  for (let id = 1; id <= 6; id++) game.forceGig(id)
-  for (let id = 1; id <= 7; id++) game.buyJob(id)
-  game.pickSpecialization("backend")
-  for (let id = 8; id <= 15; id++) game.buyJob(id)
-  game.pickLeadership("ic")
-  for (let id = 16; id <= 31; id++) game.buyJob(id)
-  game.setMoney(1e15)
-  for (const id of [109, 110]) for (let i = 0; i < 30; i++) game.buyEquipment(id)
-  for (const region of REGIONS) game.setUsers(region.id, ceilingOf(region.id) * (7.999e9 / WORLD_CEILING))
-  const mult = game.getState().foreverMult
-  // No incidents while away, for the same reason as above: the win is what is under test.
-  const calmRolls = vi.spyOn(Math, "random").mockReturnValue(0.999)
-  game.advanceOffline(8 * 3_600_000)
-  calmRolls.mockRestore()
-  expect(game.getState().world.won).toBe(true)
-  expect(game.getState().foreverMult).toBeCloseTo(mult * 1.25)
-  expect(game.careerLog().some((line) => line.type === "world" && line.ref === "world:won")).toBe(true)
-})
-
-test("prestige: selling the product pays Prestige, restarts the career and the product, keeps the Legacy, and perks start the next one", () => {
-  game.reset()
-  game.keepProfile()
-  game.setUsers("americas-east", 2_000_000)
   game.setXp(1e9)
   for (let id = 1; id <= 6; id++) game.forceGig(id)
   expect(game.buyJob(1)).toBe(true)
-  // Hiring is the Manager's: the career leads a team (Engineering manager, rank 18) before it can hire.
   for (let id = 2; id <= 7; id++) game.buyJob(id)
   game.pickSpecialization("backend")
   for (let id = 8; id <= 15; id++) game.buyJob(id)
   expect(game.pickLeadership("manager")).toBe(true)
   expect(game.buyJob(18)).toBe(true)
   game.forceGold(2)
-  const { handle, product } = game.getState().profile
-  // The product has users, a region bought, and a hire to throw away.
+  const { handle } = game.getState().profile
   game.setMoney(1e13)
-  game.setUsers("americas-east", 5_000)
-  expect(game.buyRegion("europe")).toBe(true)
-  expect(game.hire("outsourced")).toBe(true)
 
   // Shut until the career has earned its first Prestige (`PRESTIGE_EARN_SCALE`, counted from dollars credited).
   expect(game.getState().legacy).toMatchObject({ runs: 1, prestige: 0, prestigeTotal: 0, mult: 1, exitOpen: true })
   const before = game.getState()
   expect(before.legacy.prestigeOnExit).toBeGreaterThan(0)
-  expect(before.world.users).toBe(5_000)
 
   const prestige = game.exit()
   expect(prestige).not.toBe(false)
   expect(prestige).toBeGreaterThan(0)
   const after = game.getState()
-  expect(after.legacy).toMatchObject({ runs: 2, prestige, prestigeTotal: prestige, perks: [], endings: [] })
+  expect(after.legacy).toMatchObject({ runs: 2, prestige, prestigeTotal: prestige, perks: [] })
   expect(after.legacy.mult).toBeCloseTo(1 + PRESTIGE_MULT_PER * (prestige as number))
-  expect(after).toMatchObject({ money: 0, xp: 0, xpTotal: 0, cps: 0, phase: "A", era: "early", headcount: 0 })
+  expect(after).toMatchObject({ money: 0, xp: 0, xpTotal: 0, cps: 0, phase: "A", era: "early" })
   expect(after.skills).toEqual({})
   expect(after.jobs).toEqual([])
   expect(after.gigs).toEqual([])
   expect(after.owned).toEqual({})
-  // The product starts over, with a new name.
-  expect(after.world).toMatchObject({ users: 0, regionUsers: {}, resistance: 0, incidents: [], won: false })
-  expect(after.hires).toEqual({})
-  expect(after.profile.handle).toBe(handle)
-  expect(after.profile.product).not.toBe(product)
-  expect(after.profile.chosen).toBe(false)
+  // The handle stays, kept: a later career has nothing to draw.
+  expect(after.profile).toEqual({ handle, chosen: true })
   // Kept: 10x dev skills, the handle, the journal.
   expect(after.gold).toEqual([2])
   expect(game.careerLog().some((line) => line.type === "exit" && line.prestigeEarned === prestige)).toBe(true)
-  game.keepProfile()
   // Taken once: the new career has earned nothing yet.
   expect(game.exit()).toBe(false)
-  // The regions bought start over too: Europe can be bought again.
-  game.setMoney(1e9)
-  expect(game.buyRegion("europe")).toBe(true)
 
   // The multiplier is in the rates: the first skill pays its click bonus times it.
   game.setXp(90)

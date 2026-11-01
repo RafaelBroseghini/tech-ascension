@@ -7,8 +7,8 @@ const pop = (id: number, kind: MoneyPop["kind"]): MoneyPop => ({ id, kind, size:
 describe("unlock chime", () => {
   it("rings big for a board, standard for a desk feature, and not for a wipe, a click or a gig", () => {
     expect(chimeFor({ unlocked: [], pop: pop(2, "unlock") }, { unlocked: [], pop: pop(1, "click") })).toBe("big")
-    expect(chimeFor({ unlocked: ["studio"], pop: null }, { unlocked: [], pop: null })).toBe("standard")
-    expect(chimeFor({ unlocked: [], pop: null }, { unlocked: ["studio"], pop: null })).toBeNull()
+    expect(chimeFor({ unlocked: ["careerLog"], pop: null }, { unlocked: [], pop: null })).toBe("standard")
+    expect(chimeFor({ unlocked: [], pop: null }, { unlocked: ["careerLog"], pop: null })).toBeNull()
     expect(chimeFor({ unlocked: [], pop: pop(2, "click") }, { unlocked: [], pop: pop(1, "click") })).toBeNull()
     expect(chimeFor({ unlocked: [], pop: pop(2, "gigClear") }, { unlocked: [], pop: null })).toBeNull()
     const same = pop(3, "unlock")

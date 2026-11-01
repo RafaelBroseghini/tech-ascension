@@ -23,6 +23,15 @@ export const GEAR_KINDS: readonly { id: GearKind; label: string }[] = [
   { id: "mars", label: "Mars" },
 ]
 
+/**
+ * The sections that open on their own reveal track once the career holds a job: the first unbought row of each shows
+ * from then on, whatever desk gear is still unbought. The desk, home lab and storage rows share the track the Gear tab
+ * opens with.
+ */
+export const INFRA_KINDS: readonly GearKind[] = ["cloud", "gpu", "rack", "orbit", "mars"]
+
+export const isInfraKind = (kind: GearKind): boolean => INFRA_KINDS.includes(kind)
+
 /** Shop sections in kind order. Rows stay in catalog order so the next unlock sits under the row that opened it. */
 export function gearSections<T extends { kind: GearKind }>(rows: readonly T[]): { id: GearKind; label: string; rows: T[] }[] {
   return GEAR_KINDS.flatMap((group) => {

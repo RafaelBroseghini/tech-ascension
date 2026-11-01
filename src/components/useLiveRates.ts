@@ -1,11 +1,9 @@
 import { production } from "../game/economy.ts"
 import { modsOf } from "../game/mods.ts"
-import { servingOf } from "../game/globe/load.ts"
-import { productRevenueOf } from "../game/globe/product.ts"
 import { clickPaysMoney } from "../game/phase.ts"
 import { useGame } from "../game/store.ts"
 
-/** What the career earns right now: money a second (the product's revenue in) and a click, XP a click and a second. The status bar and the metrics modal both read it. */
+/** What the career earns right now: money a second and a click, XP a click and a second. The status bar and the metrics modal both read it. */
 export function useLiveRates() {
   const skills = useGame((state) => state.skills)
   const equipment = useGame((state) => state.equipment)
@@ -18,13 +16,12 @@ export function useLiveRates() {
   const foreverMult = useGame((state) => state.foreverMult)
   const tempMults = useGame((state) => state.tempMults)
   const legacy = useGame((state) => state.legacy)
-  const company = useGame((state) => state.company)
   const rates = production({ skills, equipment, owned, jobs, gigs, build }, activeBoost, now, modsOf({ skills, equipment, owned, jobs, gigs, foreverMult, tempMults, legacy }))
   const clickPays = clickPaysMoney({ jobs })
-  const perSec = rates.idle + productRevenueOf(servingOf(company.users, company.incidents, equipment).revenuePerSec, legacy.perks, build?.spec ?? null)
+  const perSec = rates.idle
   return {
     rates,
-    /** Dollars a second: idle income plus what the product's served users pay. */
+    /** Dollars a second: idle income. */
     perSec,
     /** Whether a click pays dollars yet (from the first job). */
     clickPays,
