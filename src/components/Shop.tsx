@@ -46,6 +46,7 @@ import type { Requirement, ShopTab } from "../game/phase.ts"
 import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
+import { scrollShopList } from "./shopScroll.ts"
 import { useNarrow } from "./useNarrow.ts"
 import { useShopRows } from "./useShopRows.ts"
 import { ShopGrip } from "./ShopGrip.tsx"
@@ -136,6 +137,8 @@ type OfferProps = {
   fresh?: boolean
   locked?: boolean
   done?: boolean
+  /** A row that can be bought again (skills, gear, capital) and is held at least once. The list scrolls to the first open row that is not. */
+  bought?: boolean
   /** What is still missing, in words with no counts. Shown under the row's attributes until the gate opens. */
   unlock?: string[]
   title: string
@@ -149,11 +152,12 @@ type OfferProps = {
   unlocks?: readonly { id: string; name: string }[]
 }
 
-function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, unlock, title, children, actions, art, gold, unlocks }: OfferProps) {
+function Offer({ kind, id, rowKey, glow, index, afford, flash, fresh, locked, done, bought, unlock, title, children, actions, art, gold, unlocks }: OfferProps) {
   return (
     <article
       ref={rowEnter}
       data-row={rowKey}
+      data-bought={done || bought ? "true" : undefined}
       className={[
         "offer",
         afford ? "afford" : "",
@@ -570,42 +574,22 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const [listOverflows, setListOverflows] = useState(false)
   const showJumpEnd = tab !== "W" && unlocked[tab] && listOverflows
 
-  function scrollToLastAvailable() {
+  function scrollToNextOpen() {
     const list = listRef.current
-    if (!list) return
-    const offers = [...list.querySelectorAll<HTMLElement>(".offer")]
-    const target =
-      [...offers].reverse().find((el) => !el.classList.contains("is-done") && !el.classList.contains("is-locked")) ??
-      offers.at(-1)
-    if (!target) return
-    target.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    if (list) scrollShopList(list, "smooth")
   }
+  // A row appearing in the list we are looking at brings the next open row into view; a tab switch does the same on arrival,
+  // instantly. One list serves every tab, so the offset would otherwise carry over from the last one.
+  const shownScope = useRef(rowScope)
   useLayoutEffect(() => {
     const list = listRef.current
     if (!list) return
     const previous = seenRows.current.get(rowScope)
     seenRows.current.set(rowScope, rowCount)
-    if (previous === undefined || rowCount <= previous) return
-    const row =
-      [...list.querySelectorAll<HTMLElement>(".offer.fresh")].at(-1) ??
-      list.querySelector<HTMLElement>(".offer:last-of-type")
-    if (!row) return
-    const listBox = list.getBoundingClientRect()
-    const rowBox = row.getBoundingClientRect()
-    const below = rowBox.bottom - listBox.bottom
-    const above = listBox.top - rowBox.top
-    if (below > 0) list.scrollTop += below
-    else if (above > 0) list.scrollTop -= above
-  }, [rowScope, rowCount])
-
-  // One list serves every tab, so it keeps its scroll offset across a switch. The newest rows sit at the bottom: land there.
-  const shownScope = useRef(rowScope)
-  useLayoutEffect(() => {
-    if (shownScope.current === rowScope) return
+    const switched = shownScope.current !== rowScope
     shownScope.current = rowScope
-    const list = listRef.current
-    if (list) list.scrollTop = rowScope === "W" ? 0 : list.scrollHeight
-  }, [rowScope])
+    if (switched || (previous !== undefined && rowCount > previous)) scrollShopList(list)
+  }, [rowScope, rowCount])
 
   const revealedKeys = [
     ...skillRows.map((row) => `skill:${row.id}`),
@@ -678,9 +662,9 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               type="button"
               className="shop-panel-toggle shop-jump-end"
               data-testid="shop-jump-end"
-              aria-label="Jump to latest available option"
-              title="Latest available"
-              onClick={scrollToLastAvailable}
+              aria-label="Jump to the next open row"
+              title="Next open row"
+              onClick={scrollToNextOpen}
             >
               <ArrowDown {...UI_ICON} strokeWidth={2.5} aria-hidden />
             </button>
@@ -815,6 +799,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                   afford={afford}
                   flash={flashKey === key}
                   fresh={fresh.has(key) && have === 0}
+                  bought={have > 0}
                   locked={!revealed && have === 0}
                   unlock={["More lifetime XP"]}
                   unlocks={have === 0 ? teaseFor(key) : undefined}
@@ -1010,6 +995,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                           afford={afford}
                           flash={flashKey === key}
                           fresh={fresh.has(key) && have === 0}
+                          bought={have > 0}
                           locked={!revealed && have === 0}
                           unlock={[
                             ...(peakMoney < row.unlockMoney ? ["A bigger balance"] : []),
@@ -1065,6 +1051,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
                     afford={afford}
                     flash={flashKey === key}
                     fresh={fresh.has(key) && have === 0}
+                    bought={have > 0}
                     title={tier.name}
                     actions={
                       <>
