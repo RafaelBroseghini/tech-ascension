@@ -13,8 +13,28 @@ export function scrollTarget(list: ParentNode): HTMLElement | null {
   return list.querySelector<HTMLElement>(OPEN_UNBOUGHT)
 }
 
+/** Whether the list's rows are snap points: the phone's three-row list (`scroll-snap-type: y mandatory` in mobile.css). */
+const snaps = (list: HTMLElement): boolean => /mandatory|proximity/.test(getComputedStyle(list).scrollSnapType ?? "")
+
+/**
+ * Where the phone's list rests for a target row. The list shows three whole rows (its height is set to them after this
+ * runs, in `useShopRows`), and its rows are snap points, so the target goes in as the third row: the offset is the start
+ * of the row two above it. A list too short for three rows takes the first row start that still shows the target whole.
+ */
+function windowTop(list: HTMLElement, row: HTMLElement): number {
+  const origin = list.getBoundingClientRect().top - list.scrollTop
+  const edge = (el: Element, side: "top" | "bottom") => el.getBoundingClientRect()[side] - origin
+  const rows = [...list.querySelectorAll(".offer")]
+  const first = rows[Math.max(0, rows.indexOf(row) - 2)] ?? row
+  const view = Math.min(list.clientHeight || Number.POSITIVE_INFINITY, edge(row, "bottom") - edge(first, "top"))
+  const need = edge(row, "bottom") - view
+  for (const el of rows) if (edge(el, "top") >= need - 1) return Math.min(edge(el, "top"), edge(row, "top"))
+  return edge(row, "top")
+}
+
 /** The offset that shows `row` whole with the least movement (a row below the view lands at its bottom edge), or null when it already shows. */
 function offsetFor(list: HTMLElement, row: HTMLElement): number | null {
+  if (snaps(list)) return windowTop(list, row)
   const listBox = list.getBoundingClientRect()
   const rowBox = row.getBoundingClientRect()
   const above = listBox.top - rowBox.top
