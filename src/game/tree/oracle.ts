@@ -1,25 +1,24 @@
 /**
  * The per-kind rules as they were written before the tree, kept word for word as a test oracle: `treeEquivalence.test.ts`
- * runs these and the tree side by side over whole careers (every build and origin) and fails on the first row that
+ * runs these and the tree side by side over whole careers (every build) and fails on the first row that
  * differs. Nothing in the game imports this file.
  */
 import { CAPITAL_UNLOCK, GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, JOB_BOARD_UNLOCK, SKILL_TIERS } from "../../data/phases.ts"
 import type { Equip, Gig, JobTier, SkillTier } from "../../data/phases.ts"
 import type { Capital } from "../../data/capital.ts"
-import { LEAD_OPEN_RANK } from "../../data/leadership.ts"
 import { canAfford, ownedCount } from "../economy.ts"
-import { heldRank, leadOf, needsLead, needsPick, originOf, rowVisible, seniorUsersShort, specOf } from "../build.ts"
-import { gigBoardXp, gigTagMin, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
+import { heldRank, leadOf, needsLead, needsPick, rowVisible, specOf } from "../build.ts"
+import { gigTagMin } from "./check.ts"
 import type { Gates } from "../phase.ts"
 
 export function gigBoardUnlocked(p: Gates): boolean {
   if (p.gigs.length > 0) return true
-  return p.xpTotal >= gigBoardXp(originOf(p)) && GIG_BOARD_UNLOCK.requireOwnedSkills.every((id) => ownedCount(p.skills, id) > 0)
+  return p.xpTotal >= GIG_BOARD_UNLOCK.minXp && GIG_BOARD_UNLOCK.requireOwnedSkills.every((id) => ownedCount(p.skills, id) > 0)
 }
 
 export function jobBoardUnlocked(p: Gates): boolean {
   if (p.jobs.length > 0) return true
-  return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= jobBoardGigs(originOf(p))
+  return p.xpTotal >= JOB_BOARD_UNLOCK.minXp && p.gigs.length >= JOB_BOARD_UNLOCK.minGigsCompleted
 }
 
 export function capitalUnlocked(p: Gates): boolean {
@@ -37,15 +36,15 @@ export type OracleGigState = "done" | "board-locked" | "locked" | "ready"
 export function gigState(p: Gates, gig: Gig): OracleGigState {
   if (p.gigs.includes(gig.id)) return "done"
   if (!gigBoardUnlocked(p)) return "board-locked"
-  if (p.xpTotal < gigXpReq(originOf(p), gig)) return "locked"
+  if (p.xpTotal < gig.xpReq) return "locked"
   for (const need of gig.needs) {
     const have = SKILL_TIERS.filter((skill) => skill.tags.includes(need.tag) && ownedCount(p.skills, skill.id) > 0).length
-    if (have < gigTagMin(originOf(p), specOf(p), need.tag, need.min)) return "locked"
+    if (have < gigTagMin(specOf(p), need.tag, need.min)) return "locked"
   }
   return "ready"
 }
 
-export type OracleJobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "users" | "ready"
+export type OracleJobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "ready"
 
 export function jobState(p: Gates, job: JobTier): OracleJobState {
   if (p.jobs.includes(job.id)) return "owned"
@@ -53,8 +52,7 @@ export function jobState(p: Gates, job: JobTier): OracleJobState {
   if (!rowVisible(job, specOf(p), leadOf(p))) return "hidden"
   if (needsPick(job) && specOf(p) === null) return "pick"
   if (needsLead(job) && leadOf(p) === null) return "lead"
-  if (p.xpTotal < jobXpReq(originOf(p), job)) return "locked"
-  if (job.rank === LEAD_OPEN_RANK && seniorUsersShort({ jobs: p.jobs, build: p.build, company: p.company }) > 0) return "users"
+  if (p.xpTotal < job.xpReq) return "locked"
   return "ready"
 }
 

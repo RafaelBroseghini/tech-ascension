@@ -6,16 +6,15 @@ import type { FeatureId, FeatureRow, FeatureTrigger } from "../data/features.ts"
 import { GOLD_SKILLS } from "../data/gold.ts"
 import { bandForTier } from "../data/idePacks.ts"
 import { GEAR_TAB_UNLOCK, GIG_BOARD_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, CAPITAL_UNLOCK } from "../data/phases.ts"
-import { heldRank, originOf, specOf } from "./build.ts"
+import { heldRank, specOf } from "./build.ts"
 import { canAfford, equipById, firstJobAtRank, gearBase, isGearRevealed, nextCost, ownedCount, skillById, skillCost } from "./economy.ts"
 import type { Progress } from "./economy.ts"
 import { formatNumber } from "./format.ts"
 import { goldSectionOpen, hoverRate } from "./gold.ts"
 import { prestigeTotalFor } from "./legacy.ts"
-import { gigTagMin } from "./origin.ts"
 import { ownsEverything } from "./nextUnlock.ts"
 import { capitalUnlocked, equipmentOpen, gigBoardUnlocked, jobBoardUnlocked, moneyMode, stageOf } from "./phase.ts"
-import { tagCount } from "./tree/index.ts"
+import { gigTagMin, tagCount } from "./tree/index.ts"
 
 /** What the gates read: progress, the 10x dev skills, and the two things progress alone cannot say. */
 export type FeatureProgress = Progress & {
@@ -160,7 +159,7 @@ function firstGigProgress(p: FeatureProgress): TriggerProgress {
   let asked = 0
   let held = 0
   for (const need of gig.needs) {
-    const min = gigTagMin(originOf(p), specOf(p), need.tag, need.min)
+    const min = gigTagMin(specOf(p), need.tag, need.min)
     asked += min
     held += Math.min(min, tagCount(p.skills, need.tag))
   }

@@ -5,9 +5,7 @@ import type { Era } from "../data/capital.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { canAfford, capitalById, highestJobId, highestOwnedSkill, highestOwnedCapital, jobById } from "./economy.ts"
 import type { Progress } from "./economy.ts"
-import { check, entry, firstFail, holds, nodeOf, short, tagCount } from "./tree/index.ts"
-import { gigTagMin } from "./origin.ts"
-import type { HasCompany } from "./build.ts"
+import { check, entry, firstFail, gigTagMin, holds, nodeOf, short, tagCount } from "./tree/index.ts"
 
 /** A skill grind, B gigs, C jobs, D capital. Gear is a shop tab, not a phase (see ShopTab). */
 export type Phase = "A" | "B" | "C" | "D"
@@ -26,7 +24,7 @@ export const PHASE_NAME: Record<Phase, string> = {
   D: "Capital",
 }
 
-export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs"> & Partial<Pick<Progress, "build">> & HasCompany
+export type Gates = Pick<Progress, "xpTotal" | "peakMoney" | "skills" | "owned" | "jobs" | "gigs"> & Partial<Pick<Progress, "build">>
 
 /**
  * Gates latch: each one also opens when the player already holds what it leads to (a gig done,
@@ -76,7 +74,7 @@ export function gigSkillGaps(p: Gates, gig: Gig): string[] {
 /** How many owned skills short of a gig's tag counts the career is, all tags together. */
 export function gigShortfall(p: Gates, gig: Gig): number {
   let short = 0
-  for (const need of gig.needs) short += Math.max(0, gigTagMin(p.build?.origin ?? null, p.build?.spec ?? null, need.tag, need.min) - tagCount(p.skills, need.tag))
+  for (const need of gig.needs) short += Math.max(0, gigTagMin(p.build?.spec ?? null, need.tag, need.min) - tagCount(p.skills, need.tag))
   return short
 }
 
@@ -121,9 +119,9 @@ export function gigBoard(p: Gates): { cleared: Gig[]; open: Gig[]; locked: Gig[]
  * "hidden" is another track's or the other line's row, which this career never sees; "pick" is a row above the trunk
  * before a specialization is picked; "lead" is a row above rank 15 before a leadership line is picked.
  */
-export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "users" | "ready"
+export type JobState = "owned" | "board-locked" | "hidden" | "pick" | "lead" | "locked" | "ready"
 
-/** A job's state, read off the first unmet leaf of its gate in the order the gate lists them (board, track, picks, XP, users). */
+/** A job's state, read off the first unmet leaf of its gate in the order the gate lists them (board, track, picks, XP). */
 export function jobState(p: Gates, job: JobTier): JobState {
   if (p.jobs.includes(job.id)) return "owned"
   const fail = firstFail(JOB_GATE.get(job.id) ?? { t: "all", of: [] }, p)
@@ -131,8 +129,7 @@ export function jobState(p: Gates, job: JobTier): JobState {
   if (fail.t === "met") return "board-locked"
   if (fail.t === "track") return "hidden"
   if (fail.t === "picked") return fail.of === "spec" ? "pick" : "lead"
-  if (fail.t === "xp") return "locked"
-  return "users"
+  return "locked"
 }
 
 export function canBuyJob(p: Gates & Pick<Progress, "xp">, job: JobTier): boolean {

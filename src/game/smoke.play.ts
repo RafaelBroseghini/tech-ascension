@@ -185,13 +185,9 @@ test("B → C → D: job board, a salary, then capital through a senior job", ()
   // Every job above Mid-level SWE needs a specialization, and the pick opens at Mid-level SWE.
   expect(game.buyJob(senior.id)).toBe(false)
   expect(game.buyJob(7)).toBe(true)
-  // The pick waits on 10,000 users and Senior SWE on 1,000,000.
-  expect(game.pickSpecialization("backend")).toBe(false)
-  game.setUsers("americas-east", 10_000)
+  // Holding Mid-level SWE opens the pick, and Senior SWE needs nothing past the pick and its XP.
   expect(game.pickSpecialization("backend")).toBe(true)
   game.setXp(senior.xpReq)
-  expect(game.buyJob(senior.id)).toBe(false)
-  game.setUsers("americas-east", 1_000_000)
   expect(game.buyJob(senior.id)).toBe(true)
   const d = game.getState()
   expect(d.unlocks.capital).toBe(true)
@@ -208,16 +204,13 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
 
   // Refused before Mid-level SWE; every job above it needs the pick.
   expect(game.pickSpecialization("frontend")).toBe(false)
-  expect(game.getState().build).toEqual({ origin: null, specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
+  expect(game.getState().build).toEqual({ specialization: null, switched: false, options: [], leadership: null, leadershipOptions: [] })
   for (let id = 1; id <= 6; id++) expect(game.buyJob(id)).toBe(true)
   expect(game.pickSpecialization("frontend")).toBe(false)
   expect(game.buyJob(7)).toBe(true)
   for (const id of [8, 14, 16, 108]) expect(game.buyJob(id), `job ${id} before the pick`).toBe(false)
   expect(game.getState().unlocks.capital).toBe(false)
-  // Mid-level SWE is held, but the pick also waits on 10,000 users; the Jobs panel says so.
-  expect(game.getState().build.options).toEqual([])
-  expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "spec:users", tab: "C" })
-  game.setUsers("americas-east", 10_000)
+  // Mid-level SWE is held, so the pick is open.
   // The Jobs panel names the pick (the whole-game answer is still a skill while skills are unbought).
   expect(nextUnlock(useGame.getState(), "C")).toMatchObject({ key: "spec:pick", name: "Pick a specialization", tab: "C" })
   expect(game.getState().build.options).toHaveLength(6)
@@ -229,8 +222,7 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "spec:backend")).toBe(true)
   for (const id of [108, 208, 308, 408, 508]) expect(game.buyJob(id), `job ${id} on another track`).toBe(false)
 
-  // Past Senior: capital is open, and the one switch keeps it open. Senior waits on 1,000,000 users.
-  game.setUsers("americas-east", 1_000_000)
+  // Past Senior: capital is open, and the one switch keeps it open.
   for (let id = 8; id <= 14; id++) expect(game.buyJob(id), `job ${id}`).toBe(true)
   expect(game.getState().unlocks.capital).toBe(true)
   game.setMoney(5_000)
@@ -257,31 +249,6 @@ test("specializations: the pick opens at Mid-level, locks the rows above it, swi
   expect(manual).toBeGreaterThan(auto)
   expect(game.getState().clickShare).toBeCloseTo(2.5, 6)
   expect(manual - auto).toBeCloseTo((2.5 - 0.68) * idle, 3)
-})
-
-test("origins: picked a minute in until the first gig, kept for the career, each one prices the early game its own way", () => {
-  game.reset()
-  expect(game.getState().build.origin).toBeNull()
-  expect(game.pickOrigin("wizard")).toBe(false)
-  expect(game.pickOrigin("college")).toBe(true)
-  expect(game.pickOrigin("bootcamp")).toBe(true)
-  expect(game.getState().build.origin).toBe("bootcamp")
-  expect(game.careerLog().some((line) => line.type === "pick" && line.ref === "origin:bootcamp")).toBe(true)
-
-  // The pick is locked once the career has cleared a gig.
-  game.keepProfile()
-  game.setXp(10)
-  game.forceGig(1)
-  expect(game.pickOrigin("dropout")).toBe(false)
-  expect(game.getState().build.origin).toBe("bootcamp")
-
-  // A career with no origin plays the plain ladder: nothing is priced or opened differently.
-  game.reset()
-  game.keepProfile()
-  expect(game.getState().build.origin).toBeNull()
-  game.setXp(1e9)
-  expect(game.buySkill(1)).toBe(true)
-  game.reset()
 })
 
 test("launches and GPUs: Frontend's clicks ship launches the gear can take, and an AI build's growth follows its GPUs", () => {

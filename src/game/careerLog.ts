@@ -1,5 +1,4 @@
 import { GOLD_SKILLS } from "../data/gold.ts"
-import { isOriginId, originById } from "../data/origins.ts"
 import { LEGACY_PERKS } from "../data/legacy.ts"
 import { comboById, effectLabel } from "./combos.ts"
 import { BALANCE_MILESTONES } from "./milestones.ts"
@@ -174,10 +173,6 @@ function idOf(ref: string): number {
 }
 
 function specName(ref: string): string {
-  if (ref.startsWith("origin:")) {
-    const origin = ref.slice("origin:".length)
-    return isOriginId(origin) ? originById(origin).name : ref
-  }
   if (ref.startsWith("lead:")) {
     const lead = ref.slice("lead:".length)
     return isLeadId(lead) ? leadById(lead).name : ref
@@ -328,11 +323,9 @@ export function describeEntry(entry: CareerEntry): CareerRow {
       return { title: `Legacy: ${name}`, detail: perk ? `${perk.cost} Prestige` : "perk", tone: "buy" }
     }
     case "pick":
-      return entry.ref.startsWith("origin:")
-        ? { title: `Started as: ${name}`, detail: "origin", tone: "career" }
-        : entry.ref.startsWith("lead:")
-          ? { title: `Leading as: ${name}`, detail: "leadership", tone: "career" }
-          : { title: `Specialized: ${name}`, detail: "specialization", tone: "career" }
+      return entry.ref.startsWith("lead:")
+        ? { title: `Leading as: ${name}`, detail: "leadership", tone: "career" }
+        : { title: `Specialized: ${name}`, detail: "specialization", tone: "career" }
     case "switch": {
       const from = typeof data.from === "string" && isSpecId(data.from) ? specById(data.from).name : ""
       return { title: `Switched to ${name}`, detail: from ? `left ${from}` : "specialization", tone: "career" }

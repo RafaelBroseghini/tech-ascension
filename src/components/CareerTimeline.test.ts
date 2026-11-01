@@ -220,7 +220,6 @@ describe("the start card", () => {
     expect($("[data-testid='identity-keep']")?.textContent).toBe(`Start as @${third.handle}`)
     click($("[data-testid='identity-keep']"))
     expect(useGame.getState().profile).toEqual({ ...third, chosen: true })
-    expect(useGame.getState().build.origin).toBeUndefined()
     expect($("[data-testid='identity-picker']")).toBeNull()
   })
 

@@ -193,7 +193,7 @@ export type GameSnapshot = {
    * The specialization: the one picked (null before), whether the one switch is spent, and the ids that could be picked or switched to now.
    * Then the leadership line (`ic` or `manager`, null before the pick) and, while the pick is open, both ids (else empty).
    */
-  build: { origin: string | null; specialization: string | null; switched: boolean; options: string[]; leadership: string | null; leadershipOptions: string[] }
+  build: { specialization: string | null; switched: boolean; options: string[]; leadership: string | null; leadershipOptions: string[] }
   /** The kitchen: combos found this career, in the order they turned up, and how many the table holds. */
   /** Frontend's launches: whether the build ships them, the manual clicks banked, the clicks one launch takes and the share of the crowd it adds. */
   launch: { ships: boolean; charge: number; every: number; share: number }
@@ -252,10 +252,9 @@ export type GameHarness = {
    * Pick the career's specialization (`frontend`, `backend`, `infra`, `ai`, `fde`, `security`). It opens once a job of rank 7
    * (Mid-level SWE) is held and is made once. False before that, once picked, or for an unknown id. Every job above rank 7 needs it.
    */
-  pickOrigin: (id: string) => boolean
+  pickSpecialization: (id: string) => boolean
   /** Why a row is open or shut: its gate in words, what is missing for this career, what sits under it and what it opens (docs/TREE.md). Null for an unknown row. */
   explain: (ref: string) => ExplainRow | null
-  pickSpecialization: (id: string) => boolean
   /**
    * Pick the career's leadership line (`ic` or `manager`). It opens once a Senior job (rank 14) is held and is made once. False
    * before that, once picked, or for an unknown id. Every job above rank 15 needs it (and only its own line's rows open),
@@ -541,7 +540,6 @@ export function installGameHarness(): GameHarness {
           endings: [...state.legacy.endings],
         },
         build: {
-          origin: state.build.origin ?? null,
           specialization: state.build.spec,
           switched: state.build.switched,
           options: specOptions(state),
@@ -575,7 +573,6 @@ export function installGameHarness(): GameHarness {
 
     buyJob: (jobId) => useGame.getState().buyJob(jobId),
 
-    pickOrigin: (id) => useGame.getState().pickOrigin(id),
     explain: (ref) => {
       const node = nodeOf(ref as Ref)
       if (!node) return null

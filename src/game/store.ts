@@ -31,10 +31,8 @@ import { PREVIEW_HOLD_MS } from "./ide.ts"
 import { newCombos } from "./combos.ts"
 import { shipLaunches, shipsLaunches } from "./launch.ts"
 import { servableUsers } from "./globe/load.ts"
-import { gigLump, skillPriceMult } from "./origin.ts"
-import type { OriginId } from "../data/origins.ts"
 import { markYear, reachedMarks } from "./careerYear.ts"
-import { canPickOrigin, originOf, leadOf, omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
+import { leadOf, omitCharge, buildFactsOf, canPick, canPickLead, canSwitch, FRESH_BUILD, isFreshBuild, jobsAfterSwitch, leadPickedBuild, pickedBuild, specOf, switchedBuild } from "./build.ts"
 import type { BuildState, ClickSource } from "./build.ts"
 import type { LeadId } from "../data/leadership.ts"
 import type { SpecId } from "../data/specializations.ts"
@@ -205,8 +203,6 @@ type GameState = {
   buyEquipment: (equipId: number) => void
   buyJob: (jobId: number) => boolean
   /** Pick the career's specialization. Opens at Mid-level SWE and is made once. False before that, once picked, or for an unknown id. */
-  /** Pick the career's origin (College, Bootcamp or Dropout). Open until the career has earned anything, made once. False after that, once picked, or for an unknown id. */
-  pickOrigin: (id: string) => boolean
   pickSpecialization: (id: string) => boolean
   /** Pick the career's leadership line (IC or Manager). Opens once a Senior job is held and is made once. False before that, once picked, or for an unknown id. */
   pickLeadership: (id: string) => boolean
@@ -549,7 +545,7 @@ export const useGame = create<GameState>((set, get) => ({
     const state = get()
     const have = ownedCount(state.skills, skill.id)
     if (have === 0 && state.xpTotal < skill.unlockAtXp) return
-    const quote = quotePurchase(state.xp, skill.baseXpCost * skillPriceMult(originOf(state), skill), have, skill.firstXpCost)
+    const quote = quotePurchase(state.xp, skill.baseXpCost, have, skill.firstXpCost)
     if (quote.count <= 0) return
 
     const prevBest = highestOwnedSkill(state.skills)
@@ -741,18 +737,6 @@ export const useGame = create<GameState>((set, get) => ({
     return true
   },
 
-  pickOrigin: (id) => {
-    const state = get()
-    if (!canPickOrigin(state, id)) return false
-    set({
-      build: { ...state.build, origin: id as OriginId },
-      now: Date.now(),
-      journal: noted(state.journal, [{ type: "pick", ref: `origin:${id}` }], state),
-    })
-    persistNow()
-    return true
-  },
-
   pickSpecialization: (id) => {
     const state = get()
     if (!canPick(state, id)) return false
@@ -806,13 +790,13 @@ export const useGame = create<GameState>((set, get) => ({
     if (!gig || state.gigs.includes(gig.id)) return false
     if (!force && gigState(state, gig) !== "ready") return false
     set({
-      money: state.money + gigLump(originOf(state), gig),
+      money: state.money + gig.lump,
       gigs: [...state.gigs, gig.id].sort((a, b) => a - b),
-      stats: creditMoney(state.stats, gigLump(originOf(state), gig), "other"),
+      stats: creditMoney(state.stats, gig.lump, "other"),
       now: Date.now(),
       buyStamp: state.buyStamp + 1,
       celebrationNonce: state.celebrationNonce + 1,
-      ...makePop(state, "gigClear", gigLump(originOf(state), gig), gig.name),
+      ...makePop(state, "gigClear", gig.lump, gig.name),
     })
     persistNow()
     return true
@@ -1195,11 +1179,11 @@ useGame.subscribe((state, prev) => {
 })
 
 // The career's calendar: a mark lands in the log, with a toast, the moment the career's year reaches it. The journal says
-// which marks are already down, so a reload or a pick of origin catches up on what was passed and never repeats a line.
+// which marks are already down, so a reload catches up on what was passed and never repeats a line.
 let marksLogged = 0
 useGame.subscribe((state, prev) => {
-  if (state.xpTotal === prev.xpTotal && state.build.origin === prev.build.origin && state.build.leadership === prev.build.leadership) return
-  const reached = reachedMarks(state.xpTotal, state.build.origin, state.build.leadership)
+  if (state.xpTotal === prev.xpTotal && state.build.leadership === prev.build.leadership) return
+  const reached = reachedMarks(state.xpTotal, state.build.leadership)
   if (reached.length <= marksLogged) {
     marksLogged = reached.length
     return

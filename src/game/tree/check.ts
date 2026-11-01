@@ -2,14 +2,15 @@
  * Evaluates the tree against a career: does a node's gate hold, which leaf is the first that does not, and what does
  * each missing leaf say in words. Pure and allocation-light (`holds` and `firstFail` allocate nothing), because the shop
  * asks about every row on every render and the pace model about every row at every visit. Mirrors the rules the old
- * per-kind functions had, including the latches, the rank a switch kept, the origin's scaling and an untracked company
- * leaving the user gates open (docs/TREE.md).
+ * per-kind functions had, including the latches, the rank a switch kept and the specialization's lower ask on a gig's
+ * own tag (docs/TREE.md).
  */
 import { SKILL_TIERS, firstJobAtRank, highestJobRank } from "../../data/phases.ts"
 import { formatNumber } from "../format.ts"
-import { heldRank, leadOf, originOf, rowVisible, specOf, usersOf } from "../build.ts"
-import { gigBoardXp, gigTagMin, gigXpReq, jobBoardGigs, jobXpReq } from "../origin.ts"
+import { heldRank, leadOf, rowVisible, specOf } from "../build.ts"
 import { tagLabel } from "../../data/tags.ts"
+import { specById } from "../../data/specializations.ts"
+import type { SpecId } from "../../data/specializations.ts"
 import { NODE_MAP } from "./graph.ts"
 import type { Tag } from "../../data/tags.ts"
 import type { Check, Missing, Node, Ref, Req, TreeView } from "./types.ts"
@@ -32,15 +33,6 @@ const anyOwned = (map: Readonly<Record<string, number>> | undefined): boolean =>
 
 const SKILL_TAGS = new Map(SKILL_TIERS.map((row) => [row.id, row.tags]))
 
-/** The XP a leaf asks for under the career's origin. */
-export function xpNeeded(req: Extract<Req, { t: "xp" }>, p: Pick<TreeView, "build">): number {
-  const origin = originOf(p)
-  if (req.mod === "gig") return gigXpReq(origin, { xpReq: req.min })
-  if (req.mod === "job") return jobXpReq(origin, { xpReq: req.min, rank: req.rank ?? 0 })
-  if (req.mod === "gigBoard") return gigBoardXp(origin)
-  return req.min
-}
-
 /** Owned skills that carry a tag. */
 export function tagCount(skills: Readonly<Record<string, number>> | undefined, tag: Tag): number {
   let have = 0
@@ -48,31 +40,33 @@ export function tagCount(skills: Readonly<Record<string, number>> | undefined, t
   return have
 }
 
-/** The owned skills a tag leaf asks for under the career's specialization and origin. */
-export const tagNeeded = (req: Extract<Req, { t: "tag" }>, p: Pick<TreeView, "build">): number => (req.mod === "gig" ? gigTagMin(originOf(p), specOf(p), req.tag, req.min) : req.min)
+/**
+ * The owned skills a gig asks of one tag. The specialization halves the count on its own tag (rounded up); the ask
+ * never goes below one.
+ */
+export function gigTagMin(spec: SpecId | null | undefined, tag: Tag, min: number): number {
+  const halved = spec && specById(spec).tag === tag ? Math.ceil(min / 2) : min
+  return Math.max(1, halved)
+}
 
-/** Gigs or jobs a count leaf asks for under the career's origin. */
-export const countNeeded = (req: Extract<Req, { t: "count" }>, p: Pick<TreeView, "build">): number => (req.mod === "jobBoard" ? jobBoardGigs(originOf(p)) : req.min)
+/** The owned skills a tag leaf asks for under the career's specialization. */
+export const tagNeeded = (req: Extract<Req, { t: "tag" }>, p: Pick<TreeView, "build">): number => (req.mod === "gig" ? gigTagMin(specOf(p), req.tag, req.min) : req.min)
 
 /** Whether a requirement holds. */
 export function holds(req: Req, p: TreeView): boolean {
   switch (req.t) {
     case "xp":
-      return p.xpTotal >= xpNeeded(req, p)
+      return p.xpTotal >= req.min
     case "owns":
       return req.kind === "skill" ? req.ids.every((id) => owned(p.skills, id) > 0) : req.ids.every((id) => p.gold?.includes(id) === true)
     case "has":
       return req.kind === "gig" ? p.gigs.length > 0 : req.kind === "job" ? p.jobs.length > 0 : req.kind === "capital" ? anyOwned(p.owned) : anyOwned(p.equipment)
     case "count":
-      return (req.of === "gigs" ? p.gigs.length : p.jobs.length) >= countNeeded(req, p)
+      return (req.of === "gigs" ? p.gigs.length : p.jobs.length) >= req.min
     case "tag":
       return tagCount(p.skills, req.tag) >= tagNeeded(req, p)
     case "rank":
       return heldRank(p) >= req.min
-    case "users": {
-      const users = usersOf(p)
-      return users === null || users >= req.min
-    }
     case "money":
       return reached(p.peakMoney, req.peak)
     case "track":
@@ -125,16 +119,14 @@ export function describe(req: Req, p?: TreeView): string {
   if (req.label) return req.label
   switch (req.t) {
     case "xp": {
-      const need = p ? xpNeeded(req, p) : req.min
-      return `${formatNumber(need)} lifetime XP${p ? ` (${formatNumber(Math.floor(p.xpTotal))})` : ""}`
+      return `${formatNumber(req.min)} lifetime XP${p ? ` (${formatNumber(Math.floor(p.xpTotal))})` : ""}`
     }
     case "owns":
       return req.kind === "skill" ? `Own ${req.ids.length === 1 ? (SKILL_NAMES.get(req.ids[0]!) ?? `skill ${req.ids[0]}`) : `${req.ids.length} skills`}` : `Own ${req.ids.length} earlier perk${req.ids.length === 1 ? "" : "s"}`
     case "has":
       return `Own a ${req.kind} row`
     case "count": {
-      const need = p ? countNeeded(req, p) : req.min
-      return `${need} ${req.of === "gigs" ? "gigs cleared" : "jobs held"}${p ? ` (${req.of === "gigs" ? p.gigs.length : p.jobs.length})` : ""}`
+      return `${req.min} ${req.of === "gigs" ? "gigs cleared" : "jobs held"}${p ? ` (${req.of === "gigs" ? p.gigs.length : p.jobs.length})` : ""}`
     }
     case "tag": {
       const need = p ? tagNeeded(req, p) : req.min
@@ -142,8 +134,6 @@ export function describe(req: Req, p?: TreeView): string {
     }
     case "rank":
       return `A job of rank ${req.min}`
-    case "users":
-      return `${formatNumber(req.min)} users`
     case "money":
       return `Hold $${formatNumber(req.peak)} at once`
     case "track":
@@ -178,8 +168,6 @@ export function short(req: Req, p: TreeView): string {
       return "a bigger balance"
     case "rank":
       return jobNameAtRank(req.min)
-    case "users":
-      return `${formatNumber(req.min)} users`
     default:
       return describe(req, p)
   }
