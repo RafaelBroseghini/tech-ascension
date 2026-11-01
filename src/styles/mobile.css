@@ -24,8 +24,7 @@
     grid-template-rows: minmax(0, 1fr) auto;
   }
   /* A shop tab shows three whole rows and scrolls for the rest, so the stage gets the room. `--rows-h` is the three rows at the top, measured in
-     `useShopRows` (rows wrap to different heights); scrolling snaps to a row so none is cut in half.
-     The Company tab is not a list of rows and keeps the shop's share of the screen. */
+     `useShopRows` (rows wrap to different heights); scrolling snaps to a row so none is cut in half. */
   .shop { max-height: calc(56dvh + var(--shop-cap-extra, 0px)); }
   .shop-list-wrap.is-capped .shop-list { scroll-snap-type: y mandatory; }
   .shop-list-wrap.is-capped .offer { scroll-snap-align: start; }

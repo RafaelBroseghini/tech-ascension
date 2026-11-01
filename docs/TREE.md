@@ -9,7 +9,7 @@ the model.
 npm run tree                       the tracks, in order
 npm run tree -- track gigs         one track, each row's gate in words
 npm run tree -- job:14             one row: its gate, what it sits under, what it opens, everything it needs
-npm run tree -- job:14 --xp 200000 --gigs 6 --jobs 1,2,3,4,5,6,7 --spec backend --users 5000
+npm run tree -- job:14 --xp 200000 --gigs 6 --jobs 1,2,3,4,5,6,7 --spec backend
                                    the same row against a career: ✓ holds, ✗ does not
 __GAME__.explain("job:14")         the same, for the career under way (agents)
 ```
@@ -28,7 +28,7 @@ the same game as before.
   job's `xpReq`, the boards' constants (`GIG_BOARD_UNLOCK` and friends). These are per-row numbers, not structure.
 - `gigState`, `jobState` and the three board gates in `src/game/phase.ts` read the tree. The pre-tree rules are kept
   word for word as `oracle.ts`, and `treeEquivalence.test.ts` runs both at every round of the shop, over every
-  specialization, both leadership lines and all three origins, for two player profiles, and fails on the first row that
+  specialization and both leadership lines, for two player profiles, and fails on the first row that
   differs. `tree.test.ts` checks the hand-written structure against the rows (every gig and job listed once, ranks
   rising along a track, a track's `spec` and `lead` matching its jobs'). Nothing about play changed.
 
@@ -37,13 +37,11 @@ the same game as before.
   latch left out and the capital's two ways in returned as alternatives. The "Next" banner (`nextUnlock.ts`) says the
   same leaves in its few words (`short`, `neededPhrases`, `entryPhrases`): "more XP", "more gigs", "a bigger balance",
   the skills still missing, the job needed. A leaf can carry its own `label` where the default does not read right.
-  One fix came with it: the Gig Board's banner used the plain XP number, ignoring the career's origin; it now reads the
-  origin-scaled one like the gate does.
 
 **Not built yet:** the career timeline's progress bars (`features.ts`) weigh their own fills and still have their own
 code. The tagged gig board, the first gameplay change on this tree, is made: gigs are loose and ask for skills by tag.
 
-**Left out on purpose:** the career timeline's features (`src/data/features.ts`, its own trigger system), hire kinds,
+**Left out on purpose:** the career timeline's features (`src/data/features.ts`, its own trigger system),
 and what things cost (affordability is not a gate: a row can be open and too dear).
 
 ## The shape
@@ -74,28 +72,25 @@ Making a loose track strict is one flag plus an `owns` leaf per row. It would ch
 
 | Leaf | Holds when |
 | --- | --- |
-| `xp` | lifetime XP ≥ `min`, scaled by the career's origin where `mod` says so (`gig`, `job`, `gigBoard`) |
+| `xp` | lifetime XP ≥ `min` |
 | `owns` | every listed skill (or 10x dev perk) is owned |
 | `has` | the career owns at least one row of a kind. **This is the latch**: holding what a gate leads to keeps it open |
-| `count` | gigs cleared or jobs held ≥ `min` (the Job Board's gig count is scaled by origin) |
-| `tag` | at least `min` owned skills carry a tag; a gig's leaf has `mod: "gig"`, which lowers `min` for the career's specialization and origin (`gigTagMin`) |
+| `count` | gigs cleared or jobs held ≥ `min` |
+| `tag` | at least `min` owned skills carry a tag; a gig's leaf has `mod: "gig"`, which lowers `min` on the career's own specialization tag (`gigTagMin`) |
 | `rank` | the job rank held now **or before a switch** is ≥ `min` |
-| `users` | the product has ≥ `min` users; a caller that carries no company leaves it open |
 | `money` | the balance has reached `peak` at some point |
 | `track` | the row is on the career's own specialization and line (others are hidden) |
 | `picked` | the specialization or the leadership line is picked |
 | `met` | another node's own `requires` holds (a board is open) |
 
-Values with modifiers (the origin's XP and gig counts) are stored as their plain numbers with a `mod`, and computed
-through the same helpers the game uses (`gigXpReq`, `jobXpReq`, `gigBoardXp`, `jobBoardGigs` in `src/game/origin.ts`),
+A gig's `tag` leaf stores the plain count with `mod: "gig"` and is computed through `gigTagMin` (`src/game/tree/check.ts`),
 so the tree and the rest of the game cannot disagree.
 
 ### Reading a gate
 
 `check(ref, career)` returns `{ met, missing }`: every unmet leaf, in the order the gate lists them, each with words and
 what the career has. `firstFail` returns just the first, and is how the old states are read: a job's state is the kind
-of its first unmet leaf (`met` → board-locked, `track` → hidden, `picked` → pick or lead, `xp` → locked, the users
-`any` → users). The order a gate lists its leaves in is therefore part of the rules. `prereqs`, `dependents` and
+of its first unmet leaf (`met` → board-locked, `track` → hidden, `picked` → pick or lead, `xp` → locked). The order a gate lists its leaves in is therefore part of the rules. `prereqs`, `dependents` and
 `closure` walk the edges (a row's `after` plus every row its gate names).
 
 ## What each kind needs today
@@ -103,12 +98,12 @@ of its first unmet leaf (`met` → board-locked, `track` → hidden, `picked` �
 | Kind | Gate |
 | --- | --- |
 | `skill` | lifetime XP at the row's `unlockAtXp` (the chain's computed value, not the raw table) |
-| `gig` | its board; the XP (origin-scaled); owned skills of each of its tags |
-| `job` | the Job Board; the career's track and line; a picked specialization above rank 7; a picked line above rank 15; the XP (origin-scaled); for rank 14, a job of rank 14 already held or 1,000,000 users |
+| `gig` | its board; the XP; owned skills of each of its tags |
+| `job` | the Job Board; the career's track and line; a picked specialization above rank 7; a picked line above rank 15; the XP |
 | `gear` | the Gear tab; the money held once; a job rank when the row has one |
 | `capital` | Capital (rank 14, $500,000 held, or any capital row owned); the row's price held once to show it |
-| `board:*` | gear: 10,000 XP or any gear owned. gigs: any gig cleared, or the XP and skills 15 and 16. jobs: any job held, or 40,000 XP and the gigs (origin-scaled). capital: as above |
-| `pick:spec` | a Mid-level job and, until a job above it is held, 10,000 users |
+| `board:*` | gear: 10,000 XP or any gear owned. gigs: any gig cleared, or the XP and skills 15 and 16. jobs: any job held, or 40,000 XP and the gigs. capital: as above |
+| `pick:spec` | a Mid-level job |
 | `pick:lead` | a Senior job |
 | `gold` | the earlier perks of its family, its XP, and for Hover Tap a Senior job |
 
@@ -132,12 +127,11 @@ path:
 { id: "quant", under: "trunk", spec: "quant", jobs: [608, 609, 610, 611, 612, 613, 614, 615] },
 ```
 
-The track hangs off the trunk's last row, and its rows get the board, the track check, the pick, the XP and (at rank
-14) the users gate from `jobGate` in `graph.ts`. `tree.test.ts` fails if a job is missing from every path, listed
+The track hangs off the trunk's last row, and its rows get the board, the track check, the pick and the XP from `jobGate` in `graph.ts`. `tree.test.ts` fails if a job is missing from every path, listed
 twice, out of rank order, or on a path whose `spec` is not its own.
 
 **A tagged gig** is how every gig reads. Its step in `GIG_PATH` carries tag counts, and `graph.ts` writes `{ t: "tag", tag, min, mod: "gig" }`
-leaves for them. The evaluator counts owned skills per tag and lowers `min` for the career's specialization and origin, so
+leaves for them. The evaluator counts owned skills per tag and lowers `min` for the career's specialization, so
 the shop, the state labels, `npm run tree` and `explain` read the same node.
 
 **A new gate on an existing row** is one leaf in its `all` in `graph.ts`, for example a row that waits on a pick:
@@ -145,6 +139,6 @@ the shop, the state labels, `npm run tree` and `explain` read the same node.
 
 ## One decision this leaves open
 
-**Should the job ladder be strict?** Today a Senior SWE needs XP, the board, the pick and the users, not the job
+**Should the job ladder be strict?** Today a Senior SWE needs XP, the board and the pick, not the job
 before it. Making each rank need the one before it makes the ladder a path in the literal sense and gives the
 shop an unambiguous "next", at the cost of the forced-XP shortcuts in tests and agent recipes.

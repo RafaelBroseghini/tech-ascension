@@ -1,6 +1,6 @@
 # Tech Ascension
 
-An incremental game: React 19, TypeScript, Vite, Zustand, three.js (globe), Tone (audio), Dexie (ledger). Game rules and tables live in code (`src/data`, `src/game`); read them there, not from memory or docs.
+An incremental game: React 19, TypeScript, Vite, Zustand, Tone (audio), Dexie (ledger). Game rules and tables live in code (`src/data`, `src/game`); read them there, not from memory or docs.
 
 ## Commands
 
@@ -33,15 +33,14 @@ CI (`.github/workflows/ci.yml`) runs lint, test, smoke and build on every PR and
 
 Drive state and mechanics through `window.__GAME__`. Never scrape buttons or guess DOM selectors for game logic. It is installed in dev and in `vite preview`, and `smoke:play` loads the same harness. Source of truth: `src/game/harness.ts`; full reference: `docs/HARNESS.md`.
 
-- Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, world, founder, legacy, features, ...).
+- Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, legacy, features, ...).
 - Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`, `pickSpecialization`, `switchSpecialization`, `pickLeadership`.
 - To see why a row is open or shut, ask `explain("job:14")` (or `npm run tree -- job:14`): every row's gate is a node in the progression tree (`docs/TREE.md`), and the answer lists each leaf with what the career has.
-- A career can pick an origin first (`pickOrigin("college" | "bootcamp" | "dropout")`, open until the career has earned anything; `keepProfile()` alone plays with none).
-- Every job above rank 7 (Mid-level SWE, id 7) needs a picked specialization, and the pick opens at 10,000 users: buy job 7, `setUsers("americas-east", 10_000)`, `pickSpecialization("backend")`, then jobs 8 and up. Senior SWE (rank 14) also needs 1,000,000 users. Backend keeps ids 8-15 (`buyJob(14)` is Senior SWE); the other tracks are 108-115, 208-215, 308-315, 408-415, 508-515 (`docs/HARNESS.md`).
-- Every job above rank 15 needs a picked leadership line: hold Senior SWE (rank 14), `pickLeadership("ic" | "manager")` once, then rows 16 and up of that line (IC 16, 17, 19, 23, 24; Manager 18, 20, 21, 22; 25-31 shared). Hiring is the Manager's, each kind from rank 18, 20, 21 or 22.
-- Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `forceIncident`, `setUsers`, `setPrestige`, `previewEra`.
+- Every job above rank 7 (Mid-level SWE, id 7) needs a picked specialization: buy job 7, `pickSpecialization("backend")`, then jobs 8 and up. Backend keeps ids 8-15 (`buyJob(14)` is Senior SWE); the other tracks are 108-115, 208-215, 308-315, 408-415, 508-515 (`docs/HARNESS.md`).
+- Every job above rank 15 needs a picked leadership line: hold Senior SWE (rank 14), `pickLeadership("ic" | "manager")` once, then rows 16 and up of that line (IC 16, 17, 19, 23, 24; Manager 18, 20, 21, 22; 25-31 shared).
+- Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `setPrestige`, `previewEra`.
 - Answer prompts: `acceptEvent`, `dismissEvent`, `answerReview`, `dismissReview`, `keepProfile`.
-- Company and prestige: `respondIncident`, `hire`, `fire`, `setPopActive`, `setRegionActive`, `exit`, `buyLegacy`.
+- Prestige: `exit`, `buyLegacy`.
 - `reset()` wipes the save back to high school. `careerLog()` returns the journal.
 - Purchase prices are scaled by `PURCHASE_COST_SCALE` in `src/data/costs.ts`; exported rows are already scaled. Never copy a price into a test or a doc; import it from the data module.
 - `forceX` helpers bypass gates; the plain version enforces them. Test gates with the plain version.
@@ -65,7 +64,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 
 - ESM TypeScript with explicit `.ts` / `.tsx` extensions in relative imports (`import { x } from "./economy.ts"`). Use `import type` for types.
 - Game data is plain typed arrays with unique ids in `src/data`. Nothing assumes a row count; a table change is a data edit, not a code change. Rules and pure logic are in `src/game`; keep them free of React so they run under the node tests.
-- Rules go in pure functions and the store commits their patches (see `src/game/globe/actions.ts`). Add the harness method when a new action needs driving from tests.
+- Rules go in pure functions and the store commits their patches (see `pickedBuild` and `switchedBuild` in `src/game/build.ts`). Add the harness method when a new action needs driving from tests.
 - Money is a JS double. Do not add exact-integer logic past 1e15 without switching `economy.ts` to a big-number library.
 - Asset URLs go through `import.meta.env.BASE_URL` or Vite-processed HTML so they work under the GitHub Pages sub-path. Check with `npm run preview:pages`.
 - Styles: tokens in `src/styles/tokens.css`; honor `prefers-reduced-motion` (`src/styles/motion.css`). Small screens are 860 px and below (`src/styles/mobile.css`).
@@ -78,9 +77,9 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 ## Where things are
 
 - `docs/CODEMAP.md`: what to edit for a given change. Start here when you do not know where code lives.
-- `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, the company and world, prestige, events and 1:1s, offline credit, the career timeline, identity).
+- `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, prestige, events and 1:1s, offline credit, the career timeline, identity).
 - `docs/AGENT_PLAY.md`: smoke scenarios, free play, browser checks, example sequences.
-- `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/COMPANY_ARC.md`: the company and world design. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art and desk chrome.
+- `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art and desk chrome.
 - Skills: `.agents/skills/mobile-check` (layout), `.agents/skills/emoji-gg` (emoji manifest).
 
 ## Keep this file small

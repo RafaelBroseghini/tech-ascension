@@ -5,7 +5,7 @@ import type { Tag } from "./tags.ts"
  * jokes, one per combo; nothing generates them. The rules are in src/game/combos.ts.
  *
  * An ingredient is a catalog row you hold, a job of a given rank (whichever specialization's row it is), or a tag you
- * hold enough rows of. Origins will join this union when they exist; nothing else here needs to change for them.
+ * hold enough rows of.
  *
  * Effects are small on purpose. `idle` is $/s, `click` is $ and XP per click, `xp` is idle XP/s. A combo is 1 to 5
  * percent and the sum of each kind is capped at COMBO_CAP_PCT (a test pins both), added together, not compounded.
