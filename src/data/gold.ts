@@ -34,13 +34,13 @@ export type GoldSkill = {
 type GoldRow = Omit<GoldSkill, "cost">
 
 const GOLD_ROWS: readonly GoldRow[] = [
-  { id: 2, name: "Hover Tap", blurb: "Rest the pointer on the emoji, or hold it on touch, to click 2 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 2 }, unlockXp: 20_000, unlockJobRank: 14 },
-  { id: 4, name: "Overnight Cron", blurb: "Time away pays for up to 12 hours.", family: "away", effect: { kind: "offlineCap", hours: 12 }, unlockXp: 100_000 },
-  { id: 5, name: "Hover Rhythm", blurb: "Hover clicking speeds up to 5 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 5 }, unlockXp: 250_000 },
-  { id: 7, name: "Hover Flow", blurb: "Hover clicking speeds up to 10 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 10 }, unlockXp: 1_500_000 },
-  { id: 8, name: "Weekend Cron", blurb: "Time away pays for up to 16 hours.", family: "away", effect: { kind: "offlineCap", hours: 16 }, unlockXp: 3_000_000 },
-  { id: 9, name: "Hover Overdrive", blurb: "Hover clicking speeds up to 15 times a second.", family: "hover", effect: { kind: "hoverRate", perSec: 15 }, unlockXp: 8_000_000 },
-  { id: 10, name: "Sabbatical", blurb: "Time away pays for up to 24 hours.", family: "away", effect: { kind: "offlineCap", hours: 24 }, unlockXp: 20_000_000 },
+  { id: 2, name: "Hover Tap", blurb: "Hover or hold the emoji: 2 clicks a second.", family: "hover", effect: { kind: "hoverRate", perSec: 2 }, unlockXp: 20_000, unlockJobRank: 14 },
+  { id: 4, name: "Overnight Cron", blurb: "Pays up to 12 hours.", family: "away", effect: { kind: "offlineCap", hours: 12 }, unlockXp: 100_000 },
+  { id: 5, name: "Hover Rhythm", blurb: "5 clicks a second.", family: "hover", effect: { kind: "hoverRate", perSec: 5 }, unlockXp: 250_000 },
+  { id: 7, name: "Hover Flow", blurb: "10 clicks a second.", family: "hover", effect: { kind: "hoverRate", perSec: 10 }, unlockXp: 1_500_000 },
+  { id: 8, name: "Weekend Cron", blurb: "Pays up to 16 hours.", family: "away", effect: { kind: "offlineCap", hours: 16 }, unlockXp: 3_000_000 },
+  { id: 9, name: "Hover Overdrive", blurb: "15 clicks a second.", family: "hover", effect: { kind: "hoverRate", perSec: 15 }, unlockXp: 8_000_000 },
+  { id: 10, name: "Sabbatical", blurb: "Pays up to 24 hours.", family: "away", effect: { kind: "offlineCap", hours: 24 }, unlockXp: 20_000_000 },
 ]
 
 export const GOLD_COST_SHARE = 0.25

@@ -94,25 +94,15 @@ export function gigState(p: Gates, gig: Gig): GigState {
   return fail === null ? "ready" : fail.t === "met" ? "board-locked" : "locked"
 }
 
-/** How many locked gigs the board shows after the ones the career can act on. */
-export const LOCKED_GIGS_SHOWN = 2
-
 /**
- * The gig rows in the order the board lists them: cleared, then open, then the next locked gigs. Locked gigs rank by
- * how few skills the career is short of, then by the lower XP requirement, then by id, so the list never flickers.
+ * The gig rows the board lists: every cleared gig, then only the next one in catalog order. A gig shows once the one
+ * before it is cleared, so `open` (when the career can clear it) or `locked` (when it cannot yet) holds that single row.
  */
 export function gigBoard(p: Gates): { cleared: Gig[]; open: Gig[]; locked: Gig[] } {
-  const cleared: Gig[] = []
-  const open: Gig[] = []
-  const waiting: { gig: Gig; short: number }[] = []
-  for (const gig of GIGS) {
-    const state = gigState(p, gig)
-    if (state === "done") cleared.push(gig)
-    else if (state === "ready") open.push(gig)
-    else waiting.push({ gig, short: gigShortfall(p, gig) })
-  }
-  waiting.sort((a, b) => a.short - b.short || a.gig.xpReq - b.gig.xpReq || a.gig.id - b.gig.id)
-  return { cleared, open, locked: waiting.slice(0, LOCKED_GIGS_SHOWN).map((row) => row.gig) }
+  const cleared = GIGS.filter((gig) => gigState(p, gig) === "done")
+  const next = GIGS.find((gig) => gigState(p, gig) !== "done")
+  if (!next) return { cleared, open: [], locked: [] }
+  return gigState(p, next) === "ready" ? { cleared, open: [next], locked: [] } : { cleared, open: [], locked: [next] }
 }
 
 /**

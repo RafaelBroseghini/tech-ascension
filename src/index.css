@@ -3640,8 +3640,9 @@ img { -webkit-user-drag: none; user-select: none; }
 .gold-art {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  box-sizing: border-box;
+  width: var(--art, 64px);
+  height: var(--art, 64px);
   border: var(--stroke) solid var(--ink);
   border-radius: var(--radius);
   background: linear-gradient(160deg, var(--boost-gold-hi), var(--boost-gold) 55%, var(--boost-gold-lo));

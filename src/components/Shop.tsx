@@ -7,7 +7,7 @@ import { ERA_ACCENT } from "../data/eraAccent.ts"
 import type { EmojiKind } from "../data/emojiAssets.ts"
 import { SpriteTap } from "./SpriteView.tsx"
 import { eraSections } from "../data/eras.ts"
-import { gearSections, isInfraKind } from "../data/gear.ts"
+import { isInfraKind } from "../data/gear.ts"
 import { EQUIPMENT, GIG_BOARD_UNLOCK, SKILL_TIERS, visibleJobs } from "../data/phases.ts"
 import { heldRank, leadPickOpen, needsLead, needsPick, pickOpen, specOptions } from "../game/build.ts"
 import { LEADERSHIP } from "../data/leadership.ts"
@@ -42,7 +42,7 @@ import type { Requirement, ShopTab } from "../game/phase.ts"
 import { readSavedShopTab, writeSavedShopTab } from "../game/shopTabPrefs.ts"
 import { useGame } from "../game/store.ts"
 import { ScrollPanel } from "./ScrollPanel.tsx"
-import { scrollShopList } from "./shopScroll.ts"
+import { pinShopBottom } from "./shopScroll.ts"
 import { useNarrow } from "./useNarrow.ts"
 import { useShopRows } from "./useShopRows.ts"
 import { ShopGrip } from "./ShopGrip.tsx"
@@ -562,12 +562,18 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
   const [listOverflows, setListOverflows] = useState(false)
   const showJumpEnd = unlocked[tab] && listOverflows
 
-  function scrollToNextOpen() {
+  function scrollToLastAvailable() {
     const list = listRef.current
-    if (list) scrollShopList(list, "smooth")
+    if (!list) return
+    const offers = [...list.querySelectorAll<HTMLElement>(".offer")]
+    const target =
+      [...offers].reverse().find((el) => !el.classList.contains("is-done") && !el.classList.contains("is-locked")) ??
+      offers.at(-1)
+    if (!target) return
+    target.scrollIntoView({ block: "nearest", behavior: "smooth" })
   }
-  // A row appearing in the list we are looking at brings the next open row into view; a tab switch does the same on arrival,
-  // instantly. One list serves every tab, so the offset would otherwise carry over from the last one.
+  // One list serves every tab, so it keeps its scroll offset across a switch. The newest row sits at the bottom: a tab
+  // switch lands there, and so does a row appearing in the list we are looking at.
   const shownScope = useRef(rowScope)
   useLayoutEffect(() => {
     const list = listRef.current
@@ -576,7 +582,7 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
     seenRows.current.set(rowScope, rowCount)
     const switched = shownScope.current !== rowScope
     shownScope.current = rowScope
-    if (switched || (previous !== undefined && rowCount > previous)) scrollShopList(list)
+    if (switched || (previous !== undefined && rowCount > previous)) return pinShopBottom(list)
   }, [rowScope, rowCount])
 
   const revealedKeys = [
@@ -650,9 +656,9 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
               type="button"
               className="shop-panel-toggle shop-jump-end"
               data-testid="shop-jump-end"
-              aria-label="Jump to the next open row"
-              title="Next open row"
-              onClick={scrollToNextOpen}
+              aria-label="Jump to latest available option"
+              title="Latest available"
+              onClick={scrollToLastAvailable}
             >
               <ArrowDown {...UI_ICON} strokeWidth={2.5} aria-hidden />
             </button>
@@ -952,55 +958,50 @@ export function Shop({ onCollapse, docked, onDock }: { onCollapse: () => void; d
         {tab === "G" ? (
           unlocked.G ? (
             <>
-              {gearSections(equipRows).map((group) => (
-                <Fragment key={group.id}>
-                  <h3 className="shop-section">{group.label}</h3>
-                  {group.rows.map((row, index) => {
-                      const have = ownedCount(equipment, row.id)
-                      const cost = nextCost(gearBase(row, perksHeld), have)
-                      const revealed = isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank)
-                      const afford = revealed && canAfford(money, cost)
-                      const key = `equip:${row.id}`
-                      return (
-                        <Offer
-                          key={row.id}
-                          kind="equipment"
-                          id={row.id}
-                          rowKey={`gear:${row.id}`}
-                          glow={tabGlow}
-                          index={index}
-                          afford={afford}
-                          flash={flashKey === key}
-                          fresh={fresh.has(key) && have === 0}
-                          bought={have > 0}
-                          locked={!revealed && have === 0}
-                          unlock={[
-                            ...(peakMoney < row.unlockMoney ? ["A bigger balance"] : []),
-                            ...(row.unlockJobRank > 0 && heldRank({ jobs, build }) < row.unlockJobRank ? [`the ${firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`} job`] : []),
-                          ]}
-                          unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
-                          title={row.name}
-                          actions={
-                            <>
-                              <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id))}>
-                                {!revealed && have === 0 ? "Locked" : <Price text={buyLabel("money", gearBase(row, perksHeld), have)} />}
-                              </button>
-                            </>
-                          }
-                        >
-                          <Stats
-                            items={[
-                              ...(row.cps > 0 ? [<Stat key="sec">{`+$${formatNumber(row.cps)}/s`}</Stat>] : []),
-                              ...(row.clickBonus > 0 ? [<Stat key="click" icon="click">{`+$${formatNumber(row.clickBonus)}`}</Stat>] : []),
-                            ]}
-                          />
-                          {" · owned "}
-                          <OwnedCount value={have} />
-                        </Offer>
-                      )
-                    })}
-                </Fragment>
-              ))}
+              {equipRows.map((row, index) => {
+                const have = ownedCount(equipment, row.id)
+                const cost = nextCost(gearBase(row, perksHeld), have)
+                const revealed = isGearRevealed(row, equipment, peakMoney, jobs, build.peakRank)
+                const afford = revealed && canAfford(money, cost)
+                const key = `equip:${row.id}`
+                return (
+                  <Offer
+                    key={row.id}
+                    kind="equipment"
+                    id={row.id}
+                    rowKey={`gear:${row.id}`}
+                    glow={tabGlow}
+                    index={index}
+                    afford={afford}
+                    flash={flashKey === key}
+                    fresh={fresh.has(key) && have === 0}
+                    bought={have > 0}
+                    locked={!revealed && have === 0}
+                    unlock={[
+                      ...(peakMoney < row.unlockMoney ? ["A bigger balance"] : []),
+                      ...(row.unlockJobRank > 0 && heldRank({ jobs, build }) < row.unlockJobRank ? [`the ${firstJobAtRank(row.unlockJobRank)?.name ?? `job ${row.unlockJobRank}`} job`] : []),
+                    ]}
+                    unlocks={have === 0 ? teaseFor(`gear:${row.id}`) : undefined}
+                    title={row.name}
+                    actions={
+                      <>
+                        <button type="button" disabled={!afford} onClick={() => act(key, () => buyEquipment(row.id))}>
+                          {!revealed && have === 0 ? "Locked" : <Price text={buyLabel("money", gearBase(row, perksHeld), have)} />}
+                        </button>
+                      </>
+                    }
+                  >
+                    <Stats
+                      items={[
+                        ...(row.cps > 0 ? [<Stat key="sec">{`+$${formatNumber(row.cps)}/s`}</Stat>] : []),
+                        ...(row.clickBonus > 0 ? [<Stat key="click" icon="click">{`+$${formatNumber(row.clickBonus)}`}</Stat>] : []),
+                      ]}
+                    />
+                    {" · owned "}
+                    <OwnedCount value={have} />
+                  </Offer>
+                )
+              })}
             </>
           ) : (
             <LockPanel title="Gear" lines={gearRequirements({ xpTotal })} />

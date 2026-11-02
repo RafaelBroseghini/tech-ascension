@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { artFor, EQUIP_ART, GIG_ART, JOB_ART, SKILL_ART } from "../data/art.ts"
 import { CAPITAL } from "../data/capital.ts"
-import { GEAR, GEAR_KINDS, gearSections } from "../data/gear.ts"
+import { GEAR, GEAR_KINDS } from "../data/gear.ts"
 import { EQUIPMENT, GEAR_TAB_UNLOCK, GIGS, JOB_BOARD_UNLOCK, JOB_TIERS, SKILL_TIERS } from "../data/phases.ts"
 import { formatNumber, HERO_RAW_DIGITS_BELOW } from "./format.ts"
 import { visibleShopRows } from "./economy.ts"
@@ -243,8 +243,7 @@ describe("gear tab", () => {
 
   it("appends the next gear row in catalog order instead of sorting it in by price", () => {
     const visible = visibleShopRows(GEAR, (row) => row.id === 1)
-    const desk = gearSections(visible).find((group) => group.id === "desk")
-    expect(desk?.rows.map((row) => row.name)).toEqual(["Thocky keyboard", "Cable management kit"])
+    expect(visible.map((row) => row.name)).toEqual(["Thocky keyboard", "Cable management kit"])
   })
 })
 
