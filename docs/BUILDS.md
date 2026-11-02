@@ -38,7 +38,7 @@ The job ladder is a tree.
 
 Every skill, gig, job and gear row carries one or more tags: `frontend`, `backend`, `infra`, `data`, `ai`, `security`, `product`, `hardware`. This is a data edit; most skill names already say their tag ("CUDA / GPU programming 101", "Threat modeling habit").
 
-Gigs drop the chain. Each one asks for tag counts ("2 frontend, 1 backend") on its own tags instead of every earlier gig and a skill prefix, so two players who learned different skills meet different clients. A count is half of what the old prefix held of that tag (rounded up), at least one and at most what the catalog has; `GIG_PATH` in `src/data/tree.ts` writes them. The specialization halves the count on its own tag (rounded up), and no ask goes below one (`gigTagMin` in `src/game/tree/check.ts`). The board lists the cleared gigs, the gigs the career can clear now, and the next two locked ones (`gigBoard` in `src/game/phase.ts`), ranked by skills short, then lower XP, then id.
+Gigs drop the chain. Each one asks for tag counts ("2 frontend, 1 backend") on its own tags instead of every earlier gig and a skill prefix, so two players who learned different skills meet different clients. A count is half of what the old prefix held of that tag (rounded up), at least one and at most what the catalog has; `GIG_PATH` in `src/data/tree.ts` writes them. The specialization halves the count on its own tag (rounded up), and no ask goes below one (`gigTagMin` in `src/game/tree/check.ts`). The board lists the cleared gigs and only the next gig in catalog order, open or locked (`gigBoard` in `src/game/phase.ts`); a gig shows once the one before it is cleared.
 
 ## 3. The kitchen
 

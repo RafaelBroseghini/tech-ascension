@@ -72,7 +72,7 @@ describe("10x dev skills in the shop", () => {
     expect(host.querySelectorAll(".shop-list .offer:not(.gold-offer)")).toHaveLength(0)
     const first = host.querySelector(".gold-offer")!
     expect(first.querySelector(".gold-art svg")).not.toBeNull()
-    expect(first.textContent).toContain("2 times a second")
+    expect(first.textContent).toContain("2 clicks a second")
     expect(first.querySelector(".offer-actions button")?.hasAttribute("disabled")).toBe(true)
 
     click(host.querySelector("[role='tab'][data-view='skills']"))

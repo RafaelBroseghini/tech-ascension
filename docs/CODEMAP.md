@@ -5,7 +5,7 @@
 | What | File |
 | --- | --- |
 | Phase A-C tables (skills, gigs, jobs, gates) | `src/data/phases.ts` |
-| Gear table and its kind groups (re-exported as `EQUIPMENT`) | `src/data/gear.ts` |
+| Gear table and its kinds (re-exported as `EQUIPMENT`; the shop lists it flat) | `src/data/gear.ts` |
 | Phase D capital catalog (25 rows, `artId` + `era`) | `src/data/capital.ts` |
 | Which sprite each skill, gig, job and equipment item uses | `src/data/art.ts` |
 | Sprite URLs (`spriteForTier`, `thumbForTier`) and era accents | `src/data/sprites.ts` |
@@ -31,7 +31,7 @@
 | The opening's gates (`openingGigXp` head start, `openingJobXp` staircase) | `src/data/costs.ts`, applied in `src/data/phases.ts` |
 | Career years and marks: the year from lifetime XP, the calendar of moments per path, the journal lines and toast | `src/data/careerYears.ts` (the marks), `src/game/careerYear.ts` (the year), the `year` journal type in `src/game/careerLog.ts`, the subscription in `src/game/store.ts`, `CareerYears` in `src/components/CareerLog.tsx`, the chip in `src/components/IdeChrome.tsx` |
 | Leadership: IC and Manager after Senior, the pick, the rows of each line, the old-save mapping | `src/data/leadership.ts` (data), `src/data/phases.ts` (`lead` on rows 16-24, `visibleJobs(spec, lead)`), `src/game/build.ts` (`leadPickOpen`, `normalizeBuild`), `LeadPick` in `src/components/Shop.tsx` |
-| Shop scroll: a tab switch, a row appearing and the jump arrow land on the first open row that is not bought, else the bottom | `src/components/shopScroll.ts` (`scrollTarget`, `scrollShopList`), the rows say what they are in `Offer` (`is-done`, `is-locked`, `data-bought`) in `src/components/Shop.tsx` |
+| Shop scroll: a tab switch and a row appearing land on the bottom of the list (the newest row; the phone list re-pins after it resizes to three rows) | `src/components/shopScroll.ts` (`scrollShopBottom`, `pinShopBottom`), used in `src/components/Shop.tsx` |
 | Next banner target, per shop tab (including the "pick a specialization" and "pick a leadership line" steps) | `src/game/nextUnlock.ts` |
 | Number formatting (raw digits cutoff) | `src/game/format.ts` |
 | Save and offline credit | `src/game/save.ts` |

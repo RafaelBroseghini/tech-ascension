@@ -12,7 +12,6 @@ import {
   gigShortfall,
   gigSkillGaps,
   gigState,
-  LOCKED_GIGS_SHOWN,
   jobBoardUnlocked,
   jobState,
   clickPaysMoney,
@@ -94,16 +93,15 @@ describe("phase gates", () => {
     expect(gigState({ ...open, gigs: [4] }, gig)).toBe("done")
   })
 
-  it("names what a gig still wants by tag, and shows the open gigs before the next two locked ones", () => {
+  it("names what a gig still wants by tag, and shows only the next gig after the cleared ones", () => {
     const first = GIGS[0]!
     const p = { ...EMPTY, xpTotal: GIGS[3]!.xpReq, skills: { "15": 1, "16": 1 } }
     expect(gigSkillGaps(p, first)).toEqual(["1 more Backend skill"])
     const board = gigBoard({ ...p, gigs: [1] })
     expect(board.cleared.map((gig) => gig.id)).toEqual([1])
-    expect(board.locked).toHaveLength(LOCKED_GIGS_SHOWN)
-    // Locked gigs rank by skills short, then XP, then id.
-    const shorts = board.locked.map((gig) => gigShortfall(p, gig))
-    expect(shorts).toEqual([...shorts].sort((a, b) => a - b))
+    // Only the next gig in catalog order shows after the cleared ones, ready or not.
+    const next = GIGS.find((gig) => gig.id !== 1)!
+    expect([...board.open, ...board.locked].map((gig) => gig.id)).toEqual([next.id])
     const all = new Set([...board.cleared, ...board.open, ...board.locked].map((gig) => gig.id))
     expect(all.size).toBe(board.cleared.length + board.open.length + board.locked.length)
   })

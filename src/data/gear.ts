@@ -2,8 +2,8 @@
  * Gear: repeatable infra buys, shown on the Gear tab (state and saves still call them `equipment`).
  * The tab opens at GEAR_TAB_UNLOCK.minXp lifetime XP. A row then shows once the player has held
  * `unlockMoney` (peakMoney) and holds a job of rank `unlockJobRank` or higher (0 = no job needed), or already owns it.
- * A table drop needs unique ids. `kind` groups rows under a section header, in GEAR_KINDS order,
- * so a new kind is one line here and no UI edit.
+ * A table drop needs unique ids. `kind` names a row's kind (GEAR_KINDS gives its label, `INFRA_KINDS` its reveal track);
+ * the shop lists every row in catalog order, with no section headers.
  * `baseCost` below is unscaled; the export doubles it.
  * Mid and late rows stagger unlockJobRank so a fat early balance does not reveal the whole rack.
  */
@@ -31,14 +31,6 @@ export const GEAR_KINDS: readonly { id: GearKind; label: string }[] = [
 export const INFRA_KINDS: readonly GearKind[] = ["cloud", "gpu", "rack", "orbit", "mars"]
 
 export const isInfraKind = (kind: GearKind): boolean => INFRA_KINDS.includes(kind)
-
-/** Shop sections in kind order. Rows stay in catalog order so the next unlock sits under the row that opened it. */
-export function gearSections<T extends { kind: GearKind }>(rows: readonly T[]): { id: GearKind; label: string; rows: T[] }[] {
-  return GEAR_KINDS.flatMap((group) => {
-    const inKind = rows.filter((row) => row.kind === group.id)
-    return inKind.length > 0 ? [{ id: group.id, label: group.label, rows: inKind }] : []
-  })
-}
 
 export type GearItem = {
   id: number

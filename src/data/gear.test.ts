@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { GEAR, gearSections } from "./gear.ts"
+import { GEAR } from "./gear.ts"
 import { JOB_TIERS } from "./phases.ts"
 
 describe("catalog order", () => {
-  it("keeps gear in catalog order inside each section, never sorted by price", () => {
-    for (const section of gearSections(GEAR)) {
-      expect(section.rows.map((row) => row.id)).toEqual(GEAR.filter((row) => row.kind === section.id).map((row) => row.id))
-    }
-    // the cable kit stays right under the keyboard that opened it, though it costs less
-    const desk = gearSections(GEAR).find((section) => section.id === "desk")?.rows.map((row) => row.name)
-    expect(desk?.slice(0, 2)).toEqual(["Thocky keyboard", "Cable management kit"])
+  it("keeps the cable kit right under the keyboard that opened it, though it costs less", () => {
+    expect(GEAR.slice(0, 2).map((row) => row.name)).toEqual(["Thocky keyboard", "Cable management kit"])
   })
 
   it("keeps jobs in id order, with an XP price that follows the XP each one asks for", () => {
