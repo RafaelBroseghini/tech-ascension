@@ -32,12 +32,6 @@ Five tabs: Skills, Gigs, Jobs (roles only), Gear (repeatable infra, one list), a
 
 The logic is `nextUnlock(progress, tab)` in `src/game/nextUnlock.ts`. Without a `tab` it gives the single next thing across the whole game (skills first, then closed boards, then each catalog in order), and that is what `__GAME__.getState().nextUnlock` returns.
 
-## Career years
-
-The game has a calendar of its own: the career's **year**, read off lifetime XP by `careerYear` in `src/game/careerYear.ts` (no save field, it never falls). The stretch before the first job is school and freelancing (the Gig Board is the start of Year 3, the internship of Year 5), then each rung of the ladder is a year or more, to Year 34 at the top. The status bar shows `Year N`, and the career log opens with the year and the next three **marks** the career's path has coming.
-
-A mark is a moment on the calendar (`src/data/careerYears.ts`, a drop-in table): shared ones (a client who pays, a real badge, Senior), and a leadership line's (IC: the design doc everyone cites; Manager: a first direct report). When the year reaches one it is journaled as a `year` line (`Year 5: A real badge`) and toasted once. A reload never repeats one.
-
 ## Career timeline
 
 The desk is earned, not handed over. A new career starts with the XP counter and the Skills tab; everything else arrives at a career moment that explains it. The table is `src/data/features.ts` (a drop-in file), the gates are `src/game/features.ts`. Times are for a player clicking twice a second.

@@ -1,3 +1,5 @@
+import { TitleBarStar } from "./ActivityLinks.tsx"
+
 /** The window bar across the top of the desk: three lights and the game's name. The lights are for show and do nothing. */
 export function TitleBar() {
   return (
@@ -10,6 +12,7 @@ export function TitleBar() {
       <span className="titlebar-name" aria-hidden>
         Tech Ascension
       </span>
+      <TitleBarStar />
     </header>
   )
 }
