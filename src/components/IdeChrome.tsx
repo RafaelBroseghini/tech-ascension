@@ -11,6 +11,7 @@ import { useGame } from "../game/store.ts"
 import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
 import { CatRosterButton } from "./CatRosterButton.tsx"
+import { RostersButton } from "./RostersButton.tsx"
 import { GitHugButton, GitHugStar, ResumeButton } from "./ActivityLinks.tsx"
 import { StatusRates } from "./StatusRates.tsx"
 import { EditorSettings } from "./EditorSettings.tsx"
@@ -89,6 +90,7 @@ export const IdeChrome = memo(function IdeChrome() {
         <ResumeButton />
         <MetricsButton />
         <OwnedButton />
+        <RostersButton />
         <CatRosterButton />
         {prestigeVisible ? (
           <button

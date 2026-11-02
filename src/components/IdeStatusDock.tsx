@@ -151,8 +151,9 @@ function StatusChip({
   )
 }
 
-/** One button per shop panel that is open, each with how many rows it holds. */
-export function RosterButtons({ onPick }: { onPick: (kind: RosterKind) => void }) {
+/** One button per shop panel that is open, each with how many rows it holds. `withCats` adds the cat roster once a cat is found. */
+export function RosterButtons({ onPick, withCats = false }: { onPick: (kind: RosterKind | "cats") => void; withCats?: boolean }) {
+  const catsFound = useGame((state) => state.stats.catsFound.length)
   // The gates read lifetime XP and the peak balance, which move every tick. Joined into a string
   // the selector only changes when a roster actually opens.
   const kinds = useGame((state) => openRosters(state).join(" "))
@@ -173,6 +174,12 @@ export function RosterButtons({ onPick }: { onPick: (kind: RosterKind) => void }
           <i>{counts.get(kind) ?? 0}</i>
         </button>
       ))}
+      {withCats && catsFound > 0 ? (
+        <button type="button" className="desk-toggle" data-testid="status-roster-cats" onClick={() => onPick("cats")}>
+          <span className="desk-toggle-label">Cats</span>
+          <i>{catsFound}</i>
+        </button>
+      ) : null}
     </div>
   )
 }

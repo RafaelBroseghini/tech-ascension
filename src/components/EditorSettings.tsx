@@ -201,7 +201,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
   useSurface("themes", () => {
     if (narrow) setOpen(true)
   })
-  // A notification asks for one row: open on it. Rosters sit in this menu only on narrow screens.
+  // A notification asks for one row: open on it. On wide screens the status bar chip answers for rosters.
   const seek = useRef<readonly string[] | null>(null)
   const [seekCount, setSeekCount] = useState(0)
   useSettingsAt((targets) => {
@@ -488,7 +488,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
               <UiFontList savedFontId={savedFont.id} onPreviewEnd={clearUiFontPreview} />
             </div>
           </section>
-          {narrow && rosters ? (
+          {rosters ? (
             <section className="ide-settings-section" aria-labelledby={`${menuId}-rosters`} data-settings-target="rosters">
               <p className="ide-theme-heading" id={`${menuId}-rosters`}>
                 Rosters
@@ -496,6 +496,7 @@ export function EditorSettings({ place = "activity" }: { place?: "activity" | "c
               </p>
               <div className="ide-settings-section-panel">
                 <RosterButtons
+                  withCats
                   onPick={(kind) => {
                     seeFeature("rosters")
                     setOpenRoster(kind)
