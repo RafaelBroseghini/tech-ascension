@@ -61,11 +61,14 @@ function paint(theme: IdeTheme): void {
 type FadingTransition = { ready: Promise<void>; finished: Promise<void>; updateCallbackDone: Promise<void> }
 type FadingDocument = Document & { startViewTransition?: (update: () => void) => FadingTransition }
 
-/** Whether a palette change can cross-fade: the View Transitions API is there and the player has not asked for less motion. */
+/** Whether a palette change can cross-fade: the View Transitions API is there, the screen is touch, and the player has not asked for less motion. */
 function canFade(): boolean {
   if (typeof document === "undefined" || typeof window === "undefined") return false
   if (typeof (document as FadingDocument).startViewTransition !== "function") return false
   // The motion setting (src/game/desk.ts) puts its choice on the document; this file stays free of the desk's audio.
+  // A pointer that hovers (a laptop) would lose its hover to the fade's hit testing, and the status popover closes on
+  // that leave. Those screens snap; touch screens fade.
+  if (window.matchMedia?.("(hover: hover)").matches) return false
   const full = document.documentElement.dataset.motion === "full"
   return full || !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
 }
@@ -86,17 +89,22 @@ function show(theme: IdeTheme, smooth: boolean): void {
   transition.updateCallbackDone.catch(ignore)
 }
 
-/** Shows what `getIdeTheme` says, after `delay` (a hover at rest) or now. A newer call replaces a waiting one. */
-function settle(delay: number): void {
+/**
+ * Shows what `getIdeTheme` says, after `delay` (a hover at rest) or now. A newer call replaces a waiting one.
+ * Hover previews pass `smooth: false`: while a View Transition runs, Chrome hit-tests the root instead of the page (even
+ * with `pointer-events: none` on the overlay), so the hovered row and the status popover get a pointerleave, the
+ * preview reverts, and the next pointer move starts it again. That loop was the strobe on laptops; phones tap.
+ */
+function settle(delay: number, smooth = true): void {
   if (pending) clearTimeout(pending)
   pending = 0
   if (delay <= 0) {
-    show(getIdeTheme(), true)
+    show(getIdeTheme(), smooth)
     return
   }
   pending = setTimeout(() => {
     pending = 0
-    show(getIdeTheme(), true)
+    show(getIdeTheme(), smooth)
   }, delay)
 }
 
@@ -110,29 +118,29 @@ export function applyIdeThemeScheme(): void {
   show(getIdeTheme(), false)
 }
 
-/** Previews a palette once the pointer rests on its row (`PREVIEW_REST_MS`), cross-faded. Nothing is written until `setIdeTheme`. */
+/** Previews a palette once the pointer rests on its row (`PREVIEW_REST_MS`), painted at once (see `settle`). Nothing is written until `setIdeTheme`. */
 export function previewIdeTheme(id: string): void {
   if (!isIdeThemeId(id)) return
   const next = ideThemeById(id)
   if (next.id === savedTheme().id) {
     if (!preview) return
     preview = null
-    settle(PREVIEW_REST_MS)
+    settle(PREVIEW_REST_MS, false)
     return
   }
   if (preview?.id === next.id) return
   preview = next
-  settle(PREVIEW_REST_MS)
+  settle(PREVIEW_REST_MS, false)
 }
 
 /**
- * The pointer left a row. Fading back waits out the rest delay, so moving on to the next row (its enter follows at once)
+ * The pointer left a row. Going back waits out the rest delay, so moving on to the next row (its enter follows at once)
  * replaces the revert and the screen goes row to row, not row to saved to row.
  */
 export function releaseIdeThemePreview(): void {
   if (!preview) return
   preview = null
-  settle(PREVIEW_REST_MS)
+  settle(PREVIEW_REST_MS, false)
 }
 
 /** Drops a hover preview and fades back to the saved palette now (the menu closed, a click). */
