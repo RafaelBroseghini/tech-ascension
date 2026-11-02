@@ -22,6 +22,7 @@ const GEAR = join(ROOT, "src/data/gear.ts")
 const CAPITAL = join(ROOT, "src/data/capital.ts")
 
 const PINS = join(ROOT, "scripts/emoji-pins.json")
+const CAT_CURATION_PATH = join(ROOT, "scripts/desk-cat-curation.json")
 
 /**
  * Hand-vetted picks (kind:id), checked by eye against the row name. They beat
@@ -29,6 +30,15 @@ const PINS = join(ROOT, "scripts/emoji-pins.json")
  * @type {Record<string, { label: string, idle: string, click: string }>}
  */
 const PINNED = JSON.parse(await readFile(PINS, "utf8"))
+
+/**
+ * The desk cat roster's hand curation: files the keyword pick wrongly takes for cats (apps, objects, catgirls) and
+ * real cats it does not reach. Both are file names on the emoji.gg CDN.
+ * @type {{ exclude: string[], add: string[] }}
+ */
+const CAT_CURATION = JSON.parse(await readFile(CAT_CURATION_PATH, "utf8"))
+const CAT_EXCLUDED = new Set(CAT_CURATION.exclude)
+const fileOf = (url) => url.slice(url.lastIndexOf("/") + 1)
 
 const STOP = new Set(
   `the and for with you from into your soft habit notes toy intro basics taste kit model one
@@ -228,6 +238,7 @@ function collectDeskCatClickPool(pool, deskCatImage) {
     if (isDisallowedTitle(emoji.title)) continue
     if (!emoji.image?.includes("emoji.gg")) continue
     if (emoji.image === deskCatImage || seen.has(emoji.image)) continue
+    if (CAT_EXCLUDED.has(fileOf(emoji.image))) continue
     seen.add(emoji.image)
     rows.push(emoji)
   }
@@ -235,7 +246,12 @@ function collectDeskCatClickPool(pool, deskCatImage) {
   if (rows.length < DESK_CAT_POOL_MIN) {
     throw new Error(`Only ${rows.length} desk cat click emojis in the emoji.gg catalog (need ${DESK_CAT_POOL_MIN}+)`)
   }
-  return rows.slice(0, DESK_CAT_POOL_MAX).map((emoji) => emoji.image)
+  const urls = rows.slice(0, DESK_CAT_POOL_MAX - CAT_CURATION.add.length).map((emoji) => emoji.image)
+  for (const file of CAT_CURATION.add) {
+    const url = `https://cdn3.emoji.gg/emojis/${file}`
+    if (url !== deskCatImage && !urls.includes(url)) urls.push(url)
+  }
+  return urls
 }
 
 async function catalogRows() {

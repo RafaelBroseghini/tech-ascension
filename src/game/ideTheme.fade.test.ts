@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ideThemeById } from "../data/ideThemes.ts"
-import { clearIdeThemePreview, previewIdeTheme, PREVIEW_REST_MS, setIdeTheme } from "./ideTheme.ts"
+import { clearIdeThemePreview, previewIdeTheme, PREVIEW_REST_MS, releaseIdeThemePreview, setIdeTheme } from "./ideTheme.ts"
 
 const onScreen = () => document.documentElement.dataset.ideTheme
 
@@ -48,6 +48,25 @@ describe("theme switching is smooth", () => {
     clearIdeThemePreview()
     expect(onScreen()).toBe("latte")
     expect(fades).toBe(3)
+  })
+
+  it("moving from one row to the next never shows the saved palette in between", () => {
+    previewIdeTheme("dracula")
+    vi.advanceTimersByTime(PREVIEW_REST_MS)
+    expect(onScreen()).toBe("dracula")
+    fades = 0
+    // The pointer leaves one row and enters the next: leave first, enter right after.
+    releaseIdeThemePreview()
+    previewIdeTheme("synthwave")
+    vi.advanceTimersByTime(PREVIEW_REST_MS)
+    expect(onScreen()).toBe("synthwave")
+    expect(fades).toBe(1)
+    // Leaving the list for good still fades back, once, after the rest delay.
+    releaseIdeThemePreview()
+    expect(onScreen()).toBe("synthwave")
+    vi.advanceTimersByTime(PREVIEW_REST_MS)
+    expect(onScreen()).toBe("mocha")
+    expect(fades).toBe(2)
   })
 
   it("a tap (preview then click at once) fades straight to the choice", () => {
