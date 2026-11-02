@@ -7,8 +7,12 @@ const onScreen = () => document.documentElement.dataset.ideTheme
 
 describe("theme switching is smooth", () => {
   let fades = 0
+  let hover = false
   beforeEach(() => {
     vi.useFakeTimers()
+    // A touch screen unless a test says otherwise: only those fade (a hovering pointer loses its hover to the fade).
+    hover = false
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(hover: hover)" ? hover : false, media: query }))
     fades = 0
     ;(document as unknown as { startViewTransition?: unknown }).startViewTransition = (update: () => void) => {
       fades++
@@ -23,10 +27,11 @@ describe("theme switching is smooth", () => {
   })
   afterEach(() => {
     delete (document as unknown as { startViewTransition?: unknown }).startViewTransition
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 
-  it("sweeping across rows paints only the row the pointer rests on, cross-faded", () => {
+  it("sweeping across rows paints only the row the pointer rests on, without a fade (the fade's hit testing would end the hover)", () => {
     previewIdeTheme("latte")
     vi.advanceTimersByTime(30)
     previewIdeTheme("dracula")
@@ -35,19 +40,20 @@ describe("theme switching is smooth", () => {
     expect(onScreen()).toBe("mocha")
     vi.advanceTimersByTime(PREVIEW_REST_MS)
     expect(onScreen()).toBe("synthwave")
-    expect(fades).toBe(1)
+    expect(fades).toBe(0)
   })
 
-  it("a click on the row being previewed does not repaint, and leaving fades back once", () => {
+  it("a click on the row being previewed does not repaint, and closing the menu fades back once", () => {
     previewIdeTheme("latte")
     vi.advanceTimersByTime(PREVIEW_REST_MS)
     setIdeTheme("latte")
-    expect(fades).toBe(1)
+    expect(onScreen()).toBe("latte")
+    expect(fades).toBe(0)
     previewIdeTheme("dracula")
     vi.advanceTimersByTime(PREVIEW_REST_MS)
     clearIdeThemePreview()
     expect(onScreen()).toBe("latte")
-    expect(fades).toBe(3)
+    expect(fades).toBe(1)
   })
 
   it("moving from one row to the next never shows the saved palette in between", () => {
@@ -60,13 +66,12 @@ describe("theme switching is smooth", () => {
     previewIdeTheme("synthwave")
     vi.advanceTimersByTime(PREVIEW_REST_MS)
     expect(onScreen()).toBe("synthwave")
-    expect(fades).toBe(1)
-    // Leaving the list for good still fades back, once, after the rest delay.
+    // Leaving the list for good still goes back, after the rest delay.
     releaseIdeThemePreview()
     expect(onScreen()).toBe("synthwave")
     vi.advanceTimersByTime(PREVIEW_REST_MS)
     expect(onScreen()).toBe("mocha")
-    expect(fades).toBe(2)
+    expect(fades).toBe(0)
   })
 
   it("a tap (preview then click at once) fades straight to the choice", () => {
@@ -75,6 +80,17 @@ describe("theme switching is smooth", () => {
     expect(onScreen()).toBe("dracula")
     vi.runAllTimers()
     expect(fades).toBe(1)
+  })
+
+  it("never fades for a pointer that hovers, even on a quick click", () => {
+    hover = true
+    setIdeTheme("dracula")
+    expect(onScreen()).toBe("dracula")
+    previewIdeTheme("latte")
+    vi.advanceTimersByTime(PREVIEW_REST_MS)
+    clearIdeThemePreview()
+    expect(onScreen()).toBe("dracula")
+    expect(fades).toBe(0)
   })
 
   it("tints the browser bar with the painted theme's mantle", () => {
