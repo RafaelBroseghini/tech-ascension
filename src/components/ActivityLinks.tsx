@@ -98,6 +98,19 @@ export function GitHugStar() {
   )
 }
 
+/** The star in the window bar's top right, there from the first screen. Narrow viewports hide it. */
+export function TitleBarStar() {
+  const stars = useRepoStars(true)
+  const label = stars === null ? "Star Tech Ascension on GitHub" : `Star Tech Ascension on GitHub (${formatStars(stars)} stars)`
+  return (
+    <a className="titlebar-star" href={REPO} target="_blank" rel="noreferrer" data-testid="titlebar-star" aria-label={label} title={label}>
+      <Star className="titlebar-star-icon" {...UI_ICON} aria-hidden />
+      <span>Star</span>
+      {stars !== null ? <span className="titlebar-star-count">{formatStars(stars)}</span> : null}
+    </a>
+  )
+}
+
 /**
  * The GitHug profile, an activity-bar button and a career unlock with Git + GitHug hygiene. Before the unlock only
  * its outline stands there, when it is the next thing to open.

@@ -6,7 +6,6 @@ import { FeatureGhost, NewMark } from "./FeatureMarks.tsx"
 import { useFeatureOpen, useSurface } from "./useFeature.ts"
 import { UI_ICON } from "./icons/ui.tsx"
 import { ideView } from "../game/ide.ts"
-import { yearNumber } from "../game/careerYear.ts"
 import { useGame } from "../game/store.ts"
 import { IdeStatusDock, RosterModals } from "./IdeStatusDock.tsx"
 import { PrestigePanel } from "./ExitPanel.tsx"
@@ -27,7 +26,6 @@ export const IdeChrome = memo(function IdeChrome() {
   const jobs = useGame((state) => state.jobs)
   const gigs = useGame((state) => state.gigs)
   const previewEra = useGame((state) => state.previewEra)
-  const year = useGame((state) => yearNumber(state.xpTotal))
   const holdPreview = useGame((state) => state.holdPreview)
   const seeFeature = useGame((state) => state.seeFeature)
 
@@ -122,7 +120,6 @@ export const IdeChrome = memo(function IdeChrome() {
       <footer className="ide-status">
         <span className={previewing ? "ide-mode is-preview" : "ide-mode"}>{previewing ? "PREVIEW" : "NORMAL"}</span>
         <span data-testid="ide-band">{band.label}</span>
-        <span data-testid="ide-year">{`Year ${year}`}</span>
         <StatusRates />
         <span className="ide-status-gap" />
         <IdeStatusDock />
