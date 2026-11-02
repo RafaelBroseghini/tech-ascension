@@ -126,7 +126,26 @@
   letter-spacing: var(--track-caps);
   pointer-events: none;
 }
+.titlebar-star {
+  position: relative;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px var(--sp-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  text-decoration: none;
+}
+.titlebar-star:hover,
+.titlebar-star:focus-visible { color: var(--text); border-color: var(--text-faint); }
+.titlebar-star-icon { width: 12px; height: 12px; }
+.titlebar-star-count { padding-left: 5px; border-left: 1px solid var(--line); }
 @media (max-width: 860px) {
+  .titlebar-star { display: none; }
   .titlebar { height: 24px; }
   .titlebar-light { width: 10px; height: 10px; }
 }
