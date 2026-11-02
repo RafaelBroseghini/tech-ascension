@@ -401,7 +401,7 @@ export const IdeStatusDock = memo(function IdeStatusDock() {
           panel={
             <>
               <SettingsSection heading="Editor theme">
-                <EditorThemeList savedThemeId={savedTheme.id} unlocked={unlocked} onPreviewEnd={clearEditorThemePreview} />
+                <EditorThemeList savedThemeId={savedTheme.id} unlocked={unlocked} />
               </SettingsSection>
               <SettingsSection heading="Font">
                 <UiFontList savedFontId={savedFont.id} onPreviewEnd={clearEditorThemePreview} />

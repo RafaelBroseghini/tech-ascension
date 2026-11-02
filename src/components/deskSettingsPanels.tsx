@@ -11,7 +11,7 @@ import { HOVER_MODES, MOTION_MODES, setDeskPref } from "../game/desk.ts"
 import type { DeskPrefs } from "../game/desk.ts"
 import { CLICK_KIT_IDS, CLICK_KITS } from "../game/deskClickKits.ts"
 import { MUSIC_STYLE_IDS, MUSIC_STYLES } from "../game/deskMusicStyles.ts"
-import { clearIdeThemePreview, previewIdeTheme, setIdeTheme } from "../game/ideTheme.ts"
+import { clearIdeThemePreview, previewIdeTheme, releaseIdeThemePreview, setIdeTheme } from "../game/ideTheme.ts"
 import { clearUiFontPreview, loadUiFonts, previewUiFont, setUiFont } from "../game/uiFont.ts"
 import { clickKitChoices, musicChoices, themeChoices } from "../game/features.ts"
 import { UI_ICON_SM } from "./icons/ui.tsx"
@@ -240,10 +240,9 @@ export function ClickKitList({ desk, unlocked }: MusicStyleListProps) {
 type EditorThemeListProps = {
   savedThemeId: string
   unlocked: ReadonlySet<string>
-  onPreviewEnd?: () => void
 }
 
-export function EditorThemeList({ savedThemeId, unlocked, onPreviewEnd }: EditorThemeListProps) {
+export function EditorThemeList({ savedThemeId, unlocked }: EditorThemeListProps) {
   const allowed = themeChoices(unlocked)
   return (
     <>
@@ -265,8 +264,8 @@ export function EditorThemeList({ savedThemeId, unlocked, onPreviewEnd }: Editor
                 style={ideThemeStyle(entry) as CSSProperties}
                 onPointerEnter={() => previewIdeTheme(entry.id)}
                 onFocus={() => previewIdeTheme(entry.id)}
-                onPointerLeave={() => onPreviewEnd?.()}
-                onBlur={() => onPreviewEnd?.()}
+                onPointerLeave={releaseIdeThemePreview}
+                onBlur={releaseIdeThemePreview}
                 onClick={() => setIdeTheme(entry.id)}
               >
                 <span className="ide-theme-dots" aria-hidden="true">

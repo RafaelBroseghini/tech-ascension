@@ -125,7 +125,17 @@ export function previewIdeTheme(id: string): void {
   settle(PREVIEW_REST_MS)
 }
 
-/** Drops a hover preview and fades back to the saved palette. */
+/**
+ * The pointer left a row. Fading back waits out the rest delay, so moving on to the next row (its enter follows at once)
+ * replaces the revert and the screen goes row to row, not row to saved to row.
+ */
+export function releaseIdeThemePreview(): void {
+  if (!preview) return
+  preview = null
+  settle(PREVIEW_REST_MS)
+}
+
+/** Drops a hover preview and fades back to the saved palette now (the menu closed, a click). */
 export function clearIdeThemePreview(): void {
   if (!preview) {
     // A preview may still be waiting to paint the saved palette back.
