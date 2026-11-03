@@ -1,122 +1,61 @@
-# Prestige: the Exit (design, v3)
+# Prestige: the Exit
 
-Status: built, behind admin mode (see "Built" at the end). Paths and the Founder track are gone, and so is the win and its Hall of Fame (the company arc was removed).
+Status: built, behind admin mode. The rules are in `src/game/legacy.ts` and `src/data/legacy.ts`; this page says why they are shaped this way.
 
 ## Why
 
-A career ends at "own everything", and then there is nothing left to do. The pace model shows the run is front-loaded: jobs and gigs are done on the second visit, and the whole career takes about a day for a player who visits every few hours. The Exit turns that wait into a decision and the finished career into a faster next one.
+A career ends when it owns everything, and then there is nothing left to do. For a player who visits every few hours, that is about a day in, so the wait for a next career is short anyway. The Exit turns the finished career into a decision: leave, keep a permanent bonus, and start a career that can go further. Perks are the place to spend the bonus, so a second career starts with something earned rather than only with time.
 
 ## The loop
 
-**Exit** the career for **Prestige**, start a new one that earns more, and spend Prestige on **Legacy** perks.
+**Exit** the career for **Prestige**, start a new one, and spend Prestige on **Legacy** perks.
 
 ## Prestige
 
-Two numbers, the same split as `xp` / `xpTotal`:
+Two numbers, the same split as spendable and lifetime XP:
 
-- `prestigeTotal`: every Prestige ever earned. It never falls and it drives the permanent bonus.
+- `prestigeTotal`: every Prestige ever earned. It never falls, and it drives the permanent bonus.
 - `prestige`: spendable on Legacy perks. Spending never lowers `prestigeTotal` or the bonus.
 
-**Earned on Exit**, from what careers earned (`stats.lifetimeEarned`, every dollar credited; spending ignored):
-
-```
-prestigeTotalFor(earned) = floor( cbrt(earned / PRESTIGE_EARN_SCALE) )
-prestigeOnExit = prestigeTotalFor(earnedAllRuns + runEarned) - prestigeTotal
-```
-
-- **Permanent bonus:** every money and XP stream × `(1 + PRESTIGE_MULT_PER × prestigeTotal)`. It folds in through `modFactors` (`src/game/mods.ts`) like `foreverMult`, so offline credit gets it too.
-- Constants: `PRESTIGE_EARN_SCALE = 5e11`, `PRESTIGE_MULT_PER = 0.03`.
+**What an Exit pays** comes from what careers earned in dollars (credited, spending ignored), through a cube root over one scale constant. So an Exit pays the rungs this career climbed, not the whole career again. The bonus is a per-Prestige percentage on every money and XP stream. It folds in through `modFactors` (`src/game/mods.ts`), like the event multipliers, so the offline credit gets it too.
 
 ## When the Exit opens
 
-When it would pay at least 1 Prestige (first career), and from the start on every later career. It latches: earnings only rise within a career.
+When it would pay at least one Prestige. On the first career that is the first rung; on a later career it waits until the earnings cross the next one. It latches: earnings only rise within a career, so once open it stays open.
 
 ## The Exit
 
-A button in the **Prestige** panel on the activity bar (the crown), reading `Exit: +12 Prestige (×1.36 → ×1.72)`, or `Exit: no new Prestige yet` (disabled) on a later career that has not passed the earlier careers' earnings. A confirmation card lists what starts over and what stays; the very first Exit asks twice, and its second card names the losses in words. The button, the crown and the panel show in admin mode only, as before.
+The **Exit** button sits in the **Prestige** panel, opened by the crown on the activity bar. The button shows what the Exit would pay and what the bonus would become, or says there is no new Prestige yet. A confirmation card lists what starts over and what stays. The first Exit asks twice, and the second card names the losses in words. After the Exit, a headline card closes the career, worded by what it earned. The handle stays and stays kept, so the start card does not open again.
 
-After the Exit, a full-screen **headline card**, by what the career earned:
-
-| Earned | Headline |
-| --- | --- |
-| under 1e12 | "<handle> takes the severance and a very large mug" |
-| 1e12 to under 1e14 | "<handle> retires to a standing desk and a quiet calendar" |
-| 1e14 and more | "<handle> leaves a legacy, an endowed chair and a very long wiki" |
-
-The handle stays and stays kept: a later career has nothing to draw, so the start card does not reopen.
-
-## What resets and what stays
+## What starts over and what stays
 
 | Starts over | Stays |
 | --- | --- |
-| money, `peakMoney`, xp, xpTotal | Prestige, `prestigeTotal`, Legacy perks, careers count |
-| skills, gigs, jobs, gear, capital | 10x dev skills |
-| click boost, `tempMults`, `foreverMult` | the handle |
-| `stats.lifetimeEarned` (summed into `earnedAllRuns`) | every cosmetic, the desk cat, the career timeline's unlocked rows (reveals never replay) |
-|  | the career log, with an `exit` entry between careers |
+| Money, the peak balance, XP and lifetime XP | Prestige, the bonus, and the count of careers |
+| Skills, gigs, jobs, gear, capital | 10x dev skills |
+| The click boost, event multipliers | The handle |
+| Lifetime earnings for the career (summed into the all-careers total) | Every cosmetic and the desk cat, and the career timeline's unlocks (reveals never replay) |
+| | The career log, with an `exit` entry between careers |
 
-`reset()` stays a full wipe, Legacy included.
+`reset()` is a full wipe, Legacy included.
 
-## Legacy perks (spend Prestige)
+## Legacy perks
 
-Two tracks, each a ladder; a perk waits on the one before it in its track, is bought once, and applies now and at the start of every career.
+Two tracks, each a ladder. A perk waits on the one before it in its track, is bought once, and applies now and at the start of every career. **Network** is a head start: skills, gigs, the internship, starting money. **Capital** is idle income: offline cap, capital and gear prices, salaries and retainers, capital income. The perk table, prices and effects are in `src/data/legacy.ts` (`LEGACY_PERKS`) and `src/game/perks.ts` (`perkEffects`).
 
-| Track | Perks (price in Prestige) |
-| --- | --- |
-| **Network** (head start) | Study group: skills 1–10 learned (1) · Open portfolio: Portfolio and React, the Gig Board open (2) · Repeat clients: gigs 1–6 cleared, lumps not paid (4) · Return offer: the internship held (7) · Seed money: $1M held (12) |
-| **Capital** (idle) | Long weekend: offline cap +4 h, stacking with Time away (2) · Volume discount: capital rows −10% (4) · Bulk hardware: gear rows −10% (7) · Raise season: salaries and retainers ×2 (11) · Compounding: capital rows' income ×1.5 (16) |
-
-66 Prestige for both.
+Where each perk applies is a design fact worth knowing: starting grants are applied when a career begins; the offline cap is read on every return; price perks are read by the buy actions and the shop's price; income perks are read by the idle calculation, so the shop, the click power and the owned strip all agree.
 
 ## Save
 
-The optional `legacy` block:
-
-```json
-"legacy": {
-  "runs": 3,
-  "prestige": 14,
-  "prestigeTotal": 52,
-  "earnedAllRuns": 1.4e14,
-  "perks": ["network.skills", "capital.offline"]
-}
-```
-
-Unknown perk ids are dropped on load (a Founder perk from an old save included), numbers are clamped finite and non-negative, `prestigeTotal >= prestige`, `runs >= 1`. A save without it is career 1 with no Prestige.
-
-## Harness
-
-```ts
-getState().legacy: {
-  runs: number; prestige: number; prestigeTotal: number; mult: number
-  exitOpen: boolean; prestigeOnExit: number
-  perks: string[]
-}
-exit(): number | false          // Prestige earned, or false when the Exit is shut or pays 0
-buyLegacy(perkId: string): boolean
-setPrestige(n: number): void    // tests only: spendable to n, total raised to at least n
-```
+The optional `legacy` block is described in [SAVE.md](SAVE.md). An Exit clears `foreverMult` and keeps the handle; `reset()` drops the block.
 
 ## Tuning
 
-`simulateExits` in `src/game/pace.ts` models the Exit over several careers. It exits when an Exit would raise the bonus by 15% or more, buys the cheapest affordable perk after each Exit (Network first on ties), and plays the next career. It stops when a career owns everything. Details and results are in `docs/PACING.md`.
-
-With the product gone, a player who visits every few hours owns everything inside a day, before an Exit would raise the bonus by 15%, so the Exit does not shorten that player's finish. It pays for a player who is away for days (the weekly player in `docs/PACING.md` leaves in career 1 and finishes in career 2).
-
-Knobs: `PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`. Not the perk prices.
+`simulateExits` in `src/game/pace.ts` plays the Exit over several careers, and [PACING.md](PACING.md) has the results. For a player who visits every few hours the Exit never opens before the career is already done, so it does not shorten that player's finish. It pays for a player who is away for days. The Exit's scale and per-Prestige constants were tuned for longer careers and have not been retuned since the career became about a day. Perk prices are not the knob to turn; the scale and per-Prestige constants are.
 
 ## Decisions
 
-- **Names:** the Exit, Prestige for the points (Rep was unclear), Legacy perks.
-- **Rollout:** the Exit UI is behind admin mode (`getAdminMode()`) for now; the harness works regardless.
-- **The Exit button lives in the Prestige panel**, which already held it; the Company tab's copy went with the tab.
-- **The Founder track and the Hall of Fame are gone** with the product and the win.
-
-## Built
-
-All of the above is built, behind admin mode (`getAdminMode()`); the harness works regardless. Where each piece lives is in `docs/CODEMAP.md`; the numbers are in `docs/GAMEPLAY.md` (player view), `docs/HARNESS.md` (API) and `docs/SAVE.md`.
-
-- **Rules.** `src/data/legacy.ts` (constants, perk table), `src/game/legacy.ts` (the formula, the gate, perk order, the starting grant, headlines, save checks), `src/game/perks.ts` (`perkEffects`: each perk as a number). `exit()` and `buyLegacy()` are store actions; `exit()` builds the next career from the same fresh constants `reset()` uses, then seeds the perks.
-- **Where each perk applies.** Network: `startingGrant`/`mergeGrant`. `capital.offline`: `offlineCapMs(gold, base, perks)`, used by the tick, a return, the hydrate and the harness. `capital.capitalCost` and `capital.gearCost`: `capitalBase`/`gearBase` in `economy.ts`, used by the buy actions, the shop's price and affordability, and the next-unlock banner. `capital.salaries` and `capital.capitalIncome`: `idleParts` in `economy.ts`, so `cps`, `clickPower` (which carries the jobs' share of idle) and the owned strip agree.
-- **UI.** The Exit button (`ExitButton`) is in the Prestige panel (`PrestigePanel`), which the crown on the activity bar opens (Escape closes it; Escape on the confirmation card closes only the card). The headline card (`ExitHeadline`) is in `App.tsx`; nothing else clears `exitCard`.
-- **Pace model.** See `docs/PACING.md`.
+- **Names:** the Exit, Prestige for the points, Legacy perks for what they buy.
+- **Rollout:** the Exit UI is behind admin mode for now. The harness works regardless.
+- **The Exit button lives in the Prestige panel.** The company tab that used to hold it is gone.
+- **The Founder track and the Hall of Fame are gone** with the company arc.

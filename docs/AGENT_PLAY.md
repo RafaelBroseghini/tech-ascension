@@ -9,11 +9,11 @@ Vitest + happy-dom, all through `__GAME__`:
 1. **Phase A.** Click until the first skill is affordable. Clicks pay XP only, money and $/s stay 0, `buySkill` spends XP and keeps `xpTotal`, skills study while idle.
 2. **A to B.** `setXp` and buy Portfolio and React: the Gig Board opens (not before both), `completeGig` is gated, the first clear pays the lump (clicks stay XP-only until a job), `lastPop` is large.
 3. **B.** The first retainer gig is the first `$/s`.
-4. **B to C to D.** Six gigs and 40K XP open the Job Board (five gigs do not), an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash, after Mid-level SWE (id 7) and a `pickSpecialization`. Jobs above rank 15 also need a `pickLeadership`.
-   **Gear.** Gear and `buyEquipment` stay shut until 10,000 lifetime XP, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
+4. **B to C to D.** The Job Board opens at its gate (the XP, and six gigs cleared; five gigs do not open it), an intern salary adds $/s and idle XP/s, taking the internship pays its XP lump once, the Senior job (id 14) opens capital with no cash, after Mid-level SWE (id 7) and a `pickSpecialization`. Jobs above rank 15 also need a `pickLeadership`.
+   **Gear.** Gear and `buyEquipment` stay shut until `GEAR_TAB_UNLOCK`, then a keyboard adds its click bonus. `nextUnlock` walks Gear, Gig Board, Job Board, Capital.
 5. **D gate.** `buy(1)` fails at $499,999 and works at $500,000.
 6. **Mid jump.** `setMoney` to the base cost of "WhyCombinator batch investment", buy it, and assert the cps / clickPower deltas match that row. `forceBoost(5, 10_000)`, then assert the click delta is `clickPower × 5` and `cps` is unchanged.
-7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The toast is a diary sentence plus that credit.
+7. **Offline.** `advanceOffline` 1 hour credits `cps × 3600`, 10 hours caps at 8; phase A offline credits XP only. The sticky note is a diary sentence plus that credit.
 8. **10x dev skills.** A 10x dev skill is gated by lifetime XP and price, hover rate and offline cap follow the gold owned.
 9. **Events and 1:1s.** A gift event applies once and a decline changes nothing, a trade scales to the pile and is refused when it cannot be paid, and a 1:1 waits for a job and its three replies pay, sit or bill you.
 10. **Career timeline.** Nothing is unlocked at minute zero; the first skill opens nothing (the desk cat and the metrics wait for the first job), the skills before Git + GitHug hygiene open nothing, Git + GitHug hygiene the career log, with a NEW marker that `seeFeature` clears, and the GitHug profile, the first gig and job the board, the dollars, the rosters and the metrics; every journal line is one flat JSON object; `advanceOffline` past 10 minutes logs a return; the first job brings the desk cat, not time at the desk or a break; Hover Tap waits for the Senior SWE job.
@@ -73,15 +73,15 @@ const game = window.__GAME__
 game.reset()
 game.setXp(200_000)
 for (const id of [1, 2, 3, 4, 5, 6]) game.forceGig(id) // six gigs open the Job Board
-game.buyJob(1) // free internship (needs 35K XP), salary $/s
+game.buyJob(1) // free internship once its XP gate is met, salary $/s
 game.setXp(1e7) // enough spendable XP for the rest of the ladder
 for (let id = 2; id <= 7; id++) game.buyJob(id) // the trunk; Mid-level SWE (id 7) opens the pick
 game.pickSpecialization("backend") // the pick opens on Mid-level SWE; every job above rank 7 needs it; Backend keeps ids 8-15
 for (let id = 8; id <= 14; id++) game.buyJob(id) // job 14 is Senior SWE: capital opens with no cash (holding $500,000 opens it too)
 game.buyJob(15) // the rest of the track
 game.pickLeadership("ic") // every job above rank 15 needs a line: "ic" (16, 17, 19, 23, 24) or "manager" (18, 20, 21, 22); 25-31 are shared
-game.setMoney(85_000)
-game.buy(1) // $85,000 after the scale; buy(19) and up cost trillions
+game.setMoney(1_000_000) // enough for row 1; read the prices from src/data/capital.ts, later rows cost far more
+game.buy(1) // the first capital row
 ```
 
 Click boost (capital id 3, still mid):
@@ -93,7 +93,7 @@ game.setXp(40_000)
 for (let id = 1; id <= 6; id++) game.forceGig(id)
 game.buyJob(1) // dollars per click wait for the first job; without one a click pays XP only
 game.setMoney(7e6)
-game.buy(3) // $4,000,000: the capital gate opens at $500K held
+game.buy(3) // capital row 3; the capital gate opens at $500K held
 game.forceBoost(5, 10_000)
 const before = game.getState()
 game.click()

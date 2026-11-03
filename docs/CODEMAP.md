@@ -5,16 +5,16 @@
 | What | File |
 | --- | --- |
 | Phase A-C tables (skills, gigs, jobs, gates) | `src/data/phases.ts` |
-| Gear table and its kinds (re-exported as `EQUIPMENT`; the shop lists it flat) | `src/data/gear.ts` |
-| Phase D capital catalog (25 rows, `artId` + `era`) | `src/data/capital.ts` |
+| Gear table and its kinds (`src/data/gear.ts`; `phases.ts` re-exports the rows as `EQUIPMENT`, which the shop imports) | `src/data/gear.ts` |
+| Phase D capital catalog (`artId` + `era`) | `src/data/capital.ts` |
 | Which sprite each skill, gig, job and equipment item uses | `src/data/art.ts` |
 | Sprite URLs (`spriteForTier`, `thumbForTier`) and era accents | `src/data/sprites.ts` |
 | The desk band for each stage art id, named in the status bar | `src/data/idePacks.ts` |
 | The desk band and the shop-era preview that snaps back | `src/game/ide.ts` |
-| Random events: the 110-row table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
+| Random events: the table (a drop-in file) and the choice runner | `src/data/events.ts`, `src/game/events.ts` |
 | The desk chrome (window bar, activity bar, career log sidebar, status bar) | `src/components/TitleBar.tsx`, `src/components/IdeChrome.tsx`, `src/styles/ide.css` |
 | Pixel art: palette, drawing helpers, one drawing per tier | `src/pixel/` (`palette.ts`, `pix.ts`, `motifs.ts`, `art.ts`) |
-| Gif parade: every unlocked gif (found cats, and the idle and click art of rows held) moving round the stage's editor area together (cap 30-50 by stage size, one swap every 1-2 s; it opens in the mid game, with the first capital row of the mid era, as the `parade` row of the career timeline, and all fourteen paths and every category come with it; under the OS reduce-motion setting the paths run at 35% of their pace rather than freezing; the `parade` switch and the `paradeSource` and `paradeStyle` picks in the desk prefs). The style and category tables are drop-ins; each style's path is one case of `paradeAt` | `src/data/paradeStyles.ts`, `src/game/gifParade.ts`, `src/game/paradePool.ts`, `src/components/GifParade.tsx`, `ParadeSourceList` and `ParadeStyleList` in `src/components/deskSettingsPanels.tsx` |
+| Gif parade: the unlocked gifs moving round the stage's editor area. The paths and the category tables are drop-ins; each path is a case of `paradeAt`. Its pacing, counts and reduced-motion slowdown are constants in the files below | `src/data/paradeStyles.ts`, `src/game/gifParade.ts`, `src/game/paradePool.ts`, `src/components/GifParade.tsx`, `ParadeSourceList` and `ParadeStyleList` in `src/components/deskSettingsPanels.tsx` |
 | The unlock celebration (the sprite's crouch, spring and shake, the flash and rings in Motion; the shards in canvas-confetti) | `src/components/UnlockFx.tsx` (choreography and theme colours), `forceCelebration` in `src/game/harness.ts`, `.unlock-*` in `src/index.css` |
 | Click fountain (owned developer-icons, toss, cap, count) | `src/data/clickIcons.ts`, `src/game/waterfall.ts` |
 | Design tokens (type scale, spacing, era palettes, easing, elevation) | `src/styles/tokens.css` |
@@ -31,7 +31,7 @@
 | The opening's gates (`openingGigXp` head start, `openingJobXp` staircase) | `src/data/costs.ts`, applied in `src/data/phases.ts` |
 | Leadership: IC and Manager after Senior, the pick, the rows of each line, the old-save mapping | `src/data/leadership.ts` (data), `src/data/phases.ts` (`lead` on rows 16-24, `visibleJobs(spec, lead)`), `src/game/build.ts` (`leadPickOpen`, `normalizeBuild`), `LeadPick` in `src/components/Shop.tsx` |
 | Shop scroll: a tab switch and a row appearing land on the bottom of the list (the newest row; the phone list re-pins after it resizes to three rows) | `src/components/shopScroll.ts` (`scrollShopBottom`, `pinShopBottom`), used in `src/components/Shop.tsx` |
-| Next banner target, per shop tab (including the "pick a specialization" and "pick a leadership line" steps) | `src/game/nextUnlock.ts` |
+| The next-unlock suggestion (whole game, and per shop tab through `shopFocus`), including the "pick a specialization" and "pick a leadership line" steps. Read by the harness; no screen shows it | `src/game/nextUnlock.ts` |
 | Number formatting (raw digits cutoff) | `src/game/format.ts` |
 | Save and offline credit | `src/game/save.ts` |
 | Prestige: the formula's constants and the perk table | `src/data/legacy.ts` (`PRESTIGE_EARN_SCALE`, `PRESTIGE_MULT_PER`, `PERK`, `LEGACY_PERKS`) |
@@ -42,7 +42,7 @@
 | Loop, purchases, money pops | `src/game/store.ts` |
 | Shop panel, rows and banner | `src/components/Shop.tsx` |
 | Hero squash, tick and count-up (Motion) | `src/components/HeroMoney.tsx` |
-| Motion in the interface: the lazy loader, the presence ref (a spring in, a still copy fading out), the click-path helpers, the small badges | `src/components/useMotion.ts` (rules in `docs/GAMEPLAY.md`, Motion in the interface) |
+| Motion in the interface: the lazy loader, the presence ref (a spring in, a still copy fading out), the click-path helpers, the small badges | `src/components/useMotion.ts` (rules in `docs/ART.md`, Motion in the interface) |
 | Every dialog's backdrop and its entrance and exit | `src/components/ModalBackdrop.tsx` |
 | The shop's motion: owned count, price, row sweep, rows opening, the sliding tab bar, the list entrance, the phone sheet's release spring | `src/components/shopMotion.ts`, used by `src/components/Shop.tsx` and `src/components/ShopGrip.tsx`; the pure drag rules and release speed are in `src/game/shopDock.ts` |
 | Career timeline: what unlocks, its trigger and reveal size (a drop-in table) | `src/data/features.ts` |
@@ -62,17 +62,17 @@
 | The career's handle: word lists, draws, save checks; the start card with Reroll and Start | `src/game/identity.ts`, `src/components/IdentityPicker.tsx` |
 | GitHug profile: contribution graph from the journal, pinned repos, the real repo's star | `src/game/githug.ts`, `src/components/GitHugModal.tsx`, `src/components/ActivityLinks.tsx`, `src/styles/githug.css` |
 
-Editing the rows in `src/data/capital.ts` is enough for the capital shop, as long as each row has `id`, `era`, `artId`, `name`, `baseCost`, `cps`, and `clickBonus`. `artId` points at an existing drawing (art 0-66); there is no new art to add for a new row. Costs do not have to rise with id.
+Editing a row in `src/data/capital.ts` is enough for the capital shop, as long as the row has the fields the others have. `artId` names an existing drawing in `DRAW` (`src/pixel/art.ts`); there is no new art to add for a new row.
 
 ## Catalog capacity
 
-Skills, gigs, jobs, gear and capital are plain typed arrays with unique ids. Nothing assumes 50, 31, 30 or 25 rows. A table drop replaces the array. Ids past the end of an art table reuse its drawings in order (`artFor`). A new gear `kind` is one line in `GEAR_KINDS`. Gig and job ids are checked against the live tables on load, so a removed row drops out of a save. Counts for ids this build does not sell are kept.
+Skills, gigs, jobs, gear and capital are plain typed arrays with unique ids. Nothing assumes a row count, so a table drop replaces the array. Ids past the end of an art table reuse its drawings in order (`artFor`). A new gear `kind` is one line in `GEAR_KINDS`. Gig and job ids are checked against the live tables on load, so a removed row drops out of a save. Counts for ids this build does not sell are kept.
 
-The 66 drawings stay in use: skills, gigs, jobs and gear borrow them through `src/data/art.ts`, and each capital row names the drawing it wants with `artId`. That drawing also picks the desk band.
+Skills, gigs, jobs and gear borrow drawings through `src/data/art.ts`. Each capital row names the drawing it wants with `artId`, and that drawing also picks the desk band.
 
 ## Numbers
 
-Money and costs are JavaScript numbers (IEEE-754 doubles). `Math.floor` is exact only through `Number.MAX_SAFE_INTEGER` (~9.01e15). The late capital prices (the last row, Mars megacampus Holdings, is about 6e12 after the purchase scale) are well inside that range, but the dollars a career earns can pass 1e15 and are approximate there. Switch `src/game/economy.ts` to `decimal.js` or `break_infinity.js` when exact integers past ~1e15 matter. Display keeps raw digits below 10 million, then M / B / T / Qa / Qi / Sx / Sp / Oc / No / Dc, then scientific notation past 1e36.
+Money and costs are JavaScript numbers (IEEE-754 doubles). `Math.floor` is exact only through `Number.MAX_SAFE_INTEGER` (~9.01e15). Late capital prices are well inside that range, but the dollars a career earns can pass 1e15 and are approximate there. Switch `src/game/economy.ts` to `decimal.js` or `break_infinity.js` when exact integers past ~1e15 matter. The display cutoffs and suffixes are in `src/game/format.ts`.
 
 ## GitHub Pages
 
