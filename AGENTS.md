@@ -33,11 +33,10 @@ CI (`.github/workflows/ci.yml`) runs lint, test, smoke and build on every PR and
 
 Drive state and mechanics through `window.__GAME__`. Never scrape buttons or guess DOM selectors for game logic. It is installed in dev and in `vite preview`, and `smoke:play` loads the same harness. Source of truth: `src/game/harness.ts`; full reference: `docs/HARNESS.md`.
 
-- Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, gear, legacy, features, ...).
+- Read: `getState()` (money, xp, xpTotal, phase, cps, owned, skills, jobs, gigs, equipment, legacy, features, ...). The full shape is in `src/game/harness.ts`.
 - Play: `click`, `tick(ms)`, `buy`, `buySkill`, `buyJob`, `buyEquipment`, `buyGold`, `completeGig`, `advanceOffline(ms)`, `pickSpecialization`, `switchSpecialization`, `pickLeadership`.
 - To see why a row is open or shut, ask `explain("job:14")` (or `npm run tree -- job:14`): every row's gate is a node in the progression tree (`docs/TREE.md`), and the answer lists each leaf with what the career has.
-- Every job above rank 7 (Mid-level SWE, id 7) needs a picked specialization: buy job 7, `pickSpecialization("backend")`, then jobs 8 and up. Backend keeps ids 8-15 (`buyJob(14)` is Senior SWE); the other tracks are 108-115, 208-215, 308-315, 408-415, 508-515 (`docs/HARNESS.md`).
-- Every job above rank 15 needs a picked leadership line: hold Senior SWE (rank 14), `pickLeadership("ic" | "manager")` once, then rows 16 and up of that line (IC 16, 17, 19, 23, 24; Manager 18, 20, 21, 22; 25-31 shared).
+- Jobs above rank 7 (Mid-level SWE) need a picked specialization, and jobs above rank 15 (past Senior SWE, `buyJob(14)`) need a picked leadership line. The picks and the track ids are in `docs/HARNESS.md`; `docs/TREE.md` explains the gates.
 - Force state (tests and checks only): `setXp`, `setMoney`, `forceGig`, `forceGold`, `forceBoost`, `forceEvent`, `forceReview`, `setPrestige`, `previewEra`.
 - Answer prompts: `acceptEvent`, `dismissEvent`, `answerReview`, `dismissReview`, `keepProfile`.
 - Prestige: `exit`, `buyLegacy`.
@@ -71,7 +70,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 - Tests sit next to the code as `*.test.ts`. Pin rules with numbers imported from the data modules. Store-level tests are `*.store.test.ts`.
 - Match the surrounding code: comment density, naming, idiom. Comments say why, not what.
 - No new dependencies without a reason; the repo already dropped unused ones.
-- Animation comes from libraries: Motion (`motion`) for movement, springs and sequences, canvas-confetti for particles. Ask `reducedMotion()` (`src/game/desk.ts`) before animating, never `matchMedia` directly, and prefix a new CSS reduce-motion rule with `:root:not([data-motion="full"])`. Do not hand-roll a particle system or a spring; our code picks colours (from the theme), counts, timing and origin. Load Motion only through `src/components/useMotion.ts` (one lazy chunk; never `motion/react`), and never wait on it: no Motion yet, no layout or reduced motion means the UI just changes. Details in `docs/GAMEPLAY.md` (the unlock celebration, Motion in the interface).
+- Animation comes from libraries: Motion (`motion`) for movement, springs and sequences, canvas-confetti for particles. Ask `reducedMotion()` (`src/game/desk.ts`) before animating, never `matchMedia` directly, and prefix a new CSS reduce-motion rule with `:root:not([data-motion="full"])`. Do not hand-roll a particle system or a spring; our code picks colours (from the theme), counts, timing and origin. Load Motion only through `src/components/useMotion.ts` (one lazy chunk; never `motion/react`), and never wait on it: no Motion yet, no layout or reduced motion means the UI just changes. Details in `docs/GAMEPLAY.md` (the unlock celebration) and `docs/ART.md` (Motion in the interface).
 - Do not hand-edit `emojiManifest.json`; the generator overwrites it (`npm run generate:emojis`, see the emoji-gg skill).
 
 ## Where things are
@@ -79,7 +78,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 - `docs/CODEMAP.md`: what to edit for a given change. Start here when you do not know where code lives.
 - `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, prestige, events and 1:1s, offline credit, the career timeline, identity).
 - `docs/AGENT_PLAY.md`: smoke scenarios, free play, browser checks, example sequences.
-- `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art and desk chrome.
+- `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art, desk chrome and motion.
 - Skills: `.agents/skills/mobile-check` (layout), `.agents/skills/emoji-gg` (emoji manifest).
 
 ## Keep this file small

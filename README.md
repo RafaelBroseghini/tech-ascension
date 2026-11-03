@@ -8,7 +8,6 @@ An idle clicker about a programmer's career.
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
 ![Zustand](https://img.shields.io/badge/Zustand-443E38?logo=react&logoColor=white)
-![three.js](https://img.shields.io/badge/three.js-000000?logo=threedotjs&logoColor=white)
 ![Vitest](https://img.shields.io/badge/tested%20with-Vitest-6E9F18?logo=vitest&logoColor=white)
 
 ## Run

@@ -277,7 +277,7 @@ test("leadership: the pick opens at Senior and rows above rank 15 need it", () =
   for (const id of [18, 20, 21, 22, 25]) expect(game.buyJob(id), `job ${id}`).toBe(true)
 })
 
-test("Gear opens at 10K XP, and the next-unlock target follows the gates", () => {
+test("Gear opens at its XP gate, and the next-unlock target follows the gates", () => {
   game.reset()
   const first = SKILL_TIERS[0]
   if (!first) throw new Error("missing skill")
