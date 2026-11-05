@@ -79,7 +79,7 @@ Drive state and mechanics through `window.__GAME__`. Never scrape buttons or gue
 - `docs/HARNESS.md`: full `__GAME__` API and the mechanics behind it (phases, gear, gold skills, prestige, events and 1:1s, offline credit, the career timeline, identity).
 - `docs/AGENT_PLAY.md`: smoke scenarios, free play, browser checks, example sequences.
 - `docs/GAMEPLAY.md`: the player's view of the economy. `docs/PACING.md`: pacing numbers and the simulations. `docs/PRESTIGE.md`: the Exit and Legacy perks. `docs/SAVE.md`: save format. `docs/ART.md`: pixel art, desk chrome and motion.
-- Skills: `.agents/skills/mobile-check` (layout), `.agents/skills/emoji-gg` (emoji manifest).
+- Skills: `.agents/skills/mobile-check` (layout), `.agents/skills/emoji-gg` (emoji manifest), `.agents/skills/unslop` (UI polish audit; installed by `npx skills`, tracked in `skills-lock.json`, so update it with `npx skills update`, not by hand).
 
 ## Keep this file small
 
