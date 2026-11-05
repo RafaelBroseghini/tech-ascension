@@ -6,6 +6,7 @@ Everything is pixel art, drawn in code from one shared 16-colour sheet (`src/pix
 
 - **Sprites.** `src/pixel/art.ts` has one drawing per tier plus art 0, the opening attic, built from shared props in `motifs.ts` and lit from the top-left. The thumb is the same drawing reduced by half. Both are encoded as small PNG data URLs once and cached. CSS uses `image-rendering: crisp-edges`, and the stage sprite is a whole multiple of its grid so the pixels stay square.
 - **Desk chrome.** One shell behind the stage, coloured by the saved editor theme (Catppuccin Mocha by default), never by the era accent. It is the activity bar, the career log sidebar while it is open, and a status bar that names the career's band. The Capital tab's era sub-tab previews that era's first band there.
+- **Type in the chrome.** Labels, tabs, tags and headings are sentence case at weight 600 at most; the text in the data is already written that way. Uppercase stays only where the editor world uses it: the career log's sidebar headers, the Vim mode chip and git's `HEAD`. The hard ink text shadow belongs to the balance and the money pops, not to titles. Rows that are shut or out of reach sit on `--surface-sunk`, which shades light themes instead of mixing in their dark ink.
 - **Captions.** There is no flavour line under the stage art. The stage name and era tag remain.
 
 To change a sprite, edit its entry in `DRAW` in `src/pixel/art.ts`. `npm test` checks the size, colour count and outline of every sprite.
