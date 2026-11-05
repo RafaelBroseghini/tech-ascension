@@ -243,9 +243,7 @@
   gap: 6px;
   margin: 0;
   color: var(--ide-green);
-  font: 700 10px/1 var(--font-mono);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 600 var(--fs-2xs)/1 var(--font-mono);
 }
 .ul-kicker::before {
   content: "+";
@@ -362,15 +360,14 @@
   z-index: 2;
   top: -6px;
   right: -6px;
-  padding: 1px 4px 2px;
-  border-radius: 3px;
+  padding: 1px 4px;
+  border-radius: 4px;
   background: var(--ide-green);
   color: var(--ide-crust);
   box-shadow: 0 0 0 2px var(--ide-crust);
-  font: 800 8.5px/1.2 var(--font-mono);
+  /* The smallest text on the desk, so it stays at 10px and 600 rather than shrinking into 800-weight caps. */
+  font: 600 10px/1.2 var(--font-mono);
   font-style: normal;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 .ide-theme-option .ul-pill,
 .desk-toggle .ul-pill {
