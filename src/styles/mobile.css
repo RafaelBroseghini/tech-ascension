@@ -138,8 +138,6 @@
     color: var(--ide-text);
     font-size: var(--fs-sm);
     font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
   }
   .shop-grip-bar .deal-dot { top: 50%; right: 0; margin-top: -3px; }
 }

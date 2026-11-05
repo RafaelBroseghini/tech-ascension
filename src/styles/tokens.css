@@ -57,6 +57,11 @@
   --surface-2: var(--ide-surface);
   --line: color-mix(in srgb, var(--ide-surface) 55%, var(--ide-overlay));
   --line-strong: var(--ide-overlay);
+  /* A step below surface-0 for rows that are shut or out of reach. Dark themes sink toward ink; light themes only shade,
+     since mixing their dark ink in turns the shop into a grey slab. */
+  --surface-sunk: color-mix(in srgb, var(--ink) 42%, var(--surface-0));
+  /* How strongly an affordable row takes its tab's colour. */
+  --afford-wash: 14%;
 
   --text: var(--ide-text);
   /* Both mix toward the theme's own text so they clear 4.5:1 wherever the text does (pinned in ideThemes.test.ts).
@@ -156,5 +161,7 @@
   --line-strong: color-mix(in srgb, var(--ide-text) 48%, var(--ide-overlay));
   --accent-hi: var(--ide-mauve);
   --accent-deep: color-mix(in srgb, var(--ide-mauve) 16%, var(--ide-base));
+  --surface-sunk: color-mix(in srgb, var(--ide-text) 7%, var(--surface-0));
+  --afford-wash: 9%;
   color-scheme: light;
 }
