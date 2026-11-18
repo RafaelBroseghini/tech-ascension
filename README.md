@@ -25,5 +25,3 @@ npm run build
 ```
 
 ![The game mid-career, with the skill shop open](docs/screenshots/climb.png)
-
-![The game at its start, on a fresh save](docs/screenshots/start.png)
